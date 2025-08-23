@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Dict, Any
 import os
 
-from .routers import users, nlp, books, auth
+from .routers import users, nlp, books, auth, images
 
 # Версия приложения
 VERSION = "0.1.0"
@@ -45,6 +45,7 @@ app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(users.router, prefix="/api/v1", tags=["users"])
 app.include_router(nlp.router, prefix="/api/v1", tags=["nlp"])
 app.include_router(books.router, prefix="/api/v1", tags=["books"])
+app.include_router(images.router, prefix="/api/v1", tags=["images"])
 
 
 @app.get("/")
@@ -109,7 +110,8 @@ async def api_info() -> Dict[str, Any]:
             "docs": "/docs",
             "books": "/api/v1/books",
             "users": "/api/v1/users",
-            "auth": "/api/v1/auth"
+            "auth": "/api/v1/auth",
+            "images": "/api/v1/images"
         }
     }
 
