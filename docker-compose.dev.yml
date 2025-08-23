@@ -7,21 +7,21 @@ services:
       file: docker-compose.yml
       service: postgres
     ports:
-      - "5432:5432"
+      - "5433:5432"
 
   redis:
     extends:
       file: docker-compose.yml
       service: redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
 
   backend:
     extends:
       file: docker-compose.yml
       service: backend
     environment:
-      - DATABASE_URL=postgresql://bookreader_user:bookreader_pass@postgres:5432/bookreader
+      - DATABASE_URL=postgresql+asyncpg://bookreader_user:bookreader_pass@postgres:5432/bookreader
       - REDIS_URL=redis://:redis_password@redis:6379
       - SECRET_KEY=dev-secret-key-not-for-production
       - DEBUG=true
@@ -37,7 +37,7 @@ services:
       file: docker-compose.yml
       service: celery-worker
     environment:
-      - DATABASE_URL=postgresql://bookreader_user:bookreader_pass@postgres:5432/bookreader
+      - DATABASE_URL=postgresql+asyncpg://bookreader_user:bookreader_pass@postgres:5432/bookreader
       - REDIS_URL=redis://:redis_password@redis:6379
       - SECRET_KEY=dev-secret-key-not-for-production
       - POLLINATIONS_ENABLED=true

@@ -4,7 +4,6 @@ FROM python:3.11-slim
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
-    software-properties-common \
     git \
     && rm -rf /var/lib/apt/lists/*
 
@@ -18,8 +17,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# Загрузка русской модели spaCy
+# Загрузка NLP моделей
 RUN python -m spacy download ru_core_news_lg
+RUN python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords'); nltk.download('wordnet'); nltk.download('averaged_perceptron_tagger')"
+RUN python -c "import stanza; stanza.download('ru')"
 
 # Копирование исходного кода
 COPY . .

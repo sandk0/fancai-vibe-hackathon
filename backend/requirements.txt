@@ -16,15 +16,16 @@ redis==5.0.1
 celery==5.3.4
 
 # NLP и обработка текста
+beautifulsoup4==4.12.2
 spacy==3.7.2
 nltk==3.8.1
 stanza==1.7.0
 natasha==1.6.0
-beautifulsoup4==4.12.2
+pymorphy3==1.2.1
 
 # Парсинг книг
-ebooklib==0.18.2
-python-fb2==1.0.1
+ebooklib==0.19
+lxml==5.1.0
 
 # HTTP клиенты и запросы
 httpx==0.25.2
