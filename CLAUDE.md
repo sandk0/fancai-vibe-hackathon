@@ -208,10 +208,22 @@ fancai-vibe-hackathon/
 │   └── src/types/          # TypeScript типы
 ├── backend/                 # FastAPI приложение
 │   ├── app/models/         # SQLAlchemy модели
-│   ├── app/api/            # API routes
+│   │   ├── user.py         # ✅ User, Subscription модели
+│   │   ├── book.py         # ✅ Book, ReadingProgress модели
+│   │   ├── chapter.py      # ✅ Chapter модель
+│   │   ├── description.py  # ✅ Description модель с типами
+│   │   └── image.py        # ✅ GeneratedImage модель
+│   ├── app/routers/        # API routes
+│   │   ├── users.py        # ✅ Пользовательские endpoints
+│   │   ├── books.py        # ✅ Управление книгами (12 endpoints)
+│   │   └── nlp.py          # ✅ NLP тестирование и обработка
 │   ├── app/core/           # Конфигурация и утилиты
-│   ├── app/services/       # Бизнес логика
-│   └── app/parsers/        # NLP парсеры
+│   │   ├── config.py       # ✅ Настройки приложения
+│   │   └── database.py     # ✅ Асинхронная база данных
+│   └── app/services/       # Бизнес логика
+│       ├── book_parser.py  # ✅ EPUB/FB2 парсер
+│       ├── book_service.py # ✅ Сервис управления книгами
+│       └── nlp_processor.py # ✅ NLP обработка с приоритетами
 ├── docs/                   # Документация проекта
 │   ├── development/        # План, календарь, changelog
 │   ├── architecture/       # Техническая документация
@@ -268,8 +280,16 @@ Subscriptions, Payment_History, Admin_Settings, System_Logs
 4. **Подписочная модель** - FREE → PREMIUM → ULTIMATE планы
 
 ### Development Phases
-- **Phase 1 (MVP):** 8-10 недель - базовая функциональность
-- **Phase 2:** 6-8 недель - улучшения и оптимизации
+- **Phase 0 (Initialization):** ✅ Завершено - инфраструктура и документация
+- **Phase 1 (MVP):** ⏳ В процессе (45% завершено) - базовая функциональность
+  - ✅ Модели базы данных
+  - ✅ Парсер книг EPUB/FB2
+  - ✅ NLP процессор с приоритизацией
+  - ✅ API для управления книгами
+  - ⏳ Система аутентификации
+  - ⏳ Генерация изображений
+  - ⏳ Frontend интерфейс
+- **Phase 2:** 6-8 недель - улучшения и оптимизации  
 - **Phase 3:** 4-6 недель - масштабирование и ML улучшения
 
 ### Environment Variables Required
