@@ -16,6 +16,7 @@ import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
 import LibraryPage from '@/pages/LibraryPage';
 import BookPage from '@/pages/BookPage';
+import BookImagesPage from '@/pages/BookImagesPage';
 import ChapterPage from '@/pages/ChapterPage';
 import ProfilePage from '@/pages/ProfilePage';
 import SettingsPage from '@/pages/SettingsPage';
@@ -60,6 +61,7 @@ function App() {
                       <Route path="/" element={<HomePage />} />
                       <Route path="/library" element={<LibraryPage />} />
                       <Route path="/book/:bookId" element={<BookPage />} />
+                      <Route path="/book/:bookId/images" element={<BookImagesPage />} />
                       <Route 
                         path="/book/:bookId/chapter/:chapterNumber" 
                         element={<ChapterPage />} 

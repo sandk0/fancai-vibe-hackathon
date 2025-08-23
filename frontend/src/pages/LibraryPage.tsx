@@ -1,12 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Plus, Book, Search, Filter } from 'lucide-react';
 import { useBooksStore } from '@/stores/books';
 import { useUIStore } from '@/stores/ui';
-import LoadingSpinner from '@/components/UI/LoadingSpinner';
+import { LoadingSpinner } from '@/components/UI/LoadingSpinner';
+import { BookUploadModal } from '@/components/Books/BookUploadModal';
 
 const LibraryPage: React.FC = () => {
   const { books, isLoading, fetchBooks, error } = useBooksStore();
-  const { setShowUploadModal } = useUIStore();
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   useEffect(() => {
     fetchBooks();
@@ -130,6 +131,12 @@ const LibraryPage: React.FC = () => {
           <p className="text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
+
+      {/* Upload Modal */}
+      <BookUploadModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+      />
     </div>
   );
 };

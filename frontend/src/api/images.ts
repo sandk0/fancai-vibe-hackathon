@@ -54,23 +54,19 @@ export const imagesAPI = {
   // Image management
   async getBookImages(
     bookId: string,
+    chapterNumber?: number,
     skip: number = 0,
     limit: number = 50
-  ): Promise<{
-    book_id: string;
-    book_title: string;
-    images: GeneratedImage[];
-    pagination: {
-      skip: number;
-      limit: number;
-      total_found: number;
-    };
-  }> {
+  ): Promise<GeneratedImage[]> {
     const params = new URLSearchParams();
     params.append('skip', skip.toString());
     params.append('limit', limit.toString());
+    if (chapterNumber !== undefined) {
+      params.append('chapter', chapterNumber.toString());
+    }
     
-    return apiClient.get(`/images/book/${bookId}?${params.toString()}`);
+    const response = await apiClient.get(`/images/book/${bookId}?${params.toString()}`);
+    return response.images || [];
   },
 
   async deleteImage(imageId: string): Promise<{ message: string }> {

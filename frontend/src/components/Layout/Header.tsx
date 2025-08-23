@@ -14,6 +14,7 @@ import {
 import { useAuthStore } from '@/stores/auth';
 import { useUIStore } from '@/stores/ui';
 import { useReaderStore } from '@/stores/reader';
+import { WebSocketStatus } from '@/services/websocket';
 import { cn } from '@/utils/cn';
 
 const Header: React.FC = () => {
@@ -74,6 +75,9 @@ const Header: React.FC = () => {
 
           {/* Right side - Actions and User menu */}
           <div className="flex items-center space-x-4">
+            {/* WebSocket Status */}
+            <WebSocketStatus className="hidden sm:flex" />
+            
             {/* Upload button */}
             <button
               type="button"

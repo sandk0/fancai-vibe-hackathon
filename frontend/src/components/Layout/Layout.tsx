@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuthStore } from '@/stores/auth';
 import { useUIStore } from '@/stores/ui';
+import { useAutoWebSocket } from '@/services/websocket';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import NotificationContainer from '@/components/UI/NotificationContainer';
@@ -12,6 +13,9 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user } = useAuthStore();
   const { sidebarOpen, mobileMenuOpen, setSidebarOpen, setMobileMenuOpen } = useUIStore();
+  
+  // Auto-connect WebSocket for real-time updates
+  useAutoWebSocket();
 
   // Close mobile menu when clicking outside
   const handleBackdropClick = () => {
