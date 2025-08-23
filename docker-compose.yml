@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: bookreader_postgres
+    environment:
+      POSTGRES_DB: bookreader
+      POSTGRES_USER: bookreader_user
+      POSTGRES_PASSWORD: bookreader_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - bookreader_network
+
+  # Redis Cache & Queue
+  redis:
+    image: redis:7-alpine
+    container_name: bookreader_redis
+    command: redis-server --appendonly yes --requirepass redis_password
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - bookreader_network
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bookreader_backend
+    environment:
+      - DATABASE_URL=postgresql://bookreader_user:bookreader_pass@postgres:5432/bookreader
+      - REDIS_URL=redis://:redis_password@redis:6379
+      - SECRET_KEY=your-super-secret-key-change-in-production
+      - DEBUG=true
+      - POLLINATIONS_ENABLED=true
+    volumes:
+      - ./backend:/app
+      - uploaded_books:/app/uploads
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - bookreader_network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Celery Worker для фоновых задач
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bookreader_celery
+    environment:
+      - DATABASE_URL=postgresql://bookreader_user:bookreader_pass@postgres:5432/bookreader
+      - REDIS_URL=redis://:redis_password@redis:6379
+      - SECRET_KEY=your-super-secret-key-change-in-production
+      - POLLINATIONS_ENABLED=true
+    volumes:
+      - ./backend:/app
+      - uploaded_books:/app/uploads
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - bookreader_network
+    command: celery -A app.core.celery_app worker --loglevel=info
+
+  # Celery Beat для планировщика задач
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bookreader_beat
+    environment:
+      - DATABASE_URL=postgresql://bookreader_user:bookreader_pass@postgres:5432/bookreader
+      - REDIS_URL=redis://:redis_password@redis:6379
+      - SECRET_KEY=your-super-secret-key-change-in-production
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - bookreader_network
+    command: celery -A app.core.celery_app beat --loglevel=info
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bookreader_frontend
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_WS_URL=ws://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    networks:
+      - bookreader_network
+    command: npm run dev -- --host 0.0.0.0
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploaded_books:
+
+networks:
+  bookreader_network:
+    driver: bridge

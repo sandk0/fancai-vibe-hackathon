@@ -1,0 +1,89 @@
+version: '3.8'
+
+# Development версия с дополнительными инструментами разработки
+services:
+  postgres:
+    extends:
+      file: docker-compose.yml
+      service: postgres
+    ports:
+      - "5432:5432"
+
+  redis:
+    extends:
+      file: docker-compose.yml
+      service: redis
+    ports:
+      - "6379:6379"
+
+  backend:
+    extends:
+      file: docker-compose.yml
+      service: backend
+    environment:
+      - DATABASE_URL=postgresql://bookreader_user:bookreader_pass@postgres:5432/bookreader
+      - REDIS_URL=redis://:redis_password@redis:6379
+      - SECRET_KEY=dev-secret-key-not-for-production
+      - DEBUG=true
+      - POLLINATIONS_ENABLED=true
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - ./backend:/app
+      - uploaded_books:/app/uploads
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --log-level debug
+
+  celery-worker:
+    extends:
+      file: docker-compose.yml
+      service: celery-worker
+    environment:
+      - DATABASE_URL=postgresql://bookreader_user:bookreader_pass@postgres:5432/bookreader
+      - REDIS_URL=redis://:redis_password@redis:6379
+      - SECRET_KEY=dev-secret-key-not-for-production
+      - POLLINATIONS_ENABLED=true
+      - LOG_LEVEL=DEBUG
+    command: celery -A app.core.celery_app worker --loglevel=debug --concurrency=2
+
+  frontend:
+    extends:
+      file: docker-compose.yml
+      service: frontend
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      - VITE_WS_URL=ws://localhost:8000
+      - NODE_ENV=development
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host 0.0.0.0 --port 3000
+
+  # Дополнительные инструменты для разработки
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: bookreader_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@bookreader.local
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - bookreader_network
+
+  # Redis CLI для отладки
+  redis-cli:
+    image: redis:7-alpine
+    container_name: bookreader_redis_cli
+    networks:
+      - bookreader_network
+    command: tail -f /dev/null
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploaded_books:
+
+networks:
+  bookreader_network:
+    driver: bridge
