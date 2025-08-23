@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Dict, Any
 import os
 
-from .routers import users, nlp, books
+from .routers import users, nlp, books, auth
 
 # Версия приложения
 VERSION = "0.1.0"
@@ -41,6 +41,7 @@ app.add_middleware(
 )
 
 # Подключение роутеров
+app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(users.router, prefix="/api/v1", tags=["users"])
 app.include_router(nlp.router, prefix="/api/v1", tags=["nlp"])
 app.include_router(books.router, prefix="/api/v1", tags=["books"])

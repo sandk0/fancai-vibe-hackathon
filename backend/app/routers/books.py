@@ -11,10 +11,12 @@ import os
 from pathlib import Path
 
 from ..core.database import get_database_session
+from ..core.auth import get_current_active_user, get_optional_current_user
 from ..services.book_parser import book_parser
 from ..services.nlp_processor import nlp_processor
 from ..services.book_service import book_service
 from ..models.book import Book
+from ..models.user import User
 from ..models.description import DescriptionType
 import shutil
 from uuid import uuid4
@@ -280,6 +282,7 @@ async def analyze_chapter_content(file: UploadFile = File(...), chapter_number: 
 @router.post("/books/upload")
 async def upload_book(
     file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session)
 ) -> Dict[str, Any]:
     """
@@ -287,14 +290,12 @@ async def upload_book(
     
     Args:
         file: Загруженный файл книги
+        current_user: Текущий аутентифицированный пользователь
         db: Сессия базы данных
         
     Returns:
         Информация о загруженной и обработанной книге
     """
-    # TODO: Добавить аутентификацию пользователя
-    # Временно используем фиктивный user_id для тестирования
-    test_user_id = uuid4()
     
     # Валидируем файл
     if not file.filename:
@@ -332,7 +333,7 @@ async def upload_book(
         # Сохраняем книгу в базе данных
         book = await book_service.create_book_from_upload(
             db=db,
-            user_id=test_user_id,
+            user_id=current_user.id,
             file_path=str(permanent_path),
             original_filename=file.filename,
             parsed_book=parsed_book
@@ -369,6 +370,7 @@ async def upload_book(
 async def get_user_books(
     skip: int = 0,
     limit: int = 50,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session)
 ) -> Dict[str, Any]:
     """
@@ -377,18 +379,17 @@ async def get_user_books(
     Args:
         skip: Количество книг для пропуска
         limit: Максимальное количество книг
+        current_user: Текущий аутентифицированный пользователь
         db: Сессия базы данных
         
     Returns:
         Список книг пользователя с метаданными
     """
-    # TODO: Получить user_id из JWT токена
-    test_user_id = uuid4()
     
     try:
         books = await book_service.get_user_books(
             db=db,
-            user_id=test_user_id,
+            user_id=current_user.id,
             skip=skip,
             limit=limit
         )
