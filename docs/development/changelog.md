@@ -8,10 +8,62 @@
 ## [Unreleased]
 
 ### Планируется добавить
-- Frontend интерфейс на React
 - Система очередей Celery для фоновых задач
 - Продвинутый парсер с контекстом
 - PWA и мобильные оптимизации
+- Production deployment конфигурация
+
+---
+
+## [0.4.0] - 2025-08-23
+
+### Added
+- **Complete React Frontend Application**: Full-featured TypeScript React application
+  - React 18 with TypeScript and strict type checking
+  - Vite build system with optimized bundling
+  - Tailwind CSS with custom theme and dark mode support
+  - Responsive design for desktop and mobile devices
+- **Comprehensive State Management**: Zustand-based state management system
+  - Authentication store with JWT token handling and auto-refresh
+  - Books store for library management and reading progress
+  - Images store for AI-generated image management
+  - Reader store for reading preferences and settings
+  - UI store for notifications and modal management
+- **Authentication Flow**: Complete login/register system
+  - Form validation with React Hook Form and Zod
+  - JWT token management with automatic refresh
+  - Protected routes with AuthGuard component
+  - User session persistence and restoration
+- **Application Layout**: Professional responsive layout system
+  - Header with navigation, search, and user menu
+  - Collapsible sidebar with theme switching
+  - Mobile-responsive navigation with overlay
+  - Notification system with Framer Motion animations
+- **Page Components**: Full set of application pages
+  - Login/Register pages with validation and error handling
+  - Home page with dashboard and quick actions
+  - Library page with book grid and search functionality
+  - Book/Chapter pages (placeholder implementation)
+  - Profile and Settings pages (placeholder implementation)
+  - 404 Not Found page with navigation
+- **API Integration**: Type-safe API client system
+  - Axios-based HTTP client with interceptors
+  - Automatic token refresh and error handling
+  - Complete API methods for auth, books, and images
+  - TypeScript interfaces for all API responses
+  - File upload support with progress tracking
+
+### Changed
+- Updated project structure to include complete frontend application
+- Enhanced Docker configuration to support frontend development
+- Improved CORS settings for frontend-backend integration
+
+### Technical Information
+- **Frontend Files**: 38 new files including components, pages, stores, and utilities
+- **Lines of Code**: ~4000+ new lines of frontend TypeScript/React code
+- **Components**: 15+ React components including layout, auth, and UI elements
+- **Type Definitions**: Complete TypeScript interfaces for API and state management
+- **Build System**: Vite with TypeScript, PostCSS, and Tailwind integration
 
 ---
 
