@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BookReader AI - Read with AI-Generated Illustrations</title>
+    <meta name="description" content="Transform your reading experience with AI-powered image generation from book descriptions. Upload EPUB and FB2 files and watch your stories come to life." />
+    
+    <!-- Favicon and Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    
+    <!-- Theme color -->
+    <meta name="theme-color" content="#0ea5e9" />
+    <meta name="msapplication-TileColor" content="#0ea5e9" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://bookreader-ai.com/" />
+    <meta property="og:title" content="BookReader AI - Read with AI-Generated Illustrations" />
+    <meta property="og:description" content="Transform your reading experience with AI-powered image generation from book descriptions." />
+    <meta property="og:image" content="/og-image.jpg" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://bookreader-ai.com/" />
+    <meta property="twitter:title" content="BookReader AI - Read with AI-Generated Illustrations" />
+    <meta property="twitter:description" content="Transform your reading experience with AI-powered image generation from book descriptions." />
+    <meta property="twitter:image" content="/twitter-image.jpg" />
+    
+    <!-- PWA settings -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Loading styles to prevent flash -->
+    <style>
+      /* Loading screen styles */
+      #initial-loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        transition: opacity 0.3s ease-out;
+      }
+      
+      #initial-loading.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      
+      .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #e5e7eb;
+        border-top: 4px solid #0ea5e9;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      .loading-text {
+        margin-top: 16px;
+        color: #64748b;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 14px;
+      }
+      
+      /* Prevent flash of unstyled content */
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #f8fafc;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      
+      /* Dark mode support */
+      @media (prefers-color-scheme: dark) {
+        body {
+          background-color: #111827;
+        }
+        
+        #initial-loading {
+          background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        }
+        
+        .loading-text {
+          color: #9ca3af;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Initial loading screen -->
+    <div id="initial-loading">
+      <div style="text-align: center;">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading BookReader AI...</div>
+      </div>
+    </div>
+    
+    <!-- React root -->
+    <div id="root"></div>
+    
+    <!-- Remove loading screen once React loads -->
+    <script>
+      // Hide loading screen once the page is loaded
+      window.addEventListener('load', function() {
+        const loadingElement = document.getElementById('initial-loading');
+        if (loadingElement) {
+          setTimeout(() => {
+            loadingElement.classList.add('hidden');
+            setTimeout(() => {
+              loadingElement.remove();
+            }, 300);
+          }, 100);
+        }
+      });
+      
+      // Fallback: remove loading screen after maximum wait time
+      setTimeout(function() {
+        const loadingElement = document.getElementById('initial-loading');
+        if (loadingElement) {
+          loadingElement.remove();
+        }
+      }, 5000);
+    </script>
+    
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
