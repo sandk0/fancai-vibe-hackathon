@@ -9,7 +9,6 @@ passlib[bcrypt]==1.7.4
 sqlalchemy==2.0.23
 alembic==1.12.1
 asyncpg==0.29.0
-psycopg2-binary==2.9.9
 
 # Redis и кэширование
 redis==5.0.1
@@ -30,6 +29,7 @@ lxml==5.1.0
 # HTTP клиенты и запросы
 httpx==0.25.2
 requests==2.31.0
+aiofiles==23.2.0
 
 # Валидация и настройки
 pydantic==2.5.0

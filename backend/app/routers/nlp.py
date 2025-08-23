@@ -3,11 +3,20 @@ API роуты для тестирования NLP функциональнос�
 """
 
 from fastapi import APIRouter, HTTPException
-from typing import Dict, Any
+from pydantic import BaseModel
+from typing import Dict, Any, List
 import traceback
+
+from ..services.nlp_processor import nlp_processor
 
 
 router = APIRouter()
+
+
+class TextAnalysisRequest(BaseModel):
+    """Модель запроса для анализа текста."""
+    text: str
+    chapter_id: str = None
 
 
 @router.get("/nlp/test-libraries")
@@ -186,3 +195,150 @@ async def test_nlp_simple() -> Dict[str, Any]:
         "results": results,
         "message": "NLP processing test completed"
     }
+
+
+@router.post("/nlp/extract-descriptions")
+async def extract_descriptions(request: TextAnalysisRequest) -> Dict[str, Any]:
+    """
+    Извлекает описания из предоставленного текста с помощью NLP.
+    
+    Args:
+        request: Запрос с текстом для анализа
+        
+    Returns:
+        Извлеченные описания с приоритизацией
+    """
+    try:
+        if not nlp_processor.is_available():
+            raise HTTPException(
+                status_code=503, 
+                detail="NLP processor is not available. spaCy model not loaded."
+            )
+        
+        if not request.text.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Text cannot be empty"
+            )
+        
+        if len(request.text) > 50000:  # Ограничение на размер текста
+            raise HTTPException(
+                status_code=400,
+                detail="Text is too long. Maximum 50,000 characters allowed."
+            )
+        
+        # Извлечение описаний
+        descriptions = nlp_processor.extract_descriptions_from_text(
+            request.text, 
+            request.chapter_id
+        )
+        
+        # Статистика по типам
+        type_stats = {}
+        for desc in descriptions:
+            desc_type = desc["type"].value
+            if desc_type not in type_stats:
+                type_stats[desc_type] = 0
+            type_stats[desc_type] += 1
+        
+        # Топ-10 описаний по приоритету
+        top_descriptions = descriptions[:10]
+        
+        return {
+            "summary": {
+                "total_descriptions": len(descriptions),
+                "text_length": len(request.text),
+                "by_type": type_stats,
+                "top_priority_score": descriptions[0]["priority_score"] if descriptions else 0
+            },
+            "descriptions": [
+                {
+                    "type": desc["type"].value,
+                    "content": desc["content"],
+                    "confidence_score": round(desc["confidence_score"], 3),
+                    "priority_score": round(desc["priority_score"], 2),
+                    "word_count": desc["word_count"],
+                    "entities_mentioned": desc["entities_mentioned"],
+                    "position_in_chapter": desc["position_in_chapter"]
+                }
+                for desc in top_descriptions
+            ],
+            "message": f"Extracted {len(descriptions)} descriptions from text"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error processing text: {str(e)}"
+        )
+
+
+@router.get("/nlp/test-book-sample")
+async def test_book_sample() -> Dict[str, Any]:
+    """
+    Тестирует извлечение описаний на примере текста книги.
+    
+    Returns:
+        Результат обработки тестового отрывка
+    """
+    sample_text = """
+    Старый замок возвышался на скалистом утёсе, его чёрные башни терялись в утреннем тумане. 
+    Каменные стены, покрытые мхом и плющом, хранили тайны веков. В высоких окнах не горел свет, 
+    лишь ветер гулял по пустым залам.
+    
+    Элара медленно поднималась по винтовой лестнице. Её длинные рыжие волосы развевались на сквозняке, 
+    а изумрудные глаза внимательно осматривали каждую ступень. В руках она сжимала древний посох из 
+    серебра, украшенный синими сапфирами.
+    
+    Воздух был пропитан запахом старых книг и свечного воска. Тяжёлая тишина давила на плечи, 
+    нарушаемая лишь эхом шагов. Где-то вдалеке послышался скрип половиц - кто-то ещё бродил 
+    по замку в этот мрачный вечер.
+    
+    На массивном дубовом столе лежал раскрытый фолиант в кожаном переплёте. Золотые буквы 
+    мерцали в свете единственной свечи, отбрасывая причудливые тени на стены. Рядом стояла 
+    серебряная чаша с таинственным зельем.
+    
+    Внезапно раздался громкий удар грома. Молния озарила комнату ослепительным светом, 
+    и в этот миг Элара увидела тёмную фигуру в углу. Незнакомец в чёрном плаще медленно 
+    повернулся к ней, и она разглядела горящие красным огнём глаза.
+    """
+    
+    try:
+        descriptions = nlp_processor.extract_descriptions_from_text(sample_text)
+        
+        # Группировка по типам для лучшего отображения
+        by_type = {}
+        for desc in descriptions:
+            desc_type = desc["type"].value
+            if desc_type not in by_type:
+                by_type[desc_type] = []
+            by_type[desc_type].append({
+                "content": desc["content"],
+                "confidence": round(desc["confidence_score"], 3),
+                "priority": round(desc["priority_score"], 2),
+                "entities": desc["entities_mentioned"]
+            })
+        
+        return {
+            "sample_text_preview": sample_text[:200] + "...",
+            "total_descriptions": len(descriptions),
+            "by_type": by_type,
+            "priority_ranking": [
+                {
+                    "rank": i + 1,
+                    "type": desc["type"].value,
+                    "content": desc["content"][:100] + "..." if len(desc["content"]) > 100 else desc["content"],
+                    "priority_score": round(desc["priority_score"], 2)
+                }
+                for i, desc in enumerate(descriptions[:5])  # Топ-5
+            ],
+            "message": "Book sample analysis completed successfully"
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error analyzing book sample: {str(e)}"
+        )
