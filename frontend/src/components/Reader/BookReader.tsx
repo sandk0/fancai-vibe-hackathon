@@ -58,43 +58,92 @@ export const BookReader: React.FC<BookReaderProps> = ({
 
   // Paginate content based on container size and font settings
   useEffect(() => {
-    if (!chapter?.chapter?.content || !contentRef.current) return;
+    if (!chapter?.chapter) return;
 
     const paginateContent = () => {
-      const container = contentRef.current!;
-      const containerHeight = container.clientHeight || 600; // Default height if not available
+      const container = contentRef.current;
+      const containerHeight = container?.clientHeight || 600;
+      const containerWidth = container?.clientWidth || 800;
+      
+      // Calculate words per page based on font size and container
       const lineHeightPx = fontSize * lineHeight;
-      const linesPerPage = Math.max(10, Math.floor((containerHeight - 80) / lineHeightPx)); // At least 10 lines
-      const wordsPerLine = Math.max(10, Math.floor((container.clientWidth || 800) / (fontSize * 0.5))); // Approximate
-      const wordsPerPage = linesPerPage * wordsPerLine;
-
-      const contentForPagination = chapter.chapter.html_content || chapter.chapter.content;
+      const linesPerPage = Math.floor((containerHeight - 100) / lineHeightPx); 
+      const charsPerLine = Math.floor(containerWidth / (fontSize * 0.6));
+      const charsPerPage = Math.max(500, Math.min(3000, linesPerPage * charsPerLine)); // 500-3000 chars per page
       
-      // Strip HTML tags for word count
-      const textContent = contentForPagination.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-      const words = textContent.split(' ').filter(w => w.length > 0);
+      // Use HTML content if available, otherwise plain text
+      const content = chapter.chapter.html_content || chapter.chapter.content || '';
       
+      if (!content) {
+        setPages(['']);
+        return;
+      }
+      
+      // For HTML content, split carefully to preserve formatting
       const newPages: string[] = [];
       
-      // Simple word-based pagination
-      if (words.length > 0) {
-        const actualWordsPerPage = Math.max(50, Math.min(wordsPerPage, 500)); // Between 50-500 words per page
+      if (content.includes('<')) {
+        // HTML content - split by paragraphs/elements
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = content;
         
-        for (let i = 0; i < words.length; i += actualWordsPerPage) {
-          const pageWords = words.slice(i, Math.min(i + actualWordsPerPage, words.length));
-          newPages.push(pageWords.join(' '));
+        let currentPageHtml = '';
+        let currentPageLength = 0;
+        
+        const processNode = (node: Node) => {
+          if (node.nodeType === Node.TEXT_NODE) {
+            const text = node.textContent || '';
+            if (currentPageLength + text.length > charsPerPage && currentPageHtml) {
+              newPages.push(currentPageHtml);
+              currentPageHtml = '';
+              currentPageLength = 0;
+            }
+            currentPageHtml += text;
+            currentPageLength += text.length;
+          } else if (node.nodeType === Node.ELEMENT_NODE) {
+            const element = node as Element;
+            const tagName = element.tagName.toLowerCase();
+            const outerHTML = element.outerHTML;
+            
+            // For block elements, check if we should start new page
+            if (['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tagName)) {
+              if (currentPageLength + outerHTML.length > charsPerPage && currentPageHtml) {
+                newPages.push(currentPageHtml);
+                currentPageHtml = '';
+                currentPageLength = 0;
+              }
+              currentPageHtml += outerHTML;
+              currentPageLength += outerHTML.length;
+            } else {
+              // Inline elements - add to current page
+              currentPageHtml += outerHTML;
+              currentPageLength += outerHTML.length;
+            }
+          }
+        };
+        
+        // Process all child nodes
+        tempDiv.childNodes.forEach(processNode);
+        
+        // Add remaining content
+        if (currentPageHtml) {
+          newPages.push(currentPageHtml);
+        }
+      } else {
+        // Plain text - split by character count
+        for (let i = 0; i < content.length; i += charsPerPage) {
+          newPages.push(content.substring(i, Math.min(i + charsPerPage, content.length)));
         }
       }
       
-      // If no pages created, use the original content as single page
+      // Ensure at least one page
       if (newPages.length === 0) {
-        newPages.push(textContent || contentForPagination);
+        newPages.push(content);
       }
 
-      console.log(`Paginated into ${newPages.length} pages, ${wordsPerPage} words per page`);
+      console.log(`Paginated into ${newPages.length} pages, ~${charsPerPage} chars per page`);
       setPages(newPages);
       
-      // Reset to page 1 if current page is out of bounds
       if (currentPage > newPages.length) {
         setCurrentPage(1);
       }
@@ -103,7 +152,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
     // Debounce pagination
     const timeoutId = setTimeout(paginateContent, 100);
     return () => clearTimeout(timeoutId);
-  }, [chapter?.chapter?.content, chapter?.chapter?.html_content, fontSize, lineHeight]);
+  }, [chapter, fontSize, lineHeight]);
 
   // Handle window resize
   useEffect(() => {
