@@ -244,11 +244,32 @@ class BookParser:
                 metadata.publish_date = dates[0][0]
             
             # Обложка
+            cover_found = False
+            
+            # Сначала пробуем найти по типу ITEM_COVER
             for item in book.get_items():
                 if item.get_type() == ebooklib.ITEM_COVER:
                     metadata.cover_image_data = item.get_content()
                     metadata.cover_image_type = item.media_type
+                    cover_found = True
                     break
+            
+            # Если не нашли, ищем по имени среди изображений
+            if not cover_found:
+                for item in book.get_items_of_type(ebooklib.ITEM_IMAGE):
+                    name = item.get_name().lower()
+                    if 'cover' in name:
+                        metadata.cover_image_data = item.get_content()
+                        metadata.cover_image_type = item.media_type or 'image/jpeg'
+                        cover_found = True
+                        break
+            
+            # Если всё ещё не нашли, берем первое изображение
+            if not cover_found:
+                images = list(book.get_items_of_type(ebooklib.ITEM_IMAGE))
+                if images:
+                    metadata.cover_image_data = images[0].get_content()
+                    metadata.cover_image_type = images[0].media_type or 'image/jpeg'
             
         except Exception as e:
             print(f"Warning: Error extracting EPUB metadata: {e}")

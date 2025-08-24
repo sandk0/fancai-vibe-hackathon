@@ -57,7 +57,16 @@ export const imagesAPI = {
     chapterNumber?: number,
     skip: number = 0,
     limit: number = 50
-  ): Promise<GeneratedImage[]> {
+  ): Promise<{
+    book_id: string;
+    book_title: string;
+    images: GeneratedImage[];
+    pagination: {
+      skip: number;
+      limit: number;
+      total_found: number;
+    };
+  }> {
     const params = new URLSearchParams();
     params.append('skip', skip.toString());
     params.append('limit', limit.toString());
@@ -66,7 +75,7 @@ export const imagesAPI = {
     }
     
     const response = await apiClient.get(`/images/book/${bookId}?${params.toString()}`);
-    return response.images || [];
+    return response;
   },
 
   async deleteImage(imageId: string): Promise<{ message: string }> {

@@ -20,7 +20,7 @@ from ..models.user import User
 from ..models.book import Book
 from ..models.chapter import Chapter
 from ..models.description import Description, DescriptionType
-from ..models.generated_image import GeneratedImage
+from ..models.image import GeneratedImage
 
 
 router = APIRouter()
@@ -347,8 +347,11 @@ async def get_book_images(
             "description": {
                 "id": str(description.id),
                 "type": description.type.value,
-                "content": description.content[:100] + "..." if len(description.content) > 100 else description.content,
-                "priority_score": description.priority_score
+                "text": description.content,  # Полный текст
+                "content": description.content[:100] + "..." if len(description.content) > 100 else description.content,  # Сокращенный для превью
+                "confidence_score": description.confidence_score,
+                "priority_score": description.priority_score,
+                "entities_mentioned": description.entities_mentioned
             },
             "chapter": {
                 "id": str(chapter.id),

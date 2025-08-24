@@ -3,8 +3,9 @@ API роуты для работы с книгами в BookReader AI.
 """
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from typing import Dict, Any, List
 import tempfile
 import os
@@ -19,7 +20,7 @@ from ..models.book import Book
 from ..models.user import User
 from ..models.description import DescriptionType
 import shutil
-from uuid import uuid4
+from uuid import uuid4, UUID
 
 
 router = APIRouter()
@@ -279,6 +280,19 @@ async def analyze_chapter_content(file: UploadFile = File(...), chapter_number: 
             pass
 
 
+
+@router.post("/books/debug-upload")
+async def debug_upload_book(file: UploadFile = File(None)) -> Dict[str, Any]:
+    """Debug endpoint to check what frontend sends."""
+    print(f"[DEBUG] File received: {file}")
+    if file:
+        print(f"[DEBUG] File name: {file.filename}")
+        print(f"[DEBUG] File type: {file.content_type}")
+    else:
+        print("[DEBUG] No file received")
+    return {"debug": "ok", "has_file": file is not None}
+
+
 @router.post("/books/upload")
 async def upload_book(
     file: UploadFile = File(...),
@@ -297,6 +311,11 @@ async def upload_book(
         Информация о загруженной и обработанной книге
     """
     
+    print(f"[UPLOAD] Request received from user: {current_user.email}")
+    print(f"[UPLOAD] File info: name={file.filename}, type={file.content_type}")
+    print(f"[UPLOAD] File object: {file}")
+    print(f"[UPLOAD] File size check...")
+    
     # Валидируем файл
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
@@ -308,29 +327,39 @@ async def upload_book(
             detail=f"Unsupported file type: {file_extension}"
         )
     
-    file_content = await file.read()
-    file_size = len(file_content)
+    try:
+        file_content = await file.read()
+        file_size = len(file_content)
+        print(f"[UPLOAD] File read successfully, size: {file_size} bytes")
+    except Exception as e:
+        print(f"[UPLOAD ERROR] Failed to read file: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to read file: {str(e)}")
     
     if file_size > 50 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File too large (max 50MB)")
     
+    print(f"[UPLOAD] Creating temporary file...")
     # Создаем временный файл для парсинга
     with tempfile.NamedTemporaryFile(suffix=file_extension, delete=False) as temp_file:
         temp_file.write(file_content)
         temp_file_path = temp_file.name
     
     try:
+        print(f"[UPLOAD] Parsing book from: {temp_file_path}")
         # Парсим книгу
         parsed_book = book_parser.parse_book(temp_file_path)
+        print(f"[UPLOAD] Book parsed successfully: {parsed_book.metadata.title}")
         
         # Создаем постоянное хранилище для файла
-        storage_dir = Path("/tmp/books")  # В продакшене это должно быть постоянное хранилище
-        storage_dir.mkdir(exist_ok=True)
+        storage_dir = Path("/app/storage/books")  # Используем тот же путь, что и в book_service
+        storage_dir.mkdir(parents=True, exist_ok=True)
         
         permanent_path = storage_dir / f"{uuid4()}{file_extension}"
         shutil.move(temp_file_path, permanent_path)
+        print(f"[UPLOAD] File moved to permanent storage: {permanent_path}")
         
         # Сохраняем книгу в базе данных
+        print(f"[UPLOAD] Creating book in database...")
         book = await book_service.create_book_from_upload(
             db=db,
             user_id=current_user.id,
@@ -338,6 +367,7 @@ async def upload_book(
             original_filename=file.filename,
             parsed_book=parsed_book
         )
+        print(f"[UPLOAD] Book created in database with ID: {book.id}")
         
         return {
             "book_id": str(book.id),
@@ -353,6 +383,7 @@ async def upload_book(
         }
         
     except Exception as e:
+        print(f"[UPLOAD ERROR] Processing failed: {str(e)}")
         # Удаляем временный файл в случае ошибки
         try:
             if os.path.exists(temp_file_path):
@@ -399,8 +430,10 @@ async def get_user_books(
             progress_percent = 0.0
             if book.reading_progress:
                 progress = book.reading_progress[0]  # Первый прогресс для пользователя
-                if book.total_pages > 0:
-                    progress_percent = (progress.current_page / book.total_pages) * 100
+                total_chapters = len(book.chapters)
+                if total_chapters > 0:
+                    # Прогресс на основе глав
+                    progress_percent = ((progress.current_chapter - 1) / total_chapters) * 100
             
             books_data.append({
                 "id": str(book.id),
@@ -430,4 +463,362 @@ async def get_user_books(
         raise HTTPException(
             status_code=500,
             detail=f"Error fetching books: {str(e)}"
+        )
+
+
+@router.get("/books/{book_id}")
+async def get_book(
+    book_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_database_session)
+) -> Dict[str, Any]:
+    """
+    Получает информацию о конкретной книге.
+    
+    Args:
+        book_id: ID книги
+        current_user: Текущий аутентифицированный пользователь
+        db: Сессия базы данных
+        
+    Returns:
+        Подробная информация о книге
+    """
+    
+    try:
+        book = await book_service.get_book_by_id(
+            db=db,
+            book_id=UUID(book_id),
+            user_id=current_user.id
+        )
+        
+        if not book:
+            raise HTTPException(
+                status_code=404,
+                detail="Book not found"
+            )
+        
+        # Прогресс чтения
+        progress_percent = 0.0
+        current_chapter = 1
+        current_page = 1
+        if book.reading_progress:
+            progress = book.reading_progress[0]
+            current_chapter = progress.current_chapter
+            current_page = progress.current_page
+            # Прогресс рассчитывается на основе глав
+            total_chapters = len(book.chapters)
+            if total_chapters > 0:
+                # Прогресс = (завершенные главы / общее количество глав) * 100
+                progress_percent = ((current_chapter - 1) / total_chapters) * 100
+        
+        # Информация о главах
+        chapters_data = []
+        for chapter in sorted(book.chapters, key=lambda c: c.chapter_number):
+            chapters_data.append({
+                "id": str(chapter.id),
+                "number": chapter.chapter_number,
+                "title": chapter.title,
+                "word_count": chapter.word_count,
+                "estimated_reading_time_minutes": chapter.estimated_reading_time,
+                "is_description_parsed": chapter.is_description_parsed,
+                "descriptions_found": chapter.descriptions_found
+            })
+        
+        return {
+            "id": str(book.id),
+            "title": book.title,
+            "author": book.author,
+            "genre": book.genre,
+            "language": book.language,
+            "description": book.description,
+            "total_pages": book.total_pages,
+            "estimated_reading_time_hours": round(book.estimated_reading_time / 60, 1),
+            "file_format": book.file_format,
+            "file_size_mb": round(book.file_size / (1024 * 1024), 2),
+            "has_cover": bool(book.cover_image),
+            "is_parsed": book.is_parsed,
+            "parsing_progress": book.parsing_progress,
+            "chapters": chapters_data,
+            "reading_progress": {
+                "current_chapter": current_chapter,
+                "current_page": current_page,
+                "progress_percent": round(progress_percent, 1)
+            },
+            "created_at": book.created_at.isoformat(),
+            "last_accessed": book.last_accessed.isoformat() if book.last_accessed else None
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching book: {str(e)}"
+        )
+
+
+@router.get("/books/{book_id}/chapters/{chapter_number}")
+async def get_chapter(
+    book_id: str,
+    chapter_number: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_database_session)
+) -> Dict[str, Any]:
+    """
+    Получает содержимое конкретной главы книги.
+    
+    Args:
+        book_id: ID книги
+        chapter_number: Номер главы
+        current_user: Текущий аутентифицированный пользователь
+        db: Сессия базы данных
+        
+    Returns:
+        Содержимое главы с навигационной информацией
+    """
+    
+    try:
+        # Проверяем, что книга принадлежит пользователю
+        book = await book_service.get_book_by_id(
+            db=db,
+            book_id=UUID(book_id),
+            user_id=current_user.id
+        )
+        
+        if not book:
+            raise HTTPException(
+                status_code=404,
+                detail="Book not found"
+            )
+        
+        # Ищем главу
+        chapter = None
+        for c in book.chapters:
+            if c.chapter_number == chapter_number:
+                chapter = c
+                break
+        
+        if not chapter:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Chapter {chapter_number} not found"
+            )
+        
+        # Навигационная информация
+        has_previous = chapter_number > 1
+        has_next = chapter_number < len(book.chapters)
+        previous_chapter = chapter_number - 1 if has_previous else None
+        next_chapter = chapter_number + 1 if has_next else None
+        
+        return {
+            "chapter": {
+                "id": str(chapter.id),
+                "number": chapter.chapter_number,
+                "title": chapter.title,
+                "content": chapter.content,
+                "html_content": chapter.html_content,
+                "word_count": chapter.word_count,
+                "estimated_reading_time_minutes": chapter.estimated_reading_time
+            },
+            "navigation": {
+                "has_previous": has_previous,
+                "has_next": has_next,
+                "previous_chapter": previous_chapter,
+                "next_chapter": next_chapter
+            },
+            "book_info": {
+                "id": str(book.id),
+                "title": book.title,
+                "author": book.author,
+                "total_chapters": len(book.chapters)
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching chapter: {str(e)}"
+        )
+
+
+@router.post("/books/{book_id}/progress")
+async def update_reading_progress(
+    book_id: str,
+    progress_data: dict,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_database_session)
+) -> Dict[str, Any]:
+    """
+    Обновляет прогресс чтения книги пользователем.
+    
+    Args:
+        book_id: ID книги
+        progress_data: Данные прогресса (current_chapter, current_page)
+        current_user: Текущий аутентифицированный пользователь
+        db: Сессия базы данных
+        
+    Returns:
+        Обновленный прогресс чтения
+    """
+    
+    try:
+        # Проверяем, что книга принадлежит пользователю
+        book = await book_service.get_book_by_id(
+            db=db,
+            book_id=UUID(book_id),
+            user_id=current_user.id
+        )
+        
+        if not book:
+            raise HTTPException(
+                status_code=404,
+                detail="Book not found"
+            )
+        
+        current_chapter = progress_data.get('current_chapter') or 1
+        current_page = progress_data.get('current_page') or 1
+        current_chapter = max(1, current_chapter)
+        current_page = max(1, current_page)
+        
+        # Обновляем прогресс чтения
+        progress = await book_service.update_reading_progress(
+            db=db,
+            user_id=current_user.id,
+            book_id=UUID(book_id),
+            chapter_number=current_chapter,
+            page_number=current_page
+        )
+        
+        return {
+            "progress": {
+                "id": str(progress.id),
+                "current_chapter": progress.current_chapter,
+                "current_page": progress.current_page,
+                "current_position": progress.current_position,
+                "reading_time_minutes": progress.reading_time_minutes,
+                "reading_speed_wpm": progress.reading_speed_wpm,
+                "last_read_at": progress.last_read_at.isoformat() if progress.last_read_at else None
+            },
+            "message": "Reading progress updated successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error updating progress: {str(e)}"
+        )
+
+
+@router.get("/books/{book_id}/progress")
+async def get_reading_progress(
+    book_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_database_session)
+) -> Dict[str, Any]:
+    """
+    Получает прогресс чтения книги пользователем.
+    
+    Args:
+        book_id: ID книги
+        current_user: Текущий аутентифицированный пользователь
+        db: Сессия базы данных
+        
+    Returns:
+        Текущий прогресс чтения
+    """
+    
+    try:
+        # Проверяем, что книга принадлежит пользователю
+        book = await book_service.get_book_by_id(
+            db=db,
+            book_id=UUID(book_id),
+            user_id=current_user.id
+        )
+        
+        if not book:
+            raise HTTPException(
+                status_code=404,
+                detail="Book not found"
+            )
+        
+        # Ищем прогресс
+        progress = None
+        if book.reading_progress:
+            progress = book.reading_progress[0]  # Первый прогресс для пользователя
+        
+        return {
+            "progress": {
+                "id": str(progress.id) if progress else None,
+                "current_chapter": progress.current_chapter if progress else 1,
+                "current_page": progress.current_page if progress else 1,
+                "current_position": progress.current_position if progress else 0,
+                "reading_time_minutes": progress.reading_time_minutes if progress else 0,
+                "reading_speed_wpm": progress.reading_speed_wpm if progress else 0.0,
+                "last_read_at": progress.last_read_at.isoformat() if progress and progress.last_read_at else None
+            } if progress else None
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching progress: {str(e)}"
+        )
+
+
+@router.get("/books/{book_id}/cover")
+async def get_book_cover(
+    book_id: str,
+    db: AsyncSession = Depends(get_database_session)
+):
+    """
+    Получает обложку книги.
+    
+    Args:
+        book_id: ID книги
+        current_user: Текущий аутентифицированный пользователь
+        db: Сессия базы данных
+        
+    Returns:
+        Файл обложки книги
+    """
+    
+    try:
+        # Получаем книгу по ID (без проверки владельца для публичного доступа к обложке)
+        result = await db.execute(
+            select(Book).where(Book.id == UUID(book_id))
+        )
+        book = result.scalar_one_or_none()
+        
+        if not book:
+            raise HTTPException(
+                status_code=404,
+                detail="Book not found"
+            )
+        
+        # Проверяем, есть ли обложка
+        if not book.cover_image or not os.path.exists(book.cover_image):
+            raise HTTPException(
+                status_code=404,
+                detail="Cover image not found"
+            )
+        
+        # Возвращаем файл обложки
+        return FileResponse(
+            path=book.cover_image,
+            media_type="image/jpeg",
+            filename=f"{book.title}_cover.jpg"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching cover: {str(e)}"
         )

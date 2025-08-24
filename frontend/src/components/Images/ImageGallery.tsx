@@ -5,8 +5,8 @@ import { useQuery } from '@tanstack/react-query';
 import { imagesAPI } from '@/api/images';
 import { useUIStore } from '@/stores/ui';
 import { ImageModal } from './ImageModal';
-import { LoadingSpinner } from '@/components/UI/LoadingSpinner';
-import { ErrorMessage } from '@/components/UI/ErrorMessage';
+import LoadingSpinner from '@/components/UI/LoadingSpinner';
+import ErrorMessage from '@/components/UI/ErrorMessage';
 import type { GeneratedImage } from '@/types/api';
 
 interface ImageGalleryProps {
@@ -32,7 +32,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
 
   // Fetch images for the book
   const { 
-    data: images = [], 
+    data: imagesResponse, 
     isLoading, 
     error,
     refetch 
@@ -42,6 +42,8 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
+  const images = imagesResponse?.images || [];
+
   // Filter images based on search and filter criteria
   const filteredImages = React.useMemo(() => {
     let filtered = images;
@@ -49,7 +51,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
     // Apply filter by description type
     if (filter !== 'all') {
       filtered = filtered.filter(img => 
-        img.description?.description_type === filter
+        img.description?.type === filter
       );
     }
     
@@ -58,7 +60,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(img => 
         img.description?.text.toLowerCase().includes(query) ||
-        img.description?.description_type.toLowerCase().includes(query)
+        img.description?.type.toLowerCase().includes(query)
       );
     }
     
@@ -67,7 +69,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
 
   // Get unique description types for filter options
   const availableTypes = React.useMemo(() => {
-    const types = new Set(images.map(img => img.description?.description_type).filter(Boolean));
+    const types = new Set(images.map(img => img.description?.type).filter(Boolean));
     return Array.from(types);
   }, [images]);
 
@@ -262,9 +264,9 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
                 <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
                   {image.description?.text || 'Generated image'}
                 </p>
-                {image.description?.description_type && (
+                {image.description?.type && (
                   <span className="inline-block mt-2 px-2 py-1 text-xs bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-200 rounded-full">
-                    {image.description.description_type}
+                    {image.description.type}
                   </span>
                 )}
               </div>
@@ -297,9 +299,9 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
                 <p className="text-gray-900 dark:text-white text-sm font-medium line-clamp-2">
                   {image.description?.text || 'Generated image'}
                 </p>
-                {image.description?.description_type && (
+                {image.description?.type && (
                   <span className="inline-block mt-1 px-2 py-1 text-xs bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-200 rounded-full">
-                    {image.description.description_type}
+                    {image.description.type}
                   </span>
                 )}
               </div>
@@ -350,7 +352,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
         {selectedImage && (
           <ImageModal
             imageUrl={selectedImage.image_url}
-            title={selectedImage.description?.description_type}
+            title={selectedImage.description?.type}
             description={selectedImage.description?.text}
             isOpen={!!selectedImage}
             onClose={() => setSelectedImage(null)}
