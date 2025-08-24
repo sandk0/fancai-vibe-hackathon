@@ -36,9 +36,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.prod
       args:
-        - REACT_APP_API_URL=${DOMAIN_URL:-http://localhost}/api/v1
-        - REACT_APP_WS_URL=${DOMAIN_URL:-http://localhost}/ws
-        - REACT_APP_APP_NAME=BookReader AI
+        - VITE_API_URL=${DOMAIN_URL:-http://localhost}/api/v1
+        - VITE_WS_URL=${DOMAIN_URL:-http://localhost}/ws
+        - VITE_APP_NAME=BookReader AI
     container_name: bookreader_frontend
     environment:
       - NODE_ENV=production

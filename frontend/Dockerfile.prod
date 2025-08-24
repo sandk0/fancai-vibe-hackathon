@@ -12,15 +12,15 @@ RUN npm ci --silent
 # Copy source code
 COPY . .
 
-# Build arguments (using REACT_APP_ prefix for compatibility)
-ARG REACT_APP_API_URL=/api/v1
-ARG REACT_APP_WS_URL=/ws  
-ARG REACT_APP_APP_NAME="BookReader AI"
+# Build arguments (using VITE_ prefix for Vite)
+ARG VITE_API_URL=/api/v1
+ARG VITE_WS_URL=/ws  
+ARG VITE_APP_NAME="BookReader AI"
 
 # Set environment variables for build
-ENV REACT_APP_API_URL=${REACT_APP_API_URL}
-ENV REACT_APP_WS_URL=${REACT_APP_WS_URL}
-ENV REACT_APP_APP_NAME=${REACT_APP_APP_NAME}
+ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_WS_URL=${VITE_WS_URL}
+ENV VITE_APP_NAME=${VITE_APP_NAME}
 ENV NODE_ENV=production
 ENV GENERATE_SOURCEMAP=false
 
