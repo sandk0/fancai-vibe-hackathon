@@ -70,17 +70,18 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 EXPOSE 8000
 
 # Production command with optimized Gunicorn settings
-CMD ["gunicorn", "app.main:app", \
-     "--workers", "${WORKERS_COUNT:-4}", \
-     "--worker-class", "uvicorn.workers.UvicornWorker", \
-     "--bind", "0.0.0.0:8000", \
-     "--timeout", "300", \
-     "--keep-alive", "5", \
-     "--max-requests", "1000", \
-     "--max-requests-jitter", "100", \
-     "--worker-tmp-dir", "/dev/shm", \
-     "--preload", \
-     "--access-logfile", "/app/logs/access.log", \
-     "--error-logfile", "/app/logs/error.log", \
-     "--capture-output", \
-     "--log-level", "${LOG_LEVEL:-info}"]
+# Use shell form to allow environment variable substitution
+CMD gunicorn app.main:app \
+    --workers ${WORKERS_COUNT:-4} \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 0.0.0.0:8000 \
+    --timeout 300 \
+    --keep-alive 5 \
+    --max-requests 1000 \
+    --max-requests-jitter 100 \
+    --worker-tmp-dir /dev/shm \
+    --preload \
+    --access-logfile /app/logs/access.log \
+    --error-logfile /app/logs/error.log \
+    --capture-output \
+    --log-level ${LOG_LEVEL:-info}

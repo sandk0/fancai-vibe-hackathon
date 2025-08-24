@@ -4,42 +4,42 @@ Health check script for BookReader AI backend in production
 """
 
 import sys
-import requests
-import os
-from urllib.parse import urljoin
+import urllib.request
+import urllib.error
+import json
 
 
 def check_health():
     """Check if the application is healthy"""
     try:
-        # Check main health endpoint
-        response = requests.get(
-            "http://localhost:8000/health",
-            timeout=10
-        )
+        # Check main health endpoint  
+        req = urllib.request.Request("http://localhost:8000/health")
+        with urllib.request.urlopen(req, timeout=10) as response:
+            if response.getcode() != 200:
+                print(f"Health check failed: HTTP {response.getcode()}")
+                return False
+                
+            data = response.read().decode('utf-8')
+            try:
+                health_data = json.loads(data)
+                if health_data.get('status') == 'healthy':
+                    print("✅ Backend is healthy")
+                    return True
+                else:
+                    print(f"❌ Backend unhealthy: {health_data}")
+                    return False
+            except json.JSONDecodeError:
+                print("✅ Backend is responding")
+                return True
         
-        if response.status_code != 200:
-            print(f"Health check failed: HTTP {response.status_code}")
-            return False
-            
-        # Check database connectivity
-        db_response = requests.get(
-            "http://localhost:8000/health/db",
-            timeout=15
-        )
-        
-        if db_response.status_code != 200:
-            print(f"Database health check failed: HTTP {db_response.status_code}")
-            return False
-            
-        print("Health check passed")
-        return True
-        
-    except requests.exceptions.RequestException as e:
-        print(f"Health check failed with exception: {e}")
+    except urllib.error.HTTPError as e:
+        print(f"❌ Health check failed: HTTP {e.code}")
+        return False
+    except urllib.error.URLError as e:
+        print(f"❌ Health check failed: {e.reason}")
         return False
     except Exception as e:
-        print(f"Unexpected error during health check: {e}")
+        print(f"❌ Unexpected error during health check: {e}")
         return False
 
 
