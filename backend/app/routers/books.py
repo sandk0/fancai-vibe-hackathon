@@ -18,7 +18,9 @@ from ..services.nlp_processor import nlp_processor
 from ..services.book_service import book_service
 from ..models.book import Book
 from ..models.user import User
-from ..models.description import DescriptionType
+from ..models.description import DescriptionType, Description
+from ..models.image import GeneratedImage
+from ..models.chapter import Chapter
 import shutil
 from uuid import uuid4, UUID
 
@@ -596,6 +598,38 @@ async def get_chapter(
                 detail=f"Chapter {chapter_number} not found"
             )
         
+        # Получаем описания для этой главы с изображениями
+        descriptions_result = await db.execute(
+            select(Description, GeneratedImage)
+            .outerjoin(GeneratedImage, Description.id == GeneratedImage.description_id)
+            .where(Description.chapter_id == chapter.id)
+            .order_by(Description.priority_score.desc())
+        )
+        
+        descriptions_data = []
+        for description, generated_image in descriptions_result.fetchall():
+            desc_data = {
+                "id": str(description.id),
+                "type": description.type.value,
+                "content": description.content,
+                "text": description.content,  # For compatibility
+                "confidence_score": description.confidence_score,
+                "priority_score": description.priority_score,
+                "position_in_chapter": description.position_in_chapter,
+                "entities_mentioned": description.entities_mentioned,
+                "generated_image": None
+            }
+            
+            if generated_image:
+                desc_data["generated_image"] = {
+                    "id": str(generated_image.id),
+                    "image_url": generated_image.image_url,
+                    "created_at": generated_image.created_at.isoformat(),
+                    "generation_time_seconds": generated_image.generation_time_seconds
+                }
+            
+            descriptions_data.append(desc_data)
+        
         # Навигационная информация
         has_previous = chapter_number > 1
         has_next = chapter_number < len(book.chapters)
@@ -612,6 +646,7 @@ async def get_chapter(
                 "word_count": chapter.word_count,
                 "estimated_reading_time_minutes": chapter.estimated_reading_time
             },
+            "descriptions": descriptions_data,
             "navigation": {
                 "has_previous": has_previous,
                 "has_next": has_next,

@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { booksAPI } from '@/api/books';
+import { imagesAPI } from '@/api/images';
 import { useReaderStore } from '@/stores/reader';
 import { useUIStore } from '@/stores/ui';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
@@ -28,6 +29,8 @@ export const BookReader: React.FC<BookReaderProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [pages, setPages] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedDescription, setSelectedDescription] = useState<Description | null>(null);
+  const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [highlightedDescriptions, setHighlightedDescriptions] = useState<Description[]>([]);
 
   const contentRef = useRef<HTMLDivElement>(null);
@@ -185,13 +188,77 @@ export const BookReader: React.FC<BookReaderProps> = ({
     return highlightedText;
   };
 
-  const handleDescriptionClick = (descriptionId: string) => {
+  const handleDescriptionClick = async (descriptionId: string) => {
     const description = highlightedDescriptions.find(d => d.id === descriptionId);
     if (description && description.generated_image) {
       setSelectedImage(description.generated_image.image_url);
-    } else {
-      notify.info('Image Generation', 'Image for this description is being generated...');
+      setSelectedDescription(description);
+      setSelectedImageId(description.generated_image.id);
+    } else if (description) {
+      // Try to generate image if it doesn't exist
+      notify.info('Image Generation', 'Generating image for this description...');
+      try {
+        const result = await imagesAPI.generateImageForDescription(descriptionId);
+        
+        // Update the description with the new image
+        const updatedDescriptions = highlightedDescriptions.map(d => {
+          if (d.id === descriptionId) {
+            return {
+              ...d,
+              generated_image: {
+                id: result.image_id,
+                image_url: result.image_url,
+                created_at: result.created_at,
+                generation_time_seconds: result.generation_time
+              }
+            };
+          }
+          return d;
+        });
+        
+        setHighlightedDescriptions(updatedDescriptions);
+        setSelectedImage(result.image_url);
+        setSelectedDescription(description);
+        setSelectedImageId(result.image_id);
+        
+        notify.success('Image Generated', `Image created in ${result.generation_time.toFixed(1)}s`);
+      } catch (error: any) {
+        console.error('Image generation failed:', error);
+        if (error.response?.status === 409) {
+          notify.warning('Image Exists', 'An image for this description already exists');
+        } else {
+          notify.error('Generation Failed', 'Failed to generate image. Please try again later.');
+        }
+      }
     }
+  };
+
+  const handleImageRegenerated = (newImageUrl: string) => {
+    setSelectedImage(newImageUrl);
+    
+    // Update the highlighted descriptions to reflect the new image URL
+    if (selectedDescription) {
+      const updatedDescriptions = highlightedDescriptions.map(d => {
+        if (d.id === selectedDescription.id && d.generated_image) {
+          return {
+            ...d,
+            generated_image: {
+              ...d.generated_image,
+              image_url: newImageUrl
+            }
+          };
+        }
+        return d;
+      });
+      
+      setHighlightedDescriptions(updatedDescriptions);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setSelectedImage(null);
+    setSelectedDescription(null);
+    setSelectedImageId(null);
   };
 
   // Add click listener for description highlights
@@ -211,7 +278,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
       container.addEventListener('click', handleClick);
       return () => container.removeEventListener('click', handleClick);
     }
-  }, [highlightedDescriptions]);
+  }, [highlightedDescriptions, handleDescriptionClick]);
 
   if (bookLoading || chapterLoading) {
     return (
@@ -270,6 +337,28 @@ export const BookReader: React.FC<BookReaderProps> = ({
         }
         .epub-content div, .epub-content span {
           line-height: inherit;
+        }
+        .description-highlight {
+          background-color: rgba(59, 130, 246, 0.1);
+          border-bottom: 2px solid rgba(59, 130, 246, 0.3);
+          padding: 2px 4px;
+          margin: 0 1px;
+          border-radius: 3px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .description-highlight:hover {
+          background-color: rgba(59, 130, 246, 0.2);
+          border-bottom-color: rgba(59, 130, 246, 0.6);
+          transform: translateY(-1px);
+        }
+        .dark .description-highlight {
+          background-color: rgba(59, 130, 246, 0.15);
+          border-bottom-color: rgba(59, 130, 246, 0.4);
+        }
+        .dark .description-highlight:hover {
+          background-color: rgba(59, 130, 246, 0.25);
+          border-bottom-color: rgba(59, 130, 246, 0.7);
         }
       `}</style>
       <div className="bg-white dark:bg-gray-900 min-h-screen">
@@ -399,7 +488,12 @@ export const BookReader: React.FC<BookReaderProps> = ({
             <ImageModal
               imageUrl={selectedImage}
               isOpen={!!selectedImage}
-              onClose={() => setSelectedImage(null)}
+              onClose={handleCloseModal}
+              title={selectedDescription?.type ? `${selectedDescription.type.charAt(0).toUpperCase() + selectedDescription.type.slice(1)} Description` : 'Generated Image'}
+              description={selectedDescription?.content}
+              imageId={selectedImageId || undefined}
+              descriptionData={selectedDescription || undefined}
+              onImageRegenerated={handleImageRegenerated}
             />
           )}
         </AnimatePresence>

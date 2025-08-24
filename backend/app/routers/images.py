@@ -7,7 +7,7 @@ API роуты для генерации изображений в BookReader AI
 
 from fastapi import APIRouter, HTTPException, Depends, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from typing import Dict, Any, List, Optional
 from uuid import UUID
 from pydantic import BaseModel
@@ -109,10 +109,11 @@ async def generate_image_for_description(
         )
     
     # Проверяем, не сгенерировано ли уже изображение для этого описания
-    existing_image = await db.execute(
+    existing_image_result = await db.execute(
         select(GeneratedImage).where(GeneratedImage.description_id == description_id)
     )
-    if existing_image.scalar_one_or_none():
+    existing_image = existing_image_result.scalar_one_or_none()
+    if existing_image:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Image already exists for this description"
@@ -424,6 +425,102 @@ async def delete_generated_image(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete image: {str(e)}"
+        )
+
+
+@router.post("/images/regenerate/{image_id}")
+async def regenerate_image(
+    image_id: UUID,
+    params: ImageGenerationParams,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_database_session)
+) -> Dict[str, Any]:
+    """
+    Перегенерирует существующее изображение с новыми параметрами.
+    
+    Args:
+        image_id: ID существующего изображения
+        params: Новые параметры генерации
+        current_user: Текущий пользователь
+        db: Сессия базы данных
+        
+    Returns:
+        Информация о новом сгенерированном изображении
+    """
+    # Получаем существующее изображение с проверкой прав доступа
+    existing_image_result = await db.execute(
+        select(GeneratedImage, Description)
+        .join(Description, GeneratedImage.description_id == Description.id)
+        .join(Chapter, Description.chapter_id == Chapter.id)
+        .join(Book, Chapter.book_id == Book.id)
+        .where(GeneratedImage.id == image_id)
+        .where(Book.user_id == current_user.id)
+    )
+    
+    result_row = existing_image_result.first()
+    if not result_row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Image not found or access denied"
+        )
+    
+    existing_image, description = result_row
+    
+    try:
+        # Удаляем старый локальный файл если существует
+        if existing_image.local_path:
+            import os
+            try:
+                os.unlink(existing_image.local_path)
+            except OSError:
+                pass  # Файл уже удален или недоступен
+        
+        # Генерируем новое изображение
+        generation_result = await image_generator_service.generate_image_for_description(
+            description=description,
+            user_id=str(current_user.id),
+            custom_style=params.style_prompt
+        )
+        
+        if not generation_result.success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Image regeneration failed: {generation_result.error_message}"
+            )
+        
+        # Обновляем существующую запись в базе данных
+        existing_image.image_url = generation_result.image_url
+        existing_image.local_path = generation_result.local_path
+        existing_image.generation_prompt = params.style_prompt or "default"
+        existing_image.generation_time_seconds = generation_result.generation_time_seconds
+        existing_image.updated_at = func.now()  # Обновляем время изменения
+        
+        await db.commit()
+        await db.refresh(existing_image)
+        
+        return {
+            "image_id": str(existing_image.id),
+            "description_id": str(description.id),
+            "image_url": generation_result.image_url,
+            "generation_time": generation_result.generation_time_seconds,
+            "status": "regenerated",
+            "updated_at": existing_image.updated_at.isoformat(),
+            "message": "Image regenerated successfully",
+            "description": {
+                "id": str(description.id),
+                "type": description.type.value,
+                "text": description.content,
+                "content": description.content[:100] + "..." if len(description.content) > 100 else description.content
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error during regeneration: {str(e)}"
         )
 
 

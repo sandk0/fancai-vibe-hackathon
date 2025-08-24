@@ -31,6 +31,21 @@ export const imagesAPI = {
     return apiClient.post(`/images/generate/description/${descriptionId}`, params);
   },
 
+  // Check if image can be generated (no existing image)
+  async canGenerateForDescription(descriptionId: string): Promise<boolean> {
+    try {
+      await this.generateImageForDescription(descriptionId, {});
+      return true;
+    } catch (error: any) {
+      // If error is 409 (conflict), it means image already exists
+      if (error.response?.status === 409) {
+        return false;
+      }
+      // For other errors, assume we can try to generate
+      return true;
+    }
+  },
+
   async generateImagesForChapter(
     chapterId: string,
     request: BatchGenerationRequest
@@ -80,6 +95,28 @@ export const imagesAPI = {
 
   async deleteImage(imageId: string): Promise<{ message: string }> {
     return apiClient.delete(`/images/${imageId}`);
+  },
+
+  // Regenerate existing image
+  async regenerateImage(
+    imageId: string,
+    params: ImageGenerationParams = {}
+  ): Promise<{
+    image_id: string;
+    description_id: string;
+    image_url: string;
+    generation_time: number;
+    status: string;
+    updated_at: string;
+    message: string;
+    description: {
+      id: string;
+      type: DescriptionType;
+      text: string;
+      content: string;
+    };
+  }> {
+    return apiClient.post(`/images/regenerate/${imageId}`, params);
   },
 
   // Admin endpoints (require admin privileges)
