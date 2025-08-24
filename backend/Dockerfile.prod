@@ -1,5 +1,5 @@
-# Production Dockerfile for Backend
-FROM python:3.11-slim as base
+# Multi-stage Production Dockerfile for Backend
+FROM python:3.11-slim as dependencies
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -13,51 +13,74 @@ RUN apt-get update && apt-get install -y \
     g++ \
     curl \
     libpq-dev \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+WORKDIR /tmp
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Download NLP models
+RUN python -m spacy download ru_core_news_lg && \
+    python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords'); nltk.download('wordnet'); nltk.download('averaged_perceptron_tagger')" && \
+    python -c "import stanza; stanza.download('ru')"
+
+# Production stage
+FROM python:3.11-slim as production
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app
+
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y \
+    libpq5 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app user for security
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
+# Copy Python environment from dependencies stage
+COPY --from=dependencies /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=dependencies /usr/local/bin /usr/local/bin
+
 # Set work directory
 WORKDIR /app
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Download spaCy model
-RUN python -m spacy download ru_core_news_lg
-
 # Copy application code
-COPY . .
+COPY --chown=appuser:appuser . .
 
-# Create necessary directories
-RUN mkdir -p /app/logs /app/storage/books /app/storage/books/covers && \
-    chown -R appuser:appuser /app
-
-# Health check script
-COPY --chown=appuser:appuser healthcheck.py /app/
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/logs /app/storage/books /app/storage/books/covers /app/uploads && \
+    chown -R appuser:appuser /app && \
+    chmod -R 755 /app
 
 # Switch to non-root user
 USER appuser
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD python healthcheck.py
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD python healthcheck.py || exit 1
 
 # Expose port
 EXPOSE 8000
 
-# Production command
+# Production command with optimized Gunicorn settings
 CMD ["gunicorn", "app.main:app", \
-     "--workers", "4", \
+     "--workers", "${WORKERS_COUNT:-4}", \
      "--worker-class", "uvicorn.workers.UvicornWorker", \
      "--bind", "0.0.0.0:8000", \
      "--timeout", "300", \
      "--keep-alive", "5", \
      "--max-requests", "1000", \
      "--max-requests-jitter", "100", \
+     "--worker-tmp-dir", "/dev/shm", \
      "--preload", \
      "--access-logfile", "/app/logs/access.log", \
      "--error-logfile", "/app/logs/error.log", \
-     "--log-level", "info"]
+     "--capture-output", \
+     "--log-level", "${LOG_LEVEL:-info}"]

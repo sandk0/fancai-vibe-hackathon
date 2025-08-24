@@ -5,33 +5,35 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-COPY yarn.lock* ./
 
-# Install dependencies
-RUN npm ci --only=production --silent
+# Install ALL dependencies (dev and prod) for build
+RUN npm ci --silent
 
 # Copy source code
 COPY . .
 
-# Build arguments
-ARG VITE_API_URL
-ARG VITE_WS_URL  
-ARG VITE_APP_NAME
+# Build arguments (using REACT_APP_ prefix for compatibility)
+ARG REACT_APP_API_URL=/api/v1
+ARG REACT_APP_WS_URL=/ws  
+ARG REACT_APP_APP_NAME="BookReader AI"
 
 # Set environment variables for build
-ENV VITE_API_URL=${VITE_API_URL}
-ENV VITE_WS_URL=${VITE_WS_URL}
-ENV VITE_APP_NAME=${VITE_APP_NAME}
+ENV REACT_APP_API_URL=${REACT_APP_API_URL}
+ENV REACT_APP_WS_URL=${REACT_APP_WS_URL}
+ENV REACT_APP_APP_NAME=${REACT_APP_APP_NAME}
 ENV NODE_ENV=production
+ENV GENERATE_SOURCEMAP=false
 
 # Build the application
 RUN npm run build
 
 # Production stage
-FROM nginx:alpine AS production
+FROM nginx:1.25-alpine AS production
 
-# Install security updates
-RUN apk update && apk upgrade && apk add --no-cache curl
+# Install security updates and required tools
+RUN apk update && apk upgrade && \
+    apk add --no-cache curl tzdata && \
+    rm -rf /var/cache/apk/*
 
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/nginx.conf
@@ -39,17 +41,24 @@ COPY nginx.conf /etc/nginx/nginx.conf
 # Copy built application from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy static assets with proper permissions
-RUN chown -R nginx:nginx /usr/share/nginx/html && \
-    chmod -R 755 /usr/share/nginx/html
+# Create nginx run directory
+RUN mkdir -p /var/run/nginx && \
+    mkdir -p /var/cache/nginx/client_temp && \
+    mkdir -p /var/cache/nginx/proxy_temp && \
+    mkdir -p /var/cache/nginx/fastcgi_temp && \
+    mkdir -p /var/cache/nginx/uwsgi_temp && \
+    mkdir -p /var/cache/nginx/scgi_temp
 
-# Create nginx user and group if they don't exist
-RUN addgroup -g 101 -S nginx || true && \
-    adduser -S -D -H -u 101 -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx || true
+# Set proper permissions
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/run/nginx && \
+    chmod -R 755 /usr/share/nginx/html && \
+    chmod -R 755 /var/cache/nginx
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
-  CMD curl -f http://localhost:80/ || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
 
 # Security: Run as non-root user
 USER nginx
@@ -57,5 +66,5 @@ USER nginx
 # Expose port
 EXPOSE 80
 
-# Start nginx
+# Start nginx in foreground
 CMD ["nginx", "-g", "daemon off;"]

@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  # Nginx Reverse Proxy с SSL
+  # Nginx Reverse Proxy с SSL и load balancing
   nginx:
-    image: nginx:alpine
+    image: nginx:1.25-alpine
     container_name: bookreader_nginx
     ports:
       - "80:80"
@@ -15,11 +15,20 @@ services:
       - ./backend/storage:/var/www/storage:ro
       - ./logs/nginx:/var/log/nginx
     depends_on:
-      - frontend
-      - backend
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - bookreader_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
 
   # Frontend Production Build
   frontend:
@@ -27,15 +36,17 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.prod
       args:
-        - VITE_API_URL=${DOMAIN_URL}/api/v1
-        - VITE_WS_URL=${DOMAIN_URL}/ws
-        - VITE_APP_NAME=BookReader AI
+        - REACT_APP_API_URL=${DOMAIN_URL:-http://localhost}/api/v1
+        - REACT_APP_WS_URL=${DOMAIN_URL:-http://localhost}/ws
+        - REACT_APP_APP_NAME=BookReader AI
     container_name: bookreader_frontend
     environment:
       - NODE_ENV=production
     restart: unless-stopped
     networks:
       - bookreader_network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
 
   # Backend API
   backend:
@@ -48,33 +59,37 @@ services:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
       
       # Redis
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/2
       
       # Security
       - SECRET_KEY=${SECRET_KEY}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
-      - JWT_REFRESH_TOKEN_EXPIRE_DAYS=7
+      - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      - JWT_REFRESH_TOKEN_EXPIRE_DAYS=${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-7}
       
       # Environment
       - DEBUG=false
       - ENVIRONMENT=production
-      - LOG_LEVEL=INFO
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
       
       # CORS and Domain
-      - CORS_ORIGINS=${DOMAIN_URL}
-      - ALLOWED_HOSTS=${DOMAIN_NAME},localhost
+      - CORS_ORIGINS=${DOMAIN_URL:-http://localhost}
+      - ALLOWED_HOSTS=${DOMAIN_NAME:-localhost},localhost,127.0.0.1
       
       # AI Services
-      - POLLINATIONS_ENABLED=true
+      - POLLINATIONS_ENABLED=${POLLINATIONS_ENABLED:-true}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       
-      # File uploads
-      - MAX_FILE_SIZE=52428800
+      # Performance
+      - WORKERS_COUNT=${WORKERS_COUNT:-4}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-52428800}
       
     volumes:
       - ./backend/storage:/app/storage
       - ./logs/backend:/app/logs
+      - /dev/shm:/dev/shm  # Shared memory for Gunicorn
     depends_on:
       postgres:
         condition: service_healthy
@@ -83,39 +98,60 @@ services:
     restart: unless-stopped
     networks:
       - bookreader_network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
 
-  # Celery Worker
+  # Celery Worker for background tasks
   celery-worker:
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
     container_name: bookreader_celery
-    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2 --max-tasks-per-child=1000
+    command: >
+      celery -A app.core.celery_app worker 
+      --loglevel=${LOG_LEVEL:-info} 
+      --concurrency=${CELERY_CONCURRENCY:-2} 
+      --max-tasks-per-child=1000
+      --max-memory-per-child=200000
+      --prefetch-multiplier=1
     environment:
-      # Database & Redis (same as backend)
+      # Database & Redis
       - DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/2
       - SECRET_KEY=${SECRET_KEY}
       - ENVIRONMENT=production
-      - POLLINATIONS_ENABLED=true
+      - POLLINATIONS_ENABLED=${POLLINATIONS_ENABLED:-true}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - LOG_LEVEL=INFO
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
       - ./backend/storage:/app/storage
       - ./logs/celery:/app/logs
     depends_on:
-      - backend
-      - postgres
-      - redis
+      backend:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - bookreader_network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
 
   # Celery Beat Scheduler
   celery-beat:
@@ -123,23 +159,32 @@ services:
       context: ./backend
       dockerfile: Dockerfile.prod
     container_name: bookreader_beat
-    command: celery -A app.core.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    command: >
+      celery -A app.core.celery_app beat 
+      --loglevel=${LOG_LEVEL:-info} 
+      --schedule=/tmp/celerybeat-schedule
+      --pidfile=/tmp/celerybeat.pid
     environment:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/2
       - SECRET_KEY=${SECRET_KEY}
       - ENVIRONMENT=production
-      - LOG_LEVEL=INFO
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
       - ./logs/beat:/app/logs
+      - beat_schedule:/tmp  # Persistent schedule storage
     depends_on:
-      - postgres
-      - redis
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - bookreader_network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
 
-  # PostgreSQL Database
+  # PostgreSQL Database with optimization
   postgres:
     image: postgres:15-alpine
     container_name: bookreader_postgres
@@ -149,6 +194,23 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_INITDB_ARGS=--encoding=UTF8 --locale=C
       - PGDATA=/var/lib/postgresql/data/pgdata
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements
+      -c pg_stat_statements.track=all
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c work_mem=4MB
+      -c maintenance_work_mem=64MB
+      -c random_page_cost=1.1
+      -c temp_file_limit=2GB
+      -c log_min_duration_statement=1000
+      -c log_line_prefix='%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '
+      -c log_checkpoints=on
+      -c log_connections=on
+      -c log_disconnections=on
+      -c log_lock_waits=on
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
@@ -162,12 +224,28 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
 
-  # Redis
+  # Redis with persistence and optimization
   redis:
     image: redis:7-alpine
     container_name: bookreader_redis
-    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    command: >
+      redis-server 
+      --requirepass ${REDIS_PASSWORD} 
+      --appendonly yes 
+      --maxmemory 512mb 
+      --maxmemory-policy allkeys-lru
+      --save 900 1 60 100 10 10000
+      --dbfilename dump.rdb
+      --appendfilename appendonly.aof
+      --tcp-keepalive 300
+      --timeout 0
     volumes:
       - redis_data:/data
       - ./logs/redis:/var/log
@@ -179,8 +257,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
-  # Log Management
+  # Log Management with rotation
   logrotate:
     image: linkyard/docker-logrotate
     container_name: bookreader_logrotate
@@ -190,23 +274,39 @@ services:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
 
-  # Auto-updater (опционально)
+  # Watchtower for auto-updates (опционально)
   watchtower:
     image: containrrr/watchtower
     container_name: bookreader_watchtower
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 86400 --cleanup --label-enable
+    command: >
+      --interval 86400 
+      --cleanup 
+      --label-enable
+      --notifications-level info
+      --include-stopped
+      --revive-stopped
     restart: unless-stopped
     environment:
-      - WATCHTOWER_NOTIFICATIONS=slack
+      - WATCHTOWER_NOTIFICATIONS=${WATCHTOWER_NOTIFICATIONS:-}
       - WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - WATCHTOWER_NOTIFICATION_SLACK_IDENTIFIER=BookReader-AI
+      - WATCHTOWER_DEBUG=${WATCHTOWER_DEBUG:-false}
+    profiles:
+      - watchtower
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
 
 volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  beat_schedule:
     driver: local
 
 networks:
@@ -215,3 +315,5 @@ networks:
     ipam:
       config:
         - subnet: 172.20.0.0/16
+    driver_opts:
+      com.docker.network.bridge.name: br-bookreader
