@@ -331,7 +331,7 @@ async def get_book_images(
         .join(Description, GeneratedImage.description_id == Description.id)
         .join(Chapter, Description.chapter_id == Chapter.id)
         .where(Chapter.book_id == book_id)
-        .order_by(Chapter.number, Description.priority_score.desc())
+        .order_by(Chapter.chapter_number, Description.priority_score.desc())
         .offset(skip)
         .limit(limit)
     )
@@ -356,7 +356,7 @@ async def get_book_images(
             },
             "chapter": {
                 "id": str(chapter.id),
-                "number": chapter.number,
+                "number": chapter.chapter_number,
                 "title": chapter.title
             }
         })

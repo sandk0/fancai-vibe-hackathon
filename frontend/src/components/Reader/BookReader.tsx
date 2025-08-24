@@ -146,9 +146,13 @@ export const BookReader: React.FC<BookReaderProps> = ({
   // Highlight descriptions in text
   useEffect(() => {
     if (chapter?.descriptions) {
+      console.log('Descriptions received:', chapter.descriptions);
       setHighlightedDescriptions(chapter.descriptions);
+    } else {
+      console.log('No descriptions in chapter:', chapter);
+      setHighlightedDescriptions([]);
     }
-  }, [chapter?.descriptions]);
+  }, [chapter]);
 
   const nextPage = () => {
     if (currentPage < pages.length) {
@@ -176,12 +180,24 @@ export const BookReader: React.FC<BookReaderProps> = ({
   };
 
   const highlightDescription = (text: string, descriptions: Description[]) => {
+    if (!descriptions || descriptions.length === 0) {
+      return text;
+    }
+    
     let highlightedText = text;
     
-    descriptions.forEach((desc, index) => {
-      const regex = new RegExp(desc.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    descriptions.forEach((desc) => {
+      // Use content or text field
+      const descText = desc.content || desc.text;
+      if (!descText) return;
+      
+      // Escape special regex characters and create pattern
+      const escapedText = descText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escapedText, 'gi');
+      
+      // Replace with highlighted span
       highlightedText = highlightedText.replace(regex, (match) => 
-        `<span class="description-highlight cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900 transition-colors" data-description-id="${desc.id}">${match}</span>`
+        `<span class="description-highlight" data-description-id="${desc.id}">${match}</span>`
       );
     });
     
@@ -302,7 +318,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'dark' : ''}`}>
-      <style jsx>{`
+      <style>{`
         .epub-content p {
           margin-bottom: 1em;
           line-height: inherit;
@@ -409,9 +425,14 @@ export const BookReader: React.FC<BookReaderProps> = ({
             >
               <div
                 dangerouslySetInnerHTML={{
-                  __html: pages[currentPage - 1] 
-                    ? highlightDescription(pages[currentPage - 1], highlightedDescriptions)
-                    : chapter.chapter?.html_content || chapter.chapter?.content
+                  __html: (() => {
+                    const pageContent = pages[currentPage - 1];
+                    if (pageContent && highlightedDescriptions.length > 0) {
+                      console.log('Highlighting descriptions in page:', highlightedDescriptions.length);
+                      return highlightDescription(pageContent, highlightedDescriptions);
+                    }
+                    return pageContent || chapter.chapter?.html_content || chapter.chapter?.content || '';
+                  })()
                 }}
                 className="select-text epub-content"
               />
