@@ -103,6 +103,9 @@ class Book(Base):
         """
         Получает прогресс чтения книги пользователем в процентах.
         
+        Прогресс рассчитывается на основе глав, а не страниц,
+        так как это более точный показатель для электронных книг.
+        
         Args:
             user_id: ID пользователя
             
@@ -113,10 +116,31 @@ class Book(Base):
             (p for p in self.reading_progress if p.user_id == user_id), 
             None
         )
-        if not progress or self.total_pages == 0:
+        if not progress:
             return 0.0
         
-        return (progress.current_page / self.total_pages) * 100
+        # Получаем общее количество глав
+        total_chapters = len(self.chapters)
+        if total_chapters == 0:
+            return 0.0
+        
+        # Прогресс на основе глав: завершенные главы + прогресс внутри текущей
+        current_chapter = max(1, progress.current_chapter)
+        
+        if current_chapter > total_chapters:
+            return 100.0
+        
+        # Базовый прогресс от завершенных глав
+        completed_chapters = current_chapter - 1
+        base_progress = (completed_chapters / total_chapters) * 100
+        
+        # Добавляем прогресс внутри текущей главы (оцениваем как 0-20% от главы)
+        if current_chapter <= total_chapters:
+            chapter_progress = min(20.0, (progress.current_position / 1000) * 20) if progress.current_position > 0 else 0.0
+            chapter_contribution = chapter_progress / total_chapters
+            base_progress += chapter_contribution
+        
+        return min(100.0, base_progress)
 
 
 class ReadingProgress(Base):

@@ -427,13 +427,8 @@ async def get_user_books(
         
         books_data = []
         for book in books:
-            progress_percent = 0.0
-            if book.reading_progress:
-                progress = book.reading_progress[0]  # Первый прогресс для пользователя
-                total_chapters = len(book.chapters)
-                if total_chapters > 0:
-                    # Прогресс на основе глав
-                    progress_percent = ((progress.current_chapter - 1) / total_chapters) * 100
+            # Используем унифицированный метод расчёта прогресса из модели
+            progress_percent = book.get_reading_progress_percent(current_user.id)
             
             books_data.append({
                 "id": str(book.id),
@@ -497,19 +492,16 @@ async def get_book(
                 detail="Book not found"
             )
         
-        # Прогресс чтения
-        progress_percent = 0.0
+        # Прогресс чтения - используем унифицированный метод из модели
+        progress_percent = book.get_reading_progress_percent(current_user.id)
+        
+        # Получаем текущую позицию для интерфейса
         current_chapter = 1
         current_page = 1
         if book.reading_progress:
             progress = book.reading_progress[0]
             current_chapter = progress.current_chapter
             current_page = progress.current_page
-            # Прогресс рассчитывается на основе глав
-            total_chapters = len(book.chapters)
-            if total_chapters > 0:
-                # Прогресс = (завершенные главы / общее количество глав) * 100
-                progress_percent = ((current_chapter - 1) / total_chapters) * 100
         
         # Информация о главах
         chapters_data = []

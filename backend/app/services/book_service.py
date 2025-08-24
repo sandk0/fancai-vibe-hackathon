@@ -363,6 +363,26 @@ class BookService:
         Returns:
             Объект ReadingProgress
         """
+        # Получаем книгу для валидации
+        book_result = await db.execute(
+            select(Book).where(Book.id == book_id)
+        )
+        book = book_result.scalar_one_or_none()
+        if not book:
+            raise ValueError(f"Book with id {book_id} not found")
+        
+        # Загружаем главы для валидации номера главы
+        chapters_result = await db.execute(
+            select(Chapter).where(Chapter.book_id == book_id)
+        )
+        chapters = chapters_result.scalars().all()
+        total_chapters = len(chapters)
+        
+        # Валидируем и нормализуем входные данные
+        valid_chapter = max(1, min(chapter_number or 1, total_chapters)) if total_chapters > 0 else 1
+        valid_page = max(1, page_number or 1)
+        valid_position = max(0, position or 0)
+        
         # Ищем существующий прогресс
         result = await db.execute(
             select(ReadingProgress)
@@ -375,16 +395,16 @@ class BookService:
             progress = ReadingProgress(
                 user_id=user_id,
                 book_id=book_id,
-                current_chapter=max(1, chapter_number or 1),
-                current_page=max(1, page_number or 1),
-                current_position=max(0, position or 0)
+                current_chapter=valid_chapter,
+                current_page=valid_page,
+                current_position=valid_position
             )
             db.add(progress)
         else:
             # Обновляем существующий
-            progress.current_chapter = max(1, chapter_number or 1)
-            progress.current_page = max(1, page_number or 1)
-            progress.current_position = max(0, position or 0)
+            progress.current_chapter = valid_chapter
+            progress.current_page = valid_page
+            progress.current_position = valid_position
             progress.last_read_at = datetime.utcnow()
         
         # Обновляем время последнего доступа к книге
