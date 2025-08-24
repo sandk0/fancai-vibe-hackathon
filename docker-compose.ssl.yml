@@ -1,0 +1,39 @@
+# SSL/HTTPS setup with Let's Encrypt
+version: '3.8'
+
+services:
+  # Certbot для получения SSL сертификатов
+  certbot:
+    image: certbot/certbot:latest
+    container_name: bookreader_certbot
+    volumes:
+      - ./nginx/ssl:/etc/letsencrypt
+      - ./nginx/certbot-www:/var/www/certbot
+    command: >
+      sh -c "
+        certbot certonly --webroot -w /var/www/certbot 
+        --email ${SSL_EMAIL} 
+        --agree-tos --no-eff-email 
+        -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME}
+      "
+    profiles:
+      - ssl-init
+
+  # Certbot renewal сервис
+  certbot-renew:
+    image: certbot/certbot:latest
+    container_name: bookreader_certbot_renew
+    volumes:
+      - ./nginx/ssl:/etc/letsencrypt
+      - ./nginx/certbot-www:/var/www/certbot
+    command: >
+      sh -c "
+        trap exit TERM; 
+        while :; do 
+          certbot renew --webroot -w /var/www/certbot --quiet; 
+          sleep 12h & wait $!; 
+        done
+      "
+    restart: unless-stopped
+    profiles:
+      - ssl-renew

@@ -1,10 +1,9 @@
 #!/bin/bash
 
-# ==============================================
-# BookReader AI - Production Deployment Script
-# ==============================================
+# BookReader AI Production Deploy Script
+# Usage: ./scripts/deploy.sh [command]
 
-set -e  # Exit on any error
+set -e
 
 # Colors for output
 RED='\033[0;31m'
@@ -14,206 +13,203 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-PROJECT_NAME="bookreader-ai"
-COMPOSE_FILE="docker-compose.prod.yml"
-ENV_FILE=".env.prod"
+COMPOSE_FILE="docker-compose.production.yml"
+ENV_FILE=".env.production"
 BACKUP_DIR="./backups"
-LOG_FILE="./logs/deploy.log"
+LOG_DIR="./logs"
 
 # Functions
-log() {
-    echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')] $1${NC}"
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
+log_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
 }
 
-error() {
-    echo -e "${RED}[ERROR] $1${NC}"
-    echo "[ERROR] $1" >> "$LOG_FILE"
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
-warning() {
-    echo -e "${YELLOW}[WARNING] $1${NC}"
-    echo "[WARNING] $1" >> "$LOG_FILE"
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
-info() {
-    echo -e "${BLUE}[INFO] $1${NC}"
-    echo "[INFO] $1" >> "$LOG_FILE"
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Check if running as root
-if [[ $EUID -eq 0 ]]; then
-   error "This script should not be run as root for security reasons"
-   exit 1
-fi
-
-# Check if Docker and Docker Compose are installed
-if ! command -v docker &> /dev/null; then
-    error "Docker is not installed. Please install Docker first."
-    exit 1
-fi
-
-if ! command -v docker-compose &> /dev/null; then
-    error "Docker Compose is not installed. Please install Docker Compose first."
-    exit 1
-fi
-
-# Create necessary directories
-log "Creating necessary directories..."
-mkdir -p logs backups uploads monitoring/grafana/dashboards nginx/ssl
-
-# Check if environment file exists
-if [[ ! -f "$ENV_FILE" ]]; then
-    error "Environment file $ENV_FILE not found!"
-    info "Please copy .env.prod.example to $ENV_FILE and configure it:"
-    info "cp .env.prod.example $ENV_FILE"
-    info "nano $ENV_FILE"
-    exit 1
-fi
-
-# Load environment variables
-source "$ENV_FILE"
-
-# Validate required environment variables
-required_vars=(
-    "DATABASE_PASSWORD"
-    "REDIS_PASSWORD"
-    "SECRET_KEY"
-    "JWT_SECRET_KEY"
-)
-
-for var in "${required_vars[@]}"; do
-    if [[ -z "${!var}" ]]; then
-        error "Required environment variable $var is not set in $ENV_FILE"
+check_requirements() {
+    log_info "Checking requirements..."
+    
+    if ! command -v docker &> /dev/null; then
+        log_error "Docker is not installed"
         exit 1
     fi
-done
-
-log "Starting deployment for $PROJECT_NAME..."
-
-# Backup database if it exists
-if docker-compose -f "$COMPOSE_FILE" ps postgres | grep -q "Up"; then
-    log "Creating database backup..."
-    if ! docker-compose -f "$COMPOSE_FILE" exec -T postgres pg_dump -U "$DATABASE_USER" "$DATABASE_NAME" > "$BACKUP_DIR/backup-$(date +%Y%m%d-%H%M%S).sql"; then
-        warning "Database backup failed, but continuing with deployment"
-    else
-        log "Database backup created successfully"
-    fi
-fi
-
-# Pull latest images
-log "Pulling latest images..."
-docker-compose -f "$COMPOSE_FILE" pull
-
-# Build custom images
-log "Building application images..."
-docker-compose -f "$COMPOSE_FILE" build --no-cache
-
-# Stop existing containers
-log "Stopping existing containers..."
-docker-compose -f "$COMPOSE_FILE" down --remove-orphans
-
-# Start services in proper order
-log "Starting database and Redis..."
-docker-compose -f "$COMPOSE_FILE" up -d postgres redis
-
-# Wait for database to be ready
-log "Waiting for database to be ready..."
-timeout=60
-while ! docker-compose -f "$COMPOSE_FILE" exec -T postgres pg_isready -U "$DATABASE_USER" > /dev/null 2>&1; do
-    sleep 2
-    timeout=$((timeout-2))
-    if [[ $timeout -le 0 ]]; then
-        error "Database failed to start within 60 seconds"
+    
+    if ! command -v docker-compose &> /dev/null; then
+        log_error "Docker Compose is not installed"
         exit 1
     fi
-done
-
-# Run database migrations
-log "Running database migrations..."
-if ! docker-compose -f "$COMPOSE_FILE" run --rm backend alembic upgrade head; then
-    error "Database migrations failed"
-    exit 1
-fi
-
-# Start backend services
-log "Starting backend services..."
-docker-compose -f "$COMPOSE_FILE" up -d backend celery-worker celery-beat
-
-# Wait for backend to be ready
-log "Waiting for backend to be ready..."
-timeout=60
-while ! curl -f http://localhost:8000/health > /dev/null 2>&1; do
-    sleep 2
-    timeout=$((timeout-2))
-    if [[ $timeout -le 0 ]]; then
-        error "Backend failed to start within 60 seconds"
+    
+    if [ ! -f "$ENV_FILE" ]; then
+        log_error "Environment file $ENV_FILE not found"
         exit 1
     fi
-done
+    
+    log_success "Requirements check passed"
+}
 
-# Start frontend and nginx
-log "Starting frontend and nginx..."
-docker-compose -f "$COMPOSE_FILE" up -d frontend nginx
+init_deployment() {
+    log_info "Initializing production deployment..."
+    check_requirements
+    
+    # Create directories
+    mkdir -p $LOG_DIR/{nginx,backend,postgres,redis,celery,beat}
+    mkdir -p ./nginx/{ssl,certbot-www}
+    mkdir -p $BACKUP_DIR
+    mkdir -p ./backend/storage/{books,covers}
+    
+    source $ENV_FILE
+    
+    log_info "Building images..."
+    docker-compose -f $COMPOSE_FILE build --no-cache
+    
+    log_info "Starting services..."
+    docker-compose -f $COMPOSE_FILE up -d
+    
+    log_success "Deployment initialized"
+}
 
-# Verify all services are running
-log "Verifying services..."
-sleep 10
+deploy_application() {
+    log_info "Deploying application..."
+    check_requirements
+    
+    docker-compose -f $COMPOSE_FILE build
+    docker-compose -f $COMPOSE_FILE up -d
+    
+    log_success "Deployment completed"
+}
 
-services=(
-    "postgres"
-    "redis"
-    "backend"
-    "celery-worker"
-    "celery-beat"
-    "frontend"
-    "nginx"
-)
+show_logs() {
+    docker-compose -f $COMPOSE_FILE logs -f --tail=100 ${1:-}
+}
 
-all_healthy=true
-for service in "${services[@]}"; do
-    if ! docker-compose -f "$COMPOSE_FILE" ps "$service" | grep -q "Up"; then
-        error "Service $service is not running"
-        all_healthy=false
-    else
-        info "✓ Service $service is running"
+setup_ssl() {
+    log_info "Setting up SSL certificates..."
+    check_requirements
+    
+    source $ENV_FILE
+    
+    if [ -z "$DOMAIN_NAME" ] || [ -z "$SSL_EMAIL" ]; then
+        log_error "DOMAIN_NAME and SSL_EMAIL must be set in $ENV_FILE"
+        exit 1
     fi
-done
+    
+    log_info "Getting SSL certificates for $DOMAIN_NAME..."
+    docker-compose -f docker-compose.ssl.yml --profile ssl-init run --rm certbot
+    
+    log_info "Starting SSL renewal service..."
+    docker-compose -f docker-compose.ssl.yml --profile ssl-renew up -d certbot-renew
+    
+    log_success "SSL certificates configured"
+}
 
-if [[ "$all_healthy" != true ]]; then
-    error "Some services failed to start. Check logs with: docker-compose -f $COMPOSE_FILE logs"
-    exit 1
-fi
+backup_data() {
+    log_info "Creating backup..."
+    
+    TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+    BACKUP_NAME="backup_${TIMESTAMP}"
+    
+    mkdir -p $BACKUP_DIR/$BACKUP_NAME
+    
+    # Database backup
+    docker-compose -f $COMPOSE_FILE exec -T postgres pg_dump -U bookreader_user bookreader_prod > $BACKUP_DIR/$BACKUP_NAME/database.sql
+    
+    # Storage backup
+    cp -r ./backend/storage $BACKUP_DIR/$BACKUP_NAME/
+    
+    # Config backup
+    cp .env.production $BACKUP_DIR/$BACKUP_NAME/
+    
+    log_success "Backup created: $BACKUP_DIR/$BACKUP_NAME"
+}
 
-# Final health check
-log "Performing final health check..."
-if curl -f http://localhost/health > /dev/null 2>&1; then
-    log "✓ Application is accessible at http://localhost"
-else
-    warning "Application health check failed. It might still be starting up."
-fi
+show_status() {
+    log_info "Service status:"
+    docker-compose -f $COMPOSE_FILE ps
+    
+    log_info "Health checks:"
+    curl -s -o /dev/null -w "%{http_code}" http://localhost/health || echo "Health check failed"
+}
 
-# Clean up old images
-log "Cleaning up old Docker images..."
-docker image prune -f
+restart_services() {
+    log_info "Restarting services..."
+    docker-compose -f $COMPOSE_FILE restart
+    log_success "Services restarted"
+}
 
-# Display deployment summary
-log "=== DEPLOYMENT SUMMARY ==="
-info "Project: $PROJECT_NAME"
-info "Environment: Production"
-info "Services: ${#services[@]}"
-info "URL: http://localhost (or your configured domain)"
-info "Logs: docker-compose -f $COMPOSE_FILE logs -f"
-info "Status: docker-compose -f $COMPOSE_FILE ps"
+stop_services() {
+    log_info "Stopping services..."
+    docker-compose -f $COMPOSE_FILE down
+    log_success "Services stopped"
+}
 
-# Optional: Start monitoring services
-if [[ "$1" == "--with-monitoring" ]]; then
-    log "Starting monitoring services..."
-    docker-compose -f "$COMPOSE_FILE" --profile monitoring up -d
-    info "Grafana available at: http://localhost:3001"
-    info "Prometheus available at: http://localhost:9090"
-fi
+start_services() {
+    log_info "Starting services..."
+    docker-compose -f $COMPOSE_FILE up -d
+    log_success "Services started"
+}
 
-log "🎉 Deployment completed successfully!"
-info "To view logs: docker-compose -f $COMPOSE_FILE logs -f"
-info "To stop services: docker-compose -f $COMPOSE_FILE down"
+show_help() {
+    echo "BookReader AI Deploy Script"
+    echo ""
+    echo "Commands:"
+    echo "  init     - Initialize production deployment"
+    echo "  deploy   - Deploy/redeploy application"
+    echo "  ssl      - Setup SSL certificates with Let's Encrypt"
+    echo "  backup   - Create database and storage backup"
+    echo "  status   - Show service status and health"
+    echo "  logs     - Show logs (optional: specify service name)"
+    echo "  restart  - Restart all services"
+    echo "  stop     - Stop all services"
+    echo "  start    - Start all services"
+    echo "  help     - Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  ./scripts/deploy.sh init"
+    echo "  ./scripts/deploy.sh logs backend"
+    echo "  ./scripts/deploy.sh ssl"
+}
+
+case "$1" in
+    init)
+        init_deployment
+        ;;
+    deploy)
+        deploy_application
+        ;;
+    ssl)
+        setup_ssl
+        ;;
+    backup)
+        backup_data
+        ;;
+    status)
+        show_status
+        ;;
+    logs)
+        show_logs "$2"
+        ;;
+    restart)
+        restart_services
+        ;;
+    stop)
+        stop_services
+        ;;
+    start)
+        start_services
+        ;;
+    help|--help|-h)
+        show_help
+        ;;
+    *)
+        show_help
+        ;;
+esac

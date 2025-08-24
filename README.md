@@ -4,14 +4,14 @@
 
 ## 📋 Текущий статус проекта
 
-**Phase:** MVP Development (Phase 1)  
-**Progress:** 85% завершено (Критические баги исправлены!)  
+**Phase:** MVP Development Complete + Production Ready (Phase 1)  
+**Progress:** 95% завершено (Production deployment готов!)  
 **Last Update:** 24.08.2025  
-**Status:** 🔧 Critical Bug Fixes Completed - Ready for Final Testing
+**Status:** 🚀 Production Ready - MVP Complete with Full Deployment Setup
 
 ## 🚀 Запуск проекта
 
-### Быстрый старт
+### Разработка (Development)
 ```bash
 # Клонирование репозитория
 git clone <repository-url>
@@ -20,12 +20,25 @@ cd fancai-vibe-hackathon
 # Настройка переменных окружения
 cp .env.example .env
 
-# Запуск с Docker
-docker-compose up -d
+# Запуск с Docker в dev режиме
+docker-compose -f docker-compose.dev.yml up -d
+```
+
+### Production деплой
+```bash
+# Настройка production окружения
+cp .env.production .env.production.local
+nano .env.production.local  # Настроить домен и пароли
+
+# Деплой на сервер
+./scripts/deploy.sh init
+./scripts/deploy.sh ssl
+./scripts/deploy.sh deploy
 ```
 
 ### Детальная установка
-См. [Инструкции по настройке](docs/technical/setup-instructions.md)
+- **Development:** См. [Инструкции по настройке](docs/user-guides/installation-guide.md)  
+- **Production:** См. [DEPLOYMENT.md](DEPLOYMENT.md) - полное руководство по деплою
 
 ## ✨ Запланированные функции
 
@@ -43,6 +56,11 @@ docker-compose up -d
 - ✅ PWA с Service Worker
 - ✅ Полная система тестирования
 - ✅ Production deployment конфигурация
+- ✅ Docker production setup с SSL/HTTPS
+- ✅ Nginx reverse proxy с security headers
+- ✅ Мониторинг (Grafana, Prometheus, Loki)
+- ✅ Автоматические скрипты деплоя
+- ✅ SSL сертификаты через Let's Encrypt
 
 ### 🔧 Недавние исправления (24.08.2025)
 - ✅ **Критические баги API исправлены**: Унифицированы форматы ответов frontend/backend
@@ -50,6 +68,9 @@ docker-compose up -d
 - ✅ **Celery задачи**: Реализованы все production-ready фоновые задачи
 - ✅ **EPUB обложки**: Исправлен извлекатель с fallback механизмами
 - ✅ **ImageGenerator**: Подтверждена работоспособность с pollinations.ai
+- ✅ **Production Setup**: Создана полная конфигурация для production деплоя
+- ✅ **Docker & SSL**: Multi-stage builds, Nginx, Let's Encrypt автоматизация
+- ✅ **Мониторинг**: Grafana, Prometheus, Loki стек для production мониторинга
 
 ### Phase 2 (Улучшения - 6-8 недель)
 - ⏳ Продвинутый парсер с контекстом
@@ -75,11 +96,22 @@ docker-compose up -d
 
 ## 📚 Документация
 
+### Основная документация
+- [DEPLOYMENT.md](DEPLOYMENT.md) - **Руководство по production деплою**
+- [CLAUDE.md](CLAUDE.md) - Руководство для Claude Code
 - [План разработки](docs/development/development-plan.md)
 - [Календарь разработки](docs/development/development-calendar.md)
-- [Техническая архитектура](docs/architecture/system-overview.md)
-- [Инструкции по настройке](docs/technical/setup-instructions.md)
-- [CLAUDE.md](CLAUDE.md) - Руководство для Claude Code
+- [Текущий статус](docs/development/current-status.md)
+- [История изменений](docs/development/changelog.md)
+
+### Техническая документация
+- [Архитектура деплоя](docs/architecture/deployment-architecture.md)
+- [Celery задачи](docs/components/backend/celery-tasks.md)
+- [Reader компонент](docs/components/frontend/reader-component.md)
+
+### Руководства пользователя  
+- [Инструкция по установке](docs/user-guides/installation-guide.md)
+- [Руководство пользователя](docs/user-guides/user-manual.md)
 
 ## 🛠 Инструменты разработки
 
@@ -101,6 +133,15 @@ cd frontend && npm test
 # Линтинг и форматирование
 cd backend && ruff check . && black --check .
 cd frontend && npm run lint
+
+# Production деплой
+./scripts/deploy.sh init     # Инициализация
+./scripts/deploy.sh ssl      # SSL настройка
+./scripts/deploy.sh deploy   # Деплой приложения
+./scripts/deploy.sh status   # Проверка статуса
+
+# Мониторинг (опционально)
+./scripts/setup-monitoring.sh start
 ```
 
 ## 📈 Метрики проекта
