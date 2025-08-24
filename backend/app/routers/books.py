@@ -21,6 +21,7 @@ from ..models.user import User
 from ..models.description import DescriptionType, Description
 from ..models.image import GeneratedImage
 from ..models.chapter import Chapter
+from ..core.tasks import process_book_task
 import shutil
 from uuid import uuid4, UUID
 
@@ -371,6 +372,15 @@ async def upload_book(
         )
         print(f"[UPLOAD] Book created in database with ID: {book.id}")
         
+        # Запускаем асинхронную обработку книги для извлечения описаний
+        try:
+            print(f"[CELERY] Starting background processing for book {book.id}")
+            process_book_task.delay(str(book.id))
+            print(f"[CELERY] Background task started successfully")
+        except Exception as e:
+            print(f"[CELERY ERROR] Failed to start background task: {str(e)}")
+            # Не прерываем процесс, если Celery недоступен
+        
         return {
             "book_id": str(book.id),
             "title": book.title,
@@ -381,7 +391,8 @@ async def upload_book(
             "file_size_mb": round(file_size / (1024 * 1024), 2),
             "has_cover": bool(book.cover_image),
             "created_at": book.created_at.isoformat(),
-            "message": f"Book '{book.title}' uploaded and processed successfully"
+            "is_processing": True,
+            "message": f"Book '{book.title}' uploaded successfully. Processing descriptions in background..."
         }
         
     except Exception as e:
@@ -737,6 +748,60 @@ async def update_reading_progress(
         raise HTTPException(
             status_code=500,
             detail=f"Error updating progress: {str(e)}"
+        )
+
+
+@router.post("/books/{book_id}/process")
+async def process_book_descriptions(
+    book_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_database_session)
+) -> Dict[str, Any]:
+    """
+    Запускает обработку книги для извлечения описаний.
+    
+    Args:
+        book_id: ID книги
+        current_user: Текущий пользователь
+        db: Сессия базы данных
+        
+    Returns:
+        Статус запуска обработки
+    """
+    try:
+        # Проверяем, что книга принадлежит пользователю
+        book = await book_service.get_book_by_id(
+            db=db,
+            book_id=UUID(book_id),
+            user_id=current_user.id
+        )
+        
+        if not book:
+            raise HTTPException(
+                status_code=404,
+                detail="Book not found"
+            )
+        
+        # Запускаем Celery задачу
+        try:
+            process_book_task.delay(book_id)
+            return {
+                "book_id": book_id,
+                "status": "processing_started",
+                "message": "Book processing started. Descriptions will be extracted in background."
+            }
+        except Exception as e:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Failed to start processing: {str(e)}"
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error starting book processing: {str(e)}"
         )
 
 

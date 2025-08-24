@@ -62,62 +62,48 @@ export const BookReader: React.FC<BookReaderProps> = ({
 
     const paginateContent = () => {
       const container = contentRef.current!;
-      const containerHeight = container.clientHeight - 40; // Account for padding
+      const containerHeight = container.clientHeight || 600; // Default height if not available
       const lineHeightPx = fontSize * lineHeight;
-      const linesPerPage = Math.floor(containerHeight / lineHeightPx);
-      const wordsPerLine = Math.floor(container.clientWidth / (fontSize * 0.6)); // Approximate
+      const linesPerPage = Math.max(10, Math.floor((containerHeight - 80) / lineHeightPx)); // At least 10 lines
+      const wordsPerLine = Math.max(10, Math.floor((container.clientWidth || 800) / (fontSize * 0.5))); // Approximate
       const wordsPerPage = linesPerPage * wordsPerLine;
 
       const contentForPagination = chapter.chapter.html_content || chapter.chapter.content;
-      // Strip HTML tags for pagination calculation
+      
+      // Strip HTML tags for word count
       const textContent = contentForPagination.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-      const words = textContent.split(' ');
+      const words = textContent.split(' ').filter(w => w.length > 0);
+      
       const newPages: string[] = [];
       
-      // For HTML content, we'll use a simpler approach - divide by estimated character count
-      const htmlContent = chapter.chapter.html_content || chapter.chapter.content;
-      const charsPerPage = wordsPerPage * 6; // Average 6 chars per word
-      
-      if (htmlContent.includes('<')) {
-        // HTML content - split by character count but try to preserve tags
-        const totalChars = htmlContent.length;
-        const pageCount = Math.max(1, Math.ceil(totalChars / charsPerPage));
+      // Simple word-based pagination
+      if (words.length > 0) {
+        const actualWordsPerPage = Math.max(50, Math.min(wordsPerPage, 500)); // Between 50-500 words per page
         
-        for (let i = 0; i < pageCount; i++) {
-          const start = i * charsPerPage;
-          const end = Math.min(start + charsPerPage, totalChars);
-          let pageContent = htmlContent.substring(start, end);
-          
-          // Try to avoid cutting in the middle of HTML tags
-          if (end < totalChars && pageContent.includes('<')) {
-            const lastTagStart = pageContent.lastIndexOf('<');
-            const lastTagEnd = pageContent.lastIndexOf('>');
-            if (lastTagStart > lastTagEnd) {
-              // We're in the middle of a tag, move back to complete tag
-              pageContent = htmlContent.substring(start, start + lastTagStart);
-            }
-          }
-          
-          newPages.push(pageContent);
-        }
-      } else {
-        // Plain text content - use word-based pagination
-        for (let i = 0; i < words.length; i += wordsPerPage) {
-          const pageWords = words.slice(i, i + wordsPerPage);
+        for (let i = 0; i < words.length; i += actualWordsPerPage) {
+          const pageWords = words.slice(i, Math.min(i + actualWordsPerPage, words.length));
           newPages.push(pageWords.join(' '));
         }
       }
+      
+      // If no pages created, use the original content as single page
+      if (newPages.length === 0) {
+        newPages.push(textContent || contentForPagination);
+      }
 
+      console.log(`Paginated into ${newPages.length} pages, ${wordsPerPage} words per page`);
       setPages(newPages);
+      
+      // Reset to page 1 if current page is out of bounds
       if (currentPage > newPages.length) {
         setCurrentPage(1);
       }
     };
 
-    // Debounce resize
+    // Debounce pagination
     const timeoutId = setTimeout(paginateContent, 100);
     return () => clearTimeout(timeoutId);
-  }, [chapter?.chapter?.content, fontSize, lineHeight, currentPage]);
+  }, [chapter?.chapter?.content, chapter?.chapter?.html_content, fontSize, lineHeight]);
 
   // Handle window resize
   useEffect(() => {
@@ -168,7 +154,8 @@ export const BookReader: React.FC<BookReaderProps> = ({
       setCurrentPage(prev => prev - 1);
     } else if (currentChapter > 1) {
       setCurrentChapter(prev => prev - 1);
-      // Will be set to last page of previous chapter when it loads
+      setCurrentPage(1); // Start at first page of previous chapter
+      // TODO: Should jump to last page of previous chapter
     }
   };
 
