@@ -33,7 +33,7 @@ aiofiles==23.2.0
 aiohttp==3.9.1
 
 # Валидация и настройки
-pydantic==2.5.0
+pydantic[email]==2.5.0
 pydantic-settings==2.0.3
 
 # Логирование и мониторинг

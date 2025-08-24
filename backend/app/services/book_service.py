@@ -375,16 +375,16 @@ class BookService:
             progress = ReadingProgress(
                 user_id=user_id,
                 book_id=book_id,
-                current_chapter=chapter_number,
-                current_page=page_number,
-                current_position=position
+                current_chapter=max(1, chapter_number or 1),
+                current_page=max(1, page_number or 1),
+                current_position=max(0, position or 0)
             )
             db.add(progress)
         else:
             # Обновляем существующий
-            progress.current_chapter = chapter_number
-            progress.current_page = page_number
-            progress.current_position = position
+            progress.current_chapter = max(1, chapter_number or 1)
+            progress.current_page = max(1, page_number or 1)
+            progress.current_position = max(0, position or 0)
             progress.last_read_at = datetime.utcnow()
         
         # Обновляем время последнего доступа к книге

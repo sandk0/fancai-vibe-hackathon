@@ -17,7 +17,7 @@ from dataclasses import dataclass
 import logging
 
 from ..models.description import Description, DescriptionType
-from ..models.generated_image import GeneratedImage
+from ..models.image import GeneratedImage
 
 logger = logging.getLogger(__name__)
 

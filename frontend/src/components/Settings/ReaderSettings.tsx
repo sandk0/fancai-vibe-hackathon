@@ -276,7 +276,8 @@ const ReaderSettings: React.FC = () => {
       </div>
 
       {/* Custom CSS for slider styling */}
-      <style jsx>{`
+      <style dangerouslySetInnerHTML={{
+        __html: `
         .slider::-webkit-slider-thumb {
           appearance: none;
           height: 20px;
@@ -297,7 +298,8 @@ const ReaderSettings: React.FC = () => {
           border: 2px solid #ffffff;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-      `}</style>
+        `
+      }} />
     </div>
   );
 };

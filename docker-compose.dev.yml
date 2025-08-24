@@ -45,16 +45,26 @@ services:
     command: celery -A app.core.celery_app worker --loglevel=debug --concurrency=2
 
   frontend:
-    extends:
-      file: docker-compose.yml
-      service: frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bookreader_frontend
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=http://localhost:8000/api/v1
       - VITE_WS_URL=ws://localhost:8000
       - NODE_ENV=development
     volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+      - ./frontend/tailwind.config.js:/app/tailwind.config.js
+      - ./frontend/postcss.config.js:/app/postcss.config.js
+    ports:
+      - "3000:3000"
+    networks:
+      - bookreader_network
     command: npm run dev -- --host 0.0.0.0 --port 3000
 
   # Дополнительные инструменты для разработки

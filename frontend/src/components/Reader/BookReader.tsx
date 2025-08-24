@@ -6,10 +6,10 @@ import { useQuery } from '@tanstack/react-query';
 import { booksAPI } from '@/api/books';
 import { useReaderStore } from '@/stores/reader';
 import { useUIStore } from '@/stores/ui';
-import { LoadingSpinner } from '@/components/UI/LoadingSpinner';
-import { ErrorMessage } from '@/components/UI/ErrorMessage';
+import LoadingSpinner from '@/components/UI/LoadingSpinner';
+import ErrorMessage from '@/components/UI/ErrorMessage';
 import { ImageModal } from '@/components/Images/ImageModal';
-import type { Chapter, Description } from '@/types/api';
+import type { Chapter, Description, BookDetail } from '@/types/api';
 
 interface BookReaderProps {
   bookId?: string;
@@ -41,7 +41,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
   } = useReaderStore();
 
   // Fetch book data
-  const { data: book, isLoading: bookLoading } = useQuery({
+  const { data: book, isLoading: bookLoading } = useQuery<BookDetail>({
     queryKey: ['book', bookId],
     queryFn: () => booksAPI.getBook(bookId),
   });
@@ -55,7 +55,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
 
   // Paginate content based on container size and font settings
   useEffect(() => {
-    if (!chapter?.content || !contentRef.current) return;
+    if (!chapter?.chapter?.content || !contentRef.current) return;
 
     const paginateContent = () => {
       const container = contentRef.current!;
@@ -65,12 +65,44 @@ export const BookReader: React.FC<BookReaderProps> = ({
       const wordsPerLine = Math.floor(container.clientWidth / (fontSize * 0.6)); // Approximate
       const wordsPerPage = linesPerPage * wordsPerLine;
 
-      const words = chapter.content.split(' ');
+      const contentForPagination = chapter.chapter.html_content || chapter.chapter.content;
+      // Strip HTML tags for pagination calculation
+      const textContent = contentForPagination.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      const words = textContent.split(' ');
       const newPages: string[] = [];
       
-      for (let i = 0; i < words.length; i += wordsPerPage) {
-        const pageWords = words.slice(i, i + wordsPerPage);
-        newPages.push(pageWords.join(' '));
+      // For HTML content, we'll use a simpler approach - divide by estimated character count
+      const htmlContent = chapter.chapter.html_content || chapter.chapter.content;
+      const charsPerPage = wordsPerPage * 6; // Average 6 chars per word
+      
+      if (htmlContent.includes('<')) {
+        // HTML content - split by character count but try to preserve tags
+        const totalChars = htmlContent.length;
+        const pageCount = Math.max(1, Math.ceil(totalChars / charsPerPage));
+        
+        for (let i = 0; i < pageCount; i++) {
+          const start = i * charsPerPage;
+          const end = Math.min(start + charsPerPage, totalChars);
+          let pageContent = htmlContent.substring(start, end);
+          
+          // Try to avoid cutting in the middle of HTML tags
+          if (end < totalChars && pageContent.includes('<')) {
+            const lastTagStart = pageContent.lastIndexOf('<');
+            const lastTagEnd = pageContent.lastIndexOf('>');
+            if (lastTagStart > lastTagEnd) {
+              // We're in the middle of a tag, move back to complete tag
+              pageContent = htmlContent.substring(start, start + lastTagStart);
+            }
+          }
+          
+          newPages.push(pageContent);
+        }
+      } else {
+        // Plain text content - use word-based pagination
+        for (let i = 0; i < words.length; i += wordsPerPage) {
+          const pageWords = words.slice(i, i + wordsPerPage);
+          newPages.push(pageWords.join(' '));
+        }
       }
 
       setPages(newPages);
@@ -82,26 +114,29 @@ export const BookReader: React.FC<BookReaderProps> = ({
     // Debounce resize
     const timeoutId = setTimeout(paginateContent, 100);
     return () => clearTimeout(timeoutId);
-  }, [chapter?.content, fontSize, lineHeight, currentPage]);
+  }, [chapter?.chapter?.content, fontSize, lineHeight, currentPage]);
 
   // Handle window resize
   useEffect(() => {
     const handleResize = () => {
-      if (chapter?.content) {
+      if (chapter?.chapter?.content) {
         setCurrentPage(1); // Reset to first page on resize
       }
     };
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [chapter?.content]);
+  }, [chapter?.chapter?.content]);
 
   // Update reading progress
   useEffect(() => {
-    if (book && chapter) {
-      const progress = ((currentChapter - 1) / book.total_chapters + 
-        (currentPage - 1) / (pages.length * book.total_chapters)) * 100;
-      updateReadingProgress(bookId, currentChapter, Math.min(progress, 100));
+    if (book && chapter && pages.length > 0) {
+      // Calculate progress: (completed chapters + current chapter progress) / total chapters
+      const chapterProgress = currentPage / pages.length; // 0 to 1 for current chapter
+      const chaptersCount = book.chapters?.length || book.chapters_count || 0;
+      const totalProgress = chaptersCount > 0 ? ((currentChapter - 1) + chapterProgress) / chaptersCount : 0;
+      const progressPercent = Math.min(Math.max(totalProgress * 100, 0), 100);
+      updateReadingProgress(bookId, currentChapter, progressPercent);
     }
   }, [bookId, currentChapter, currentPage, pages.length, book, chapter, updateReadingProgress]);
 
@@ -115,7 +150,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
   const nextPage = () => {
     if (currentPage < pages.length) {
       setCurrentPage(prev => prev + 1);
-    } else if (currentChapter < (book?.total_chapters || 0)) {
+    } else if (currentChapter < (book?.chapters?.length || book?.chapters_count || 0)) {
       setCurrentChapter(prev => prev + 1);
       setCurrentPage(1);
     }
@@ -131,7 +166,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
   };
 
   const jumpToChapter = (chapterNum: number) => {
-    if (chapterNum >= 1 && chapterNum <= (book?.total_chapters || 0)) {
+    if (chapterNum >= 1 && chapterNum <= (book?.chapters?.length || book?.chapters_count || 0)) {
       setCurrentChapter(chapterNum);
       setCurrentPage(1);
     }
@@ -200,6 +235,43 @@ export const BookReader: React.FC<BookReaderProps> = ({
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'dark' : ''}`}>
+      <style jsx>{`
+        .epub-content p {
+          margin-bottom: 1em;
+          line-height: inherit;
+        }
+        .epub-content h1, .epub-content h2, .epub-content h3, .epub-content h4, .epub-content h5, .epub-content h6 {
+          font-weight: bold;
+          margin: 1.5em 0 1em 0;
+        }
+        .epub-content h1 { font-size: 1.5em; }
+        .epub-content h2 { font-size: 1.3em; }
+        .epub-content h3 { font-size: 1.2em; }
+        .epub-content img {
+          max-width: 100%;
+          height: auto;
+          margin: 1em 0;
+          display: block;
+        }
+        .epub-content blockquote {
+          margin: 1em 2em;
+          padding-left: 1em;
+          border-left: 3px solid #ccc;
+          font-style: italic;
+        }
+        .epub-content em, .epub-content i {
+          font-style: italic;
+        }
+        .epub-content strong, .epub-content b {
+          font-weight: bold;
+        }
+        .epub-content br {
+          line-height: 1.5;
+        }
+        .epub-content div, .epub-content span {
+          line-height: inherit;
+        }
+      `}</style>
       <div className="bg-white dark:bg-gray-900 min-h-screen">
         {/* Header */}
         <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
@@ -211,7 +283,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
                   {book.title}
                 </h1>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Chapter {currentChapter}: {chapter.title}
+                  Chapter {currentChapter}: {chapter.chapter?.title}
                 </p>
               </div>
             </div>
@@ -250,9 +322,9 @@ export const BookReader: React.FC<BookReaderProps> = ({
                 dangerouslySetInnerHTML={{
                   __html: pages[currentPage - 1] 
                     ? highlightDescription(pages[currentPage - 1], highlightedDescriptions)
-                    : chapter.content
+                    : chapter.chapter?.html_content || chapter.chapter?.content
                 }}
-                className="select-text"
+                className="select-text epub-content"
               />
             </motion.div>
 
@@ -273,7 +345,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
                   onChange={(e) => jumpToChapter(parseInt(e.target.value))}
                   className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
                 >
-                  {Array.from({ length: book.total_chapters }, (_, i) => i + 1).map(num => (
+                  {Array.from({ length: book.chapters?.length || book.chapters_count || 0 }, (_, i) => i + 1).map(num => (
                     <option key={num} value={num}>
                       Chapter {num}
                     </option>
@@ -283,7 +355,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
 
               <button
                 onClick={nextPage}
-                disabled={currentChapter === book.total_chapters && currentPage === pages.length}
+                disabled={currentChapter === (book.chapters?.length || book.chapters_count) && currentPage === pages.length}
                 className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <span>Next</span>
@@ -296,21 +368,19 @@ export const BookReader: React.FC<BookReaderProps> = ({
               <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
                 <span>Progress</span>
                 <span>
-                  {Math.round(
-                    ((currentChapter - 1) / book.total_chapters + 
-                     (currentPage - 1) / (pages.length * book.total_chapters)) * 100
-                  )}%
+                  {pages.length > 0 ? Math.round(
+                    ((currentChapter - 1) + (currentPage - 1) / pages.length) / (book.chapters?.length || book.chapters_count || 1) * 100
+                  ) : 0}%
                 </span>
               </div>
               <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                 <div 
                   className="bg-primary-600 h-2 rounded-full transition-all duration-300"
                   style={{
-                    width: `${Math.min(
-                      ((currentChapter - 1) / book.total_chapters + 
-                       (currentPage - 1) / (pages.length * book.total_chapters)) * 100,
+                    width: `${pages.length > 0 ? Math.min(
+                      ((currentChapter - 1) + (currentPage - 1) / pages.length) / (book.chapters?.length || book.chapters_count || 1) * 100,
                       100
-                    )}%`
+                    ) : 0}%`
                   }}
                 />
               </div>

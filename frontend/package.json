@@ -27,7 +27,8 @@
     "zod": "^3.22.4",
     "react-hot-toast": "^2.4.1",
     "framer-motion": "^10.16.5",
-    "lucide-react": "^0.294.0"
+    "lucide-react": "^0.294.0",
+    "clsx": "^2.0.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.37",

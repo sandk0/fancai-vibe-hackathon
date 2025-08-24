@@ -57,6 +57,7 @@ class GeneratedImage(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     description_id = Column(UUID(as_uuid=True), ForeignKey("descriptions.id"), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     
     # Информация о генерации
     service_used = Column(String(50), nullable=False, index=True)  # pollinations, openai_dalle, etc.
@@ -98,6 +99,7 @@ class GeneratedImage(Base):
     
     # Отношения
     description = relationship("Description", back_populates="generated_images")
+    user = relationship("User", back_populates="generated_images")
     
     def __repr__(self):
         return f"<GeneratedImage(id={self.id}, service={self.service_used}, status={self.status})>"

@@ -3,11 +3,13 @@
 import { apiClient } from './client';
 import type {
   Book,
+  BookDetail,
   BookUploadResponse,
   Chapter,
   PaginationParams,
   ReadingProgress,
   NLPAnalysis,
+  Description,
 } from '@/types/api';
 
 export const booksAPI = {
@@ -26,15 +28,24 @@ export const booksAPI = {
     return apiClient.get(url);
   },
 
-  async getBook(bookId: string): Promise<Book> {
+  async getBook(bookId: string): Promise<BookDetail> {
     return apiClient.get(`/books/${bookId}`);
   },
 
   async uploadBook(
-    file: File,
-    onUploadProgress?: (progressEvent: any) => void
+    formData: FormData,
+    config?: { onUploadProgress?: (progressEvent: any) => void }
   ): Promise<BookUploadResponse> {
-    return apiClient.upload('/books/upload', file, onUploadProgress);
+    // Не устанавливаем Content-Type вручную - позволяем браузеру установить с boundary
+    const response = await apiClient.client.post('/books/upload', formData, {
+      ...config,
+      headers: {
+        // Удаляем Content-Type чтобы браузер сам установил multipart/form-data с boundary
+        ...config?.headers,
+        'Content-Type': undefined,
+      },
+    });
+    return response.data;
   },
 
   async deleteBook(bookId: string): Promise<{ message: string }> {
@@ -44,7 +55,7 @@ export const booksAPI = {
   // Chapters
   async getChapter(bookId: string, chapterNumber: number): Promise<{
     chapter: Chapter;
-    descriptions?: any[];
+    descriptions?: Description[];
     navigation: {
       has_previous: boolean;
       has_next: boolean;
@@ -89,6 +100,22 @@ export const booksAPI = {
     progress: ReadingProgress | null;
   }> {
     return apiClient.get(`/books/${bookId}/progress`);
+  },
+
+  async updateProgress(
+    bookId: string,
+    data: {
+      chapter_number: number;
+      progress_percentage: number;
+    }
+  ): Promise<{
+    progress: ReadingProgress;
+    message: string;
+  }> {
+    return apiClient.post(`/books/${bookId}/progress`, {
+      current_chapter: data.chapter_number,
+      current_page: Math.max(1, Math.round(data.progress_percentage * 10)), // Ensure page is at least 1
+    });
   },
 
   // Statistics

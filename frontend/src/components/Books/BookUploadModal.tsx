@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { booksAPI } from '@/api/books';
 import { useUIStore } from '@/stores/ui';
-import { LoadingSpinner } from '@/components/UI/LoadingSpinner';
+import { STORAGE_KEYS } from '@/types/state';
+import LoadingSpinner from '@/components/UI/LoadingSpinner';
 
 interface BookUploadModalProps {
   isOpen: boolean;
@@ -38,8 +39,30 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
   // Upload mutation
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
+      // Проверяем файл
+      console.log('Upload mutation called with file:', file);
+      
+      if (!file) {
+        throw new Error('No file provided to upload mutation');
+      }
+      
+      console.log('File details:', {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified
+      });
+      
       const formData = new FormData();
       formData.append('file', file);
+      
+      // Проверяем FormData
+      console.log('FormData entries:');
+      for (let [key, value] of formData.entries()) {
+        console.log(`${key}:`, value);
+      }
+      
+      // Debug код временно удален для чистого тестирования
       
       return booksAPI.uploadBook(formData, {
         onUploadProgress: (progressEvent) => {
@@ -95,14 +118,16 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
     const extension = '.' + file.name.split('.').pop()?.toLowerCase();
     const sizeFormatted = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
     
-    return {
-      ...file,
+    // Создаем новый File объект и добавляем preview свойство
+    const fileWithPreview = Object.assign(file, {
       preview: {
         title: file.name.replace(/\.(epub|fb2)$/i, ''),
         format: extension.toUpperCase().slice(1),
         size: sizeFormatted,
       },
-    };
+    } as FileWithPreview);
+    
+    return fileWithPreview;
   };
 
   // Handle file selection
@@ -173,6 +198,7 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
   // Upload selected files
   const startUpload = () => {
     files.forEach(file => {
+      // File с preview свойством все еще является File объектом
       uploadMutation.mutate(file);
     });
   };
@@ -266,9 +292,9 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
             {/* File List */}
             {files.length > 0 && (
               <div className="space-y-3">
-                {files.map((file) => (
+                {files.map((file, index) => (
                   <div
-                    key={file.name}
+                    key={`${file.name}-${index}`}
                     className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600"
                   >
                     <div className="flex items-center justify-between">

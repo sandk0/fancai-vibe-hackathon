@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Book, Search, Filter } from 'lucide-react';
 import { useBooksStore } from '@/stores/books';
 import { useUIStore } from '@/stores/ui';
-import { LoadingSpinner } from '@/components/UI/LoadingSpinner';
+import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import { BookUploadModal } from '@/components/Books/BookUploadModal';
 
 const LibraryPage: React.FC = () => {
+  const navigate = useNavigate();
   const { books, isLoading, fetchBooks, error } = useBooksStore();
   const [showUploadModal, setShowUploadModal] = useState(false);
 
@@ -85,14 +87,26 @@ const LibraryPage: React.FC = () => {
             <div
               key={book.id}
               className="group cursor-pointer"
-              onClick={() => {/* TODO: Navigate to book */}}
+              onClick={() => navigate(`/book/${book.id}`)}
             >
               <div className="book-cover bg-gradient-to-b from-gray-200 to-gray-300 dark:from-gray-600 dark:to-gray-700 flex items-center justify-center mb-3">
                 {book.has_cover ? (
                   <img
-                    src={`/api/v1/books/${book.id}/cover`}
+                    src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/books/${book.id}/cover`}
                     alt={`${book.title} cover`}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback if image fails to load
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent) {
+                        const fallback = document.createElement('div');
+                        fallback.className = 'w-full h-full flex items-center justify-center';
+                        fallback.innerHTML = '<svg class="w-12 h-12 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>';
+                        parent.appendChild(fallback);
+                      }
+                    }}
                   />
                 ) : (
                   <Book className="w-12 h-12 text-gray-500 dark:text-gray-400" />
@@ -108,15 +122,15 @@ const LibraryPage: React.FC = () => {
                 </p>
                 <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-500">
                   <span>{book.chapters_count} chapters</span>
-                  {book.reading_progress_percent > 0 && (
+                  {book.reading_progress_percent !== undefined && book.reading_progress_percent > 0 && (
                     <span>{Math.round(book.reading_progress_percent)}%</span>
                   )}
                 </div>
-                {book.reading_progress_percent > 0 && (
+                {book.reading_progress_percent !== undefined && book.reading_progress_percent > 0 && (
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
                     <div 
                       className="bg-primary-600 h-1 rounded-full transition-all" 
-                      style={{ width: `${book.reading_progress_percent}%` }}
+                      style={{ width: `${Math.min(book.reading_progress_percent, 100)}%` }}
                     />
                   </div>
                 )}

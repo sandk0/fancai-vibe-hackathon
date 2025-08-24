@@ -20,12 +20,12 @@ import { cn } from '@/utils/cn';
 const Header: React.FC = () => {
   const { user, logout } = useAuthStore();
   const { sidebarOpen, setSidebarOpen, setShowUploadModal, setShowProfileModal } = useUIStore();
-  const { theme, setTheme } = useReaderStore();
+  const { theme, updateTheme } = useReaderStore();
   const [showUserMenu, setShowUserMenu] = React.useState(false);
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : theme === 'dark' ? 'sepia' : 'light';
-    setTheme(newTheme);
+    updateTheme(newTheme);
   };
 
   const handleLogout = () => {

@@ -5,7 +5,7 @@ import { STORAGE_KEYS } from '@/types/state';
 import type { ApiResponse, ApiError } from '@/types/api';
 
 class ApiClient {
-  private client: AxiosInstance;
+  public client: AxiosInstance;
   private refreshPromise: Promise<string> | null = null;
 
   constructor() {

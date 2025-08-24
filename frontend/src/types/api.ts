@@ -100,6 +100,29 @@ export interface Chapter {
   content: string;
   word_count: number;
   estimated_reading_time_minutes: number;
+  html_content?: string;
+}
+
+export interface ChapterInfo {
+  id: string;
+  number: number;
+  title: string;
+  word_count: number;
+  estimated_reading_time_minutes: number;
+  is_description_parsed: boolean;
+  descriptions_found: number;
+}
+
+export interface BookDetail extends Book {
+  chapters: ChapterInfo[];
+  reading_progress: {
+    current_chapter: number;
+    current_page: number;
+    progress_percent: number;
+  };
+  file_format: string;
+  file_size_mb: number;
+  parsing_progress: number;
 }
 
 export interface BookUploadResponse {
@@ -121,10 +144,12 @@ export type DescriptionType = 'location' | 'character' | 'atmosphere' | 'object'
 export interface Description {
   id: string;
   type: DescriptionType;
-  content: string;
+  text: string;
+  content?: string;
   confidence_score: number;
   priority_score: number;
   entities_mentioned: string[];
+  generated_image?: GeneratedImage;
 }
 
 export interface NLPAnalysis {

@@ -39,7 +39,11 @@ const queryClient = new QueryClient({
 function App() {
   useEffect(() => {
     // Initialize stores when app starts
-    initializeStores();
+    try {
+      initializeStores();
+    } catch (error) {
+      console.warn('Failed to initialize stores:', error);
+    }
   }, []);
 
   return (
