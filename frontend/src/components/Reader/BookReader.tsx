@@ -6,7 +6,8 @@ import { useQuery } from '@tanstack/react-query';
 import { booksAPI } from '@/api/books';
 import { imagesAPI } from '@/api/images';
 import { useReaderStore } from '@/stores/reader';
-import { useUIStore } from '@/stores/ui';
+import { useUIStore, notify } from '@/stores/ui';
+import { STORAGE_KEYS } from '@/types/state';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import ErrorMessage from '@/components/UI/ErrorMessage';
 import { ImageModal } from '@/components/Images/ImageModal';
@@ -34,7 +35,6 @@ export const BookReader: React.FC<BookReaderProps> = ({
   const [highlightedDescriptions, setHighlightedDescriptions] = useState<Description[]>([]);
 
   const contentRef = useRef<HTMLDivElement>(null);
-  const { notify } = useUIStore();
   const { 
     fontSize, 
     fontFamily, 
@@ -55,6 +55,33 @@ export const BookReader: React.FC<BookReaderProps> = ({
     queryFn: () => booksAPI.getChapter(bookId, currentChapter),
     enabled: !!bookId,
   });
+
+  // Debug chapter loading
+  useEffect(() => {
+    console.log('Chapter query state:', {
+      chapter,
+      isLoading: chapterLoading,
+      error: chapterError,
+      bookId,
+      currentChapter
+    });
+    
+    console.log('📖 Current book and chapter details:', {
+      bookId: bookId,
+      chapterNumber: currentChapter,
+      chapterUrl: `http://localhost:8000/api/v1/books/${bookId}/chapters/${currentChapter}`,
+      chapterDataStructure: chapter ? Object.keys(chapter) : 'No chapter',
+      descriptionsCount: chapter?.descriptions?.length || 0
+    });
+
+    // Check if user is authenticated
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+    if (!token) {
+      console.warn('❌ User not authenticated! Please login first.');
+    } else {
+      console.log('✅ User has auth token');
+    }
+  }, [chapter, chapterLoading, chapterError, bookId, currentChapter]);
 
   // Paginate content based on container size and font settings
   useEffect(() => {
@@ -161,13 +188,34 @@ export const BookReader: React.FC<BookReaderProps> = ({
 
   // Update reading progress
   useEffect(() => {
+    console.log('📊 Reading progress update conditions:', {
+      hasBook: !!book,
+      hasChapter: !!chapter,
+      pagesLength: pages.length,
+      currentChapter,
+      currentPage,
+      bookId
+    });
+
     if (book && chapter && pages.length > 0) {
       // Calculate progress: (completed chapters + current chapter progress) / total chapters
       const chapterProgress = currentPage / pages.length; // 0 to 1 for current chapter
       const chaptersCount = book.chapters?.length || book.chapters_count || 0;
       const totalProgress = chaptersCount > 0 ? ((currentChapter - 1) + chapterProgress) / chaptersCount : 0;
       const progressPercent = Math.min(Math.max(totalProgress * 100, 0), 100);
-      updateReadingProgress(bookId, currentChapter, progressPercent);
+      
+      console.log('📊 Updating reading progress:', {
+        chapterProgress,
+        chaptersCount,
+        totalProgress,
+        progressPercent,
+        currentChapter,
+        currentPage
+      });
+      
+      updateReadingProgress(bookId, currentChapter, progressPercent, currentPage);
+    } else {
+      console.log('📊 Not updating progress - conditions not met');
     }
   }, [bookId, currentChapter, currentPage, pages.length, book, chapter, updateReadingProgress]);
 
@@ -176,15 +224,26 @@ export const BookReader: React.FC<BookReaderProps> = ({
     console.log(`Chapter changed to: ${currentChapter}`);
     setCurrentPage(1);
     setPages([]); // Clear pages to force re-pagination
-  }, [currentChapter]);
+    
+    // Save progress immediately when changing chapters
+    if (book) {
+      const chaptersCount = book.chapters?.length || book.chapters_count || 0;
+      const totalProgress = chaptersCount > 0 ? (currentChapter - 1) / chaptersCount : 0;
+      const progressPercent = Math.min(Math.max(totalProgress * 100, 0), 100);
+      console.log(`📊 Saving progress for chapter change: ${currentChapter}, progress: ${progressPercent}%`);
+      updateReadingProgress(bookId, currentChapter, progressPercent, 1);
+    }
+  }, [currentChapter, book, bookId, updateReadingProgress]);
 
   // Highlight descriptions in text
   useEffect(() => {
-    if (chapter?.descriptions) {
+    // API returns descriptions at root level, not in chapter object
+    if (chapter?.descriptions && Array.isArray(chapter.descriptions)) {
       console.log('Descriptions received:', chapter.descriptions);
       setHighlightedDescriptions(chapter.descriptions);
     } else {
       console.log('No descriptions in chapter:', chapter);
+      console.log('Chapter structure:', chapter);
       setHighlightedDescriptions([]);
     }
   }, [chapter]);
@@ -192,7 +251,16 @@ export const BookReader: React.FC<BookReaderProps> = ({
   const nextPage = () => {
     console.log(`Next page: current=${currentPage}, total=${pages.length}, chapter=${currentChapter}`);
     if (currentPage < pages.length) {
-      setCurrentPage(prev => prev + 1);
+      const newPage = currentPage + 1;
+      setCurrentPage(newPage);
+      // Manually save progress for next page
+      if (book && chapter && pages.length > 0) {
+        const chapterProgress = newPage / pages.length;
+        const chaptersCount = book.chapters?.length || book.chapters_count || 0;
+        const totalProgress = chaptersCount > 0 ? ((currentChapter - 1) + chapterProgress) / chaptersCount : 0;
+        const progressPercent = Math.min(Math.max(totalProgress * 100, 0), 100);
+        updateReadingProgress(bookId, currentChapter, progressPercent, newPage);
+      }
     } else if (currentChapter < (book?.chapters?.length || book?.chapters_count || 0)) {
       console.log('Moving to next chapter');
       setCurrentChapter(prev => prev + 1);
@@ -203,7 +271,16 @@ export const BookReader: React.FC<BookReaderProps> = ({
   const prevPage = () => {
     console.log(`Prev page: current=${currentPage}, total=${pages.length}, chapter=${currentChapter}`);
     if (currentPage > 1) {
-      setCurrentPage(prev => prev - 1);
+      const newPage = currentPage - 1;
+      setCurrentPage(newPage);
+      // Manually save progress for previous page
+      if (book && chapter && pages.length > 0) {
+        const chapterProgress = newPage / pages.length;
+        const chaptersCount = book.chapters?.length || book.chapters_count || 0;
+        const totalProgress = chaptersCount > 0 ? ((currentChapter - 1) + chapterProgress) / chaptersCount : 0;
+        const progressPercent = Math.min(Math.max(totalProgress * 100, 0), 100);
+        updateReadingProgress(bookId, currentChapter, progressPercent, newPage);
+      }
     } else if (currentChapter > 1) {
       console.log('Moving to previous chapter');
       setCurrentChapter(prev => prev - 1);
@@ -216,6 +293,13 @@ export const BookReader: React.FC<BookReaderProps> = ({
     if (chapterNum >= 1 && chapterNum <= (book?.chapters?.length || book?.chapters_count || 0)) {
       setCurrentChapter(chapterNum);
       setCurrentPage(1);
+      // Manually save progress when jumping to chapter
+      if (book) {
+        const chaptersCount = book.chapters?.length || book.chapters_count || 0;
+        const totalProgress = chaptersCount > 0 ? (chapterNum - 1) / chaptersCount : 0;
+        const progressPercent = Math.min(Math.max(totalProgress * 100, 0), 100);
+        updateReadingProgress(bookId, chapterNum, progressPercent, 1);
+      }
     }
   };
 
@@ -245,15 +329,20 @@ export const BookReader: React.FC<BookReaderProps> = ({
   };
 
   const handleDescriptionClick = async (descriptionId: string) => {
+    console.log('🖱️ Description clicked:', descriptionId);
     const description = highlightedDescriptions.find(d => d.id === descriptionId);
+    console.log('📋 Found description:', description);
+    
     if (description && description.generated_image) {
+      console.log('🖼️ Description has image, opening modal');
       setSelectedImage(description.generated_image.image_url);
       setSelectedDescription(description);
       setSelectedImageId(description.generated_image.id);
     } else if (description) {
+      console.log('🎨 No image found, trying to generate...');
       // Try to generate image if it doesn't exist
-      notify.info('Image Generation', 'Generating image for this description...');
       try {
+        notify.info('Image Generation', 'Generating image for this description...');
         const result = await imagesAPI.generateImageForDescription(descriptionId);
         
         // Update the description with the new image
@@ -286,6 +375,9 @@ export const BookReader: React.FC<BookReaderProps> = ({
           notify.error('Generation Failed', 'Failed to generate image. Please try again later.');
         }
       }
+    } else {
+      console.log('❌ Description not found for ID:', descriptionId);
+      notify.error('Error', 'Description not found');
     }
   };
 
@@ -345,6 +437,19 @@ export const BookReader: React.FC<BookReaderProps> = ({
   }
 
   if (chapterError || !book || !chapter) {
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+    if (!token) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <ErrorMessage 
+            title="Authentication Required"
+            message="Please login to access this book. Use test@example.com / testpassword123"
+            action={{ label: "Go to Login", onClick: () => window.location.href = '/login' }}
+          />
+        </div>
+      );
+    }
+
     return (
       <div className="flex items-center justify-center min-h-screen">
         <ErrorMessage 

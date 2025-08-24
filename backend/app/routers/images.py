@@ -133,13 +133,24 @@ async def generate_image_for_description(
                 detail=f"Image generation failed: {result.error_message}"
             )
         
+        # Создаем промпт для сохранения в базе
+        from ..services.image_generator import PromptEngineer
+        prompt_engineer = PromptEngineer()
+        prompts = prompt_engineer.create_prompt(
+            description.content,
+            description.type,
+            params.style_prompt
+        )
+        
         # Сохраняем результат в базе данных
         generated_image = GeneratedImage(
             description_id=description.id,
             user_id=current_user.id,
+            service_used="pollinations",
+            status="completed",
             image_url=result.image_url,
             local_path=result.local_path,
-            generation_prompt=params.style_prompt or "default",
+            prompt_used=prompts["positive"],  # Используем полный промпт
             generation_time_seconds=result.generation_time_seconds
         )
         
@@ -257,9 +268,11 @@ async def generate_images_for_chapter(
                 generated_image = GeneratedImage(
                     description_id=description.id,
                     user_id=current_user.id,
+                    service_used="pollinations",
+                    status="completed",
                     image_url=result.image_url,
                     local_path=result.local_path,
-                    generation_prompt=request.style_prompt or "default",
+                    prompt_used=request.style_prompt or "default",
                     generation_time_seconds=result.generation_time_seconds
                 )
                 
@@ -491,7 +504,7 @@ async def regenerate_image(
         # Обновляем существующую запись в базе данных
         existing_image.image_url = generation_result.image_url
         existing_image.local_path = generation_result.local_path
-        existing_image.generation_prompt = params.style_prompt or "default"
+        existing_image.prompt_used = params.style_prompt or "default"
         existing_image.generation_time_seconds = generation_result.generation_time_seconds
         existing_image.updated_at = func.now()  # Обновляем время изменения
         

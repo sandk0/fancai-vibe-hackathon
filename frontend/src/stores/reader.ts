@@ -32,7 +32,7 @@ interface ReaderState {
   updateFontFamily: (family: string) => void;
   updateLineHeight: (height: number) => void;
   updateTheme: (theme: 'light' | 'dark' | 'sepia') => void;
-  updateReadingProgress: (bookId: string, chapter: number, progress: number) => void;
+  updateReadingProgress: (bookId: string, chapter: number, progress: number, page?: number) => void;
   addBookmark: (bookId: string, chapter: number, page: number, text: string) => void;
   removeBookmark: (bookId: string, index: number) => void;
   addHighlight: (bookId: string, chapter: number, text: string, color: string) => void;
@@ -98,14 +98,15 @@ export const useReaderStore = create<ReaderState>()(
       },
       
       // Reading progress actions
-      updateReadingProgress: async (bookId: string, chapter: number, progress: number) => {
+      updateReadingProgress: async (bookId: string, chapter: number, progress: number, page?: number) => {
         const currentProgress = get().readingProgress[bookId];
         const now = new Date();
+        const actualPage = page || currentProgress?.currentPage || 1;
         
         const updatedProgress: ReadingProgress = {
           bookId,
           currentChapter: chapter,
-          currentPage: currentProgress?.currentPage || 1,
+          currentPage: actualPage,
           progress: Math.max(0, Math.min(100, progress)),
           lastReadAt: now,
           totalTimeRead: (currentProgress?.totalTimeRead || 0) + (currentProgress ? 
@@ -121,9 +122,9 @@ export const useReaderStore = create<ReaderState>()(
         
         // Sync with server
         try {
-          await booksAPI.updateProgress(bookId, {
-            chapter_number: chapter,
-            progress_percentage: progress,
+          await booksAPI.updateReadingProgress(bookId, {
+            current_chapter: chapter,
+            current_page: actualPage,
           });
         } catch (error) {
           console.error('Failed to sync reading progress:', error);

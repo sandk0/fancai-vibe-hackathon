@@ -32,7 +32,7 @@ services:
       dockerfile: Dockerfile
     container_name: bookreader_backend
     environment:
-      - DATABASE_URL=postgresql://bookreader_user:bookreader_pass@postgres:5432/bookreader
+      - DATABASE_URL=postgresql+asyncpg://bookreader_user:bookreader_pass@postgres:5432/bookreader
       - REDIS_URL=redis://:redis_password@redis:6379
       - SECRET_KEY=your-super-secret-key-change-in-production
       - DEBUG=true
@@ -56,7 +56,7 @@ services:
       dockerfile: Dockerfile
     container_name: bookreader_celery
     environment:
-      - DATABASE_URL=postgresql://bookreader_user:bookreader_pass@postgres:5432/bookreader
+      - DATABASE_URL=postgresql+asyncpg://bookreader_user:bookreader_pass@postgres:5432/bookreader
       - REDIS_URL=redis://:redis_password@redis:6379
       - SECRET_KEY=your-super-secret-key-change-in-production
       - POLLINATIONS_ENABLED=true
@@ -77,7 +77,7 @@ services:
       dockerfile: Dockerfile
     container_name: bookreader_beat
     environment:
-      - DATABASE_URL=postgresql://bookreader_user:bookreader_pass@postgres:5432/bookreader
+      - DATABASE_URL=postgresql+asyncpg://bookreader_user:bookreader_pass@postgres:5432/bookreader
       - REDIS_URL=redis://:redis_password@redis:6379
       - SECRET_KEY=your-super-secret-key-change-in-production
     volumes:

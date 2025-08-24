@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Frontend Auth</title>
+</head>
+<body>
+    <h1>Frontend Auth Test</h1>
+    <div id="status">Testing...</div>
+    <script>
+        async function testAuth() {
+            const statusEl = document.getElementById('status');
+            
+            try {
+                // Test login
+                statusEl.innerHTML += '<br>🔄 Testing login...';
+                const loginResponse = await fetch('http://localhost:8000/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'testpassword123'
+                    })
+                });
+                
+                if (!loginResponse.ok) {
+                    throw new Error(`Login failed: ${loginResponse.status}`);
+                }
+                
+                const loginData = await loginResponse.json();
+                statusEl.innerHTML += '<br>✅ Login successful';
+                console.log('Login data:', loginData);
+                
+                const token = loginData.tokens.access_token;
+                statusEl.innerHTML += '<br>🔄 Testing chapter API...';
+                
+                // Test chapter API
+                const chapterResponse = await fetch('http://localhost:8000/api/v1/books/c1347ad0-9a13-4564-8e08-2dad21408dc4/chapters/1', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!chapterResponse.ok) {
+                    throw new Error(`Chapter API failed: ${chapterResponse.status}`);
+                }
+                
+                const chapterData = await chapterResponse.json();
+                statusEl.innerHTML += '<br>✅ Chapter API successful';
+                statusEl.innerHTML += '<br>📊 Descriptions count: ' + (chapterData.descriptions ? chapterData.descriptions.length : 0);
+                console.log('Chapter data:', chapterData);
+                
+                if (chapterData.descriptions && chapterData.descriptions.length > 0) {
+                    statusEl.innerHTML += '<br>🎉 SUCCESS: Descriptions found!';
+                    statusEl.innerHTML += '<br>First description: ' + chapterData.descriptions[0].content.substring(0, 100) + '...';
+                } else {
+                    statusEl.innerHTML += '<br>❌ No descriptions found';
+                }
+                
+            } catch (error) {
+                statusEl.innerHTML += '<br>❌ Error: ' + error.message;
+                console.error('Test failed:', error);
+            }
+        }
+        
+        testAuth();
+    </script>
+</body>
+</html>

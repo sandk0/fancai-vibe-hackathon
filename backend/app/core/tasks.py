@@ -92,20 +92,20 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
                 logger.info(f"Processing chapter {chapter.chapter_number} of book {book_id}")
                 
                 # Извлекаем описания из текста главы  
-                descriptions = nlp_processor.extract_descriptions(chapter.content)
+                descriptions = nlp_processor.extract_descriptions_from_text(chapter.content, str(chapter.id))
                 
                 # Сохраняем описания в базе данных
                 for desc_data in descriptions:
                     description = Description(
                         chapter_id=chapter.id,
-                        type=desc_data.type,
-                        content=desc_data.content,
-                        context=desc_data.context,
-                        confidence_score=desc_data.confidence_score,
-                        position_in_chapter=desc_data.position,
-                        word_count=len(desc_data.content.split()),
-                        priority_score=desc_data.priority_score,
-                        entities_mentioned=",".join(desc_data.entities) if desc_data.entities else ""
+                        type=desc_data["type"],
+                        content=desc_data["content"],
+                        context=desc_data["context"],
+                        confidence_score=desc_data["confidence_score"],
+                        position_in_chapter=desc_data["position_in_chapter"],
+                        word_count=desc_data["word_count"],
+                        priority_score=desc_data["priority_score"],
+                        entities_mentioned=",".join(desc_data["entities_mentioned"]) if desc_data.get("entities_mentioned") else ""
                     )
                     db.add(description)
                 

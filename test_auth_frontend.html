@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Frontend Auth Storage Keys</title>
+</head>
+<body>
+    <h1>Frontend Auth Storage Keys Test</h1>
+    <div id="status">Testing...</div>
+    <script>
+        function testAuthKeys() {
+            const statusEl = document.getElementById('status');
+            
+            // Check correct storage keys
+            const correctKeys = {
+                AUTH_TOKEN: 'bookreader_access_token',
+                REFRESH_TOKEN: 'bookreader_refresh_token',
+                USER_DATA: 'bookreader_user_data'
+            };
+            
+            statusEl.innerHTML = '<h2>Storage Keys Analysis:</h2>';
+            
+            // Check for tokens with different key patterns
+            const keyPatterns = [
+                'auth_token',
+                'bookreader_access_token', // correct
+                'access_token',
+                'token'
+            ];
+            
+            statusEl.innerHTML += '<h3>Checking localStorage for auth tokens:</h3>';
+            
+            keyPatterns.forEach(key => {
+                const value = localStorage.getItem(key);
+                const status = value ? `✅ Found (${value.length} chars)` : '❌ Not found';
+                statusEl.innerHTML += `<br>${key}: ${status}`;
+            });
+            
+            // Check what's actually in localStorage
+            statusEl.innerHTML += '<h3>All localStorage keys:</h3>';
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.includes('token') || key.includes('auth') || key.includes('bookreader')) {
+                    const value = localStorage.getItem(key);
+                    statusEl.innerHTML += `<br>📍 ${key}: ${value ? value.substring(0, 20) + '...' : 'null'}`;
+                }
+            }
+        }
+        
+        testAuthKeys();
+    </script>
+</body>
+</html>
