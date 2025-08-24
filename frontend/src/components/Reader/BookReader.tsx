@@ -58,113 +58,106 @@ export const BookReader: React.FC<BookReaderProps> = ({
 
   // Paginate content based on container size and font settings
   useEffect(() => {
-    if (!chapter?.chapter) return;
+    if (!chapter?.chapter?.content) return;
 
     const paginateContent = () => {
-      const container = contentRef.current;
-      const containerHeight = container?.clientHeight || 600;
-      const containerWidth = container?.clientWidth || 800;
-      
-      // Calculate words per page based on font size and container
-      const lineHeightPx = fontSize * lineHeight;
-      const linesPerPage = Math.floor((containerHeight - 100) / lineHeightPx); 
-      const charsPerLine = Math.floor(containerWidth / (fontSize * 0.6));
-      const charsPerPage = Math.max(500, Math.min(3000, linesPerPage * charsPerLine)); // 500-3000 chars per page
-      
-      // Use HTML content if available, otherwise plain text
-      const content = chapter.chapter.html_content || chapter.chapter.content || '';
-      
+      const content = chapter.chapter.html_content || chapter.chapter.content;
       if (!content) {
         setPages(['']);
         return;
       }
       
-      // For HTML content, split carefully to preserve formatting
+      // Simple approach: estimate characters per page based on screen size and font
+      const container = contentRef.current;
+      const containerHeight = container?.clientHeight || 600;
+      const containerWidth = container?.clientWidth || 800;
+      
+      // Calculate approximate characters per page
+      const lineHeightPx = fontSize * lineHeight;
+      const linesPerPage = Math.max(15, Math.floor((containerHeight - 120) / lineHeightPx));
+      const charsPerLine = Math.max(40, Math.floor(containerWidth / (fontSize * 0.55)));
+      const charsPerPage = Math.max(800, Math.min(4000, linesPerPage * charsPerLine));
+      
+      console.log(`Pagination params: lines=${linesPerPage}, chars/line=${charsPerLine}, chars/page=${charsPerPage}`);
+      
+      // Remove HTML tags for length calculation but keep for display
+      const textLength = content.replace(/<[^>]*>/g, '').length;
+      const totalPages = Math.max(1, Math.ceil(textLength / charsPerPage));
+      
+      console.log(`Content length: ${textLength} chars, will create ${totalPages} pages`);
+      
       const newPages: string[] = [];
       
-      if (content.includes('<')) {
-        // HTML content - split by paragraphs/elements
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = content;
-        
-        let currentPageHtml = '';
-        let currentPageLength = 0;
-        
-        const processNode = (node: Node) => {
-          if (node.nodeType === Node.TEXT_NODE) {
-            const text = node.textContent || '';
-            if (currentPageLength + text.length > charsPerPage && currentPageHtml) {
-              newPages.push(currentPageHtml);
-              currentPageHtml = '';
-              currentPageLength = 0;
-            }
-            currentPageHtml += text;
-            currentPageLength += text.length;
-          } else if (node.nodeType === Node.ELEMENT_NODE) {
-            const element = node as Element;
-            const tagName = element.tagName.toLowerCase();
-            const outerHTML = element.outerHTML;
+      if (totalPages === 1) {
+        // Single page - use all content
+        newPages.push(content);
+      } else {
+        // Multiple pages - split content
+        if (content.includes('<')) {
+          // HTML content - try to split at paragraph boundaries
+          const paragraphs = content.split(/<\/p>|<\/div>|<br\s*\/?>/i).filter(p => p.trim());
+          
+          let currentPage = '';
+          let currentLength = 0;
+          
+          for (const paragraph of paragraphs) {
+            const paragraphText = paragraph.replace(/<[^>]*>/g, '');
+            const paragraphLength = paragraphText.length;
             
-            // For block elements, check if we should start new page
-            if (['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tagName)) {
-              if (currentPageLength + outerHTML.length > charsPerPage && currentPageHtml) {
-                newPages.push(currentPageHtml);
-                currentPageHtml = '';
-                currentPageLength = 0;
-              }
-              currentPageHtml += outerHTML;
-              currentPageLength += outerHTML.length;
+            if (currentLength + paragraphLength > charsPerPage && currentPage) {
+              // Start new page
+              newPages.push(currentPage);
+              currentPage = paragraph;
+              currentLength = paragraphLength;
             } else {
-              // Inline elements - add to current page
-              currentPageHtml += outerHTML;
-              currentPageLength += outerHTML.length;
+              // Add to current page
+              currentPage += (currentPage ? '</p>' : '') + paragraph;
+              currentLength += paragraphLength;
             }
           }
-        };
-        
-        // Process all child nodes
-        tempDiv.childNodes.forEach(processNode);
-        
-        // Add remaining content
-        if (currentPageHtml) {
-          newPages.push(currentPageHtml);
-        }
-      } else {
-        // Plain text - split by character count
-        for (let i = 0; i < content.length; i += charsPerPage) {
-          newPages.push(content.substring(i, Math.min(i + charsPerPage, content.length)));
+          
+          // Add last page
+          if (currentPage) {
+            newPages.push(currentPage);
+          }
+        } else {
+          // Plain text - simple character-based splitting
+          for (let i = 0; i < content.length; i += charsPerPage) {
+            const pageContent = content.substring(i, Math.min(i + charsPerPage, content.length));
+            newPages.push(pageContent);
+          }
         }
       }
       
-      // Ensure at least one page
+      // Ensure we have at least one page
       if (newPages.length === 0) {
         newPages.push(content);
       }
 
-      console.log(`Paginated into ${newPages.length} pages, ~${charsPerPage} chars per page`);
+      console.log(`Final pagination: ${newPages.length} pages created`);
       setPages(newPages);
       
+      // Reset to page 1 if current page is out of bounds
       if (currentPage > newPages.length) {
         setCurrentPage(1);
       }
     };
 
     // Debounce pagination
-    const timeoutId = setTimeout(paginateContent, 100);
+    const timeoutId = setTimeout(paginateContent, 200);
     return () => clearTimeout(timeoutId);
-  }, [chapter, fontSize, lineHeight]);
+  }, [chapter?.chapter, fontSize, lineHeight, currentChapter]);
 
   // Handle window resize
   useEffect(() => {
     const handleResize = () => {
-      if (chapter?.chapter?.content) {
-        setCurrentPage(1); // Reset to first page on resize
-      }
+      // Don't reset page on resize to avoid losing reading position
+      console.log('Window resized, keeping current page');
     };
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [chapter?.chapter?.content]);
+  }, []);
 
   // Update reading progress
   useEffect(() => {
@@ -178,6 +171,13 @@ export const BookReader: React.FC<BookReaderProps> = ({
     }
   }, [bookId, currentChapter, currentPage, pages.length, book, chapter, updateReadingProgress]);
 
+  // Reset to first page when chapter changes
+  useEffect(() => {
+    console.log(`Chapter changed to: ${currentChapter}`);
+    setCurrentPage(1);
+    setPages([]); // Clear pages to force re-pagination
+  }, [currentChapter]);
+
   // Highlight descriptions in text
   useEffect(() => {
     if (chapter?.descriptions) {
@@ -190,21 +190,25 @@ export const BookReader: React.FC<BookReaderProps> = ({
   }, [chapter]);
 
   const nextPage = () => {
+    console.log(`Next page: current=${currentPage}, total=${pages.length}, chapter=${currentChapter}`);
     if (currentPage < pages.length) {
       setCurrentPage(prev => prev + 1);
     } else if (currentChapter < (book?.chapters?.length || book?.chapters_count || 0)) {
+      console.log('Moving to next chapter');
       setCurrentChapter(prev => prev + 1);
       setCurrentPage(1);
     }
   };
 
   const prevPage = () => {
+    console.log(`Prev page: current=${currentPage}, total=${pages.length}, chapter=${currentChapter}`);
     if (currentPage > 1) {
       setCurrentPage(prev => prev - 1);
     } else if (currentChapter > 1) {
+      console.log('Moving to previous chapter');
       setCurrentChapter(prev => prev - 1);
-      setCurrentPage(1); // Start at first page of previous chapter
-      // TODO: Should jump to last page of previous chapter
+      // Start at first page - will set to last page when new chapter loads
+      setCurrentPage(1);
     }
   };
 
@@ -463,11 +467,20 @@ export const BookReader: React.FC<BookReaderProps> = ({
                 dangerouslySetInnerHTML={{
                   __html: (() => {
                     const pageContent = pages[currentPage - 1];
-                    if (pageContent && highlightedDescriptions.length > 0) {
-                      console.log('Highlighting descriptions in page:', highlightedDescriptions.length);
-                      return highlightDescription(pageContent, highlightedDescriptions);
+                    console.log(`Displaying page ${currentPage} of ${pages.length}, content length: ${pageContent?.length || 0}`);
+                    
+                    if (pageContent) {
+                      if (highlightedDescriptions.length > 0) {
+                        console.log('Highlighting descriptions in page:', highlightedDescriptions.length);
+                        return highlightDescription(pageContent, highlightedDescriptions);
+                      }
+                      return pageContent;
                     }
-                    return pageContent || chapter.chapter?.html_content || chapter.chapter?.content || '';
+                    
+                    // Fallback to full content if pagination failed
+                    const fallbackContent = chapter.chapter?.html_content || chapter.chapter?.content || '';
+                    console.log('Using fallback content, length:', fallbackContent.length);
+                    return fallbackContent;
                   })()
                 }}
                 className="select-text epub-content"
