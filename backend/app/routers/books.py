@@ -782,14 +782,27 @@ async def process_book_descriptions(
                 detail="Book not found"
             )
         
-        # Запускаем Celery задачу
+        # Запускаем Celery задачу или синхронную обработку
         try:
-            process_book_task.delay(book_id)
-            return {
-                "book_id": book_id,
-                "status": "processing_started",
-                "message": "Book processing started. Descriptions will be extracted in background."
-            }
+            try:
+                # Пробуем Celery
+                process_book_task.delay(book_id)
+                return {
+                    "book_id": book_id,
+                    "status": "processing_started",
+                    "message": "Book processing started. Descriptions will be extracted in background."
+                }
+            except Exception as celery_error:
+                print(f"[CELERY ERROR] Celery unavailable, processing synchronously: {str(celery_error)}")
+                # Если Celery недоступен, обрабатываем синхронно
+                from ..services.nlp_processor import process_book_descriptions
+                result = await process_book_descriptions(book_id, db)
+                return {
+                    "book_id": book_id,
+                    "status": "completed",
+                    "message": "Book processing completed synchronously.",
+                    "descriptions_found": result.get("total_descriptions", 0)
+                }
         except Exception as e:
             raise HTTPException(
                 status_code=503,
