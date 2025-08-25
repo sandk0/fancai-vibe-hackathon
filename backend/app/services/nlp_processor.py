@@ -408,5 +408,107 @@ class NLPProcessor:
         return None
 
 
+async def process_book_descriptions(book_id: str, db) -> dict:
+    """
+    Обрабатывает описания для книги и сохраняет их в БД.
+    
+    Args:
+        book_id: ID книги для обработки
+        db: Сессия базы данных
+        
+    Returns:
+        Словарь с результатами обработки
+    """
+    from uuid import UUID
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    from ..models.book import Book
+    from ..models.description import Description
+    
+    descriptions_count = 0
+    
+    try:
+        # Получаем книгу с главами
+        result = await db.execute(
+            select(Book)
+            .options(selectinload(Book.chapters))
+            .where(Book.id == UUID(book_id))
+        )
+        book = result.scalar_one_or_none()
+        
+        if not book:
+            return {"error": "Book not found", "total_descriptions": 0}
+            
+        print(f"📖 Обрабатываем: {book.title}")
+        print(f"   Глав: {len(book.chapters)}")
+        
+        for chapter in book.chapters:
+            if chapter.is_description_parsed:
+                print(f"   ⏭️  Глава {chapter.chapter_number} уже обработана")
+                continue
+                
+            print(f"   🔄 Обрабатываем главу {chapter.chapter_number}: {chapter.title}")
+            
+            # Извлекаем описания с помощью NLP
+            try:
+                descriptions_data = nlp_processor.extract_descriptions_from_text(
+                    text=chapter.content,
+                    chapter_id=str(chapter.id)
+                )
+                
+                print(f"      Найдено описаний: {len(descriptions_data)}")
+                
+                # Создаём объекты описаний
+                for desc_data in descriptions_data:
+                    description = Description(
+                        chapter_id=chapter.id,
+                        type=desc_data["type"],
+                        content=desc_data["content"],
+                        context=desc_data.get("context", ""),
+                        confidence_score=desc_data["confidence_score"],
+                        priority_score=desc_data["priority_score"],
+                        position_in_chapter=desc_data.get("position_in_chapter", 0),
+                        word_count=len(desc_data["content"].split()),
+                        entities_mentioned=", ".join(desc_data.get("entities_mentioned", [])),
+                        emotional_tone=desc_data.get("emotional_tone", "neutral"),
+                        complexity_level=desc_data.get("complexity_level", "medium"),
+                        is_suitable_for_generation=desc_data.get("confidence_score", 0) >= 0.3
+                    )
+                    db.add(description)
+                    descriptions_count += 1
+                
+                # Обновляем статус главы
+                chapter.is_description_parsed = True
+                chapter.descriptions_found = len(descriptions_data)
+                chapter.parsing_progress = 100.0
+                
+                print(f"      ✅ Сохранено {len(descriptions_data)} описаний")
+                
+            except Exception as e:
+                print(f"      ❌ Ошибка обработки: {str(e)}")
+                continue
+        
+        # Сохраняем изменения
+        await db.commit()
+        
+        # Обновляем статус книги
+        book.is_parsed = True
+        await db.commit()
+        
+        return {
+            "success": True,
+            "total_descriptions": descriptions_count,
+            "book_title": book.title
+        }
+        
+    except Exception as e:
+        print(f"❌ Общая ошибка обработки книги {book_id}: {str(e)}")
+        await db.rollback()
+        return {
+            "error": str(e),
+            "total_descriptions": 0
+        }
+
+
 # Глобальный экземпляр процессора
 nlp_processor = NLPProcessor()
