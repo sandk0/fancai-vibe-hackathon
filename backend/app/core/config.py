@@ -58,11 +58,15 @@ class Settings(BaseSettings):
     # Логирование
     LOG_LEVEL: str = "INFO"
     
-    # CORS
-    CORS_ORIGINS: list = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000"
-    ]
+    # CORS  
+    CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+    
+    @property
+    def cors_origins_list(self) -> list:
+        """Возвращает список CORS origins из строки."""
+        if isinstance(self.CORS_ORIGINS, str):
+            return [origin.strip() for origin in self.CORS_ORIGINS.split(',') if origin.strip()]
+        return self.CORS_ORIGINS
     
     class Config:
         """Настройка загрузки переменных окружения."""
