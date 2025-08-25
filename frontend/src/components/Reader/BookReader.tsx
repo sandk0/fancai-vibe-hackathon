@@ -50,7 +50,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
   });
 
   // Fetch chapter data
-  const { data: chapter, isLoading: chapterLoading, error: chapterError } = useQuery({
+  const { data: chapter, isLoading: chapterLoading, error: chapterError, refetch } = useQuery({
     queryKey: ['chapter', bookId, currentChapter],
     queryFn: () => booksAPI.getChapter(bookId, currentChapter),
     enabled: !!bookId,
