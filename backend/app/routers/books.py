@@ -783,10 +783,13 @@ async def process_book_descriptions(
             )
         
         # Запускаем Celery задачу или синхронную обработку
+        print(f"🚀 Starting processing for book {book_id}")
         try:
             try:
                 # Пробуем Celery
+                print("🔄 Attempting to use Celery...")
                 process_book_task.delay(book_id)
+                print("✅ Celery task queued successfully")
                 return {
                     "book_id": book_id,
                     "status": "processing_started",
@@ -795,8 +798,10 @@ async def process_book_descriptions(
             except Exception as celery_error:
                 print(f"[CELERY ERROR] Celery unavailable, processing synchronously: {str(celery_error)}")
                 # Если Celery недоступен, обрабатываем синхронно
+                print("🔄 Falling back to synchronous processing...")
                 from ..services.nlp_processor import process_book_descriptions
                 result = await process_book_descriptions(book_id, db)
+                print(f"✅ Synchronous processing completed. Found {result.get('total_descriptions', 0)} descriptions")
                 return {
                     "book_id": book_id,
                     "status": "completed",
