@@ -235,7 +235,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
     }
   }, [currentChapter, book, bookId, updateReadingProgress]);
 
-  // Highlight descriptions in text
+  // Highlight descriptions in text and trigger parsing if needed
   useEffect(() => {
     // API returns descriptions at root level, not in chapter object
     if (chapter?.descriptions && Array.isArray(chapter.descriptions)) {
@@ -245,8 +245,39 @@ export const BookReader: React.FC<BookReaderProps> = ({
       console.log('No descriptions in chapter:', chapter);
       console.log('Chapter structure:', chapter);
       setHighlightedDescriptions([]);
+      
+      // Auto-trigger parsing if no descriptions found (only once per book)
+      const parsedBooksKey = 'parsed_books';
+      const parsedBooks = JSON.parse(localStorage.getItem(parsedBooksKey) || '[]');
+      
+      if (bookId && !parsedBooks.includes(bookId)) {
+        console.log('📝 Auto-triggering description parsing for book:', bookId);
+        
+        fetch(`/api/v1/books/${bookId}/process`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+          }
+        })
+        .then(r => r.json())
+        .then(data => {
+          console.log('📝 Parsing triggered:', data);
+          // Mark book as parsed
+          parsedBooks.push(bookId);
+          localStorage.setItem(parsedBooksKey, JSON.stringify(parsedBooks));
+          
+          // Show notification
+          alert('Парсинг описаний запущен. Страница обновится через 10 секунд.');
+          
+          // Refresh page after delay to load parsed descriptions
+          setTimeout(() => {
+            window.location.reload();
+          }, 10000);
+        })
+        .catch(err => console.error('Failed to trigger parsing:', err));
+      }
     }
-  }, [chapter]);
+  }, [chapter, bookId]);
 
   const nextPage = () => {
     console.log(`Next page: current=${currentPage}, total=${pages.length}, chapter=${currentChapter}`);
