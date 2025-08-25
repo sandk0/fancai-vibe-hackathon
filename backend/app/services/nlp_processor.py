@@ -22,17 +22,33 @@ class NLPProcessor:
     """Главный класс для NLP обработки текстов книг."""
     
     def __init__(self):
-        """Инициализация NLP процессора с русской моделью spaCy."""
+        """Инициализация NLP процессора с русской моделью spaCy (ленивая загрузка)."""
+        self.nlp = None
+        self.loaded = False
+        self._model_loading = False
+    
+    def _load_model(self):
+        """Ленивая загрузка модели spaCy."""
+        if self._model_loading:
+            return  # Предотвращаем множественную загрузку
+        
+        self._model_loading = True
         try:
+            print("🔄 Loading spaCy model ru_core_news_lg...")
             self.nlp = spacy.load("ru_core_news_lg")
             self.loaded = True
+            print("✅ spaCy model loaded successfully")
         except OSError:
             print("⚠️ Предупреждение: русская модель spaCy не найдена. NLP функции недоступны.")
             self.nlp = None
             self.loaded = False
+        finally:
+            self._model_loading = False
     
     def is_available(self) -> bool:
         """Проверяет доступность NLP обработки."""
+        if not self.loaded and not self._model_loading:
+            self._load_model()
         return self.loaded and self.nlp is not None
     
     def extract_descriptions_from_text(self, text: str, chapter_id: str = None) -> List[Dict[str, Any]]:
