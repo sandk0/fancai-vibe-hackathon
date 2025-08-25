@@ -69,7 +69,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
     console.log('📖 Current book and chapter details:', {
       bookId: bookId,
       chapterNumber: currentChapter,
-      chapterUrl: `http://localhost:8000/api/v1/books/${bookId}/chapters/${currentChapter}`,
+      chapterUrl: `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/books/${bookId}/chapters/${currentChapter}`,
       chapterDataStructure: chapter ? Object.keys(chapter) : 'No chapter',
       descriptionsCount: chapter?.descriptions?.length || 0
     });
