@@ -267,26 +267,24 @@ export const BookReader: React.FC<BookReaderProps> = ({
       return; // Exit early if we have descriptions
     }
     
-    // If no descriptions found in chapter response, check parsing status
-    console.log('⚠️ No descriptions in chapter response, checking parsing status');
+    // If no descriptions found in chapter response, always try to trigger parsing
+    console.log('⚠️ No descriptions in chapter response, will attempt to trigger parsing');
     setHighlightedDescriptions([]);
     
-    const parsedBooksKey = 'parsed_books';
-    const parsedBooks = JSON.parse(localStorage.getItem(parsedBooksKey) || '[]');
     const recentParsingKey = 'recent_parsing';
     const recentParsing = JSON.parse(localStorage.getItem(recentParsingKey) || '{}');
-    const isRecentlyParsed = recentParsing[bookId] && (Date.now() - recentParsing[bookId] < 60000); // 1 minute
+    const isRecentlyParsed = recentParsing[bookId] && (Date.now() - recentParsing[bookId] < 300000); // 5 minutes cooldown
     
     console.log('🔍 Auto-parsing status check:', {
       bookId,
-      inParsedCache: parsedBooks.includes(bookId),
       recentlyParsed: isRecentlyParsed,
+      cooldownRemaining: isRecentlyParsed ? Math.max(0, 300000 - (Date.now() - recentParsing[bookId])) : 0,
       authToken: localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) ? 'Present' : 'Missing',
-      nextAction: !parsedBooks.includes(bookId) && !isRecentlyParsed ? 'Will trigger parsing' : 'Will try to load existing descriptions'
+      nextAction: !isRecentlyParsed ? 'Will trigger parsing' : 'Cooldown active, will wait'
     });
     
-    if (!parsedBooks.includes(bookId) && !isRecentlyParsed && bookId) {
-      // Trigger parsing for new book
+    if (!isRecentlyParsed && bookId) {
+      // Trigger parsing if not recently attempted
       console.log('📝 Auto-triggering description parsing for book:', bookId);
       
       fetch(`/api/v1/books/${bookId}/process`, {
@@ -309,42 +307,60 @@ export const BookReader: React.FC<BookReaderProps> = ({
         recentParsing[bookId] = Date.now();
         localStorage.setItem(recentParsingKey, JSON.stringify(recentParsing));
         
-        // Add to parsed books list
-        parsedBooks.push(bookId);
-        localStorage.setItem(parsedBooksKey, JSON.stringify(parsedBooks));
-        
-        // Show notification without forced reload
-        notify.success('Парсинг описаний запущен', 'Описания появятся при обновлении страницы');
-        
-        // Try to refetch chapter data after processing
-        setTimeout(() => {
-          console.log('🔄 Attempting to reload chapter data after parsing...');
-          refetch();
-        }, 8000);
+        // Show notification based on processing type
+        if (data.status === 'completed') {
+          // Synchronous processing completed
+          notify.success('Описания обработаны!', `Найдено ${data.descriptions_found || 0} описаний. Перезагружаем...`);
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        } else {
+          // Asynchronous processing started
+          notify.info('Парсинг запущен', 'Обрабатываем описания в фоновом режиме...');
+          
+          // Check for completion every 10 seconds for up to 2 minutes
+          let attempts = 0;
+          const maxAttempts = 12;
+          
+          const checkCompletion = () => {
+            attempts++;
+            console.log(`🔄 Checking parsing completion (attempt ${attempts}/${maxAttempts})`);
+            
+            refetch().then((newData) => {
+              const newDescriptions = newData?.descriptions || [];
+              if (newDescriptions.length > 0) {
+                console.log('✅ Descriptions found, parsing completed!');
+                notify.success('Парсинг завершен!', `Найдено ${newDescriptions.length} описаний. Перезагружаем...`);
+                setTimeout(() => {
+                  window.location.reload();
+                }, 2000);
+              } else if (attempts < maxAttempts) {
+                setTimeout(checkCompletion, 10000);
+              } else {
+                console.log('⏰ Parsing check timed out');
+                notify.warning('Парсинг займет время', 'Обновите страницу через несколько минут');
+              }
+            }).catch(() => {
+              if (attempts < maxAttempts) {
+                setTimeout(checkCompletion, 10000);
+              }
+            });
+          };
+          
+          // Start checking after initial delay
+          setTimeout(checkCompletion, 15000);
+        }
       })
       .catch(err => {
         console.error('❌ Failed to trigger parsing:', err);
         notify.error('Ошибка парсинга', 'Не удалось запустить обработку описаний');
       });
       
-    } else if (parsedBooks.includes(bookId)) {
-      // Book was previously parsed but no descriptions in current chapter response
-      // This could mean:
-      // 1. Processing is still ongoing
-      // 2. No descriptions found in this chapter
-      // 3. API doesn't include descriptions in response
-      console.log('📝 Book marked as parsed but no descriptions in chapter response');
-      console.log('ℹ️ This could mean processing is still ongoing or this chapter has no descriptions');
-      console.log('💡 To force re-parsing, run: localStorage.removeItem(\"parsed_books\"); localStorage.removeItem(\"recent_parsing\"); location.reload();');
-      
-      // We rely on the main chapter API to include descriptions when ready
-      // No additional API calls needed since chapter API should return descriptions
     } else {
-      console.log('📝 Auto-parsing skipped:', {
-        reason: isRecentlyParsed ? 'Recently parsed' : 'In cache',
+      console.log('📝 Auto-parsing skipped due to cooldown:', {
         bookId,
-        inParsedList: parsedBooks.includes(bookId),
-        isRecentlyParsed
+        cooldownRemaining: Math.max(0, 300000 - (Date.now() - recentParsing[bookId])),
+        message: 'Waiting for cooldown to expire before allowing new parsing attempt'
       });
     }
     
