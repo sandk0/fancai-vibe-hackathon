@@ -254,7 +254,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
         bookId,
         parsedBooks,
         alreadyParsed: parsedBooks.includes(bookId),
-        authToken: localStorage.getItem('access_token') ? 'Present' : 'Missing',
+        authToken: localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) ? 'Present' : 'Missing',
         clearStorageCommand: `localStorage.removeItem('parsed_books'); console.log('Cleared parsed books cache');`
       });
       
@@ -264,7 +264,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
         fetch(`/api/v1/books/${bookId}/process`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+            'Authorization': `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`
           }
         })
         .then(r => {
