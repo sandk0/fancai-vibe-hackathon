@@ -17,7 +17,8 @@ from app.models.book import Book
 from app.models.chapter import Chapter
 from app.models.description import Description
 from app.services.book_service import book_service
-from app.services.nlp_processor import nlp_processor
+# Lazy import to avoid loading spaCy model at startup
+# from app.services.nlp_processor import nlp_processor
 from app.services.image_generator import image_generator_service
 
 logger = logging.getLogger(__name__)
@@ -91,7 +92,8 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
             try:
                 logger.info(f"Processing chapter {chapter.chapter_number} of book {book_id}")
                 
-                # Извлекаем описания из текста главы  
+                # Извлекаем описания из текста главы (с ленивой загрузкой)
+                from app.services.nlp_processor import nlp_processor
                 descriptions = nlp_processor.extract_descriptions_from_text(chapter.content, str(chapter.id))
                 
                 # Сохраняем описания в базе данных

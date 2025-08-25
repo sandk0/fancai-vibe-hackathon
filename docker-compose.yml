@@ -68,7 +68,14 @@ services:
       - redis
     networks:
       - bookreader_network
-    command: celery -A app.core.celery_app worker --loglevel=info
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+    restart: unless-stopped
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2
 
   # Celery Beat для планировщика задач
   celery-beat:
@@ -87,6 +94,13 @@ services:
       - redis
     networks:
       - bookreader_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    restart: unless-stopped
     command: celery -A app.core.celery_app beat --loglevel=info
 
   # React Frontend
