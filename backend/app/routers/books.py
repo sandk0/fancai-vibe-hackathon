@@ -610,6 +610,7 @@ async def get_chapter(
             )
         
         # Получаем описания для этой главы с изображениями
+        print(f"🔍 [CHAPTER API] Querying descriptions for chapter {chapter.id}")
         descriptions_result = await db.execute(
             select(Description, GeneratedImage)
             .outerjoin(GeneratedImage, Description.id == GeneratedImage.description_id)
@@ -618,28 +619,38 @@ async def get_chapter(
         )
         
         descriptions_data = []
-        for description, generated_image in descriptions_result.fetchall():
-            desc_data = {
-                "id": str(description.id),
-                "type": description.type.value,
-                "content": description.content,
-                "text": description.content,  # For compatibility
-                "confidence_score": description.confidence_score,
-                "priority_score": description.priority_score,
-                "position_in_chapter": description.position_in_chapter,
-                "entities_mentioned": description.entities_mentioned,
-                "generated_image": None
-            }
-            
-            if generated_image:
-                desc_data["generated_image"] = {
-                    "id": str(generated_image.id),
-                    "image_url": generated_image.image_url,
-                    "created_at": generated_image.created_at.isoformat(),
-                    "generation_time_seconds": generated_image.generation_time_seconds
+        descriptions_rows = descriptions_result.fetchall()
+        print(f"🔍 [CHAPTER API] Database returned {len(descriptions_rows)} description rows")
+        
+        for i, (description, generated_image) in enumerate(descriptions_rows):
+            try:
+                desc_data = {
+                    "id": str(description.id),
+                    "type": description.type.value,
+                    "content": description.content,
+                    "text": description.content,  # For compatibility
+                    "confidence_score": description.confidence_score,
+                    "priority_score": description.priority_score,
+                    "position_in_chapter": description.position_in_chapter,
+                    "entities_mentioned": description.entities_mentioned,
+                    "generated_image": None
                 }
-            
-            descriptions_data.append(desc_data)
+                
+                if generated_image:
+                    desc_data["generated_image"] = {
+                        "id": str(generated_image.id),
+                        "image_url": generated_image.image_url,
+                        "created_at": generated_image.created_at.isoformat(),
+                        "generation_time_seconds": generated_image.generation_time_seconds
+                    }
+                
+                descriptions_data.append(desc_data)
+                
+            except Exception as desc_error:
+                print(f"❌ [CHAPTER API] Error processing description {i}: {str(desc_error)}")
+                continue
+        
+        print(f"✅ [CHAPTER API] Successfully processed {len(descriptions_data)} descriptions")
         
         # Навигационная информация
         has_previous = chapter_number > 1
@@ -647,7 +658,7 @@ async def get_chapter(
         previous_chapter = chapter_number - 1 if has_previous else None
         next_chapter = chapter_number + 1 if has_next else None
         
-        return {
+        result = {
             "chapter": {
                 "id": str(chapter.id),
                 "number": chapter.chapter_number,
@@ -671,6 +682,9 @@ async def get_chapter(
                 "total_chapters": len(book.chapters)
             }
         }
+        
+        print(f"📤 [CHAPTER API] Returning response with {len(result['descriptions'])} descriptions")
+        return result
         
     except HTTPException:
         raise
