@@ -123,9 +123,9 @@ services:
     command: >
       celery -A app.core.celery_app worker 
       --loglevel=${LOG_LEVEL:-info} 
-      --concurrency=${CELERY_CONCURRENCY:-2} 
+      --concurrency=${CELERY_CONCURRENCY:-1} 
       --max-tasks-per-child=1000
-      --max-memory-per-child=200000
+      --max-memory-per-child=100000
       --prefetch-multiplier=1
     environment:
       # Database & Redis
