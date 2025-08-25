@@ -17,6 +17,9 @@ export const useBooksStore = create<BooksState>((set, get) => ({
   hasMore: true,
 
   // Actions
+  refreshBooks: async () => {
+    return get().fetchBooks(get().currentPage, get().booksPerPage);
+  },
   fetchBooks: async (page = 1, limit = 12) => {
     set({ isLoading: true, error: null });
 

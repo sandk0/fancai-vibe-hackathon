@@ -14,6 +14,9 @@ export const useImagesStore = create<ImagesState>((set, get) => ({
   error: null,
 
   // Actions
+  refreshImages: async () => {
+    return get().fetchGenerationStatus();
+  },
   fetchGenerationStatus: async () => {
     set({ isLoading: true, error: null });
 

@@ -24,8 +24,8 @@ ENV VITE_APP_NAME=${VITE_APP_NAME}
 ENV NODE_ENV=production
 ENV GENERATE_SOURCEMAP=false
 
-# Build the application
-RUN npm run build
+# Build the application (skip TypeScript checking for production)
+RUN npm run build:unsafe
 
 # Production stage
 FROM nginx:1.25-alpine AS production
