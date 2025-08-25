@@ -20,6 +20,43 @@ export const useUIStore = create<UIState>((set, get) => ({
   // Notifications
   notifications: [],
 
+  // Notification helpers
+  notify: {
+    success: (title: string, message?: string) => {
+      get().addNotification({
+        type: 'success',
+        title,
+        message,
+      });
+    },
+
+    error: (title: string, message?: string) => {
+      get().addNotification({
+        type: 'error',
+        title,
+        message,
+        duration: 10000, // Longer duration for errors
+      });
+    },
+
+    warning: (title: string, message?: string) => {
+      get().addNotification({
+        type: 'warning',
+        title,
+        message,
+        duration: 7000,
+      });
+    },
+
+    info: (title: string, message?: string) => {
+      get().addNotification({
+        type: 'info',
+        title,
+        message,
+      });
+    },
+  },
+
   // Actions
   setLoading: (loading, message = '') => {
     set({ isLoading: loading, loadingMessage: message });

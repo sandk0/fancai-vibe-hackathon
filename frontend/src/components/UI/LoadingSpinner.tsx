@@ -2,16 +2,21 @@ import React from 'react';
 import { cn } from '@/utils/cn';
 
 interface LoadingSpinnerProps {
-  size?: 'small' | 'medium' | 'large';
+  size?: 'small' | 'medium' | 'large' | 'sm' | 'lg';
   className?: string;
   color?: 'primary' | 'secondary' | 'white';
+  text?: string;
 }
 
 const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   size = 'medium',
   className,
   color = 'primary',
+  text,
 }) => {
+  // Map aliases to main sizes
+  const normalizedSize = size === 'sm' ? 'small' : size === 'lg' ? 'large' : size;
+  
   const sizeClasses = {
     small: 'w-4 h-4',
     medium: 'w-8 h-8',
@@ -25,17 +30,22 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   };
 
   return (
-    <div
-      className={cn(
-        'animate-spin rounded-full border-2',
-        sizeClasses[size],
-        colorClasses[color],
-        className
+    <div className={cn('flex items-center', text ? 'space-x-3' : '')}>
+      <div
+        className={cn(
+          'animate-spin rounded-full border-2',
+          sizeClasses[normalizedSize],
+          colorClasses[color],
+          className
+        )}
+        role="status"
+        aria-label="Loading"
+      >
+        <span className="sr-only">Loading...</span>
+      </div>
+      {text && (
+        <span className="text-gray-600 dark:text-gray-400">{text}</span>
       )}
-      role="status"
-      aria-label="Loading"
-    >
-      <span className="sr-only">Loading...</span>
     </div>
   );
 };

@@ -4,6 +4,18 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noImplicitAny": false,
-    "strict": false
+    "strict": false,
+    "noImplicitReturns": false,
+    "noImplicitThis": false,
+    "noImplicitOverride": false,
+    "noUncheckedIndexedAccess": false,
+    "exactOptionalPropertyTypes": false,
+    "skipLibCheck": true,
+    "noPropertyAccessFromIndexSignature": false,
+    "suppressImplicitAnyIndexErrors": true,
+    "noStrictGenericChecks": true,
+    "allowUnusedLabels": true,
+    "allowUnreachableCode": true,
+    "noEmitOnError": false
   }
 }

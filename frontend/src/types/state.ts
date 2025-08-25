@@ -11,6 +11,12 @@ export interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   
+  // Token storage
+  tokens: {
+    access_token: string | null;
+    refresh_token: string | null;
+  } | null;
+  
   // Actions
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, fullName?: string) => Promise<void>;
@@ -38,13 +44,16 @@ export interface BooksState {
   // Actions
   fetchBooks: (page?: number, limit?: number) => Promise<void>;
   fetchBook: (bookId: string) => Promise<void>;
-  fetchChapter: (bookId: string, chapterNumber: number) => Promise<void>;
-  uploadBook: (file: File) => Promise<void>;
+  fetchChapter: (bookId: string, chapterNumber: number) => Promise<any>;
+  uploadBook: (file: File) => Promise<any>;
   deleteBook: (bookId: string) => Promise<void>;
-  updateReadingProgress: (bookId: string, currentPage: number, chapterNumber: number) => Promise<void>;
+  updateReadingProgress: (bookId: string, currentPage: number, chapterNumber: number) => Promise<any>;
   setCurrentBook: (book: Book | null) => void;
   setCurrentChapter: (chapter: Chapter | null) => void;
   clearError: () => void;
+  
+  // Additional methods for compatibility
+  refreshBooks: () => Promise<void>;
 }
 
 // Images Store State
@@ -59,11 +68,14 @@ export interface ImagesState {
   
   // Actions
   fetchGenerationStatus: () => Promise<void>;
-  generateImageForDescription: (descriptionId: string, params?: any) => Promise<void>;
-  generateImagesForChapter: (chapterId: string, params?: any) => Promise<void>;
+  generateImageForDescription: (descriptionId: string, params?: any) => Promise<any>;
+  generateImagesForChapter: (chapterId: string, params?: any) => Promise<any>;
   fetchBookImages: (bookId: string) => Promise<void>;
   deleteImage: (imageId: string) => Promise<void>;
   clearError: () => void;
+  
+  // Additional methods for compatibility
+  refreshImages: () => Promise<void>;
 }
 
 // Reader Store State
@@ -128,6 +140,14 @@ export interface UIState {
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp'>) => void;
   removeNotification: (id: string) => void;
   clearNotifications: () => void;
+  
+  // Notification helpers
+  notify: {
+    success: (title: string, message?: string) => void;
+    error: (title: string, message?: string) => void;
+    warning: (title: string, message?: string) => void;
+    info: (title: string, message?: string) => void;
+  };
 }
 
 // Notification Type

@@ -123,6 +123,7 @@ export interface BookDetail extends Book {
   file_format: string;
   file_size_mb: number;
   parsing_progress: number;
+  total_chapters: number;
 }
 
 export interface BookUploadResponse {
@@ -145,7 +146,7 @@ export interface Description {
   id: string;
   type: DescriptionType;
   text: string;
-  content?: string;
+  content: string;
   confidence_score: number;
   priority_score: number;
   entities_mentioned: string[];
