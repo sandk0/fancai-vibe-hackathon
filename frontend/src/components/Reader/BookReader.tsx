@@ -327,33 +327,18 @@ export const BookReader: React.FC<BookReaderProps> = ({
         notify.error('Ошибка парсинга', 'Не удалось запустить обработку описаний');
       });
       
-    } else if (parsedBooks.includes(bookId) && bookId && currentChapter) {
-      // Try to load descriptions for previously parsed book via dedicated API
-      console.log('📝 Attempting to load existing descriptions for parsed book');
+    } else if (parsedBooks.includes(bookId)) {
+      // Book was previously parsed but no descriptions in current chapter response
+      // This could mean:
+      // 1. Processing is still ongoing
+      // 2. No descriptions found in this chapter
+      // 3. API doesn't include descriptions in response
+      console.log('📝 Book marked as parsed but no descriptions in chapter response');
+      console.log('ℹ️ This could mean processing is still ongoing or this chapter has no descriptions');
+      console.log('💡 To force re-parsing, run: localStorage.removeItem(\"parsed_books\"); localStorage.removeItem(\"recent_parsing\"); location.reload();');
       
-      fetch(`/api/v1/books/${bookId}/chapters/${currentChapter}/descriptions`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`
-        }
-      })
-      .then(r => {
-        if (!r.ok) {
-          console.log(`ℹ️ Descriptions API returned ${r.status}, may not be available`);
-          return null;
-        }
-        return r.json();
-      })
-      .then(data => {
-        if (data?.nlp_analysis?.descriptions && Array.isArray(data.nlp_analysis.descriptions) && data.nlp_analysis.descriptions.length > 0) {
-          console.log('✅ Loaded existing descriptions via API:', data.nlp_analysis.descriptions.length);
-          setHighlightedDescriptions(data.nlp_analysis.descriptions);
-        } else {
-          console.log('ℹ️ No descriptions found in dedicated API response');
-        }
-      })
-      .catch(err => {
-        console.log('ℹ️ Could not load descriptions via dedicated API:', err.message);
-      });
+      // We rely on the main chapter API to include descriptions when ready
+      // No additional API calls needed since chapter API should return descriptions
     } else {
       console.log('📝 Auto-parsing skipped:', {
         reason: isRecentlyParsed ? 'Recently parsed' : 'In cache',
