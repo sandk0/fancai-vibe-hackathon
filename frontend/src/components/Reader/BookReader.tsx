@@ -250,6 +250,13 @@ export const BookReader: React.FC<BookReaderProps> = ({
       const parsedBooksKey = 'parsed_books';
       const parsedBooks = JSON.parse(localStorage.getItem(parsedBooksKey) || '[]');
       
+      console.log('🔍 Auto-parsing check:', {
+        bookId,
+        parsedBooks,
+        alreadyParsed: parsedBooks.includes(bookId),
+        authToken: localStorage.getItem('access_token') ? 'Present' : 'Missing'
+      });
+      
       if (bookId && !parsedBooks.includes(bookId)) {
         console.log('📝 Auto-triggering description parsing for book:', bookId);
         
@@ -259,9 +266,15 @@ export const BookReader: React.FC<BookReaderProps> = ({
             'Authorization': `Bearer ${localStorage.getItem('access_token')}`
           }
         })
-        .then(r => r.json())
+        .then(r => {
+          console.log('📝 Parse request response status:', r.status);
+          if (!r.ok) {
+            throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+          }
+          return r.json();
+        })
         .then(data => {
-          console.log('📝 Parsing triggered:', data);
+          console.log('📝 Parsing triggered successfully:', data);
           // Mark book as parsed
           parsedBooks.push(bookId);
           localStorage.setItem(parsedBooksKey, JSON.stringify(parsedBooks));
@@ -274,7 +287,10 @@ export const BookReader: React.FC<BookReaderProps> = ({
             window.location.reload();
           }, 10000);
         })
-        .catch(err => console.error('Failed to trigger parsing:', err));
+        .catch(err => {
+          console.error('❌ Failed to trigger parsing:', err);
+          // Don't add to parsed list if failed
+        });
       }
     }
   }, [chapter, bookId]);
