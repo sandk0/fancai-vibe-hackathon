@@ -62,8 +62,13 @@ class NLPProcessor:
         Returns:
             Список найденных описаний с метаданными
         """
+        print(f"🔍 extract_descriptions_from_text called for chapter {chapter_id}, text length: {len(text)}")
+        
         if not self.is_available():
+            print("❌ NLP processor not available in extract_descriptions_from_text")
             return []
+        
+        print("✅ NLP processor is available, proceeding with extraction")
         
         # Очистка текста
         cleaned_text = self._clean_text(text)
@@ -457,6 +462,13 @@ async def process_book_descriptions(book_id: str, db) -> dict:
             
         print(f"📖 Обрабатываем: {book.title}")
         print(f"   Глав: {len(book.chapters)}")
+        print(f"🔧 NLP процессор доступен: {nlp_processor.is_available()}")
+        
+        # Проверяем доступность процессора
+        if not nlp_processor.is_available():
+            print("❌ NLP процессор недоступен, попытка загрузки...")
+            nlp_processor._load_model()
+            print(f"🔧 После загрузки: {nlp_processor.is_available()}")
         
         for chapter in book.chapters:
             if chapter.is_description_parsed:
