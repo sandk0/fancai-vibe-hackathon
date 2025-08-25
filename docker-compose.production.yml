@@ -273,7 +273,7 @@ services:
 
   # Log Management with rotation
   logrotate:
-    image: linkyard/docker-logrotate
+    image: blacklabelops/logrotate:latest
     container_name: bookreader_logrotate
     volumes:
       - ./logs:/logs

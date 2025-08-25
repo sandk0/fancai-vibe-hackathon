@@ -2,7 +2,7 @@
 
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { STORAGE_KEYS } from '@/types/state';
-import type { ApiResponse, ApiError } from '@/types/api';
+import type { ApiError } from '@/types/api';
 
 class ApiClient {
   public client: AxiosInstance;
