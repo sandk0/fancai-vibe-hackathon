@@ -254,7 +254,8 @@ export const BookReader: React.FC<BookReaderProps> = ({
         bookId,
         parsedBooks,
         alreadyParsed: parsedBooks.includes(bookId),
-        authToken: localStorage.getItem('access_token') ? 'Present' : 'Missing'
+        authToken: localStorage.getItem('access_token') ? 'Present' : 'Missing',
+        clearStorageCommand: `localStorage.removeItem('parsed_books'); console.log('Cleared parsed books cache');`
       });
       
       if (bookId && !parsedBooks.includes(bookId)) {
@@ -290,6 +291,12 @@ export const BookReader: React.FC<BookReaderProps> = ({
         .catch(err => {
           console.error('❌ Failed to trigger parsing:', err);
           // Don't add to parsed list if failed
+        });
+      } else {
+        console.log('📝 Auto-parsing skipped:', {
+          reason: !bookId ? 'No bookId' : 'Already parsed',
+          bookId,
+          inParsedList: parsedBooks.includes(bookId)
         });
       }
     }
