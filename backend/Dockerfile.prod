@@ -55,9 +55,10 @@ WORKDIR /app
 COPY --chown=appuser:appuser . .
 
 # Create necessary directories with proper permissions
-RUN mkdir -p /app/logs /app/storage/books /app/storage/books/covers /app/uploads && \
+RUN mkdir -p /app/logs /app/storage/books /app/storage/books/covers /app/storage/images /app/uploads && \
     chown -R appuser:appuser /app && \
-    chmod -R 755 /app
+    chmod -R 755 /app && \
+    chmod -R 777 /app/storage /app/uploads /app/logs
 
 # Switch to non-root user
 USER appuser
