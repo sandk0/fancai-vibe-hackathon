@@ -46,12 +46,13 @@ services:
     restart: unless-stopped
     networks:
       - bookreader_network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+    # Временно отключен healthcheck
+    # healthcheck:
+    #   test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 30s
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
 
