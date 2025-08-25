@@ -51,16 +51,22 @@ def process_book_task(book_id_str: str) -> Dict[str, Any]:
         Результат обработки с количеством найденных описаний
     """
     try:
+        print(f"🚀 [CELERY TASK] Starting book processing for book_id={book_id_str}")
         book_id = UUID(book_id_str)
         logger.info(f"Starting book processing for book_id={book_id}")
         
         result = _run_async_task(_process_book_async(book_id))
         
+        print(f"✅ [CELERY TASK] Book processing completed for book_id={book_id}, result: {result}")
         logger.info(f"Book processing completed for book_id={book_id}")
         return result
         
     except Exception as e:
-        logger.error(f"Error processing book {book_id_str}: {str(e)}")
+        error_msg = f"Error processing book {book_id_str}: {str(e)}"
+        print(f"❌ [CELERY TASK] {error_msg}")
+        logger.error(error_msg)
+        import traceback
+        print(f"🔍 [CELERY TASK] Full traceback: {traceback.format_exc()}")
         return {
             "book_id": book_id_str,
             "status": "failed",
@@ -71,12 +77,18 @@ def process_book_task(book_id_str: str) -> Dict[str, Any]:
 async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
     """Асинхронная функция обработки книги."""
     async with AsyncSessionLocal() as db:
+        print(f"🔍 [ASYNC TASK] Starting async processing for book {book_id}")
+        
         # Получаем книгу
         book_result = await db.execute(select(Book).where(Book.id == book_id))
         book = book_result.scalar_one_or_none()
         
         if not book:
-            raise ValueError(f"Book with id {book_id} not found")
+            error_msg = f"Book with id {book_id} not found"
+            print(f"❌ [ASYNC TASK] {error_msg}")
+            raise ValueError(error_msg)
+        
+        print(f"📚 [ASYNC TASK] Found book: {book.title} by {book.author}")
         
         # Получаем главы для обработки
         chapters_result = await db.execute(
@@ -84,60 +96,90 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
         )
         chapters = chapters_result.scalars().all()
         
+        print(f"📖 [ASYNC TASK] Found {len(chapters)} chapters to process")
+        
         total_descriptions = 0
         processed_chapters = 0
         
         # Обрабатываем каждую главу
         for chapter in chapters:
             try:
+                print(f"🔄 [ASYNC TASK] Processing chapter {chapter.chapter_number}: {chapter.title}")
                 logger.info(f"Processing chapter {chapter.chapter_number} of book {book_id}")
                 
                 # Извлекаем описания из текста главы (с ленивой загрузкой)
                 from app.services.nlp_processor import nlp_processor
+                
+                print(f"📝 [ASYNC TASK] Chapter content length: {len(chapter.content)} chars")
+                print(f"🧠 [ASYNC TASK] NLP processor available: {nlp_processor.is_available()}")
+                
                 descriptions = nlp_processor.extract_descriptions_from_text(chapter.content, str(chapter.id))
                 
+                print(f"🔍 [ASYNC TASK] NLP extracted {len(descriptions)} descriptions")
+                if descriptions:
+                    print(f"🔍 [ASYNC TASK] First description sample: {descriptions[0]}")
+                
                 # Сохраняем описания в базе данных
-                for desc_data in descriptions:
+                for i, desc_data in enumerate(descriptions):
+                    print(f"💾 [ASYNC TASK] Saving description {i+1}/{len(descriptions)}: type={desc_data['type']}")
                     description = Description(
                         chapter_id=chapter.id,
                         type=desc_data["type"],
                         content=desc_data["content"],
-                        context=desc_data["context"],
+                        context=desc_data.get("context", ""),
                         confidence_score=desc_data["confidence_score"],
-                        position_in_chapter=desc_data["position_in_chapter"],
-                        word_count=desc_data["word_count"],
+                        position_in_chapter=desc_data.get("position_in_chapter", 0),
+                        word_count=desc_data.get("word_count", len(desc_data["content"].split())),
                         priority_score=desc_data["priority_score"],
-                        entities_mentioned=",".join(desc_data["entities_mentioned"]) if desc_data.get("entities_mentioned") else ""
+                        entities_mentioned=", ".join(desc_data["entities_mentioned"]) if desc_data.get("entities_mentioned") else ""
                     )
                     db.add(description)
+                    print(f"✅ [ASYNC TASK] Added description to session: {description.content[:50]}...")
                 
+                print(f"💾 [ASYNC TASK] Committing {len(descriptions)} descriptions to database...")
                 await db.commit()
+                print(f"✅ [ASYNC TASK] Successfully committed descriptions")
+                
                 total_descriptions += len(descriptions)
                 processed_chapters += 1
+                
+                # Обновляем прогресс парсинга главы
+                chapter.is_description_parsed = True
+                chapter.descriptions_found = len(descriptions)
+                chapter.parsing_progress = 100.0
                 
                 # Обновляем прогресс парсинга книги
                 book.parsing_progress = int((processed_chapters / len(chapters)) * 100)
                 await db.commit()
                 
+                print(f"✅ [ASYNC TASK] Chapter {chapter.chapter_number} completed: {len(descriptions)} descriptions")
                 logger.info(f"Found {len(descriptions)} descriptions in chapter {chapter.chapter_number}")
                 
             except Exception as e:
-                logger.error(f"Error processing chapter {chapter.chapter_number}: {str(e)}")
+                error_msg = f"Error processing chapter {chapter.chapter_number}: {str(e)}"
+                print(f"❌ [ASYNC TASK] {error_msg}")
+                logger.error(error_msg)
+                import traceback
+                print(f"🔍 [ASYNC TASK] Chapter error traceback: {traceback.format_exc()}")
                 # Продолжаем обработку других глав
                 continue
         
         # Помечаем книгу как обработанную
+        print(f"🏁 [ASYNC TASK] Marking book as parsed: {total_descriptions} total descriptions")
         book.is_parsed = True
         book.parsing_progress = 100
         await db.commit()
         
-        return {
+        result = {
             "book_id": str(book_id),
             "status": "completed",
             "descriptions_found": total_descriptions,
             "chapters_processed": processed_chapters,
             "total_chapters": len(chapters)
         }
+        
+        print(f"🎉 [ASYNC TASK] Final result: {result}")
+        return result
 
 
 @celery_app.task(name="generate_images")
