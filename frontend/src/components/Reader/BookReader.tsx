@@ -235,72 +235,135 @@ export const BookReader: React.FC<BookReaderProps> = ({
     }
   }, [currentChapter, book, bookId, updateReadingProgress]);
 
-  // Highlight descriptions in text and trigger parsing if needed
+  // Handle descriptions from API response and auto-parsing
   useEffect(() => {
-    // API returns descriptions at root level, not in chapter object
-    if (chapter?.descriptions && Array.isArray(chapter.descriptions)) {
-      console.log('Descriptions received:', chapter.descriptions);
-      setHighlightedDescriptions(chapter.descriptions);
-    } else {
-      console.log('No descriptions in chapter:', chapter);
-      console.log('Chapter structure:', chapter);
-      setHighlightedDescriptions([]);
+    if (!chapter) return;
+    
+    // Check for descriptions in different possible locations in API response
+    let descriptions = [];
+    
+    if (chapter.descriptions && Array.isArray(chapter.descriptions)) {
+      descriptions = chapter.descriptions;
+    } else if (chapter.chapter?.descriptions && Array.isArray(chapter.chapter.descriptions)) {
+      descriptions = chapter.chapter.descriptions;  
+    } else if (Array.isArray(chapter)) {
+      // Sometimes API returns descriptions array directly
+      descriptions = chapter;
+    }
+    
+    console.log('📖 Chapter API response analysis:', {
+      hasDescriptions: descriptions.length > 0,
+      descriptionsCount: descriptions.length,
+      chapterKeys: Object.keys(chapter),
+      sampleDescription: descriptions[0] ? {
+        type: descriptions[0].type,
+        content: descriptions[0].content?.substring(0, 100) + '...'
+      } : null
+    });
+    
+    if (descriptions.length > 0) {
+      console.log('✅ Descriptions loaded from chapter API:', descriptions.length);
+      setHighlightedDescriptions(descriptions);
+      return; // Exit early if we have descriptions
+    }
+    
+    // If no descriptions found in chapter response, check parsing status
+    console.log('⚠️ No descriptions in chapter response, checking parsing status');
+    setHighlightedDescriptions([]);
+    
+    const parsedBooksKey = 'parsed_books';
+    const parsedBooks = JSON.parse(localStorage.getItem(parsedBooksKey) || '[]');
+    const recentParsingKey = 'recent_parsing';
+    const recentParsing = JSON.parse(localStorage.getItem(recentParsingKey) || '{}');
+    const isRecentlyParsed = recentParsing[bookId] && (Date.now() - recentParsing[bookId] < 60000); // 1 minute
+    
+    console.log('🔍 Auto-parsing status check:', {
+      bookId,
+      inParsedCache: parsedBooks.includes(bookId),
+      recentlyParsed: isRecentlyParsed,
+      authToken: localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) ? 'Present' : 'Missing',
+      nextAction: !parsedBooks.includes(bookId) && !isRecentlyParsed ? 'Will trigger parsing' : 'Will try to load existing descriptions'
+    });
+    
+    if (!parsedBooks.includes(bookId) && !isRecentlyParsed && bookId) {
+      // Trigger parsing for new book
+      console.log('📝 Auto-triggering description parsing for book:', bookId);
       
-      // Auto-trigger parsing if no descriptions found (only once per book)
-      const parsedBooksKey = 'parsed_books';
-      const parsedBooks = JSON.parse(localStorage.getItem(parsedBooksKey) || '[]');
-      
-      console.log('🔍 Auto-parsing check:', {
-        bookId,
-        parsedBooks,
-        alreadyParsed: parsedBooks.includes(bookId),
-        authToken: localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) ? 'Present' : 'Missing',
-        clearStorageCommand: `localStorage.removeItem('parsed_books'); console.log('Cleared parsed books cache');`
+      fetch(`/api/v1/books/${bookId}/process`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`
+        }
+      })
+      .then(r => {
+        console.log('📝 Parse request response status:', r.status);
+        if (!r.ok) {
+          throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+        }
+        return r.json();
+      })
+      .then(data => {
+        console.log('📝 Parsing triggered successfully:', data);
+        
+        // Mark as recently parsed (prevent duplicate requests)
+        recentParsing[bookId] = Date.now();
+        localStorage.setItem(recentParsingKey, JSON.stringify(recentParsing));
+        
+        // Add to parsed books list
+        parsedBooks.push(bookId);
+        localStorage.setItem(parsedBooksKey, JSON.stringify(parsedBooks));
+        
+        // Show notification without forced reload
+        notify.success('Парсинг описаний запущен', 'Описания появятся при обновлении страницы');
+        
+        // Try to refetch chapter data after processing
+        setTimeout(() => {
+          console.log('🔄 Attempting to reload chapter data after parsing...');
+          refetch();
+        }, 8000);
+      })
+      .catch(err => {
+        console.error('❌ Failed to trigger parsing:', err);
+        notify.error('Ошибка парсинга', 'Не удалось запустить обработку описаний');
       });
       
-      if (bookId && !parsedBooks.includes(bookId)) {
-        console.log('📝 Auto-triggering description parsing for book:', bookId);
-        
-        fetch(`/api/v1/books/${bookId}/process`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`
-          }
-        })
-        .then(r => {
-          console.log('📝 Parse request response status:', r.status);
-          if (!r.ok) {
-            throw new Error(`HTTP ${r.status}: ${r.statusText}`);
-          }
-          return r.json();
-        })
-        .then(data => {
-          console.log('📝 Parsing triggered successfully:', data);
-          // Mark book as parsed
-          parsedBooks.push(bookId);
-          localStorage.setItem(parsedBooksKey, JSON.stringify(parsedBooks));
-          
-          // Show notification
-          alert('Парсинг описаний запущен. Страница обновится через 10 секунд.');
-          
-          // Refresh page after delay to load parsed descriptions
-          setTimeout(() => {
-            window.location.reload();
-          }, 10000);
-        })
-        .catch(err => {
-          console.error('❌ Failed to trigger parsing:', err);
-          // Don't add to parsed list if failed
-        });
-      } else {
-        console.log('📝 Auto-parsing skipped:', {
-          reason: !bookId ? 'No bookId' : 'Already parsed',
-          bookId,
-          inParsedList: parsedBooks.includes(bookId)
-        });
-      }
+    } else if (parsedBooks.includes(bookId) && bookId && currentChapter) {
+      // Try to load descriptions for previously parsed book via dedicated API
+      console.log('📝 Attempting to load existing descriptions for parsed book');
+      
+      fetch(`/api/v1/books/${bookId}/chapters/${currentChapter}/descriptions`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`
+        }
+      })
+      .then(r => {
+        if (!r.ok) {
+          console.log(`ℹ️ Descriptions API returned ${r.status}, may not be available`);
+          return null;
+        }
+        return r.json();
+      })
+      .then(data => {
+        if (data?.nlp_analysis?.descriptions && Array.isArray(data.nlp_analysis.descriptions) && data.nlp_analysis.descriptions.length > 0) {
+          console.log('✅ Loaded existing descriptions via API:', data.nlp_analysis.descriptions.length);
+          setHighlightedDescriptions(data.nlp_analysis.descriptions);
+        } else {
+          console.log('ℹ️ No descriptions found in dedicated API response');
+        }
+      })
+      .catch(err => {
+        console.log('ℹ️ Could not load descriptions via dedicated API:', err.message);
+      });
+    } else {
+      console.log('📝 Auto-parsing skipped:', {
+        reason: isRecentlyParsed ? 'Recently parsed' : 'In cache',
+        bookId,
+        inParsedList: parsedBooks.includes(bookId),
+        isRecentlyParsed
+      });
     }
-  }, [chapter, bookId]);
+    
+  }, [chapter, bookId, currentChapter, refetch]);
 
   const nextPage = () => {
     console.log(`Next page: current=${currentPage}, total=${pages.length}, chapter=${currentChapter}`);
