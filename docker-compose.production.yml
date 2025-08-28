@@ -14,7 +14,6 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
       - ./backend/storage:/var/www/storage:ro
-      - ./logs/nginx:/var/log/nginx
     depends_on:
       frontend:
         condition: service_healthy
@@ -33,6 +32,7 @@ services:
 
   # Frontend Production Build
   frontend:
+    image: bookreader-frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
@@ -58,6 +58,7 @@ services:
 
   # Backend API
   backend:
+    image: bookreader-backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
@@ -96,7 +97,6 @@ services:
       
     volumes:
       - ./backend/storage:/app/storage
-      - ./logs/backend:/app/logs
       - /dev/shm:/dev/shm  # Shared memory for Gunicorn
     depends_on:
       postgres:
@@ -108,6 +108,12 @@ services:
       - bookreader_network
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     deploy:
       resources:
         limits:
@@ -117,6 +123,7 @@ services:
 
   # Celery Worker for background tasks
   celery-worker:
+    image: bookreader-backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
@@ -142,7 +149,6 @@ services:
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
     volumes:
       - ./backend/storage:/app/storage
-      - ./logs/celery:/app/logs
     depends_on:
       backend:
         condition: service_healthy
@@ -164,6 +170,7 @@ services:
 
   # Celery Beat Scheduler
   celery-beat:
+    image: bookreader-backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
@@ -183,7 +190,6 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
     volumes:
-      - ./logs/beat:/app/logs
       - beat_schedule:/tmp  # Persistent schedule storage
     depends_on:
       redis:
@@ -224,7 +230,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
-      - ./logs/postgres:/var/log
     restart: unless-stopped
     networks:
       - bookreader_network
@@ -258,7 +263,6 @@ services:
       --timeout 0
     volumes:
       - redis_data:/data
-      - ./logs/redis:/var/log
     restart: unless-stopped
     networks:
       - bookreader_network
