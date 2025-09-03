@@ -19,13 +19,13 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "dev-secret-key-change-in-production"
     
     # База данных
-    DATABASE_URL: str = "postgresql+asyncpg://bookreader_user:bookreader_pass@postgres:5432/bookreader"
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres123@postgres:5432/bookreader_dev"
     
     # Redis
-    REDIS_URL: str = "redis://:redis_password@redis:6379"
+    REDIS_URL: str = "redis://:redis123@redis:6379"
     
     # Безопасность
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 720  # 12 hours
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     ALGORITHM: str = "HS256"
     

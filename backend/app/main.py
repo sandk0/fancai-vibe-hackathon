@@ -13,7 +13,8 @@ from datetime import datetime
 from typing import Dict, Any
 import os
 
-from .routers import users, nlp, books, auth, images
+from .routers import users, nlp, books, auth, images, admin
+from .core.config import settings
 
 # Версия приложения
 VERSION = "0.1.0"
@@ -27,14 +28,10 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# CORS настройки для разработки
+# CORS настройки
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001"
-    ],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -44,8 +41,9 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(users.router, prefix="/api/v1", tags=["users"])
 app.include_router(nlp.router, prefix="/api/v1", tags=["nlp"])
-app.include_router(books.router, prefix="/api/v1", tags=["books"])
+app.include_router(books.router, prefix="/api/v1/books", tags=["books"])
 app.include_router(images.router, prefix="/api/v1", tags=["images"])
+app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
 
 
 @app.get("/")
@@ -116,7 +114,8 @@ async def api_info() -> Dict[str, Any]:
     }
 
 
-# Обработчик ошибок
+
+# Обработчик ошибок  
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
     """Обработчик 404 ошибок."""
@@ -134,11 +133,15 @@ async def not_found_handler(request, exc):
 @app.exception_handler(500)
 async def internal_error_handler(request, exc):
     """Обработчик внутренних ошибок сервера."""
+    import traceback
+    error_traceback = traceback.format_exc()
+    print(f"[ERROR HANDLER] 500 error: {exc}")
+    print(f"[ERROR HANDLER] Traceback: {error_traceback}")
     return JSONResponse(
         status_code=500,
         content={
             "error": "Internal Server Error", 
-            "message": "An internal server error occurred",
+            "message": f"An internal server error occurred: {str(exc)}",
             "timestamp": datetime.utcnow().isoformat()
         }
     )

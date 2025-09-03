@@ -13,6 +13,16 @@ import type {
 } from '@/types/api';
 
 export const booksAPI = {
+  // Parsing status
+  async getParsingStatus(bookId: string) {
+    return apiClient.get(`/books/${bookId}/parsing-status`);
+  },
+
+  // Start book processing
+  async processBook(bookId: string) {
+    return apiClient.post(`/books/${bookId}/process`);
+  },
+
   // Book management
   async getBooks(params?: PaginationParams): Promise<{
     books: Book[];

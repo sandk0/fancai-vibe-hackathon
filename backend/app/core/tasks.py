@@ -3,7 +3,7 @@ Background tasks for BookReader AI.
 Фоновые задачи для BookReader AI.
 """
 
-from celery import current_app as celery_app
+from app.core.celery_app import celery_app
 import asyncio
 from typing import Dict, Any, List
 import logging
@@ -20,6 +20,20 @@ from app.services.book_service import book_service
 # Lazy import to avoid loading spaCy model at startup
 # from app.services.nlp_processor import nlp_processor
 from app.services.image_generator import image_generator_service
+
+# Optional imports for optimization (graceful fallback)
+try:
+    import psutil
+    import gc
+    HAS_PSUTIL = True
+except ImportError:
+    HAS_PSUTIL = False
+
+try:
+    from app.services.optimized_parser import optimized_parser
+    USE_OPTIMIZED_PARSER = True
+except ImportError:
+    USE_OPTIMIZED_PARSER = False
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +53,13 @@ def _run_async_task(coro):
             loop.close()
 
 
-@celery_app.task(name="process_book")
-def process_book_task(book_id_str: str) -> Dict[str, Any]:
+@celery_app.task(
+    name="process_book",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60
+)
+def process_book_task(self, book_id_str: str) -> Dict[str, Any]:
     """
     Асинхронная обработка книги: парсинг глав и извлечение описаний.
     

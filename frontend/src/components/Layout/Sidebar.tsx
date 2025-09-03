@@ -7,7 +7,8 @@ import {
   Settings, 
   BarChart3,
   BookOpen,
-  Sparkles
+  Sparkles,
+  Shield
 } from 'lucide-react';
 import { useUIStore } from '@/stores/ui';
 import { useAuthStore } from '@/stores/auth';
@@ -44,6 +45,11 @@ const Sidebar: React.FC = () => {
       href: '/settings',
       icon: Settings,
     },
+    ...(user?.is_admin ? [{
+      name: 'Admin Dashboard',
+      href: '/admin',
+      icon: Shield,
+    }] : []),
   ];
 
   const handleLinkClick = () => {

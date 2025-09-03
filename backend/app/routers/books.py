@@ -5,7 +5,7 @@ API роуты для работы с книгами в BookReader AI.
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
 from fastapi.responses import JSONResponse, FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from typing import Dict, Any, List
 import tempfile
 import os
@@ -28,8 +28,18 @@ from uuid import uuid4, UUID
 
 router = APIRouter()
 
+@router.get("/simple-test")
+async def simple_test():
+    """Simple test without any dependencies"""
+    return {"status": "ok", "message": "Router is working"}
 
-@router.get("/books/parser-status")
+@router.get("/test-with-params")
+async def test_with_params(skip: int = 0, limit: int = 12):
+    """Test with query parameters like main endpoint"""
+    return {"status": "ok", "skip": skip, "limit": limit}
+
+
+@router.get("/parser-status")
 async def get_parser_status() -> Dict[str, Any]:
     """
     Проверяет статус парсера книг.
@@ -46,7 +56,7 @@ async def get_parser_status() -> Dict[str, Any]:
     }
 
 
-@router.post("/books/validate-file")
+@router.post("/validate-file")
 async def validate_book_file(file: UploadFile = File(...)) -> Dict[str, Any]:
     """
     Валидирует загруженный файл книги без сохранения.
@@ -103,7 +113,7 @@ async def validate_book_file(file: UploadFile = File(...)) -> Dict[str, Any]:
             pass
 
 
-@router.post("/books/parse-preview")
+@router.post("/parse-preview")
 async def parse_book_preview(file: UploadFile = File(...)) -> Dict[str, Any]:
     """
     Парсит книгу и возвращает предварительный просмотр без сохранения в БД.
@@ -188,7 +198,7 @@ async def parse_book_preview(file: UploadFile = File(...)) -> Dict[str, Any]:
             pass
 
 
-@router.post("/books/analyze-chapter")
+@router.post("/analyze-chapter")
 async def analyze_chapter_content(file: UploadFile = File(...), chapter_number: int = 1) -> Dict[str, Any]:
     """
     Анализирует конкретную главу книги с помощью NLP.
@@ -284,7 +294,7 @@ async def analyze_chapter_content(file: UploadFile = File(...), chapter_number: 
 
 
 
-@router.post("/books/debug-upload")
+@router.post("/debug-upload")
 async def debug_upload_book(file: UploadFile = File(None)) -> Dict[str, Any]:
     """Debug endpoint to check what frontend sends."""
     print(f"[DEBUG] File received: {file}")
@@ -296,7 +306,7 @@ async def debug_upload_book(file: UploadFile = File(None)) -> Dict[str, Any]:
     return {"debug": "ok", "has_file": file is not None}
 
 
-@router.post("/books/upload")
+@router.post("/upload")
 async def upload_book(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_active_user),
@@ -391,6 +401,8 @@ async def upload_book(
             "file_size_mb": round(file_size / (1024 * 1024), 2),
             "has_cover": bool(book.cover_image),
             "created_at": book.created_at.isoformat(),
+            "is_parsed": book.is_parsed,
+            "parsing_progress": book.parsing_progress,
             "is_processing": True,
             "message": f"Book '{book.title}' uploaded successfully. Processing descriptions in background..."
         }
@@ -410,71 +422,100 @@ async def upload_book(
         )
 
 
-@router.get("/books")
+
+@router.get("/")
 async def get_user_books(
-    skip: int = 0,
+    skip: int = 0, 
     limit: int = 50,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_database_session)
+    db: AsyncSession = Depends(get_database_session),
+    current_user: User = Depends(get_current_active_user)
 ) -> Dict[str, Any]:
+    print(f"[BOOKS ENDPOINT] FUNCTION CALLED - user={current_user.id}, skip={skip}, limit={limit}")
     """
     Получает список книг пользователя.
     
     Args:
-        skip: Количество книг для пропуска
-        limit: Максимальное количество книг
-        current_user: Текущий аутентифицированный пользователь
+        skip: Количество записей для пропуска
+        limit: Максимальное количество записей
         db: Сессия базы данных
+        current_user: Текущий пользователь
         
     Returns:
-        Список книг пользователя с метаданными
+        Список книг пользователя с пагинацией
     """
-    
+    print(f"[BOOKS ENDPOINT] Starting books request for user {current_user.id}")
     try:
-        books = await book_service.get_user_books(
-            db=db,
-            user_id=current_user.id,
-            skip=skip,
-            limit=limit
-        )
+        print(f"[BOOKS ENDPOINT] Getting books for user {current_user.id} (type: {type(current_user.id)}) (skip={skip}, limit={limit})")
         
+        # Получаем книги пользователя
+        books = await book_service.get_user_books(db, current_user.id, skip, limit)
+        print(f"[BOOKS ENDPOINT] Retrieved {len(books)} books from service")
+        
+        # Формируем ответ
         books_data = []
         for book in books:
-            # Используем унифицированный метод расчёта прогресса из модели
-            progress_percent = book.get_reading_progress_percent(current_user.id)
-            
-            books_data.append({
-                "id": str(book.id),
-                "title": book.title,
-                "author": book.author,
-                "genre": book.genre,
-                "language": book.language,
-                "description": book.description[:200] + "..." if len(book.description) > 200 else book.description,
-                "total_pages": book.total_pages,
-                "estimated_reading_time_hours": round(book.estimated_reading_time / 60, 1),
-                "chapters_count": len(book.chapters),
-                "reading_progress_percent": round(progress_percent, 1),
-                "has_cover": bool(book.cover_image),
-                "is_parsed": book.is_parsed,
-                "created_at": book.created_at.isoformat(),
-                "last_accessed": book.last_accessed.isoformat() if book.last_accessed else None
-            })
+            try:
+                reading_progress = book.get_reading_progress_percent(current_user.id)
+                
+                books_data.append({
+                    "id": str(book.id),
+                    "title": book.title,
+                    "author": book.author or "Неизвестный автор",
+                    "genre": book.genre,
+                    "language": book.language,
+                    "description": book.description or "",
+                    "total_pages": book.total_pages,
+                    "estimated_reading_time_hours": round(book.estimated_reading_time / 60, 1) if book.estimated_reading_time > 0 else 0.0,
+                    "chapters_count": len(book.chapters) if hasattr(book, 'chapters') and book.chapters else 0,
+                    "reading_progress_percent": round(reading_progress, 1),
+                    "has_cover": bool(book.cover_image),
+                    "is_parsed": book.is_parsed,
+                    "parsing_progress": book.parsing_progress,
+                    "created_at": book.created_at.isoformat() if book.created_at else None,
+                    "last_accessed": book.last_accessed.isoformat() if book.last_accessed else None
+                })
+            except Exception as e:
+                print(f"[BOOKS ENDPOINT] Error processing book {book.id}: {e}")
+                # Добавляем книгу с базовыми данными
+                books_data.append({
+                    "id": str(book.id),
+                    "title": book.title,
+                    "author": book.author or "Неизвестный автор",
+                    "genre": book.genre,
+                    "language": book.language,
+                    "description": book.description or "",
+                    "total_pages": book.total_pages,
+                    "estimated_reading_time_hours": 0.0,
+                    "chapters_count": 0,
+                    "reading_progress_percent": 0.0,
+                    "has_cover": bool(book.cover_image),
+                    "is_parsed": book.is_parsed,
+                    "parsing_progress": book.parsing_progress,
+                    "created_at": book.created_at.isoformat() if book.created_at else None,
+                    "last_accessed": book.last_accessed.isoformat() if book.last_accessed else None
+                })
+        
+        # Получаем общее количество книг для пагинации
+        total_books_result = await db.execute(
+            select(func.count(Book.id)).where(Book.user_id == current_user.id)
+        )
+        total_books = total_books_result.scalar() or 0
+        
+        print(f"[BOOKS ENDPOINT] Successfully returning {len(books_data)} books (total: {total_books})")
         
         return {
             "books": books_data,
-            "total": len(books_data),
+            "total": total_books,
             "skip": skip,
             "limit": limit
         }
         
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error fetching books: {str(e)}"
-        )
+        print(f"[BOOKS ENDPOINT] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching books: {str(e)}")
 
 
-@router.get("/books/{book_id}")
+@router.get("/{book_id}")
 async def get_book(
     book_id: str,
     current_user: User = Depends(get_current_active_user),
@@ -562,7 +603,7 @@ async def get_book(
         )
 
 
-@router.get("/books/{book_id}/chapters/{chapter_number}")
+@router.get("/{book_id}/chapters/{chapter_number}")
 async def get_chapter(
     book_id: str,
     chapter_number: int,
@@ -682,7 +723,7 @@ async def get_chapter(
         )
 
 
-@router.post("/books/{book_id}/progress")
+@router.post("/{book_id}/progress")
 async def update_reading_progress(
     book_id: str,
     progress_data: dict,
@@ -752,7 +793,7 @@ async def update_reading_progress(
         )
 
 
-@router.post("/books/{book_id}/process")
+@router.post("/{book_id}/process")
 async def process_book_descriptions(
     book_id: str,
     current_user: User = Depends(get_current_active_user),
@@ -783,37 +824,81 @@ async def process_book_descriptions(
                 detail="Book not found"
             )
         
-        # Запускаем Celery задачу или синхронную обработку
-        print(f"🚀 Starting processing for book {book_id}")
-        try:
-            try:
-                # Пробуем Celery
-                print("🔄 Attempting to use Celery...")
-                process_book_task.delay(book_id)
-                print("✅ Celery task queued successfully")
-                return {
-                    "book_id": book_id,
-                    "status": "processing_started",
-                    "message": "Book processing started. Descriptions will be extracted in background."
-                }
-            except Exception as celery_error:
-                print(f"[CELERY ERROR] Celery unavailable, processing synchronously: {str(celery_error)}")
-                # Если Celery недоступен, обрабатываем синхронно
-                print("🔄 Falling back to synchronous processing...")
-                from ..services.nlp_processor import process_book_descriptions
-                result = await process_book_descriptions(book_id, db)
-                print(f"✅ Synchronous processing completed. Found {result.get('total_descriptions', 0)} descriptions")
-                return {
-                    "book_id": book_id,
-                    "status": "completed",
-                    "message": "Book processing completed synchronously.",
-                    "descriptions_found": result.get("total_descriptions", 0)
-                }
-        except Exception as e:
-            raise HTTPException(
-                status_code=503,
-                detail=f"Failed to start processing: {str(e)}"
-            )
+        # Импортируем менеджер парсинга
+        from ..services.parsing_manager import parsing_manager
+        
+        # Проверяем текущий статус парсинга
+        parsing_status = await parsing_manager.get_parsing_status(book_id)
+        if parsing_status and parsing_status['status'] in ['queued', 'processing']:
+            return {
+                "book_id": book_id,
+                "status": parsing_status['status'],
+                "message": parsing_status.get('message', ''),
+                "progress": parsing_status.get('progress', 0),
+                "position": parsing_status.get('position'),
+                "descriptions_found": parsing_status.get('descriptions_found', 0)
+            }
+        
+        # Проверяем, можно ли начать парсинг сейчас
+        can_parse, message = await parsing_manager.can_start_parsing()
+        
+        # Получаем приоритет пользователя
+        priority = await parsing_manager.get_user_priority(current_user, db)
+        
+        if can_parse:
+            # Пытаемся получить блокировку и начать парсинг сразу
+            if await parsing_manager.acquire_parsing_lock(book_id, str(current_user.id)):
+                try:
+                    # Обновляем статус
+                    await parsing_manager.update_parsing_status(
+                        book_id,
+                        status='processing',
+                        progress=0,
+                        message='Starting book parsing...'
+                    )
+                    
+                    # Запускаем задачу
+                    process_book_task.delay(book_id)
+                    
+                    return {
+                        "book_id": book_id,
+                        "status": "processing",
+                        "message": "Book parsing started immediately",
+                        "priority": priority
+                    }
+                    
+                except Exception as e:
+                    # Освобождаем блокировку при ошибке
+                    await parsing_manager.release_parsing_lock(book_id)
+                    
+                    # Fallback на синхронную обработку
+                    from ..services.nlp_processor import process_book_descriptions
+                    result = await process_book_descriptions(book_id, db)
+                    
+                    return {
+                        "book_id": book_id,
+                        "status": "completed",
+                        "message": "Book processing completed synchronously",
+                        "descriptions_found": result.get("total_descriptions", 0)
+                    }
+        
+        # Если парсинг сейчас невозможен, добавляем в очередь
+        queue_info = await parsing_manager.add_to_parsing_queue(
+            book_id,
+            str(current_user.id),
+            priority,
+            db
+        )
+        
+        return {
+            "book_id": book_id,
+            "status": "queued",
+            "message": f"Added to parsing queue. {message}",
+            "position": queue_info['position'],
+            "total_in_queue": queue_info['total_in_queue'],
+            "estimated_wait_time": queue_info['estimated_wait_time'],
+            "priority": priority
+        }
             
     except HTTPException:
         raise
@@ -824,7 +909,76 @@ async def process_book_descriptions(
         )
 
 
-@router.get("/books/{book_id}/progress")
+
+@router.get("/{book_id}/parsing-status")
+async def get_parsing_status(
+    book_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_database_session)
+) -> Dict[str, Any]:
+    """
+    Получает статус парсинга книги.
+    
+    Args:
+        book_id: ID книги
+        current_user: Текущий пользователь
+        db: Сессия базы данных
+        
+    Returns:
+        Статус парсинга и прогресс
+    """
+    print(f"[PARSING-STATUS] Request for book_id={book_id}, user={current_user.email}")
+    try:
+        # Проверяем, что книга принадлежит пользователю
+        book = await book_service.get_book_by_id(
+            db=db,
+            book_id=UUID(book_id),
+            user_id=current_user.id
+        )
+        
+        if not book:
+            raise HTTPException(
+                status_code=404,
+                detail="Book not found"
+            )
+        
+        # Определяем статус парсинга на основе данных книги
+        if book.is_parsed:
+            response = {
+                "book_id": book_id,
+                "status": "completed",
+                "progress": 100,
+                "message": "Parsing completed",
+                "descriptions_found": sum(ch.descriptions_found for ch in book.chapters) if book.chapters else 0
+            }
+        elif book.parsing_progress > 0:
+            response = {
+                "book_id": book_id,
+                "status": "processing",
+                "progress": book.parsing_progress,
+                "message": f"Parsing in progress: {book.parsing_progress}%"
+            }
+        else:
+            response = {
+                "book_id": book_id,
+                "status": "not_started",
+                "progress": 0,
+                "message": "Parsing not started"
+            }
+        
+        print(f"[PARSING-STATUS] Response: {response}")
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching parsing status: {str(e)}"
+        )
+
+
+@router.get("/{book_id}/progress")
 async def get_reading_progress(
     book_id: str,
     current_user: User = Depends(get_current_active_user),
@@ -882,7 +1036,7 @@ async def get_reading_progress(
         )
 
 
-@router.get("/books/{book_id}/cover")
+@router.get("/{book_id}/cover")
 async def get_book_cover(
     book_id: str,
     db: AsyncSession = Depends(get_database_session)

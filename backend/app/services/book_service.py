@@ -74,8 +74,8 @@ class BookService:
             },
             total_pages=parsed_book.total_pages,
             estimated_reading_time=parsed_book.estimated_reading_time,
-            is_parsed=True,
-            parsing_progress=100
+            is_parsed=False,
+            parsing_progress=0
         )
         
         db.add(book)

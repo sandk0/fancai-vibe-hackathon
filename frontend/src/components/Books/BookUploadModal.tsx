@@ -10,6 +10,7 @@ import LoadingSpinner from '@/components/UI/LoadingSpinner';
 interface BookUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onUploadSuccess?: () => void;
 }
 
 interface FileWithPreview extends File {
@@ -27,6 +28,7 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 export const BookUploadModal: React.FC<BookUploadModalProps> = ({
   isOpen,
   onClose,
+  onUploadSuccess,
 }) => {
   const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [dragActive, setDragActive] = useState(false);
@@ -88,33 +90,14 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
       // Invalidate books query to refresh the list
       queryClient.invalidateQueries({ queryKey: ['books'] });
       
-      // Automatically trigger parsing for the uploaded book
-      const bookId = data.book_id;
-      if (bookId) {
-        console.log('📝 Auto-triggering parsing for uploaded book:', bookId);
-        notify.info('Обработка описаний', `Запускаем парсинг описаний для "${data.title}"...`);
-        
-        // Wait a moment for the book to be fully saved, then trigger parsing
-        setTimeout(() => {
-          fetch(`/api/v1/books/${bookId}/process`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`
-            }
-          })
-          .then(r => r.json())
-          .then(result => {
-            console.log('📝 Parsing initiated for uploaded book:', result);
-            if (result.status === 'completed') {
-              notify.success('Описания готовы!', `Найдено ${result.descriptions_found || 0} описаний в "${data.title}"`);
-            } else {
-              notify.info('Парсинг в процессе', `Обрабатываем описания для "${data.title}" в фоновом режиме`);
-            }
-          })
-          .catch(err => {
-            console.warn('Failed to auto-trigger parsing for uploaded book:', err);
-          });
-        }, 2000);
+      // Call the success callback if provided
+      if (onUploadSuccess) {
+        onUploadSuccess();
+      }
+      
+      // Парсинг автоматически запускается на backend после загрузки
+      if (data.is_processing) {
+        notify.info('Обработка начата', `Анализируем содержимое "${data.title}" для поиска описаний...`);
       }
     },
     onError: (error: any, file) => {

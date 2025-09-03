@@ -14,6 +14,8 @@ asyncpg==0.30.0
 # Redis и кэширование
 redis==5.0.1
 celery==5.3.4
+kombu==5.3.4
+psutil==5.9.6
 
 # NLP и обработка текста
 beautifulsoup4==4.12.2

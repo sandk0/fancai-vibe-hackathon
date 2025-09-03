@@ -49,9 +49,15 @@ class ApiClient {
             originalRequest.headers.Authorization = `Bearer ${newToken}`;
             return this.client(originalRequest);
           } catch (refreshError) {
-            // Refresh failed, redirect to login
+            // Refresh failed, clear auth data but don't redirect immediately
+            console.warn('🔄 Token refresh failed:', refreshError);
             this.clearAuthData();
-            window.location.href = '/login';
+            
+            // Only redirect to login if not already on login page
+            if (!window.location.pathname.includes('/login')) {
+              window.location.href = '/login';
+            }
+            
             return Promise.reject(refreshError);
           }
         }
@@ -87,9 +93,18 @@ class ApiClient {
   }
 
   private clearAuthData() {
+    console.log('🧹 Clearing auth data...');
     localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
     localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
     localStorage.removeItem(STORAGE_KEYS.USER_DATA);
+    
+    // Also clear Zustand store
+    try {
+      const { useAuthStore } = require('@/stores/auth');
+      useAuthStore.getState().logout();
+    } catch (error) {
+      console.warn('Failed to clear auth store:', error);
+    }
   }
 
   private handleError(error: any): ApiError {

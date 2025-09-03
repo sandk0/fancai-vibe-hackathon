@@ -14,7 +14,7 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       refreshToken: null,
       isAuthenticated: false,
-      isLoading: false,
+      isLoading: true, // Start with loading=true to prevent premature redirects
       tokens: null,
 
       // Actions
@@ -25,9 +25,15 @@ export const useAuthStore = create<AuthState>()(
           const response = await authAPI.login({ email, password });
           const { user, tokens } = response;
 
+          console.log('🔐 Login successful for:', user.email);
+          console.log('🔑 Saving tokens to localStorage...');
+
           // Store tokens in localStorage
           localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, tokens.access_token);
           localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refresh_token);
+          localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
+
+          console.log('💾 Data saved to localStorage');
 
           set({
             user,
@@ -120,38 +126,60 @@ export const useAuthStore = create<AuthState>()(
       },
 
       loadUserFromStorage: () => {
+        console.log('📱 Loading user from storage...');
+        
         try {
           const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
           const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
           const userData = localStorage.getItem(STORAGE_KEYS.USER_DATA);
 
+          console.log('🔑 Token found:', !!token);
+          console.log('🔄 Refresh token found:', !!refreshToken);
+          console.log('👤 User data found:', !!userData);
+
           if (token && refreshToken) {
             const user = userData ? JSON.parse(userData) : null;
+            console.log('✅ Restoring user session for:', user?.email);
+            
             set({
               accessToken: token,
               refreshToken: refreshToken,
               user,
               isAuthenticated: true,
+              isLoading: false, // Stop loading after successful restore
             });
 
-            // Try to refresh user data
+            // Try to refresh user data, but don't logout on failure
             if (user) {
               authAPI.getCurrentUser()
                 .then((response) => {
+                  console.log('✅ User data refreshed successfully');
                   get().updateUser(response.user);
                 })
                 .catch((error) => {
-                  console.warn('Failed to refresh user data:', error);
-                  // If token is invalid, logout
-                  if (error.response?.status === 401) {
-                    get().logout();
-                  }
+                  console.warn('⚠️ Failed to refresh user data:', error);
+                  // Don't automatically logout - let the API interceptor handle token refresh
                 });
             }
+          } else {
+            console.log('❌ No valid tokens found, user not authenticated');
+            set({
+              user: null,
+              accessToken: null,
+              refreshToken: null,
+              isAuthenticated: false,
+              isLoading: false, // Stop loading even if no tokens
+            });
           }
         } catch (error) {
-          console.error('Failed to load user from storage:', error);
-          get().logout();
+          console.error('💥 Failed to load user from storage:', error);
+          set({
+            user: null,
+            accessToken: null,
+            refreshToken: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
         }
       },
     }),
@@ -163,6 +191,22 @@ export const useAuthStore = create<AuthState>()(
         refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state) => {
+        console.log('🔄 Zustand rehydrating auth store...', state);
+        if (state) {
+          console.log('✅ Auth store rehydrated with user:', state.user?.email);
+          // Force load from localStorage after rehydration to ensure consistency
+          setTimeout(() => {
+            console.log('🔄 Post-rehydration loadUserFromStorage...');
+            useAuthStore.getState().loadUserFromStorage();
+          }, 100);
+        } else {
+          console.log('⚠️ No persisted state found, loading from localStorage...');
+          setTimeout(() => {
+            useAuthStore.getState().loadUserFromStorage();
+          }, 100);
+        }
+      },
     }
   )
 );

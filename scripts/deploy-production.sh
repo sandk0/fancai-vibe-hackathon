@@ -181,8 +181,8 @@ build_images() {
     
     # Tag images with timestamp for rollback capability
     local timestamp=$(date +%Y%m%d_%H%M%S)
-    docker tag "$(docker compose -f "$COMPOSE_FILE" images -q backend)" "bookreader-backend:$timestamp"
-    docker tag "$(docker compose -f "$COMPOSE_FILE" images -q frontend)" "bookreader-frontend:$timestamp"
+    docker tag "bookreader-backend:latest" "bookreader-backend:$timestamp"
+    docker tag "bookreader-frontend:latest" "bookreader-frontend:$timestamp"
     
     success "Images built successfully"
 }
