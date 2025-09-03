@@ -15,6 +15,8 @@ import os
 
 from .routers import users, nlp, books, auth, images, admin
 from .core.config import settings
+from .services.settings_manager import settings_manager
+from .services.multi_nlp_manager import multi_nlp_manager
 
 # Версия приложения
 VERSION = "0.1.0"
@@ -44,6 +46,26 @@ app.include_router(nlp.router, prefix="/api/v1", tags=["nlp"])
 app.include_router(books.router, prefix="/api/v1/books", tags=["books"])
 app.include_router(images.router, prefix="/api/v1", tags=["images"])
 app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Инициализация при запуске приложения."""
+    print("🚀 Starting BookReader AI...")
+    
+    # Инициализация настроек по умолчанию
+    try:
+        await settings_manager.initialize_default_settings()
+        print("✅ Default settings initialized")
+    except Exception as e:
+        print(f"⚠️ Failed to initialize settings: {e}")
+    
+    # Инициализация Multi-NLP Manager
+    try:
+        await multi_nlp_manager.initialize()
+        print("✅ Multi-NLP Manager initialized")
+    except Exception as e:
+        print(f"⚠️ Failed to initialize Multi-NLP Manager: {e}")
 
 
 @app.get("/")

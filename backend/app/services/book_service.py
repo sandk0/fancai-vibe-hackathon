@@ -20,7 +20,7 @@ from ..models.chapter import Chapter
 from ..models.description import Description, DescriptionType
 from ..models.image import GeneratedImage
 from ..services.book_parser import book_parser, ParsedBook
-from ..services.nlp_processor import nlp_processor
+from ..services.multi_nlp_manager import multi_nlp_manager
 
 
 class BookService:
@@ -274,24 +274,34 @@ class BookService:
             return existing_descriptions.scalars().all()
         
         # Извлекаем описания с помощью NLP
-        nlp_descriptions = nlp_processor.extract_descriptions_from_text(
-            chapter.content, 
-            str(chapter.chapter_number)
+        result = await multi_nlp_manager.extract_descriptions(
+            text=chapter.content, 
+            chapter_id=str(chapter_id)
         )
+        nlp_descriptions = result.descriptions
         
         # Сохраняем описания в базу данных
         saved_descriptions = []
         for desc_data in nlp_descriptions:
+            # Адаптируем поля под новую структуру multi_nlp_manager
+            entities_list = desc_data.get("entities_mentioned", [])
+            if isinstance(entities_list, str):
+                entities_str = entities_list
+            elif isinstance(entities_list, list):
+                entities_str = ", ".join(entities_list)
+            else:
+                entities_str = ""
+            
             description = Description(
                 chapter_id=chapter_id,
                 type=desc_data["type"],
                 content=desc_data["content"],
                 context=desc_data.get("context", ""),
                 confidence_score=desc_data["confidence_score"],
-                position_in_chapter=desc_data["position_in_chapter"],
+                position_in_chapter=desc_data.get("position", 0),
                 word_count=desc_data["word_count"],
                 priority_score=desc_data["priority_score"],
-                entities_mentioned=", ".join(desc_data["entities_mentioned"]) if desc_data["entities_mentioned"] else "",
+                entities_mentioned=entities_str,
                 is_suitable_for_generation=desc_data["confidence_score"] > 0.3  # Минимальный порог
             )
             

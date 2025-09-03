@@ -1,560 +1,568 @@
 """
-NLP обработчик для извлечения описаний из текста книг.
-
-Реализует приоритизированное извлечение описаний согласно техническому заданию:
-- LOCATION: 75% (высший приоритет) - локации, интерьеры, экстерьеры, природа
-- CHARACTER: 60% - персонажи, внешность, одежда, эмоции  
-- ATMOSPHERE: 45% - атмосфера, время суток, погода, настроение
-- OBJECT: 40% - объекты, оружие, артефакты, транспорт
-- ACTION: 30% (низший приоритет) - действия, битвы, церемонии, события
+Улучшенный NLP процессор с поддержкой различных движков и настроек.
+Поддерживает spaCy, Natasha и гибридный режим.
 """
 
 import spacy
 import re
-from typing import List, Dict, Any, Tuple, Optional
-from dataclasses import dataclass
+from typing import List, Dict, Any, Optional
 from enum import Enum
+import asyncio
 
 from ..models.description import DescriptionType
+from .settings_manager import get_nlp_settings
 
 
-class NLPProcessor:
-    """Главный класс для NLP обработки текстов книг."""
-    
-    # Настраиваемые параметры фильтрации описаний
-    MIN_DESCRIPTION_LENGTH = 50  # Минимальная длина описания в символах
-    MIN_WORD_COUNT = 10  # Минимальное количество слов в описании
-    MAX_DESCRIPTION_LENGTH = 1000  # Максимальная длина описания в символах
-    MIN_SENTENCE_LENGTH = 30  # Минимальная длина предложения для анализа
+class NLPProcessorType(Enum):
+    """Поддерживаемые типы NLP процессоров."""
+    SPACY = "spacy"
+    NATASHA = "natasha"
+    HYBRID = "hybrid"
+
+
+class BaseNLPProcessor:
+    """Базовый класс для NLP процессоров."""
     
     def __init__(self):
-        """Инициализация NLP процессора с русской моделью spaCy (ленивая загрузка)."""
-        self.nlp = None
+        self.processor_type = None
         self.loaded = False
-        self._model_loading = False
+        # Настройки (будут загружены из БД)
+        self.min_description_length = 50
+        self.max_description_length = 1000
+        self.min_word_count = 10
+        self.min_sentence_length = 30
+        self.confidence_threshold = 0.3
         
-        # Загружаем настройки из переменных окружения или конфига
-        import os
-        self.MIN_DESCRIPTION_LENGTH = int(os.getenv('NLP_MIN_DESCRIPTION_LENGTH', '50'))
-        self.MIN_WORD_COUNT = int(os.getenv('NLP_MIN_WORD_COUNT', '10'))
-        self.MAX_DESCRIPTION_LENGTH = int(os.getenv('NLP_MAX_DESCRIPTION_LENGTH', '1000'))
-        self.MIN_SENTENCE_LENGTH = int(os.getenv('NLP_MIN_SENTENCE_LENGTH', '30'))
+    async def load_settings(self):
+        """Загружает настройки из базы данных."""
+        try:
+            settings = await get_nlp_settings()
+            self.min_description_length = settings.get('min_description_length', 50)
+            self.max_description_length = settings.get('max_description_length', 1000)
+            self.min_word_count = settings.get('min_word_count', 10)
+            self.min_sentence_length = settings.get('min_sentence_length', 30)
+            self.confidence_threshold = settings.get('confidence_threshold', 0.3)
+            print(f"✅ NLP settings loaded: {settings}")
+        except Exception as e:
+            print(f"⚠️ Failed to load NLP settings, using defaults: {e}")
     
-    def _load_model(self):
-        """Ленивая загрузка модели spaCy."""
+    async def load_model(self):
+        """Загружает модель процессора."""
+        raise NotImplementedError
+    
+    def is_available(self) -> bool:
+        """Проверяет доступность процессора."""
+        return self.loaded
+    
+    def extract_descriptions(self, text: str, chapter_id: str = None) -> List[Dict[str, Any]]:
+        """Извлекает описания из текста."""
+        raise NotImplementedError
+    
+    def _clean_text(self, text: str) -> str:
+        """Очищает текст от лишних символов."""
+        # Удаляем лишние пробелы и переносы
+        text = re.sub(r'\s+', ' ', text)
+        # Удаляем странные символы, оставляем русские, английские, знаки препинания
+        text = re.sub(r'[^\w\s\.!\?,;:\-—«»()\[\]]+', '', text)
+        return text.strip()
+    
+    def _filter_and_prioritize(self, descriptions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Фильтрует и приоритизирует описания."""
+        filtered = []
+        
+        for desc in descriptions:
+            content = desc.get('content', '')
+            word_count = len(content.split())
+            
+            # Фильтрация по базовым критериям
+            if (len(content) >= self.min_description_length and
+                len(content) <= self.max_description_length and
+                word_count >= self.min_word_count and
+                desc.get('confidence_score', 0) >= self.confidence_threshold):
+                
+                # Рассчитываем приоритет
+                desc['priority_score'] = self._calculate_priority_score(
+                    desc.get('type'), 
+                    desc.get('confidence_score', 0), 
+                    len(content)
+                )
+                filtered.append(desc)
+        
+        # Сортировка по приоритету
+        filtered.sort(key=lambda x: x.get('priority_score', 0), reverse=True)
+        return filtered
+    
+    def _calculate_priority_score(self, desc_type: str, confidence: float, text_length: int) -> float:
+        """Рассчитывает приоритетный счет описания."""
+        type_priorities = {
+            DescriptionType.LOCATION.value: 75,
+            DescriptionType.CHARACTER.value: 60,
+            DescriptionType.ATMOSPHERE.value: 45,
+            DescriptionType.OBJECT.value: 40,
+            DescriptionType.ACTION.value: 30
+        }
+        
+        base_priority = type_priorities.get(desc_type, 30)
+        confidence_bonus = confidence * 20
+        
+        # Бонус за оптимальную длину
+        length_bonus = 0
+        if 50 <= text_length <= 400:
+            length_bonus = 10
+        elif text_length < 50:
+            length_bonus = max(0, (text_length - 20) / 5)
+        else:
+            length_bonus = max(0, 10 - (text_length - 400) / 100)
+        
+        return base_priority + confidence_bonus + length_bonus
+
+
+class SpacyProcessor(BaseNLPProcessor):
+    """spaCy процессор для NLP обработки."""
+    
+    def __init__(self):
+        super().__init__()
+        self.processor_type = NLPProcessorType.SPACY
+        self.nlp = None
+        self._model_loading = False
+        self.model_name = 'ru_core_news_lg'
+    
+    async def load_model(self, model_name: str = None):
+        """Загружает spaCy модель."""
         if self._model_loading:
-            return  # Предотвращаем множественную загрузку
+            return
         
         self._model_loading = True
         try:
-            print("🔄 Loading spaCy model ru_core_news_lg...")
-            self.nlp = spacy.load("ru_core_news_lg")
+            # Загружаем настройки из БД
+            await self.load_settings()
+            
+            if model_name:
+                self.model_name = model_name
+            
+            print(f"🔄 Loading spaCy model {self.model_name}...")
+            self.nlp = spacy.load(self.model_name)
             self.loaded = True
-            print("✅ spaCy model loaded successfully")
-        except OSError:
-            print("⚠️ Предупреждение: русская модель spaCy не найдена. NLP функции недоступны.")
+            print(f"✅ spaCy model {self.model_name} loaded successfully")
+        except OSError as e:
+            print(f"⚠️ Warning: spaCy model {self.model_name} not found: {e}")
+            # Пытаемся загрузить меньшую модель
+            try:
+                fallback_model = 'ru_core_news_md'
+                print(f"🔄 Trying fallback model {fallback_model}...")
+                self.nlp = spacy.load(fallback_model)
+                self.model_name = fallback_model
+                self.loaded = True
+                print(f"✅ Fallback spaCy model {fallback_model} loaded successfully")
+            except OSError:
+                print("❌ No spaCy models available")
+                self.nlp = None
+                self.loaded = False
+        except Exception as e:
+            print(f"❌ Error loading spaCy model: {e}")
             self.nlp = None
             self.loaded = False
         finally:
             self._model_loading = False
     
-    def is_available(self) -> bool:
-        """Проверяет доступность NLP обработки."""
-        if not self.loaded and not self._model_loading:
-            self._load_model()
-        return self.loaded and self.nlp is not None
-    
-    def extract_descriptions_from_text(self, text: str, chapter_id: str = None) -> List[Dict[str, Any]]:
-        """
-        Извлекает описания из текста главы.
-        
-        Args:
-            text: Текст главы для анализа
-            chapter_id: ID главы (опционально)
-            
-        Returns:
-            Список найденных описаний с метаданными
-        """
-        print(f"🔍 extract_descriptions_from_text called for chapter {chapter_id}, text length: {len(text)}")
-        
+    def extract_descriptions(self, text: str, chapter_id: str = None) -> List[Dict[str, Any]]:
+        """Извлекает описания используя spaCy."""
         if not self.is_available():
-            print("❌ NLP processor not available in extract_descriptions_from_text")
             return []
         
-        print("✅ NLP processor is available, proceeding with extraction")
+        print(f"🔍 SpaCy: extracting descriptions from text (length: {len(text)})")
         
         # Очистка текста
         cleaned_text = self._clean_text(text)
         
         # Разбивка на предложения
         doc = self.nlp(cleaned_text)
-        # Фильтруем предложения по минимальной длине
         sentences = [
             sent.text.strip() 
             for sent in doc.sents 
-            if len(sent.text.strip()) >= self.MIN_SENTENCE_LENGTH
+            if len(sent.text.strip()) >= self.min_sentence_length
         ]
         
         descriptions = []
         
         for i, sentence in enumerate(sentences):
-            # Анализ предложения на предмет описаний
-            sentence_doc = self.nlp(sentence)
+            # Анализ предложения на описания
+            sentence_descriptions = self._analyze_sentence_spacy(sentence, i, cleaned_text)
+            descriptions.extend(sentence_descriptions)
+        
+        # Фильтрация и приоритизация
+        filtered_descriptions = self._filter_and_prioritize(descriptions)
+        
+        print(f"✅ SpaCy: extracted {len(filtered_descriptions)} descriptions")
+        return filtered_descriptions
+    
+    def _analyze_sentence_spacy(self, sentence: str, position: int, full_text: str) -> List[Dict[str, Any]]:
+        """Анализирует предложение на предмет описаний используя spaCy."""
+        doc = self.nlp(sentence)
+        descriptions = []
+        
+        # Извлекаем именованные сущности
+        for ent in doc.ents:
+            desc_type = None
+            confidence = 0.5
             
-            # Извлекаем разные типы описаний
-            location_desc = self._extract_location_description(sentence_doc, sentence)
-            if location_desc:
-                descriptions.append({
-                    "type": DescriptionType.LOCATION,
-                    "content": sentence,
-                    "context": self._get_context(sentences, i),
-                    "confidence_score": location_desc["confidence"],
-                    "position_in_chapter": i,
-                    "word_count": len(sentence.split()),
-                    "entities_mentioned": location_desc["entities"],
-                    "priority_score": self._calculate_priority_score(DescriptionType.LOCATION, location_desc["confidence"], len(sentence))
-                })
+            if ent.label_ in ['LOC', 'GPE', 'FAC']:  # Локации
+                desc_type = DescriptionType.LOCATION.value
+                confidence = 0.8
+            elif ent.label_ in ['PERSON']:  # Персонажи
+                desc_type = DescriptionType.CHARACTER.value
+                confidence = 0.7
+            elif ent.label_ in ['ORG']:  # Организации как объекты
+                desc_type = DescriptionType.OBJECT.value
+                confidence = 0.6
             
-            character_desc = self._extract_character_description(sentence_doc, sentence)
-            if character_desc:
+            if desc_type:
+                # Расширяем контекст вокруг сущности
+                extended_context = self._get_extended_context(sentence, ent.text, full_text)
+                
                 descriptions.append({
-                    "type": DescriptionType.CHARACTER,
-                    "content": sentence,
-                    "context": self._get_context(sentences, i),
-                    "confidence_score": character_desc["confidence"],
-                    "position_in_chapter": i,
-                    "word_count": len(sentence.split()),
-                    "entities_mentioned": character_desc["entities"],
-                    "priority_score": self._calculate_priority_score(DescriptionType.CHARACTER, character_desc["confidence"], len(sentence))
-                })
-            
-            atmosphere_desc = self._extract_atmosphere_description(sentence_doc, sentence)
-            if atmosphere_desc:
-                descriptions.append({
-                    "type": DescriptionType.ATMOSPHERE,
-                    "content": sentence,
-                    "context": self._get_context(sentences, i),
-                    "confidence_score": atmosphere_desc["confidence"],
-                    "position_in_chapter": i,
-                    "word_count": len(sentence.split()),
-                    "entities_mentioned": atmosphere_desc["entities"],
-                    "priority_score": self._calculate_priority_score(DescriptionType.ATMOSPHERE, atmosphere_desc["confidence"], len(sentence))
-                })
-            
-            object_desc = self._extract_object_description(sentence_doc, sentence)
-            if object_desc:
-                descriptions.append({
-                    "type": DescriptionType.OBJECT,
-                    "content": sentence,
-                    "context": self._get_context(sentences, i),
-                    "confidence_score": object_desc["confidence"],
-                    "position_in_chapter": i,
-                    "word_count": len(sentence.split()),
-                    "entities_mentioned": object_desc["entities"],
-                    "priority_score": self._calculate_priority_score(DescriptionType.OBJECT, object_desc["confidence"], len(sentence))
-                })
-            
-            action_desc = self._extract_action_description(sentence_doc, sentence)
-            if action_desc:
-                descriptions.append({
-                    "type": DescriptionType.ACTION,
-                    "content": sentence,
-                    "context": self._get_context(sentences, i),
-                    "confidence_score": action_desc["confidence"],
-                    "position_in_chapter": i,
-                    "word_count": len(sentence.split()),
-                    "entities_mentioned": action_desc["entities"],
-                    "priority_score": self._calculate_priority_score(DescriptionType.ACTION, action_desc["confidence"], len(sentence))
+                    'content': extended_context,
+                    'context': sentence,
+                    'type': desc_type,
+                    'confidence_score': confidence,
+                    'entities_mentioned': ent.text,
+                    'text_position_start': ent.start_char,
+                    'text_position_end': ent.end_char,
+                    'position': position
                 })
         
-        # Сортировка по приоритету (выше приоритет = выше в списке)
-        descriptions.sort(key=lambda x: x["priority_score"], reverse=True)
+        # Дополнительный анализ на основе паттернов
+        pattern_descriptions = self._extract_by_patterns(sentence, position)
+        descriptions.extend(pattern_descriptions)
         
         return descriptions
     
-    def _clean_text(self, text: str) -> str:
-        """Очищает текст от лишних символов и форматирования."""
-        # Удаляем лишние пробелы и переносы
-        text = re.sub(r'\s+', ' ', text)
-        # Удаляем странные символы
-        text = re.sub(r'[^\w\s\.\!\?\,\;\:\-\—\«\»\(\)\[\]]+', '', text)
-        return text.strip()
+    def _extract_by_patterns(self, sentence: str, position: int) -> List[Dict[str, Any]]:
+        """Извлекает описания на основе лингвистических паттернов."""
+        descriptions = []
+        
+        # Паттерны для локаций
+        location_patterns = [
+            r'(?:в|на|около|возле|рядом с|перед|за|над|под)\s+([^,.!?]{10,100})',
+            r'([^,.!?]{5,50})\s+(?:стоял|стояла|стояло|находился|находилась|находилось)',
+            r'(?:дом|здание|замок|храм|дворец|башня|мост|лес|поле|горы?|река|море|озеро)\s+([^,.!?]{10,100})',
+        ]
+        
+        for pattern in location_patterns:
+            matches = re.finditer(pattern, sentence, re.IGNORECASE)
+            for match in matches:
+                content = match.group(0).strip()
+                if len(content) >= self.min_description_length:
+                    descriptions.append({
+                        'content': content,
+                        'context': sentence,
+                        'type': DescriptionType.LOCATION.value,
+                        'confidence_score': 0.6,
+                        'entities_mentioned': match.group(1) if match.lastindex >= 1 else content,
+                        'text_position_start': match.start(),
+                        'text_position_end': match.end(),
+                        'position': position
+                    })
+        
+        # Паттерны для персонажей
+        character_patterns = [
+            r'(?:он|она|оно|они)\s+(?:был|была|было|были)\s+([^,.!?]{10,100})',
+            r'(?:мужчина|женщина|девушка|парень|старик|старуха)\s+([^,.!?]{10,100})',
+        ]
+        
+        for pattern in character_patterns:
+            matches = re.finditer(pattern, sentence, re.IGNORECASE)
+            for match in matches:
+                content = match.group(0).strip()
+                if len(content) >= self.min_description_length:
+                    descriptions.append({
+                        'content': content,
+                        'context': sentence,
+                        'type': DescriptionType.CHARACTER.value,
+                        'confidence_score': 0.5,
+                        'entities_mentioned': match.group(1) if match.lastindex >= 1 else content,
+                        'text_position_start': match.start(),
+                        'text_position_end': match.end(),
+                        'position': position
+                    })
+        
+        # Паттерны для атмосферы
+        atmosphere_patterns = [
+            r'(?:было|стало)\s+(?:темно|светло|холодно|жарко|тихо|шумно|туманно|ясно)\s*([^,.!?]{0,50})',
+            r'(?:наступил|наступила|наступило)\s+(?:вечер|утро|ночь|день|рассвет|закат)\s*([^,.!?]{0,50})',
+        ]
+        
+        for pattern in atmosphere_patterns:
+            matches = re.finditer(pattern, sentence, re.IGNORECASE)
+            for match in matches:
+                content = match.group(0).strip()
+                if len(content) >= self.min_description_length:
+                    descriptions.append({
+                        'content': content,
+                        'context': sentence,
+                        'type': DescriptionType.ATMOSPHERE.value,
+                        'confidence_score': 0.7,
+                        'entities_mentioned': match.group(1) if match.lastindex >= 1 else content,
+                        'text_position_start': match.start(),
+                        'text_position_end': match.end(),
+                        'position': position
+                    })
+        
+        return descriptions
     
-    def _get_context(self, sentences: List[str], position: int, context_size: int = 1) -> str:
-        """Получает контекст вокруг предложения."""
-        start = max(0, position - context_size)
-        end = min(len(sentences), position + context_size + 1)
-        return " ".join(sentences[start:end])
+    def _get_extended_context(self, sentence: str, entity: str, full_text: str) -> str:
+        """Получает расширенный контекст вокруг сущности."""
+        # Пытаемся найти больше деталей вокруг сущности
+        entity_pos = sentence.find(entity)
+        if entity_pos == -1:
+            return sentence
+        
+        # Берем предложение целиком, это и есть наш контекст
+        return sentence
+
+
+class NatashaProcessor(BaseNLPProcessor):
+    """Natasha процессор для NLP обработки."""
     
-    def _calculate_priority_score(self, desc_type: DescriptionType, confidence: float, text_length: int) -> float:
-        """Рассчитывает приоритетный счет описания."""
-        # Базовые приоритеты по типам (из ТЗ)
-        type_priorities = {
-            DescriptionType.LOCATION: 75,
-            DescriptionType.CHARACTER: 60,
-            DescriptionType.ATMOSPHERE: 45,
-            DescriptionType.OBJECT: 40,
-            DescriptionType.ACTION: 30
+    def __init__(self):
+        super().__init__()
+        self.processor_type = NLPProcessorType.NATASHA
+        self.morph = None
+        self.segmenter = None
+        self.emb = None
+        self.ner_tagger = None
+    
+    async def load_model(self):
+        """Загружает Natasha модели."""
+        try:
+            print("🔄 Loading Natasha models...")
+            
+            # Загружаем настройки из БД
+            await self.load_settings()
+            
+            # Попытка импорта и загрузки Natasha
+            from natasha import (
+                Segmenter, MorphVocab, 
+                NewsEmbedding, NewsNERTagger,
+                Doc
+            )
+            
+            self.segmenter = Segmenter()
+            morph_vocab = MorphVocab()
+            self.emb = NewsEmbedding()
+            self.ner_tagger = NewsNERTagger(self.emb)
+            
+            self.loaded = True
+            print("✅ Natasha models loaded successfully")
+            
+        except ImportError as e:
+            print(f"⚠️ Natasha not available: {e}")
+            self.loaded = False
+        except Exception as e:
+            print(f"❌ Error loading Natasha: {e}")
+            self.loaded = False
+    
+    def extract_descriptions(self, text: str, chapter_id: str = None) -> List[Dict[str, Any]]:
+        """Извлекает описания используя Natasha."""
+        if not self.is_available():
+            return []
+        
+        print(f"🔍 Natasha: extracting descriptions from text (length: {len(text)})")
+        
+        try:
+            from natasha import Doc
+            
+            # Очистка текста
+            cleaned_text = self._clean_text(text)
+            
+            # Анализ с помощью Natasha
+            doc = Doc(cleaned_text)
+            doc.segment(self.segmenter)
+            doc.tag_ner(self.ner_tagger)
+            
+            descriptions = []
+            
+            for i, sent in enumerate(doc.sents):
+                sentence = sent.text
+                if len(sentence) < self.min_sentence_length:
+                    continue
+                
+                # Анализ именованных сущностей в предложении
+                sentence_descriptions = self._analyze_sentence_natasha(sentence, i, sent.spans)
+                descriptions.extend(sentence_descriptions)
+            
+            # Фильтрация и приоритизация
+            filtered_descriptions = self._filter_and_prioritize(descriptions)
+            
+            print(f"✅ Natasha: extracted {len(filtered_descriptions)} descriptions")
+            return filtered_descriptions
+            
+        except Exception as e:
+            print(f"❌ Error in Natasha processing: {e}")
+            return []
+    
+    def _analyze_sentence_natasha(self, sentence: str, position: int, spans) -> List[Dict[str, Any]]:
+        """Анализирует предложение используя результаты Natasha NER."""
+        descriptions = []
+        
+        for span in spans:
+            desc_type = None
+            confidence = 0.5
+            
+            if span.type == 'LOC':  # Локации
+                desc_type = DescriptionType.LOCATION.value
+                confidence = 0.8
+            elif span.type == 'PER':  # Персонажи
+                desc_type = DescriptionType.CHARACTER.value
+                confidence = 0.7
+            elif span.type == 'ORG':  # Организации
+                desc_type = DescriptionType.OBJECT.value
+                confidence = 0.6
+            
+            if desc_type:
+                entity_text = sentence[span.start:span.stop]
+                descriptions.append({
+                    'content': sentence,  # Берем все предложение как контекст
+                    'context': sentence,
+                    'type': desc_type,
+                    'confidence_score': confidence,
+                    'entities_mentioned': entity_text,
+                    'text_position_start': span.start,
+                    'text_position_end': span.stop,
+                    'position': position
+                })
+        
+        return descriptions
+
+
+class NLPProcessor:
+    """Главный NLP процессор с поддержкой различных движков."""
+    
+    def __init__(self):
+        self.processors = {
+            NLPProcessorType.SPACY: SpacyProcessor(),
+            NLPProcessorType.NATASHA: NatashaProcessor(),
         }
+        self.current_processor = None
+        self.current_type = NLPProcessorType.SPACY  # По умолчанию
+    
+    async def initialize(self, processor_type: NLPProcessorType = None, model_name: str = None):
+        """Инициализирует NLP процессор."""
+        if processor_type:
+            self.current_type = processor_type
         
-        base_priority = type_priorities.get(desc_type, 30)
-        confidence_bonus = confidence * 20  # 0-20 points
+        # Загружаем настройки из БД для определения типа процессора
+        try:
+            settings = await get_nlp_settings()
+            processor_type_str = settings.get('processor_type', 'spacy')
+            self.current_type = NLPProcessorType(processor_type_str)
+            model_name = settings.get('spacy_model', 'ru_core_news_lg')
+        except Exception as e:
+            print(f"⚠️ Failed to load processor type from settings: {e}")
         
-        # Бонус за оптимальную длину (50-400 символов)
-        length_bonus = 0
-        if 50 <= text_length <= 400:
-            length_bonus = 10
-        elif text_length < 50:
-            length_bonus = max(0, text_length - 20) / 5
+        self.current_processor = self.processors[self.current_type]
+        
+        # Загружаем модель процессора
+        if self.current_type == NLPProcessorType.SPACY:
+            await self.current_processor.load_model(model_name)
         else:
-            length_bonus = max(0, 10 - (text_length - 400) / 100)
+            await self.current_processor.load_model()
         
-        return min(100.0, base_priority + confidence_bonus + length_bonus)
+        print(f"✅ NLP Processor initialized: {self.current_type.value}")
     
-    def _extract_location_description(self, doc, sentence: str) -> Optional[Dict[str, Any]]:
-        """Извлекает описания локаций."""
-        location_keywords = [
-            'дом', 'замок', 'комната', 'зал', 'дворец', 'храм', 'церковь',
-            'лес', 'поле', 'гора', 'река', 'озеро', 'море', 'сад', 'парк',
-            'город', 'деревня', 'улица', 'площадь', 'рынок', 'таверна',
-            'мост', 'башня', 'стена', 'ворота', 'дорога', 'тропа'
-        ]
-        
-        preposition_location_patterns = [
-            'в доме', 'в замке', 'в комнате', 'в зале', 'в лесу', 'в саду',
-            'на площади', 'на улице', 'на поле', 'на горе', 'у реки', 'у озера'
-        ]
-        
-        confidence = 0.0
-        entities = []
-        
-        # Проверка наличия ключевых слов локаций
-        text_lower = sentence.lower()
-        for keyword in location_keywords:
-            if keyword in text_lower:
-                confidence += 0.3
-                entities.append(keyword)
-        
-        # Проверка паттернов с предлогами
-        for pattern in preposition_location_patterns:
-            if pattern in text_lower:
-                confidence += 0.5
-                entities.append(pattern)
-        
-        # Анализ именованных сущностей
-        for ent in doc.ents:
-            if ent.label_ in ['LOC', 'GPE']:  # Локации и географические объекты
-                confidence += 0.4
-                entities.append(ent.text)
-        
-        # Анализ прилагательных, описывающих места
-        descriptive_adjectives = [
-            'старый', 'древний', 'большой', 'маленький', 'высокий', 'низкий',
-            'тёмный', 'светлый', 'широкий', 'узкий', 'длинный', 'короткий'
-        ]
-        
-        for token in doc:
-            if token.pos_ == 'ADJ' and token.text.lower() in descriptive_adjectives:
-                confidence += 0.2
-        
-        # Минимальный порог уверенности для локаций
-        if confidence >= 0.4:
-            return {
-                "confidence": min(1.0, confidence),
-                "entities": list(set(entities))
-            }
-        
-        return None
+    def is_available(self) -> bool:
+        """Проверяет доступность текущего процессора."""
+        return (self.current_processor and 
+                self.current_processor.is_available())
     
-    def _extract_character_description(self, doc, sentence: str) -> Optional[Dict[str, Any]]:
-        """Извлекает описания персонажей."""
-        character_keywords = [
-            'человек', 'мужчина', 'женщина', 'девушка', 'парень', 'старик', 'старуха',
-            'рыцарь', 'воин', 'маг', 'волшебник', 'король', 'королева', 'принц', 'принцесса',
-            'глаза', 'волосы', 'лицо', 'руки', 'одежда', 'платье', 'рубашка', 'плащ'
-        ]
+    def extract_descriptions_from_text(self, text: str, chapter_id: str = None) -> List[Dict[str, Any]]:
+        """Извлекает описания из текста используя текущий процессор."""
+        if not self.is_available():
+            print("❌ NLP processor not available")
+            return []
         
-        appearance_adjectives = [
-            'красивый', 'красивая', 'молодой', 'молодая', 'старый', 'старая',
-            'высокий', 'высокая', 'низкий', 'низкая', 'сильный', 'сильная',
-            'светлый', 'тёмный', 'рыжий', 'блондин', 'брюнет'
-        ]
-        
-        confidence = 0.0
-        entities = []
-        
-        text_lower = sentence.lower()
-        
-        # Проверка ключевых слов персонажей
-        for keyword in character_keywords:
-            if keyword in text_lower:
-                confidence += 0.4
-                entities.append(keyword)
-        
-        # Проверка прилагательных внешности
-        for adj in appearance_adjectives:
-            if adj in text_lower:
-                confidence += 0.3
-        
-        # Анализ именованных сущностей (люди)
-        for ent in doc.ents:
-            if ent.label_ in ['PER', 'PERSON']:
-                confidence += 0.5
-                entities.append(ent.text)
-        
-        # Анализ частей речи для описания внешности
-        for token in doc:
-            if token.pos_ == 'ADJ' and any(person_word in sentence.lower() for person_word in ['человек', 'мужчина', 'женщина']):
-                confidence += 0.2
-        
-        if confidence >= 0.4:
-            return {
-                "confidence": min(1.0, confidence),
-                "entities": list(set(entities))
-            }
-        
-        return None
+        return self.current_processor.extract_descriptions(text, chapter_id)
     
-    def _extract_atmosphere_description(self, doc, sentence: str) -> Optional[Dict[str, Any]]:
-        """Извлекает описания атмосферы."""
-        atmosphere_keywords = [
-            'туман', 'дождь', 'снег', 'ветер', 'солнце', 'луна', 'звёзды',
-            'утро', 'день', 'вечер', 'ночь', 'рассвет', 'закат',
-            'тишина', 'шум', 'крики', 'звуки', 'мрак', 'свет',
-            'холод', 'тепло', 'жара', 'прохлада'
-        ]
+    async def switch_processor(self, processor_type: NLPProcessorType, model_name: str = None):
+        """Переключает тип процессора."""
+        if processor_type not in self.processors:
+            raise ValueError(f"Unsupported processor type: {processor_type}")
         
-        mood_adjectives = [
-            'мрачный', 'весёлый', 'грустный', 'таинственный', 'зловещий',
-            'спокойный', 'тревожный', 'печальный', 'радостный', 'угрюмый'
-        ]
+        self.current_type = processor_type
+        self.current_processor = self.processors[processor_type]
         
-        confidence = 0.0
-        entities = []
+        if not self.current_processor.loaded:
+            if processor_type == NLPProcessorType.SPACY:
+                await self.current_processor.load_model(model_name)
+            else:
+                await self.current_processor.load_model()
         
-        text_lower = sentence.lower()
-        
-        for keyword in atmosphere_keywords:
-            if keyword in text_lower:
-                confidence += 0.4
-                entities.append(keyword)
-        
-        for adj in mood_adjectives:
-            if adj in text_lower:
-                confidence += 0.3
-                entities.append(adj)
-        
-        # Проверка временных указателей
-        time_patterns = ['было утром', 'был день', 'наступил вечер', 'пришла ночь']
-        for pattern in time_patterns:
-            if pattern in text_lower:
-                confidence += 0.5
-        
-        if confidence >= 0.3:
-            return {
-                "confidence": min(1.0, confidence),
-                "entities": list(set(entities))
-            }
-        
-        return None
+        print(f"✅ Switched to NLP processor: {processor_type.value}")
     
-    def _extract_object_description(self, doc, sentence: str) -> Optional[Dict[str, Any]]:
-        """Извлекает описания объектов."""
-        object_keywords = [
-            'меч', 'кинжал', 'лук', 'стрела', 'щит', 'доспехи', 'шлем',
-            'кольцо', 'амулет', 'ожерелье', 'посох', 'жезл', 'книга',
-            'стол', 'стул', 'кровать', 'шкаф', 'сундук', 'зеркало',
-            'лошадь', 'повозка', 'корабль', 'лодка'
-        ]
-        
-        material_adjectives = [
-            'золотой', 'серебряный', 'медный', 'железный', 'стальной',
-            'деревянный', 'каменный', 'кожаный', 'шёлковый', 'бархатный'
-        ]
-        
-        confidence = 0.0
-        entities = []
-        
-        text_lower = sentence.lower()
-        
-        for keyword in object_keywords:
-            if keyword in text_lower:
-                confidence += 0.4
-                entities.append(keyword)
-        
-        for adj in material_adjectives:
-            if adj in text_lower:
-                confidence += 0.3
-        
-        # Анализ существительных как потенциальных объектов
-        for token in doc:
-            if token.pos_ == 'NOUN' and len(token.text) > 3:
-                # Проверяем, не является ли это человеком или местом
-                if not any(person_word in token.text.lower() for person_word in ['человек', 'люд']):
-                    confidence += 0.1
-        
-        if confidence >= 0.4:
-            return {
-                "confidence": min(1.0, confidence),
-                "entities": list(set(entities))
-            }
-        
-        return None
+    def get_available_models(self) -> Dict[str, List[str]]:
+        """Возвращает список доступных моделей для каждого процессора."""
+        return {
+            'spacy': ['ru_core_news_lg', 'ru_core_news_md', 'ru_core_news_sm'],
+            'natasha': ['default']
+        }
     
-    def _extract_action_description(self, doc, sentence: str) -> Optional[Dict[str, Any]]:
-        """Извлекает описания действий."""
-        action_keywords = [
-            'битва', 'сражение', 'бой', 'война', 'драка',
-            'церемония', 'ритуал', 'праздник', 'свадьба', 'похороны',
-            'путешествие', 'поход', 'побег', 'погоня', 'охота'
-        ]
+    def get_current_processor_info(self) -> Dict[str, Any]:
+        """Возвращает информацию о текущем процессоре."""
+        if not self.current_processor:
+            return {'type': None, 'loaded': False, 'available': False}
         
-        action_verbs = [
-            'сражаться', 'биться', 'воевать', 'драться',
-            'идти', 'ехать', 'лететь', 'бежать', 'прыгать',
-            'говорить', 'кричать', 'шептать', 'петь'
-        ]
+        info = {
+            'type': self.current_type.value,
+            'loaded': self.current_processor.loaded,
+            'available': self.current_processor.is_available()
+        }
         
-        confidence = 0.0
-        entities = []
+        if self.current_type == NLPProcessorType.SPACY and hasattr(self.current_processor, 'model_name'):
+            info['model'] = self.current_processor.model_name
         
-        text_lower = sentence.lower()
-        
-        for keyword in action_keywords:
-            if keyword in text_lower:
-                confidence += 0.5
-                entities.append(keyword)
-        
-        for verb in action_verbs:
-            if verb in text_lower:
-                confidence += 0.2
-        
-        # Анализ глаголов действия
-        action_verb_count = 0
-        for token in doc:
-            if token.pos_ == 'VERB':
-                action_verb_count += 1
-        
-        if action_verb_count >= 2:
-            confidence += 0.3
-        
-        if confidence >= 0.4:
-            return {
-                "confidence": min(1.0, confidence),
-                "entities": list(set(entities))
-            }
-        
-        return None
-
-
-async def process_book_descriptions(book_id: str, db) -> dict:
-    """
-    Обрабатывает описания для книги и сохраняет их в БД.
+        return info
     
-    Args:
-        book_id: ID книги для обработки
-        db: Сессия базы данных
+    async def update_settings(self, settings: Dict[str, Any]):
+        """Обновляет настройки NLP процессора."""
+        print(f"🔧 [NLP] Updating settings: {settings}")
         
-    Returns:
-        Словарь с результатами обработки
-    """
-    from uuid import UUID
-    from sqlalchemy import select
-    from sqlalchemy.orm import selectinload
-    from ..models.book import Book
-    from ..models.description import Description
-    
-    descriptions_count = 0
-    
-    try:
-        # Получаем книгу с главами
-        result = await db.execute(
-            select(Book)
-            .options(selectinload(Book.chapters))
-            .where(Book.id == UUID(book_id))
-        )
-        book = result.scalar_one_or_none()
-        
-        if not book:
-            return {"error": "Book not found", "total_descriptions": 0}
-            
-        print(f"📖 Обрабатываем: {book.title}")
-        print(f"   Глав: {len(book.chapters)}")
-        print(f"🔧 NLP процессор доступен: {nlp_processor.is_available()}")
-        
-        # Проверяем доступность процессора
-        if not nlp_processor.is_available():
-            print("❌ NLP процессор недоступен, попытка загрузки...")
-            nlp_processor._load_model()
-            print(f"🔧 После загрузки: {nlp_processor.is_available()}")
-        
-        for chapter in book.chapters:
-            if chapter.is_description_parsed:
-                print(f"   ⏭️  Глава {chapter.chapter_number} уже обработана")
-                continue
-                
-            print(f"   🔄 Обрабатываем главу {chapter.chapter_number}: {chapter.title}")
-            
-            # Извлекаем описания с помощью NLP
+        # Переключение процессора если нужно
+        processor_type = settings.get('processor_type')
+        if processor_type:
             try:
-                descriptions_data = nlp_processor.extract_descriptions_from_text(
-                    text=chapter.content,
-                    chapter_id=str(chapter.id)
-                )
+                if processor_type == 'spacy':
+                    new_type = NLPProcessorType.SPACY
+                elif processor_type == 'natasha':
+                    new_type = NLPProcessorType.NATASHA
+                elif processor_type == 'hybrid':
+                    new_type = NLPProcessorType.SPACY  # Hybrid использует SpaCy как основу
+                else:
+                    print(f"⚠️ Unknown processor type: {processor_type}")
+                    return
                 
-                print(f"      Найдено описаний: {len(descriptions_data)}")
-                
-                # Создаём объекты описаний
-                for desc_data in descriptions_data:
-                    description = Description(
-                        chapter_id=chapter.id,
-                        type=desc_data["type"],
-                        content=desc_data["content"],
-                        context=desc_data.get("context", ""),
-                        confidence_score=desc_data["confidence_score"],
-                        priority_score=desc_data["priority_score"],
-                        position_in_chapter=desc_data.get("position_in_chapter", 0),
-                        word_count=len(desc_data["content"].split()),
-                        entities_mentioned=", ".join(desc_data.get("entities_mentioned", [])),
-                        emotional_tone=desc_data.get("emotional_tone", "neutral"),
-                        complexity_level=desc_data.get("complexity_level", "medium"),
-                        is_suitable_for_generation=desc_data.get("confidence_score", 0) >= 0.3
-                    )
-                    db.add(description)
-                    descriptions_count += 1
-                
-                # Обновляем статус главы
-                chapter.is_description_parsed = True
-                chapter.descriptions_found = len(descriptions_data)
-                chapter.parsing_progress = 100.0
-                
-                print(f"      ✅ Сохранено {len(descriptions_data)} описаний")
-                
+                if new_type != self.current_type:
+                    await self.switch_processor(new_type)
+                    
             except Exception as e:
-                print(f"      ❌ Ошибка обработки: {str(e)}")
-                continue
+                print(f"❌ Failed to switch processor: {e}")
         
-        # Сохраняем изменения
-        await db.commit()
+        # Обновление модели spaCy если нужно
+        spacy_model = settings.get('spacy_model')
+        if spacy_model and self.current_type == NLPProcessorType.SPACY and hasattr(self.current_processor, 'model_name'):
+            if self.current_processor.model_name != spacy_model:
+                try:
+                    await self.initialize(NLPProcessorType.SPACY, spacy_model)
+                    print(f"✅ Switched to spaCy model: {spacy_model}")
+                except Exception as e:
+                    print(f"❌ Failed to switch spaCy model: {e}")
         
-        # Обновляем статус книги
-        book.is_parsed = True
-        await db.commit()
-        
-        return {
-            "success": True,
-            "total_descriptions": descriptions_count,
-            "book_title": book.title
-        }
-        
-    except Exception as e:
-        print(f"❌ Общая ошибка обработки книги {book_id}: {str(e)}")
-        await db.rollback()
-        return {
-            "error": str(e),
-            "total_descriptions": 0
-        }
+        print(f"✅ [NLP] Settings updated successfully")
 
 
-# Глобальный экземпляр процессора
+# Создаем глобальный экземпляр процессора
 nlp_processor = NLPProcessor()
+
+
+async def initialize_nlp_processor():
+    """Инициализирует глобальный NLP процессор."""
+    await nlp_processor.initialize()
