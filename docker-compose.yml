@@ -6,9 +6,9 @@ services:
     image: postgres:15-alpine
     container_name: bookreader_postgres
     environment:
-      POSTGRES_DB: bookreader
-      POSTGRES_USER: bookreader_user
-      POSTGRES_PASSWORD: bookreader_pass
+      POSTGRES_DB: bookreader_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -19,7 +19,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: bookreader_redis
-    command: redis-server --appendonly yes --requirepass redis_password
+    command: redis-server --appendonly yes --requirepass redis123
     volumes:
       - redis_data:/data
     networks:
@@ -32,11 +32,12 @@ services:
       dockerfile: Dockerfile
     container_name: bookreader_backend
     environment:
-      - DATABASE_URL=postgresql+asyncpg://bookreader_user:bookreader_pass@postgres:5432/bookreader
-      - REDIS_URL=redis://:redis_password@redis:6379
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres123@postgres:5432/bookreader_dev
+      - REDIS_URL=redis://:redis123@redis:6379
       - SECRET_KEY=your-super-secret-key-change-in-production
       - DEBUG=true
       - POLLINATIONS_ENABLED=true
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
     volumes:
       - ./backend:/app
       - uploaded_books:/app/uploads
@@ -56,8 +57,8 @@ services:
       dockerfile: Dockerfile
     container_name: bookreader_celery
     environment:
-      - DATABASE_URL=postgresql+asyncpg://bookreader_user:bookreader_pass@postgres:5432/bookreader
-      - REDIS_URL=redis://:redis_password@redis:6379
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres123@postgres:5432/bookreader_dev
+      - REDIS_URL=redis://:redis123@redis:6379
       - SECRET_KEY=your-super-secret-key-change-in-production
       - POLLINATIONS_ENABLED=true
     volumes:
@@ -84,8 +85,8 @@ services:
       dockerfile: Dockerfile
     container_name: bookreader_beat
     environment:
-      - DATABASE_URL=postgresql+asyncpg://bookreader_user:bookreader_pass@postgres:5432/bookreader
-      - REDIS_URL=redis://:redis_password@redis:6379
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres123@postgres:5432/bookreader_dev
+      - REDIS_URL=redis://:redis123@redis:6379
       - SECRET_KEY=your-super-secret-key-change-in-production
     volumes:
       - ./backend:/app

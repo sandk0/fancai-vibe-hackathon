@@ -23,6 +23,7 @@ export const initializeStores = () => {
   // Load auth data from storage (lazy initialization)
   setTimeout(() => {
     try {
+      console.log('🚀 Initializing auth store...');
       _useAuthStore.getState().loadUserFromStorage();
     } catch (error) {
       console.warn('Failed to initialize auth store:', error);

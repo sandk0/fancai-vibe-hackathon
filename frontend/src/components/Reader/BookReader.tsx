@@ -287,10 +287,12 @@ export const BookReader: React.FC<BookReaderProps> = ({
       // Trigger parsing if not recently attempted
       console.log('📝 Auto-triggering description parsing for book:', bookId);
       
-      fetch(`/api/v1/books/${bookId}/process`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+      fetch(`${apiUrl}/books/${bookId}/process`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`
+          'Authorization': `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`,
+          'Content-Type': 'application/json'
         }
       })
       .then(r => {
@@ -421,26 +423,51 @@ export const BookReader: React.FC<BookReaderProps> = ({
     }
   };
 
+  const cleanExistingHighlights = (text: string) => {
+    // Remove all existing highlight spans to prevent nesting
+    return text.replace(/<span[^>]*class="[^"]*description-highlight[^"]*"[^>]*>/gi, '')
+               .replace(/<\/span>/gi, '');
+  };
+
   const highlightDescription = (text: string, descriptions: Description[]) => {
     if (!descriptions || descriptions.length === 0) {
       return text;
     }
     
-    let highlightedText = text;
+    // First, clean any existing highlights to prevent nesting
+    let highlightedText = cleanExistingHighlights(text);
     
-    descriptions.forEach((desc) => {
+    // Sort descriptions by length (longest first) to prevent shorter descriptions 
+    // from being highlighted inside longer ones
+    const sortedDescriptions = [...descriptions].sort((a, b) => {
+      const aText = a.content || a.text || '';
+      const bText = b.content || b.text || '';
+      return bText.length - aText.length;
+    });
+    
+    sortedDescriptions.forEach((desc) => {
       // Use content or text field
       const descText = desc.content || desc.text;
-      if (!descText) return;
+      if (!descText || descText.length < 10) return; // Skip very short descriptions
       
       // Escape special regex characters and create pattern
       const escapedText = descText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(escapedText, 'gi');
+      const regex = new RegExp(`(?<!<[^>]*>)${escapedText}(?![^<]*>)`, 'gi');
       
-      // Replace with highlighted span
-      highlightedText = highlightedText.replace(regex, (match) => 
-        `<span class="description-highlight" data-description-id="${desc.id}">${match}</span>`
-      );
+      // Replace with highlighted span only if not already inside HTML tags
+      highlightedText = highlightedText.replace(regex, (match) => {
+        // Double check we're not inside an existing highlight
+        const beforeMatch = highlightedText.substring(0, highlightedText.indexOf(match));
+        const openHighlights = (beforeMatch.match(/<span[^>]*class="[^"]*description-highlight[^"]*"[^>]*>/g) || []).length;
+        const closeHighlights = (beforeMatch.match(/<\/span>/g) || []).length;
+        
+        // If we're inside a highlight span, skip highlighting
+        if (openHighlights > closeHighlights) {
+          return match;
+        }
+        
+        return `<span class="description-highlight" data-description-id="${desc.id}">${match}</span>`;
+      });
     });
     
     return highlightedText;

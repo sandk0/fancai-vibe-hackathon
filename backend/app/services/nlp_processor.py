@@ -21,11 +21,24 @@ from ..models.description import DescriptionType
 class NLPProcessor:
     """Главный класс для NLP обработки текстов книг."""
     
+    # Настраиваемые параметры фильтрации описаний
+    MIN_DESCRIPTION_LENGTH = 50  # Минимальная длина описания в символах
+    MIN_WORD_COUNT = 10  # Минимальное количество слов в описании
+    MAX_DESCRIPTION_LENGTH = 1000  # Максимальная длина описания в символах
+    MIN_SENTENCE_LENGTH = 30  # Минимальная длина предложения для анализа
+    
     def __init__(self):
         """Инициализация NLP процессора с русской моделью spaCy (ленивая загрузка)."""
         self.nlp = None
         self.loaded = False
         self._model_loading = False
+        
+        # Загружаем настройки из переменных окружения или конфига
+        import os
+        self.MIN_DESCRIPTION_LENGTH = int(os.getenv('NLP_MIN_DESCRIPTION_LENGTH', '50'))
+        self.MIN_WORD_COUNT = int(os.getenv('NLP_MIN_WORD_COUNT', '10'))
+        self.MAX_DESCRIPTION_LENGTH = int(os.getenv('NLP_MAX_DESCRIPTION_LENGTH', '1000'))
+        self.MIN_SENTENCE_LENGTH = int(os.getenv('NLP_MIN_SENTENCE_LENGTH', '30'))
     
     def _load_model(self):
         """Ленивая загрузка модели spaCy."""
@@ -75,7 +88,12 @@ class NLPProcessor:
         
         # Разбивка на предложения
         doc = self.nlp(cleaned_text)
-        sentences = [sent.text.strip() for sent in doc.sents if len(sent.text.strip()) > 10]
+        # Фильтруем предложения по минимальной длине
+        sentences = [
+            sent.text.strip() 
+            for sent in doc.sents 
+            if len(sent.text.strip()) >= self.MIN_SENTENCE_LENGTH
+        ]
         
         descriptions = []
         

@@ -20,6 +20,7 @@ import BookImagesPage from '@/pages/BookImagesPage';
 import ChapterPage from '@/pages/ChapterPage';
 import ProfilePage from '@/pages/ProfilePage';
 import SettingsPage from '@/pages/SettingsPage';
+import AdminDashboard from '@/pages/AdminDashboard';
 import NotFoundPage from '@/pages/NotFoundPage';
 
 // Global styles
@@ -39,10 +40,12 @@ const queryClient = new QueryClient({
 function App() {
   useEffect(() => {
     // Initialize stores when app starts
+    console.log('🚀 App starting, initializing stores...');
     try {
       initializeStores();
+      console.log('✅ Stores initialized successfully');
     } catch (error) {
-      console.warn('Failed to initialize stores:', error);
+      console.warn('❌ Failed to initialize stores:', error);
     }
   }, []);
 
@@ -72,6 +75,7 @@ function App() {
                       />
                       <Route path="/profile" element={<ProfilePage />} />
                       <Route path="/settings" element={<SettingsPage />} />
+                      <Route path="/admin" element={<AdminDashboard />} />
                       <Route path="*" element={<NotFoundPage />} />
                     </Routes>
                   </Layout>

@@ -18,17 +18,17 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
   const location = useLocation();
 
   useEffect(() => {
-    // Try to load user from storage if not already authenticated
-    if (!isAuthenticated && !isLoading) {
-      loadUserFromStorage();
-    }
-  }, [isAuthenticated, isLoading, loadUserFromStorage]);
+    console.log('🛡️ AuthGuard mounted:', { isAuthenticated, isLoading, userEmail: user?.email });
+    
+    // Always call loadUserFromStorage on mount to ensure we check localStorage
+    loadUserFromStorage();
+  }, [loadUserFromStorage]);
 
   // Show loading spinner while checking authentication
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="large" />
+        <LoadingSpinner size="large" text="Checking authentication..." />
       </div>
     );
   }

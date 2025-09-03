@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Book, Search, Filter } from 'lucide-react';
+import { Plus, Book, Search, Filter, AlertCircle } from 'lucide-react';
 import { useBooksStore } from '@/stores/books';
 import { useUIStore } from '@/stores/ui';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import { BookUploadModal } from '@/components/Books/BookUploadModal';
+import { ParsingOverlay } from '@/components/UI/ParsingOverlay';
 
 const LibraryPage: React.FC = () => {
   const navigate = useNavigate();
@@ -83,13 +84,37 @@ const LibraryPage: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {books.map((book) => (
+          {books.map((book) => {
+            console.log(`[LibraryPage] Book ${book.title}: is_parsed=${book.is_parsed}`);
+            return (
             <div
               key={book.id}
-              className="group cursor-pointer"
-              onClick={() => navigate(`/book/${book.id}`)}
+              className="group cursor-pointer relative"
+              onClick={() => {
+                // Don't navigate if book is not parsed
+                if (!book.is_parsed) {
+                  // Show parsing status instead
+                  return;
+                }
+                navigate(`/book/${book.id}`);
+              }}
             >
-              <div className="book-cover bg-gradient-to-b from-gray-200 to-gray-300 dark:from-gray-600 dark:to-gray-700 flex items-center justify-center mb-3">
+              <div className="book-cover bg-gradient-to-b from-gray-200 to-gray-300 dark:from-gray-600 dark:to-gray-700 flex items-center justify-center mb-3 relative">
+                {/* Parsing overlay for unparsed books */}
+                {(() => {
+                  const shouldShowOverlay = !book.is_parsed;
+                  console.log(`[LibraryPage] Should show overlay for ${book.title}: ${shouldShowOverlay} (is_parsed: ${book.is_parsed})`);
+                  return shouldShowOverlay;
+                })() && (
+                  <ParsingOverlay
+                    bookId={book.id}
+                    onParsingComplete={() => {
+                      // Refresh books list when parsing completes
+                      fetchBooks();
+                    }}
+                    forceBlock={true}
+                  />
+                )}
                 {book.has_cover ? (
                   <img
                     src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/books/${book.id}/cover`}
@@ -122,9 +147,14 @@ const LibraryPage: React.FC = () => {
                 </p>
                 <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-500">
                   <span>{book.chapters_count} chapters</span>
-                  {book.reading_progress_percent !== undefined && book.reading_progress_percent > 0 && (
+                  {!book.is_parsed ? (
+                    <span className="text-yellow-600 dark:text-yellow-400 flex items-center">
+                      <AlertCircle className="w-3 h-3 mr-1" />
+                      Processing
+                    </span>
+                  ) : book.reading_progress_percent !== undefined && book.reading_progress_percent > 0 ? (
                     <span>{Math.round(book.reading_progress_percent)}%</span>
-                  )}
+                  ) : null}
                 </div>
                 {book.reading_progress_percent !== undefined && book.reading_progress_percent > 0 && (
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
@@ -136,7 +166,8 @@ const LibraryPage: React.FC = () => {
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -149,7 +180,16 @@ const LibraryPage: React.FC = () => {
       {/* Upload Modal */}
       <BookUploadModal
         isOpen={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
+        onClose={() => {
+          setShowUploadModal(false);
+          // Обновляем список книг после закрытия модала
+          fetchBooks();
+        }}
+        onUploadSuccess={() => {
+          // Обновляем список книг сразу после успешной загрузки
+          console.log('[LibraryPage] Book uploaded successfully, refreshing list...');
+          fetchBooks();
+        }}
       />
     </div>
   );
