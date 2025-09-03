@@ -65,16 +65,21 @@ cd backend && alembic upgrade head
 cd backend && alembic revision --autogenerate -m "description"
 ```
 
-### Парсинг и NLP
+### Multi-NLP система и парсинг
 ```bash
-# Установка русской модели spaCy
-python -m spacy download ru_core_news_lg
+# Установка всех NLP моделей
+python -m spacy download ru_core_news_lg  # SpaCy
+pip install natasha  # Natasha
+pip install stanza && python -c "import stanza; stanza.download('ru')"  # Stanza
 
-# Тестирование парсера
-cd backend && python scripts/test_parser.py --file sample.txt --type location
+# Тестирование Multi-NLP системы
+cd backend && python -c "from app.services.multi_nlp_manager import multi_nlp_manager; import asyncio; asyncio.run(multi_nlp_manager.get_processor_status())"
 
-# Обновление NLP моделей
-cd backend && python scripts/update_models.py
+# Проверка статуса всех процессоров
+curl -X GET http://localhost:8000/api/v1/admin/multi-nlp-settings/status
+
+# Обновление настроек через админ API
+curl -X PUT http://localhost:8000/api/v1/admin/multi-nlp-settings/spacy -d '{"weight": 1.0, "threshold": 0.3}'
 ```
 
 ## Critical Development Requirements
@@ -238,10 +243,12 @@ fancai-vibe-hackathon/
 1. **Book Processing Pipeline:**
    - EPUB/FB2 парсер → Содержимое глав → Парсер описаний → Очередь генерации изображений
 
-2. **NLP Parser (КРИТИЧЕСКИ ВАЖНО):**
-   - spaCy для извлечения именных групп и NER
-   - Rule-based классификация по типам описаний (локации > персонажи > атмосфера > объекты > действия)
-   - Контекстное обогащение и связывание сущностей
+2. **Advanced Multi-NLP System (КРИТИЧЕСКИ ВАЖНО):**
+   - Три полноценных процессора: SpaCy (entity recognition), Natasha (русские имена), Stanza (сложный синтаксис)
+   - Пять режимов обработки с автоматическим выбором оптимального
+   - Ensemble voting с consensus алгоритмом и весами процессоров
+   - Контекстное обогащение и deduplication описаний
+   - **Прорыв в качестве**: 2171 описание за 4 секунды
 
 3. **Image Generation:**
    - pollinations.ai (основной, бесплатный)
@@ -339,6 +346,8 @@ docker-compose exec backend python scripts/generate_docs.py
 
 ### Important File Locations
 - **Основной промпт:** `prompts.md`
+- **Multi-NLP Manager:** `backend/app/services/multi_nlp_manager.py`
+- **Admin multi-nlp settings:** `backend/app/routers/admin.py`
 - **Конфигурация Docker:** `docker-compose.yml`
 - **План разработки:** `docs/development/development-plan.md`
 - **API документация:** `docs/architecture/api-documentation.md`

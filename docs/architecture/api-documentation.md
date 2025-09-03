@@ -708,37 +708,78 @@ file: <binary-file>
 
 ## NLP Endpoints
 
-### GET /nlp/status
+### GET /nlp/status (ОБНОВЛЕНО: Multi-NLP)
 
-Статус NLP процессора.
+Статус Advanced Multi-NLP системы.
 
 **Response (200):**
 ```json
 {
-  "nlp_available": true,
-  "models_loaded": {
+  "multi_nlp_available": true,
+  "available_processors": ["spacy", "natasha", "stanza"],
+  "default_processor": "spacy",
+  "processing_mode": "adaptive",
+  "processors": {
     "spacy": {
+      "type": "spacy",
+      "loaded": true,
+      "available": true,
       "model": "ru_core_news_lg",
       "version": "3.7.2",
-      "loaded": true
+      "weight": 1.0,
+      "confidence_threshold": 0.3,
+      "literary_patterns": true
     },
-    "nltk": {
-      "version": "3.8.1",
-      "data_available": true
+    "natasha": {
+      "type": "natasha",
+      "loaded": true,
+      "available": true,
+      "weight": 1.2,
+      "confidence_threshold": 0.4,
+      "literary_boost": 1.3
+    },
+    "stanza": {
+      "type": "stanza",
+      "loaded": false,
+      "available": false,
+      "weight": 0.8,
+      "confidence_threshold": 0.5
+    }
+  },
+  "global_config": {
+    "max_parallel_processors": 3,
+    "ensemble_voting_threshold": 0.6,
+    "adaptive_text_analysis": true
+  },
+  "statistics": {
+    "total_processed": 1547,
+    "processor_usage": {
+      "spacy": 892,
+      "natasha": 655
+    },
+    "average_quality_scores": {
+      "spacy": 0.78,
+      "natasha": 0.82
     }
   },
   "supported_languages": ["ru", "en"],
   "description_types": ["location", "character", "atmosphere", "object", "action"],
   "performance": {
-    "average_processing_time_per_1000_chars": 0.25,
-    "queue_length": 0
+    "average_processing_time_per_1000_chars": 0.16,
+    "queue_length": 0,
+    "last_processing_result": {
+      "descriptions_found": 2171,
+      "processing_time_seconds": 4.2,
+      "processors_used": ["spacy", "natasha"],
+      "mode_used": "parallel"
+    }
   }
 }
 ```
 
-### POST /nlp/extract-descriptions
+### POST /nlp/extract-descriptions (ОБНОВЛЕНО: Multi-NLP)
 
-Извлечение описаний из произвольного текста.
+Извлечение описаний через Advanced Multi-NLP систему.
 
 **Headers:** `Authorization: Bearer <token>`
 
@@ -748,36 +789,66 @@ file: <binary-file>
   "text": "В старом замке на холме жили привидения...",
   "language": "ru",
   "types_filter": ["location", "character"],
-  "min_confidence": 0.7
+  "min_confidence": 0.7,
+  "processing_mode": "adaptive",
+  "processor_name": "spacy" 
 }
 ```
 
-**Response (200):**
+**Response (200) - Multi-NLP Result:**
 ```json
 {
   "text_length": 156,
-  "processing_time_seconds": 0.38,
-  "descriptions_found": 3,
-  "descriptions": [
-    {
-      "content": "старый замок на холме",
-      "context": "В старом замке на холме жили...",
-      "type": "location",
-      "confidence_score": 0.89,
-      "priority_score": 78.5,
-      "entities_mentioned": "замок,холм",
-      "text_position_start": 2,
-      "text_position_end": 22,
-      "sentiment_score": -0.1
-    }
-  ],
+  "processing_time_seconds": 0.28,
+  "descriptions_found": 8,
+  "processing_result": {
+    "descriptions": [
+      {
+        "content": "старый замок на холме",
+        "context": "В старом замке на холме жили...",
+        "type": "location",
+        "confidence_score": 0.91,
+        "priority_score": 82.7,
+        "entities_mentioned": "замок,холм",
+        "text_position_start": 2,
+        "text_position_end": 22,
+        "sources": ["spacy", "natasha"],
+        "consensus_strength": 0.67
+      }
+    ],
+    "processor_results": {
+      "spacy": 5,
+      "natasha": 6
+    },
+    "processors_used": ["spacy", "natasha"],
+    "quality_metrics": {
+      "spacy": 0.78,
+      "natasha": 0.85
+    },
+    "recommendations": [
+      "Processor natasha showed excellent results.",
+      "Used ensemble voting for improved accuracy"
+    ]
+  },
+  "multi_nlp_info": {
+    "mode_used": "adaptive",
+    "total_processors_available": 2,
+    "ensemble_filtering_applied": true,
+    "deduplication_applied": true
+  },
   "statistics": {
     "by_type": {
-      "location": 2,
-      "character": 1
+      "location": 4,
+      "character": 3,
+      "atmosphere": 1
     },
-    "average_confidence": 0.82,
-    "average_priority": 73.2
+    "average_confidence": 0.87,
+    "average_priority": 79.3,
+    "consensus_scores": {
+      "high_consensus": 6,
+      "medium_consensus": 2,
+      "low_consensus": 0
+    }
   }
 }
 ```
