@@ -675,6 +675,57 @@ describe('BookCard', () => {
 
 ---
 
+## Новые компоненты (03.09.2025)
+
+### ParsingOverlay - Real-time Progress Indicator
+
+**Местоположение:** `src/components/UI/ParsingOverlay.tsx`
+
+Новый компонент для отображения прогресса парсинга книг в реальном времени с анимированным SVG индикатором.
+
+```typescript
+interface ParsingOverlayProps {
+  bookId: string;
+  isVisible: boolean;
+  onComplete: () => void;
+}
+
+export const ParsingOverlay: React.FC<ParsingOverlayProps> = ({
+  bookId,
+  isVisible,
+  onComplete
+}) => {
+  // Real-time polling for parsing status
+  // SVG circular progress animation
+  // Auto-hide on completion
+}
+```
+
+**Ключевые особенности:**
+- **SVG Animation**: Анимированная окружность с `strokeDasharray` и `strokeDashoffset`
+- **Optimized Polling**: 300ms для processing, 500ms для not_started состояний
+- **Automatic Updates**: Библиотека обновляется автоматически при завершении
+- **Smooth Transitions**: Framer Motion анимации для smooth UX
+- **Error Handling**: Graceful обработка ошибок парсинга
+
+**Использование:**
+```tsx
+// Автоматически показывается при загрузке книги
+<ParsingOverlay
+  bookId={book.id}
+  isVisible={!book.is_parsed}
+  onComplete={() => refetchBooks()}
+/>
+```
+
+**Архитектура:**
+1. **Polling Mechanism**: Оптимизированные интервалы для быстрого отклика
+2. **State Management**: Внутреннее управление состоянием прогресса
+3. **Animation Engine**: SVG-based прогресс с плавными переходами
+4. **Integration**: Seamless интеграция с BookUpload workflow
+
+---
+
 ## Заключение
 
 Frontend компоненты BookReader AI обеспечивают:

@@ -130,3 +130,10 @@ out/
 # Nuxt.js
 .nuxt
 dist
+*.jpg
+*.epub
+*.pptx
+*.png
+HACKATHON_PITCH_5MIN.md
+test_book.txt
+create_presentation.py
