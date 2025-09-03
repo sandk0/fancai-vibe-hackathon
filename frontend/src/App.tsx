@@ -20,7 +20,7 @@ import BookImagesPage from '@/pages/BookImagesPage';
 import ChapterPage from '@/pages/ChapterPage';
 import ProfilePage from '@/pages/ProfilePage';
 import SettingsPage from '@/pages/SettingsPage';
-import AdminDashboard from '@/pages/AdminDashboard';
+import AdminDashboard from '@/pages/AdminDashboardEnhanced';
 import NotFoundPage from '@/pages/NotFoundPage';
 
 // Global styles
