@@ -15,7 +15,7 @@ from sqlalchemy import select
 from app.core.database import AsyncSessionLocal
 from app.models.book import Book
 from app.models.chapter import Chapter
-from app.models.description import Description
+from app.models.description import Description, DescriptionType
 from app.services.book_service import book_service
 # Lazy import to avoid loading spaCy model at startup
 # from app.services.nlp_processor import nlp_processor
@@ -127,12 +127,24 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
                 logger.info(f"Processing chapter {chapter.chapter_number} of book {book_id}")
                 
                 # Извлекаем описания из текста главы (с ленивой загрузкой)
-                from app.services.nlp_processor import nlp_processor
+                from app.services.multi_nlp_manager import multi_nlp_manager
                 
                 print(f"📝 [ASYNC TASK] Chapter content length: {len(chapter.content)} chars")
-                print(f"🧠 [ASYNC TASK] NLP processor available: {nlp_processor.is_available()}")
                 
-                descriptions = nlp_processor.extract_descriptions_from_text(chapter.content, str(chapter.id))
+                # Инициализируем если нужно
+                if not hasattr(multi_nlp_manager, '_initialized') or not multi_nlp_manager._initialized:
+                    print(f"🧠 [ASYNC TASK] Initializing multi NLP manager...")
+                    await multi_nlp_manager.initialize()
+                
+                print(f"🧠 [ASYNC TASK] Multi-NLP manager initialized: {multi_nlp_manager._initialized}")
+                
+                # Извлекаем описания
+                result = await multi_nlp_manager.extract_descriptions(
+                    text=chapter.content, 
+                    chapter_id=str(chapter.id),
+                    processor_name=None  # Используем настройки по умолчанию
+                )
+                descriptions = result.descriptions
                 
                 print(f"🔍 [ASYNC TASK] NLP extracted {len(descriptions)} descriptions")
                 if descriptions:
@@ -141,9 +153,17 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
                 # Сохраняем описания в базе данных
                 for i, desc_data in enumerate(descriptions):
                     print(f"💾 [ASYNC TASK] Saving description {i+1}/{len(descriptions)}: type={desc_data['type']}")
+                    
+                    # Конвертируем строку типа в enum
+                    try:
+                        desc_type = DescriptionType(desc_data["type"])
+                    except ValueError as e:
+                        print(f"⚠️ [ASYNC TASK] Invalid description type '{desc_data['type']}', skipping")
+                        continue
+                    
                     description = Description(
                         chapter_id=chapter.id,
-                        type=desc_data["type"],
+                        type=desc_type,  # Используем enum вместо строки
                         content=desc_data["content"],
                         context=desc_data.get("context", ""),
                         confidence_score=desc_data["confidence_score"],

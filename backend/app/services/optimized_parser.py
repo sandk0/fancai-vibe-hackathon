@@ -18,7 +18,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from ..models.description import Description, DescriptionType
 from ..models.chapter import Chapter
-from ..services.nlp_processor import nlp_processor
+from ..services.multi_nlp_manager import multi_nlp_manager
 
 logger = logging.getLogger(__name__)
 
@@ -166,9 +166,9 @@ class OptimizedBookParser:
     
     async def _load_nlp_model(self):
         """Load NLP model with optimizations"""
-        # This would be the actual NLP model loading
-        # For now, using the existing nlp_processor
-        return nlp_processor
+        # Initialize the multi-NLP manager
+        await multi_nlp_manager.initialize()
+        return multi_nlp_manager
     
     async def process_book_optimized(
         self,
@@ -285,28 +285,35 @@ class OptimizedBookParser:
         all_descriptions = []
         
         for chunk in chunks:
-            # Process chunk
-            descriptions = nlp_model.extract_descriptions_from_text(
-                chunk,
-                str(chapter.id)
+            # Process chunk using multi-NLP manager
+            result = await nlp_model.extract_descriptions(
+                text=chunk,
+                chapter_id=str(chapter.id)
             )
+            descriptions = result.descriptions
             
             # Convert to dict format for batch insert
             for desc in descriptions:
+                # Handle entities_mentioned properly
+                entities_list = desc.get("entities_mentioned", [])
+                if isinstance(entities_list, str):
+                    entities_str = entities_list
+                elif isinstance(entities_list, list):
+                    entities_str = ", ".join(entities_list)
+                else:
+                    entities_str = ""
+                
                 all_descriptions.append({
-                    'id': desc.id,
                     'chapter_id': chapter.id,
-                    'type': desc.type,
-                    'content': desc.content[:1000],  # Limit content size
-                    'context': desc.context[:500] if desc.context else None,
-                    'confidence_score': desc.confidence_score,
-                    'position_in_chapter': desc.position_in_chapter,
-                    'word_count': len(desc.content.split()),
-                    'is_suitable_for_generation': desc.is_suitable_for_generation,
-                    'priority_score': desc.priority_score,
-                    'entities_mentioned': desc.entities_mentioned[:200] if desc.entities_mentioned else None,
-                    'emotional_tone': desc.emotional_tone,
-                    'complexity_level': desc.complexity_level,
+                    'type': desc['type'],
+                    'content': desc['content'][:1000],  # Limit content size
+                    'context': desc.get('context', '')[:500] if desc.get('context') else None,
+                    'confidence_score': desc['confidence_score'],
+                    'position_in_chapter': desc.get('position', 0),
+                    'word_count': desc['word_count'],
+                    'is_suitable_for_generation': desc['confidence_score'] > 0.3,
+                    'priority_score': desc['priority_score'],
+                    'entities_mentioned': entities_str[:200] if entities_str else None,
                     'created_at': datetime.utcnow(),
                     'updated_at': datetime.utcnow()
                 })

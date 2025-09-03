@@ -68,7 +68,7 @@ async def init_db():
     Создает все таблицы, определенные в моделях.
     """
     # Импорт всех моделей для создания таблиц
-    from ..models import user, book, chapter, description, image
+    from ..models import user, book, chapter, description, image, admin_settings
     
     # Создание таблиц
     async with engine.begin() as conn:
