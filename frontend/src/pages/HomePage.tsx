@@ -2,9 +2,11 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, Upload, Sparkles, TrendingUp } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
+import { useUIStore } from '@/stores/ui';
 
 const HomePage: React.FC = () => {
   const { user } = useAuthStore();
+  const setShowUploadModal = useUIStore(state => state.setShowUploadModal);
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -41,7 +43,7 @@ const HomePage: React.FC = () => {
         </Link>
 
         <button
-          onClick={() => {/* TODO: Open upload modal */}}
+          onClick={() => setShowUploadModal(true)}
           className="group p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-200 dark:border-gray-700 text-left"
         >
           <div className="flex items-center justify-between mb-4">
