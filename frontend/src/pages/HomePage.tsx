@@ -3,20 +3,22 @@ import { Link } from 'react-router-dom';
 import { BookOpen, Upload, Sparkles, TrendingUp } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
 import { useUIStore } from '@/stores/ui';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const HomePage: React.FC = () => {
   const { user } = useAuthStore();
   const setShowUploadModal = useUIStore(state => state.setShowUploadModal);
+  const { t } = useTranslation();
 
   return (
     <div className="max-w-4xl mx-auto">
       {/* Welcome Section */}
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-          Welcome back, {user?.full_name || 'Reader'}! 👋
+          {t('home.welcomeTitle', { name: user?.full_name || 'Читатель' })}
         </h1>
         <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-          Continue your reading journey with AI-powered image generation that brings your books to life.
+          {t('home.welcomeSubtitle')}
         </p>
       </div>
 
@@ -35,10 +37,10 @@ const HomePage: React.FC = () => {
             </span>
           </div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            Browse Library
+            {t('home.browseLibrary')}
           </h3>
           <p className="text-gray-600 dark:text-gray-400 text-sm">
-            Access your personal collection of uploaded books
+            {t('home.browseLibraryDesc')}
           </p>
         </Link>
 
@@ -55,10 +57,10 @@ const HomePage: React.FC = () => {
             </span>
           </div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            Upload New Book
+            {t('home.uploadBook')}
           </h3>
           <p className="text-gray-600 dark:text-gray-400 text-sm">
-            Add EPUB or FB2 files to your library
+            {t('home.uploadBookDesc')}
           </p>
         </button>
 
@@ -75,10 +77,10 @@ const HomePage: React.FC = () => {
             </span>
           </div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            AI Gallery
+            {t('home.aiGallery')}
           </h3>
           <p className="text-gray-600 dark:text-gray-400 text-sm">
-            View your generated images and artwork
+            {t('home.aiGalleryDesc')}
           </p>
         </Link>
       </div>
@@ -89,18 +91,18 @@ const HomePage: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
             <TrendingUp className="w-5 h-5 mr-2 text-primary-600" />
-            Reading Progress
+            {t('home.readingProgress')}
           </h3>
           <div className="space-y-4">
             <div className="text-center py-8">
               <p className="text-gray-500 dark:text-gray-400">
-                No books in progress yet
+                {t('home.noBooksInProgress')}
               </p>
               <Link
                 to="/library"
                 className="inline-block mt-2 text-primary-600 hover:text-primary-700 font-medium"
               >
-                Start reading →
+                {t('home.startReading')}
               </Link>
             </div>
           </div>
@@ -109,33 +111,33 @@ const HomePage: React.FC = () => {
         {/* Features */}
         <div className="bg-gradient-to-br from-primary-50 to-purple-50 dark:from-primary-900 dark:to-purple-900 rounded-lg p-6 border border-primary-200 dark:border-primary-700">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            ✨ AI-Powered Features
+            ✨ {t('home.aiFeatures')}
           </h3>
           <ul className="space-y-3">
             <li className="flex items-start">
               <div className="w-2 h-2 bg-primary-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
               <div>
-                <h4 className="font-medium text-gray-900 dark:text-white">Smart Description Extraction</h4>
+                <h4 className="font-medium text-gray-900 dark:text-white">{t('home.smartExtraction')}</h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Automatically identify locations, characters, and scenes
+                  {t('home.smartExtractionDesc')}
                 </p>
               </div>
             </li>
             <li className="flex items-start">
               <div className="w-2 h-2 bg-primary-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
               <div>
-                <h4 className="font-medium text-gray-900 dark:text-white">Image Generation</h4>
+                <h4 className="font-medium text-gray-900 dark:text-white">{t('home.imageGeneration')}</h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Create beautiful illustrations from book descriptions
+                  {t('home.imageGenerationDesc')}
                 </p>
               </div>
             </li>
             <li className="flex items-start">
               <div className="w-2 h-2 bg-primary-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
               <div>
-                <h4 className="font-medium text-gray-900 dark:text-white">Reading Analytics</h4>
+                <h4 className="font-medium text-gray-900 dark:text-white">{t('home.readingAnalytics')}</h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Track your progress and reading habits
+                  {t('home.readingAnalyticsDesc')}
                 </p>
               </div>
             </li>

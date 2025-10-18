@@ -8,14 +8,15 @@ import { useAuthStore } from '@/stores/auth';
 import { notify } from '@/stores/ui';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import { cn } from '@/utils/cn';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const registerSchema = z.object({
-  full_name: z.string().min(2, 'Name must be at least 2 characters').optional(),
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  full_name: z.string().min(2, 'Имя должно содержать минимум 2 символа').optional(),
+  email: z.string().email('Неправильный email адрес'),
+  password: z.string().min(6, 'Пароль должен содержать минимум 6 символов'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
+  message: "Пароли не совпадают",
   path: ["confirmPassword"],
 });
 
@@ -26,6 +27,7 @@ const RegisterPage: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { register: registerUser, isLoading } = useAuthStore();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const {
     register,
@@ -38,12 +40,12 @@ const RegisterPage: React.FC = () => {
   const onSubmit = async (data: RegisterFormData) => {
     try {
       await registerUser(data.email, data.password, data.full_name);
-      notify.success('Account Created!', 'Welcome to BookReader AI. Start uploading your first book!');
+      notify.success(t('auth.accountCreated'), t('auth.accountCreatedMessage'));
       navigate('/library', { replace: true });
     } catch (error: any) {
       notify.error(
-        'Registration Failed',
-        error.message || 'Please check your information and try again.'
+        t('auth.registrationFailed'),
+        error.message || t('auth.checkCredentials')
       );
     }
   };
@@ -59,10 +61,10 @@ const RegisterPage: React.FC = () => {
             </div>
           </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Create account
+            {t('auth.registerTitle')}
           </h2>
           <p className="text-gray-600">
-            Join BookReader AI and start reading with AI-generated illustrations
+            {t('auth.registerSubtitle')}
           </p>
         </div>
 
@@ -71,11 +73,11 @@ const RegisterPage: React.FC = () => {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Full Name Field */}
             <div>
-              <label 
-                htmlFor="full_name" 
+              <label
+                htmlFor="full_name"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Full name (optional)
+                {t('auth.fullNameOptional')}
               </label>
               <div className="relative">
                 <input
@@ -88,7 +90,7 @@ const RegisterPage: React.FC = () => {
                     errors.full_name ? 'border-error-500' : 'border-gray-300',
                     isLoading && 'opacity-50 cursor-not-allowed'
                   )}
-                  placeholder="Enter your full name"
+                  placeholder={t('auth.fullNamePlaceholder')}
                 />
                 <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               </div>
@@ -101,11 +103,11 @@ const RegisterPage: React.FC = () => {
 
             {/* Email Field */}
             <div>
-              <label 
-                htmlFor="email" 
+              <label
+                htmlFor="email"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Email address
+                {t('auth.email')}
               </label>
               <div className="relative">
                 <input
@@ -118,7 +120,7 @@ const RegisterPage: React.FC = () => {
                     errors.email ? 'border-error-500' : 'border-gray-300',
                     isLoading && 'opacity-50 cursor-not-allowed'
                   )}
-                  placeholder="Enter your email"
+                  placeholder={t('auth.emailPlaceholder')}
                 />
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               </div>
@@ -131,11 +133,11 @@ const RegisterPage: React.FC = () => {
 
             {/* Password Field */}
             <div>
-              <label 
-                htmlFor="password" 
+              <label
+                htmlFor="password"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Password
+                {t('auth.password')}
               </label>
               <div className="relative">
                 <input
@@ -148,7 +150,7 @@ const RegisterPage: React.FC = () => {
                     errors.password ? 'border-error-500' : 'border-gray-300',
                     isLoading && 'opacity-50 cursor-not-allowed'
                   )}
-                  placeholder="Create a password"
+                  placeholder={t('auth.createPassword')}
                 />
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <button
@@ -173,11 +175,11 @@ const RegisterPage: React.FC = () => {
 
             {/* Confirm Password Field */}
             <div>
-              <label 
-                htmlFor="confirmPassword" 
+              <label
+                htmlFor="confirmPassword"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Confirm password
+                {t('auth.confirmPassword')}
               </label>
               <div className="relative">
                 <input
@@ -190,7 +192,7 @@ const RegisterPage: React.FC = () => {
                     errors.confirmPassword ? 'border-error-500' : 'border-gray-300',
                     isLoading && 'opacity-50 cursor-not-allowed'
                   )}
-                  placeholder="Confirm your password"
+                  placeholder={t('auth.confirmPasswordPlaceholder')}
                 />
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <button
@@ -226,10 +228,10 @@ const RegisterPage: React.FC = () => {
               {isLoading ? (
                 <div className="flex items-center justify-center">
                   <LoadingSpinner size="small" color="white" className="mr-2" />
-                  Creating account...
+                  {t('auth.creatingAccount')}
                 </div>
               ) : (
-                'Create account'
+                t('auth.createAccount')
               )}
             </button>
           </form>
@@ -237,12 +239,12 @@ const RegisterPage: React.FC = () => {
           {/* Login Link */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              Already have an account?{' '}
+              {t('auth.alreadyHaveAccount')}{' '}
               <Link
                 to="/login"
                 className="font-medium text-primary-600 hover:text-primary-500 transition-colors"
               >
-                Sign in here
+                {t('auth.signInHere')}
               </Link>
             </p>
           </div>
@@ -251,13 +253,13 @@ const RegisterPage: React.FC = () => {
         {/* Terms */}
         <div className="text-center">
           <p className="text-xs text-gray-500">
-            By creating an account, you agree to our{' '}
+            {t('auth.termsAgreement')}{' '}
             <a href="#" className="text-primary-600 hover:text-primary-500">
-              Terms of Service
+              {t('auth.termsOfService')}
             </a>{' '}
-            and{' '}
+            {t('auth.and')}{' '}
             <a href="#" className="text-primary-600 hover:text-primary-500">
-              Privacy Policy
+              {t('auth.privacyPolicy')}
             </a>
           </p>
         </div>
