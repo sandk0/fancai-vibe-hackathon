@@ -21,8 +21,8 @@ services:
       file: docker-compose.yml
       service: backend
     environment:
-      - DATABASE_URL=postgresql+asyncpg://bookreader_user:bookreader_pass@postgres:5432/bookreader
-      - REDIS_URL=redis://:redis_password@redis:6379
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres123@postgres:5432/bookreader_dev
+      - REDIS_URL=redis://:redis123@redis:6379
       - SECRET_KEY=dev-secret-key-not-for-production
       - DEBUG=true
       - POLLINATIONS_ENABLED=true
@@ -37,8 +37,8 @@ services:
       file: docker-compose.yml
       service: celery-worker
     environment:
-      - DATABASE_URL=postgresql+asyncpg://bookreader_user:bookreader_pass@postgres:5432/bookreader
-      - REDIS_URL=redis://:redis_password@redis:6379
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres123@postgres:5432/bookreader_dev
+      - REDIS_URL=redis://:redis123@redis:6379
       - SECRET_KEY=dev-secret-key-not-for-production
       - POLLINATIONS_ENABLED=true
       - LOG_LEVEL=DEBUG
