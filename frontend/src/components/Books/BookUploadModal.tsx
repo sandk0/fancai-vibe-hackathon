@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { booksAPI } from '@/api/books';
 import { useUIStore } from '@/stores/ui';
+import { useTranslation } from '@/hooks/useTranslation';
 import { STORAGE_KEYS } from '@/types/state';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 
@@ -33,10 +34,11 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
   const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { notify } = useUIStore();
+  const { t } = useTranslation();
 
   // Upload mutation
   const uploadMutation = useMutation({
@@ -79,29 +81,29 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
       });
     },
     onSuccess: (data, file) => {
-      notify.success('Upload Complete', `"${data.title}" has been uploaded successfully!`);
+      notify.success(t('upload.uploadComplete'), t('upload.uploadSuccess').replace('{title}', data.title));
       setUploadProgress(prev => {
         const newProgress = { ...prev };
         delete newProgress[file.name];
         return newProgress;
       });
       setFiles(prev => prev.filter(f => f.name !== file.name));
-      
+
       // Invalidate books query to refresh the list
       queryClient.invalidateQueries({ queryKey: ['books'] });
-      
+
       // Call the success callback if provided
       if (onUploadSuccess) {
         onUploadSuccess();
       }
-      
+
       // Парсинг автоматически запускается на backend после загрузки
       if (data.is_processing) {
-        notify.info('Обработка начата', `Анализируем содержимое "${data.title}" для поиска описаний...`);
+        notify.info(t('upload.processingStarted'), t('upload.analyzingContent').replace('{title}', data.title));
       }
     },
     onError: (error: any, file) => {
-      notify.error('Upload Failed', error.message || 'Failed to upload book');
+      notify.error(t('upload.uploadFailed'), error.message || t('upload.uploadFailedDesc'));
       setUploadProgress(prev => {
         const newProgress = { ...prev };
         delete newProgress[file.name];
@@ -113,15 +115,15 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
   // File validation
   const validateFile = (file: File): string | null => {
     const extension = '.' + file.name.split('.').pop()?.toLowerCase();
-    
+
     if (!SUPPORTED_FORMATS.includes(extension)) {
-      return `Unsupported format. Please use: ${SUPPORTED_FORMATS.join(', ')}`;
+      return t('upload.unsupportedFormat').replace('{formats}', SUPPORTED_FORMATS.join(', '));
     }
-    
+
     if (file.size > MAX_FILE_SIZE) {
-      return `File too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)}MB`;
+      return t('upload.fileTooLargeDesc').replace('{size}', String(MAX_FILE_SIZE / (1024 * 1024)));
     }
-    
+
     return null;
   };
 
@@ -158,7 +160,7 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
 
     // Show validation errors
     if (errors.length > 0) {
-      notify.error('File Validation Failed', errors.join('\n'));
+      notify.error(t('upload.fileValidationFailed'), errors.join('\n'));
     }
 
     // Process valid files
@@ -223,7 +225,7 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
   // Close modal and reset state
   const handleClose = () => {
     if (uploadMutation.isPending) {
-      notify.warning('Upload in Progress', 'Please wait for uploads to complete');
+      notify.warning(t('upload.uploadInProgress'), t('upload.uploadInProgressDesc'));
       return;
     }
     setFiles([]);
@@ -254,7 +256,7 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
             <div className="flex items-center space-x-3">
               <BookOpen className="h-6 w-6 text-primary-600" />
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Upload Books
+                {t('upload.uploadBooks')}
               </h2>
             </div>
             <button
@@ -283,20 +285,20 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
               >
                 <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                  Drag and drop your books here
+                  {t('upload.dragDropHere')}
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  or click to browse files
+                  {t('upload.orClickBrowse')}
                 </p>
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  Choose Files
+                  {t('upload.chooseFiles')}
                 </button>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
-                  Supports: {SUPPORTED_FORMATS.join(', ')} • Max size: {MAX_FILE_SIZE / (1024 * 1024)}MB
+                  {t('upload.supports')}: {SUPPORTED_FORMATS.join(', ')} • {t('upload.maxSizeLabel')}: {MAX_FILE_SIZE / (1024 * 1024)}MB
                 </p>
               </div>
             )}
@@ -356,9 +358,9 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
                     onClick={() => fileInputRef.current?.click()}
                     className="text-primary-600 hover:text-primary-700 text-sm font-medium"
                   >
-                    Add More Files
+                    {t('upload.addMoreFiles')}
                   </button>
-                  
+
                   <button
                     onClick={startUpload}
                     disabled={uploadMutation.isPending || files.length === 0}
@@ -367,12 +369,12 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
                     {uploadMutation.isPending ? (
                       <>
                         <LoadingSpinner size="sm" className="mr-2" />
-                        Uploading...
+                        {t('upload.uploadingFiles')}
                       </>
                     ) : (
                       <>
                         <Upload className="h-4 w-4 mr-2" />
-                        Upload {files.length} {files.length === 1 ? 'Book' : 'Books'}
+                        {files.length === 1 ? t('upload.uploadCountOne') : t('upload.uploadCount').replace('{count}', String(files.length))}
                       </>
                     )}
                   </button>
@@ -386,12 +388,12 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
                 <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                 <div className="text-sm">
                   <p className="text-blue-800 dark:text-blue-200 font-medium mb-1">
-                    Processing Information
+                    {t('upload.processingInfo')}
                   </p>
                   <ul className="text-blue-700 dark:text-blue-300 space-y-1">
-                    <li>• Books will be automatically parsed for metadata and chapters</li>
-                    <li>• AI will extract descriptions and generate images in the background</li>
-                    <li>• You'll receive notifications when processing is complete</li>
+                    {t('upload.processingInfoItems').map((item: string, index: number) => (
+                      <li key={index}>• {item}</li>
+                    ))}
                   </ul>
                 </div>
               </div>

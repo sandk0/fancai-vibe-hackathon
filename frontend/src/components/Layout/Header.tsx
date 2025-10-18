@@ -1,11 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  BookOpen, 
-  Menu, 
-  Search, 
-  User, 
-  Settings, 
+import {
+  BookOpen,
+  Menu,
+  Search,
+  User,
+  Settings,
   LogOut,
   Upload,
   Moon,
@@ -14,6 +14,7 @@ import {
 import { useAuthStore } from '@/stores/auth';
 import { useUIStore } from '@/stores/ui';
 import { useReaderStore } from '@/stores/reader';
+import { useTranslation } from '@/hooks/useTranslation';
 import { WebSocketStatus } from '@/services/websocket';
 import { cn } from '@/utils/cn';
 
@@ -21,6 +22,7 @@ const Header: React.FC = () => {
   const { user, logout } = useAuthStore();
   const { sidebarOpen, setSidebarOpen, setShowUploadModal, setShowProfileModal } = useUIStore();
   const { theme, updateTheme } = useReaderStore();
+  const { t } = useTranslation();
   const [showUserMenu, setShowUserMenu] = React.useState(false);
 
   const toggleTheme = () => {
@@ -67,7 +69,7 @@ const Header: React.FC = () => {
               </div>
               <input
                 type="text"
-                placeholder="Search books..."
+                placeholder={t('nav.searchBooks')}
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-700 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
@@ -85,7 +87,7 @@ const Header: React.FC = () => {
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
             >
               <Upload className="w-4 h-4 mr-2" />
-              <span className="hidden sm:block">Upload Book</span>
+              <span className="hidden sm:block">{t('nav.uploadBook')}</span>
             </button>
 
             {/* Theme toggle */}
@@ -93,7 +95,7 @@ const Header: React.FC = () => {
               type="button"
               onClick={toggleTheme}
               className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              title={`Switch to ${theme === 'light' ? 'dark' : theme === 'dark' ? 'sepia' : 'light'} mode`}
+              title={t('nav.switchTheme').replace('{theme}', t(`nav.${theme === 'light' ? 'darkMode' : theme === 'dark' ? 'sepiaMode' : 'lightMode'}`))}
             >
               {theme === 'light' ? (
                 <Moon className="w-5 h-5" />
@@ -109,7 +111,7 @@ const Header: React.FC = () => {
                 className="flex items-center max-w-xs text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                 onClick={() => setShowUserMenu(!showUserMenu)}
               >
-                <span className="sr-only">Open user menu</span>
+                <span className="sr-only">{t('nav.openUserMenu')}</span>
                 <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
                   <span className="text-sm font-medium text-white">
                     {user?.full_name ? user.full_name.charAt(0).toUpperCase() : user?.email.charAt(0).toUpperCase()}
@@ -124,7 +126,7 @@ const Header: React.FC = () => {
                     <div className="font-medium">{user?.full_name || 'User'}</div>
                     <div className="text-gray-500 dark:text-gray-400">{user?.email}</div>
                   </div>
-                  
+
                   <button
                     onClick={() => {
                       setShowProfileModal(true);
@@ -133,24 +135,24 @@ const Header: React.FC = () => {
                     className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     <User className="w-4 h-4 mr-3" />
-                    Profile
+                    {t('nav.profile')}
                   </button>
-                  
+
                   <Link
                     to="/settings"
                     onClick={() => setShowUserMenu(false)}
                     className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     <Settings className="w-4 h-4 mr-3" />
-                    Settings
+                    {t('nav.settings')}
                   </Link>
-                  
+
                   <button
                     onClick={handleLogout}
                     className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     <LogOut className="w-4 h-4 mr-3" />
-                    Sign out
+                    {t('nav.signOut')}
                   </button>
                 </div>
               )}
