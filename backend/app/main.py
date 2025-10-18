@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any
 import os
 
@@ -80,7 +80,7 @@ async def root() -> Dict[str, Any]:
         "message": "BookReader AI API",
         "version": VERSION,
         "status": "running",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "docs": "/docs"
     }
 
@@ -96,7 +96,7 @@ async def health_check() -> Dict[str, Any]:
     return {
         "status": "healthy",
         "version": VERSION,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "checks": {
             "api": "ok",
             "database": "checking...",  # TODO: добавить проверку БД
@@ -147,7 +147,7 @@ async def not_found_handler(request, exc):
             "error": "Not Found",
             "message": "Requested resource not found",
             "path": str(request.url.path),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     )
 
@@ -164,7 +164,7 @@ async def internal_error_handler(request, exc):
         content={
             "error": "Internal Server Error", 
             "message": f"An internal server error occurred: {str(exc)}",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     )
 

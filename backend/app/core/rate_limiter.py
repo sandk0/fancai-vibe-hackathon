@@ -6,7 +6,7 @@ Prevents system overload by limiting simultaneous heavy operations
 import asyncio
 import time
 from typing import Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import redis.asyncio as redis
 import logging
 import json
@@ -166,7 +166,7 @@ class ParsingRateLimiter:
                 'book_id': book_id,
                 'user_id': user_id,
                 'priority': priority,
-                'queued_at': datetime.utcnow().isoformat()
+                'queued_at': datetime.now(timezone.utc).isoformat()
             }
             
             # Add to sorted set with priority as score
@@ -280,7 +280,7 @@ class ParsingRateLimiter:
             
             # Update counter
             stats[event_type] = stats.get(event_type, 0) + 1
-            stats['last_updated'] = datetime.utcnow().isoformat()
+            stats['last_updated'] = datetime.now(timezone.utc).isoformat()
             
             # Save back
             await self.redis_client.setex(

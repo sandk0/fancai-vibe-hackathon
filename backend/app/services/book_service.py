@@ -9,7 +9,7 @@ import shutil
 from typing import List, Optional, Dict, Any, Tuple
 from pathlib import Path
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func, desc
 from sqlalchemy.orm import selectinload
@@ -312,7 +312,7 @@ class BookService:
         chapter.is_description_parsed = True
         chapter.descriptions_found = len(saved_descriptions)
         chapter.parsing_progress = 100
-        chapter.parsed_at = datetime.utcnow()
+        chapter.parsed_at = datetime.now(timezone.utc)
         
         await db.commit()
         return saved_descriptions
@@ -415,14 +415,14 @@ class BookService:
             progress.current_chapter = valid_chapter
             progress.current_page = valid_page
             progress.current_position = valid_position
-            progress.last_read_at = datetime.utcnow()
+            progress.last_read_at = datetime.now(timezone.utc)
         
         # Обновляем время последнего доступа к книге
         await db.execute(
             select(Book).where(Book.id == book_id)
         )
         book = (await db.execute(select(Book).where(Book.id == book_id))).scalar_one()
-        book.last_accessed = datetime.utcnow()
+        book.last_accessed = datetime.now(timezone.utc)
         
         await db.commit()
         return progress
@@ -469,7 +469,7 @@ class BookService:
             print(f"Warning: Could not delete cover image {book.cover_image}: {e}")
         
         # Удаляем запись из БД (cascade удалит связанные записи)
-        await db.delete(book)
+        db.delete(book)  # delete() не async в AsyncSession
         await db.commit()
         
         return True

@@ -7,7 +7,7 @@
 
 import asyncio
 from typing import Optional, Dict, Any, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 import redis.asyncio as redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -87,7 +87,7 @@ class ParsingManager:
         lock = await r.get(self.parsing_lock_key)
         if lock:
             lock_data = json.loads(lock)
-            remaining_time = self.lock_timeout - (datetime.utcnow().timestamp() - lock_data['started_at'])
+            remaining_time = self.lock_timeout - (datetime.now(timezone.utc).timestamp() - lock_data['started_at'])
             
             if remaining_time > 0:
                 return False, f"Parsing in progress for book {lock_data['book_id']}. Wait {int(remaining_time)}s"
@@ -109,7 +109,7 @@ class ParsingManager:
         lock_data = {
             'book_id': book_id,
             'user_id': user_id,
-            'started_at': datetime.utcnow().timestamp()
+            'started_at': datetime.now(timezone.utc).timestamp()
         }
         
         # Используем SET NX для атомарной операции
@@ -159,7 +159,7 @@ class ParsingManager:
             'book_id': book_id,
             'user_id': user_id,
             'priority': priority,
-            'added_at': datetime.utcnow().isoformat(),
+            'added_at': datetime.now(timezone.utc).isoformat(),
             'status': 'queued'
         }
         
@@ -234,7 +234,7 @@ class ParsingManager:
             'chapters_processed': chapters_processed,
             'total_chapters': total_chapters,
             'descriptions_found': descriptions_found,
-            'updated_at': datetime.utcnow().isoformat()
+            'updated_at': datetime.now(timezone.utc).isoformat()
         }
         
         await r.setex(
