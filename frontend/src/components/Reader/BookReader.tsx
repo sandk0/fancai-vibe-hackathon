@@ -732,7 +732,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
                     const fallbackContent = chapter.chapter?.html_content || chapter.chapter?.content || '';
                     console.log('Using fallback content, length:', fallbackContent.length);
                     return fallbackContent;
-                  })()
+                  })())
                 }}
                 className="select-text epub-content"
               />
