@@ -9,7 +9,7 @@ from typing import Dict, Any
 import os
 import redis.asyncio as redis
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -342,7 +342,7 @@ async def get_nlp_processor_status(admin_user: User = Depends(get_current_admin_
         return {
             "status": "success",
             "data": status,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     except Exception as e:
         logger.error(f"Error getting NLP processor status: {e}")
@@ -393,7 +393,7 @@ async def test_nlp_processors(
                 for proc, descriptions in result.processor_results.items()
             },
             "best_descriptions": result.descriptions[:5],  # Топ 5 описаний
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
     except Exception as e:

@@ -7,7 +7,7 @@ from app.core.celery_app import celery_app
 import asyncio
 from typing import Dict, Any, List
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -39,18 +39,26 @@ logger = logging.getLogger(__name__)
 
 
 def _run_async_task(coro):
-    """Helper function to run async functions in Celery tasks."""
+    """
+    Helper function to run async functions in Celery tasks.
+
+    ВАЖНО: НЕ закрываем event loop после выполнения, так как:
+    1. После run_until_complete() loop уже не running
+    2. Закрытие loop может сломать последующие async операции
+    3. Позволяем asyncio управлять жизненным циклом loop
+    """
     try:
         loop = asyncio.get_event_loop()
     except RuntimeError:
+        # Worker thread не имеет event loop - создаем новый
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-    
+
     try:
         return loop.run_until_complete(coro)
     finally:
-        if loop.is_running():
-            loop.close()
+        # НЕ закрываем loop - позволяем asyncio управлять им
+        pass
 
 
 @celery_app.task(
@@ -425,13 +433,13 @@ def cleanup_old_images_task(days_old: int = 30) -> Dict[str, Any]:
 
 async def _cleanup_old_images_async(days_old: int) -> Dict[str, Any]:
     """Асинхронная функция очистки старых изображений."""
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
     import os
     from app.models.image import GeneratedImage
     
     async with AsyncSessionLocal() as db:
         # Находим старые изображения
-        cutoff_date = datetime.utcnow() - timedelta(days=days_old)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_old)
         
         old_images_result = await db.execute(
             select(GeneratedImage).where(GeneratedImage.created_at < cutoff_date)
@@ -519,5 +527,5 @@ async def _get_system_stats_async() -> Dict[str, Any]:
             "total_images": total_images,
             "processing_rate": round((processed_books / total_books * 100), 2) if total_books > 0 else 0.0,
             "generation_rate": round((total_images / total_descriptions * 100), 2) if total_descriptions > 0 else 0.0,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }

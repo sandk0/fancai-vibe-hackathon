@@ -49,6 +49,7 @@ class MultiNLPManager:
         self.processing_mode = ProcessingMode.SINGLE
         self.default_processor = "spacy"
         self._initialized = False  # Флаг инициализации
+        self._init_lock = asyncio.Lock()  # Lock для защиты от race condition
         
         # Глобальные настройки
         self.global_config = {
@@ -68,20 +69,30 @@ class MultiNLPManager:
         }
     
     async def initialize(self):
-        """Инициализирует все доступные NLP процессоры."""
-        logger.info("Initializing Multi-NLP Manager...")
-        
-        # Загружаем конфигурации из базы данных
-        await self._load_processor_configs()
-        
-        # Инициализируем процессоры
-        await self._initialize_processors()
-        
-        # Загружаем глобальные настройки
-        await self._load_global_settings()
-        
-        self._initialized = True  # Устанавливаем флаг инициализации
-        logger.info(f"✅ Multi-NLP Manager initialized with {len(self.processors)} processors")
+        """
+        Инициализирует все доступные NLP процессоры.
+
+        Защищен Lock'ом от одновременных инициализаций из разных задач.
+        """
+        async with self._init_lock:
+            # Double-check pattern: проверяем еще раз внутри lock
+            if self._initialized:
+                logger.info("Multi-NLP Manager already initialized, skipping")
+                return
+
+            logger.info("Initializing Multi-NLP Manager...")
+
+            # Загружаем конфигурации из базы данных
+            await self._load_processor_configs()
+
+            # Инициализируем процессоры
+            await self._initialize_processors()
+
+            # Загружаем глобальные настройки
+            await self._load_global_settings()
+
+            self._initialized = True  # Устанавливаем флаг инициализации
+            logger.info(f"✅ Multi-NLP Manager initialized with {len(self.processors)} processors")
     
     async def _load_processor_configs(self):
         """Загружает конфигурации процессоров из базы данных."""
