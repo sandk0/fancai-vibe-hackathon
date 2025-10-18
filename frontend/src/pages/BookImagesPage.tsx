@@ -6,9 +6,11 @@ import { booksAPI } from '@/api/books';
 import { ImageGallery } from '@/components/Images/ImageGallery';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import ErrorMessage from '@/components/UI/ErrorMessage';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const BookImagesPage: React.FC = () => {
   const { bookId } = useParams<{ bookId: string }>();
+  const { t } = useTranslation();
 
   // Fetch book data for header information
   const { data: book, isLoading: bookLoading, error: bookError } = useQuery({
@@ -20,7 +22,7 @@ const BookImagesPage: React.FC = () => {
   if (!bookId) {
     return (
       <div className="flex items-center justify-center min-h-64">
-        <ErrorMessage title="Invalid Book" message="Book ID is required" />
+        <ErrorMessage title={t('images.invalidBook')} message={t('images.bookIdRequired')} />
       </div>
     );
   }
@@ -28,7 +30,7 @@ const BookImagesPage: React.FC = () => {
   if (bookLoading) {
     return (
       <div className="flex items-center justify-center min-h-64">
-        <LoadingSpinner size="lg" text="Loading book information..." />
+        <LoadingSpinner size="lg" text={t('images.loadingBookInfo')} />
       </div>
     );
   }
@@ -36,11 +38,11 @@ const BookImagesPage: React.FC = () => {
   if (bookError || !book) {
     return (
       <div className="flex items-center justify-center min-h-64">
-        <ErrorMessage 
-          title="Book Not Found" 
-          message="The requested book could not be loaded"
+        <ErrorMessage
+          title={t('images.bookNotFound')}
+          message={t('images.bookNotFoundDesc')}
           action={{
-            label: "Go Back to Library",
+            label: t('images.goBackToLibrary'),
             onClick: () => window.history.back()
           }}
         />
@@ -67,7 +69,7 @@ const BookImagesPage: React.FC = () => {
                 {book.title}
               </h1>
               <p className="text-gray-600 dark:text-gray-400">
-                by {book.author} • AI-Generated Images
+                {book.author} • {t('images.aiGeneratedImages')}
               </p>
             </div>
           </div>
@@ -78,7 +80,7 @@ const BookImagesPage: React.FC = () => {
             to={`/books/${bookId}`}
             className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
           >
-            Read Book
+            {t('images.readBook')}
           </Link>
         </div>
       </div>
@@ -114,28 +116,28 @@ const BookImagesPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <div>
                 <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                  Chapters
+                  {t('images.chapters')}
                 </h3>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {book.total_chapters}
                 </p>
               </div>
-              
+
               <div>
                 <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                  Progress
+                  {t('images.progress')}
                 </h3>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {Math.round(book.reading_progress_percent || 0)}%
                 </p>
               </div>
-              
+
               <div>
                 <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                  Genre
+                  {t('images.genre')}
                 </h3>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {book.genre || 'Unknown'}
+                  {book.genre || t('images.unknown')}
                 </p>
               </div>
             </div>

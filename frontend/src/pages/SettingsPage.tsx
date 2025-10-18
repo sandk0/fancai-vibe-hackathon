@@ -2,19 +2,21 @@ import React, { useState } from 'react';
 import { Book, User, Bell, Shield, Palette, Info } from 'lucide-react';
 import ReaderSettings from '@/components/Settings/ReaderSettings';
 import { useAuthStore } from '@/stores/auth';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type SettingsTab = 'reader' | 'account' | 'notifications' | 'privacy' | 'about';
 
 const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('reader');
   const { user } = useAuthStore();
+  const { t } = useTranslation();
 
   const tabs = [
-    { id: 'reader' as SettingsTab, label: 'Reader', icon: Book, description: 'Font, theme, and reading preferences' },
-    { id: 'account' as SettingsTab, label: 'Account', icon: User, description: 'Profile and subscription settings' },
-    { id: 'notifications' as SettingsTab, label: 'Notifications', icon: Bell, description: 'Notification preferences' },
-    { id: 'privacy' as SettingsTab, label: 'Privacy', icon: Shield, description: 'Privacy and security settings' },
-    { id: 'about' as SettingsTab, label: 'About', icon: Info, description: 'App version and information' },
+    { id: 'reader' as SettingsTab, label: t('settings.reading'), icon: Book, description: 'Шрифт, тема и настройки чтения' },
+    { id: 'account' as SettingsTab, label: 'Аккаунт', icon: User, description: 'Профиль и настройки подписки' },
+    { id: 'notifications' as SettingsTab, label: t('settings.notifications'), icon: Bell, description: 'Настройки уведомлений' },
+    { id: 'privacy' as SettingsTab, label: t('settings.privacy'), icon: Shield, description: 'Конфиденциальность и безопасность' },
+    { id: 'about' as SettingsTab, label: 'О программе', icon: Info, description: 'Версия приложения и информация' },
   ];
 
   const renderTabContent = () => {
@@ -27,12 +29,12 @@ const SettingsPage: React.FC = () => {
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                Account Information
+                {t('profile.personalInfo')}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Full Name
+                    {t('profile.fullName')}
                   </label>
                   <input
                     type="text"
@@ -43,7 +45,7 @@ const SettingsPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Email
+                    {t('profile.email')}
                   </label>
                   <input
                     type="email"
@@ -54,7 +56,7 @@ const SettingsPage: React.FC = () => {
                 </div>
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
-                Account settings are currently read-only. Contact support to make changes.
+                Настройки аккаунта доступны только для чтения. Свяжитесь с поддержкой для изменений.
               </p>
             </div>
           </div>
@@ -65,27 +67,27 @@ const SettingsPage: React.FC = () => {
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                Notification Preferences
+                Настройки уведомлений
               </h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-gray-900 dark:text-white">Book Processing</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Get notified when book processing is complete</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Обработка книги</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Получать уведомление когда обработка книги завершена</p>
                   </div>
                   <input type="checkbox" defaultChecked className="toggle" />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-gray-900 dark:text-white">Image Generation</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Get notified when new images are generated</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Генерация изображений</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Получать уведомление когда создаются новые изображения</p>
                   </div>
                   <input type="checkbox" defaultChecked className="toggle" />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-gray-900 dark:text-white">Reading Reminders</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Get reminded to continue reading</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Напоминания о чтении</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Получать напоминания продолжить чтение</p>
                   </div>
                   <input type="checkbox" className="toggle" />
                 </div>
@@ -99,20 +101,20 @@ const SettingsPage: React.FC = () => {
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                Privacy & Security
+                Конфиденциальность и безопасность
               </h3>
               <div className="space-y-4">
                 <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                   <p className="text-blue-800 dark:text-blue-200">
-                    Your books and reading data are stored securely and are not shared with third parties.
+                    Ваши книги и данные чтения хранятся безопасно и не передаются третьим лицам.
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <h4 className="font-medium text-gray-900 dark:text-white">Data Collection</h4>
+                  <h4 className="font-medium text-gray-900 dark:text-white">Сбор данных</h4>
                   <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                    <li>• Reading progress and bookmarks</li>
-                    <li>• Generated images from your books</li>
-                    <li>• App usage statistics (anonymized)</li>
+                    <li>• Прогресс чтения и закладки</li>
+                    <li>• Сгенерированные изображения из ваших книг</li>
+                    <li>• Статистика использования приложения (анонимизированная)</li>
                   </ul>
                 </div>
               </div>
@@ -125,26 +127,26 @@ const SettingsPage: React.FC = () => {
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                About BookReader AI
+                О BookReader AI
               </h3>
               <div className="space-y-4">
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white">Version</p>
-                  <p className="text-gray-600 dark:text-gray-400">1.0.0 (Beta)</p>
+                  <p className="font-medium text-gray-900 dark:text-white">Версия</p>
+                  <p className="text-gray-600 dark:text-gray-400">1.0.0 (Бета)</p>
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white">Description</p>
+                  <p className="font-medium text-gray-900 dark:text-white">Описание</p>
                   <p className="text-gray-600 dark:text-gray-400">
-                    Transform your reading experience with AI-powered image generation from book descriptions.
+                    Преобразите ваше чтение с AI-генерацией изображений из описаний книг.
                   </p>
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white">Technology Stack</p>
+                  <p className="font-medium text-gray-900 dark:text-white">Технологический стек</p>
                   <ul className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                     <li>• React 18 + TypeScript</li>
                     <li>• FastAPI + Python</li>
-                    <li>• PostgreSQL Database</li>
-                    <li>• AI Image Generation</li>
+                    <li>• База данных PostgreSQL</li>
+                    <li>• AI генерация изображений</li>
                   </ul>
                 </div>
               </div>
@@ -162,10 +164,10 @@ const SettingsPage: React.FC = () => {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Settings
+          {t('settings.title')}
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Customize your reading experience and manage your account preferences
+          Настройте ваш процесс чтения и управляйте настройками аккаунта
         </p>
       </div>
 
