@@ -151,6 +151,17 @@ export const ru = {
     generatedOn: 'Создано: {date}',
     fromBook: 'Из книги: {title}',
     readBook: 'Читать книгу',
+    aiGeneratedImages: 'AI-сгенерированные изображения',
+    chapters: 'Главы',
+    progress: 'Прогресс',
+    genre: 'Жанр',
+    unknown: 'Неизвестно',
+    invalidBook: 'Неправильная книга',
+    bookIdRequired: 'Требуется ID книги',
+    loadingBookInfo: 'Загрузка информации о книге...',
+    bookNotFound: 'Книга не найдена',
+    bookNotFoundDesc: 'Запрошенная книга не может быть загружена',
+    goBackToLibrary: 'Вернуться в библиотеку',
   },
 
   // Загрузка книг / Book upload
