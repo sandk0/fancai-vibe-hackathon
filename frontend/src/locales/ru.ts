@@ -1,0 +1,292 @@
+/**
+ * Русская локализация для BookReader AI
+ * Russian translations for BookReader AI
+ */
+
+export const ru = {
+  // Общие элементы / Common elements
+  common: {
+    loading: 'Загрузка...',
+    error: 'Ошибка',
+    success: 'Успешно',
+    cancel: 'Отмена',
+    save: 'Сохранить',
+    delete: 'Удалить',
+    edit: 'Редактировать',
+    close: 'Закрыть',
+    back: 'Назад',
+    next: 'Далее',
+    previous: 'Предыдущая',
+    search: 'Поиск',
+    filter: 'Фильтры',
+    noResults: 'Ничего не найдено',
+  },
+
+  // Аутентификация / Authentication
+  auth: {
+    // Login page
+    welcomeBack: 'Добро пожаловать!',
+    signIn: 'Войти',
+    signingIn: 'Вход...',
+    loginSuccess: 'Вы успешно вошли в систему.',
+    loginFailed: 'Ошибка входа',
+    checkCredentials: 'Проверьте данные и попробуйте снова.',
+    loginTitle: 'Добро пожаловать',
+    loginSubtitle: 'Войдите, чтобы продолжить чтение с AI-иллюстрациями',
+    dontHaveAccount: 'Нет аккаунта?',
+    signUpHere: 'Зарегистрируйтесь здесь',
+
+    // Register page
+    createAccount: 'Создать аккаунт',
+    creatingAccount: 'Создание аккаунта...',
+    accountCreated: 'Аккаунт создан!',
+    accountCreatedMessage: 'Добро пожаловать в BookReader AI. Загрузите первую книгу!',
+    registrationFailed: 'Ошибка регистрации',
+    registerTitle: 'Создать аккаунт',
+    registerSubtitle: 'Присоединяйтесь к BookReader AI и открывайте книги с AI-иллюстрациями',
+    alreadyHaveAccount: 'Уже есть аккаунт?',
+    signInHere: 'Войдите здесь',
+    termsAgreement: 'Создавая аккаунт, вы соглашаетесь с нашими',
+    termsOfService: 'Условиями использования',
+    and: 'и',
+    privacyPolicy: 'Политикой конфиденциальности',
+
+    // Form fields
+    email: 'Email адрес',
+    emailPlaceholder: 'Введите ваш email',
+    password: 'Пароль',
+    passwordPlaceholder: 'Введите ваш пароль',
+    createPassword: 'Создайте пароль',
+    fullName: 'Полное имя',
+    fullNameOptional: 'Полное имя (необязательно)',
+    fullNamePlaceholder: 'Введите ваше полное имя',
+    confirmPassword: 'Подтвердите пароль',
+    confirmPasswordPlaceholder: 'Подтвердите ваш пароль',
+
+    // Validation errors
+    invalidEmail: 'Неправильный email адрес',
+    passwordTooShort: 'Пароль должен содержать минимум 6 символов',
+    passwordsDontMatch: 'Пароли не совпадают',
+    nameTooShort: 'Имя должно содержать минимум 2 символа',
+  },
+
+  // Главная страница / Home page
+  home: {
+    welcomeTitle: 'Добро пожаловать, {name}!',
+    welcomeSubtitle: 'Продолжите читать с AI-генерацией изображений, которая оживляет ваши книги.',
+    browseLibrary: 'Моя библиотека',
+    browseLibraryDesc: 'Откройте вашу персональную коллекцию загруженных книг',
+    uploadBook: 'Загрузить книгу',
+    uploadBookDesc: 'Добавить EPUB или FB2 файлы в вашу библиотеку',
+    aiGallery: 'AI Галерея',
+    aiGalleryDesc: 'Просмотреть сгенерированные изображения и иллюстрации',
+    readingProgress: 'Прогресс чтения',
+    noBooksInProgress: 'Пока нет книг в процессе чтения',
+    startReading: 'Начать читать →',
+    aiFeatures: 'AI-Функции',
+    smartExtraction: 'Умное извлечение описаний',
+    smartExtractionDesc: 'Автоматически определяет локации, персонажей и сцены',
+    imageGeneration: 'Генерация изображений',
+    imageGenerationDesc: 'Создает красивые иллюстрации из описаний книг',
+    readingAnalytics: 'Аналитика чтения',
+    readingAnalyticsDesc: 'Отслеживайте ваш прогресс и привычки чтения',
+  },
+
+  // Библиотека / Library
+  library: {
+    title: 'Моя библиотека',
+    booksCount: '{count} книг в вашей коллекции',
+    oneBook: '1 книга в вашей коллекции',
+    noBooksTitle: 'Пока нет книг',
+    noBooksDesc: 'Загрузите ваш первый EPUB или FB2 файл, чтобы начать читать с AI-иллюстрациями',
+    uploadFirstBook: 'Загрузить первую книгу',
+    searchPlaceholder: 'Поиск в ваших книгах...',
+    filters: 'Фильтры',
+    uploadBook: 'Загрузить книгу',
+    chapters: 'глав',
+    oneChapter: 'глава',
+    processing: 'Обрабатывается',
+    readingProgress: '{percent}% прочитано',
+  },
+
+  // Читалка / Reader
+  reader: {
+    loading: 'Загрузка книги...',
+    error: 'Ошибка при загрузке книги',
+    chapter: 'Глава {num}',
+    page: 'Страница {num} из {total}',
+    tableOfContents: 'Содержание',
+    settings: 'Настройки',
+    bookmarks: 'Закладки',
+    textSettings: 'Настройки текста',
+    fontSize: 'Размер шрифта',
+    fontFamily: 'Шрифт',
+    lineHeight: 'Межстрочный интервал',
+    theme: 'Тема',
+    themeLight: 'Светлая',
+    themeDark: 'Темная',
+    themeSepia: 'Сепия',
+    addBookmark: 'Добавить закладку',
+    removeBookmark: 'Удалить закладку',
+    noDescriptions: 'Нет описаний для этой главы',
+    generatingImages: 'Генерируем изображения...',
+    imageGenerated: 'Изображение сгенерировано',
+    clickToView: 'Нажмите, чтобы увеличить',
+  },
+
+  // Изображения / Images
+  images: {
+    title: 'AI Галерея',
+    allImages: 'Все изображения',
+    byBook: 'По книгам',
+    byType: 'По типам',
+    download: 'Скачать',
+    delete: 'Удалить',
+    regenerate: 'Пересоздать',
+    location: 'Локация',
+    character: 'Персонаж',
+    atmosphere: 'Атмосфера',
+    noImages: 'Пока нет изображений',
+    noImagesDesc: 'Начните читать книгу, и AI создаст иллюстрации для вас',
+    generatedOn: 'Создано: {date}',
+    fromBook: 'Из книги: {title}',
+    readBook: 'Читать книгу',
+  },
+
+  // Загрузка книг / Book upload
+  upload: {
+    title: 'Загрузить книгу',
+    dragDrop: 'Перетащите файл сюда или кликните для выбора',
+    acceptedFormats: 'Принимаются: EPUB, FB2',
+    maxSize: 'Максимальный размер: {size}MB',
+    uploading: 'Загружаем...',
+    processing: 'Обрабатываем книгу...',
+    success: 'Книга успешно загружена!',
+    error: 'Ошибка при загрузке',
+    invalidFormat: 'Неподдерживаемый формат файла',
+    fileTooLarge: 'Файл слишком большой',
+    selectFile: 'Выбрать файл',
+  },
+
+  // Профиль / Profile
+  profile: {
+    title: 'Профиль',
+    personalInfo: 'Личная информация',
+    email: 'Email',
+    fullName: 'Полное имя',
+    memberSince: 'С нами с {date}',
+    statistics: 'Статистика',
+    booksRead: 'Прочитано книг',
+    imagesGenerated: 'Создано изображений',
+    readingTime: 'Время чтения',
+    subscription: 'Подписка',
+    currentPlan: 'Текущий план',
+    upgradePlan: 'Улучшить план',
+    freeplan: 'Бесплатный',
+    premium: 'Премиум',
+    ultimate: 'Ультимейт',
+  },
+
+  // Настройки / Settings
+  settings: {
+    title: 'Настройки',
+    general: 'Общие',
+    appearance: 'Внешний вид',
+    reading: 'Чтение',
+    notifications: 'Уведомления',
+    privacy: 'Конфиденциальность',
+    language: 'Язык',
+    darkMode: 'Темная тема',
+    autoSave: 'Автосохранение прогресса',
+    emailNotifications: 'Email уведомления',
+    saveChanges: 'Сохранить изменения',
+    changesSaved: 'Изменения сохранены',
+  },
+
+  // Административная панель / Admin dashboard
+  admin: {
+    title: 'Панель администратора',
+    overview: 'Обзор',
+    users: 'Пользователи',
+    books: 'Книги',
+    images: 'Изображения',
+    nlpSettings: 'Настройки NLP',
+    systemLogs: 'Системные логи',
+    totalUsers: 'Всего пользователей',
+    totalBooks: 'Всего книг',
+    totalImages: 'Всего изображений',
+    activeNow: 'Активны сейчас',
+    nlpProcessors: 'NLP процессоры',
+    processorStatus: 'Статус процессора',
+    enabled: 'Включен',
+    disabled: 'Отключен',
+    weight: 'Вес',
+    threshold: 'Порог',
+    updateSettings: 'Обновить настройки',
+  },
+
+  // Ошибки / Errors
+  errors: {
+    notFound: 'Страница не найдена',
+    notFoundDesc: 'Страница, которую вы ищете, не существует.',
+    goHome: 'На главную',
+    serverError: 'Ошибка сервера',
+    serverErrorDesc: 'Что-то пошло не так на сервере.',
+    networkError: 'Ошибка сети',
+    networkErrorDesc: 'Проверьте ваше интернет соединение.',
+    unauthorized: 'Не авторизован',
+    unauthorizedDesc: 'Пожалуйста, войдите, чтобы продолжить.',
+    forbidden: 'Доступ запрещен',
+    forbiddenDesc: 'У вас нет прав для доступа к этой странице.',
+  },
+
+  // Уведомления / Notifications
+  notifications: {
+    bookUploaded: 'Книга загружена',
+    bookUploadedDesc: '{title} успешно добавлена в библиотеку',
+    imageGenerated: 'Изображение создано',
+    imageGeneratedDesc: 'Новое изображение для {book}',
+    chapterCompleted: 'Глава завершена',
+    chapterCompletedDesc: 'Вы завершили главу {num}',
+    bookCompleted: 'Книга прочитана',
+    bookCompletedDesc: 'Поздравляем! Вы дочитали {title}',
+  },
+
+  // Функции / Features
+  features: {
+    aiPoweredGeneration: 'AI-генерация изображений',
+    epubFb2Support: 'Поддержка EPUB и FB2',
+    customizableReading: 'Настраиваемый процесс чтения',
+    progressTracking: 'Отслеживание прогресса',
+    bookmarks: 'Закладки и заметки',
+    darkMode: 'Темная тема',
+    offlineReading: 'Оффлайн чтение',
+    multiDevice: 'Синхронизация между устройствами',
+  },
+
+  // Кнопки и действия / Buttons and actions
+  actions: {
+    upload: 'Загрузить',
+    download: 'Скачать',
+    delete: 'Удалить',
+    edit: 'Редактировать',
+    save: 'Сохранить',
+    cancel: 'Отмена',
+    confirm: 'Подтвердить',
+    retry: 'Повторить',
+    refresh: 'Обновить',
+    viewAll: 'Посмотреть все',
+    readMore: 'Читать далее',
+    readBook: 'Читать книгу',
+    continueReading: 'Продолжить чтение',
+    startReading: 'Начать читать',
+    goBack: 'Назад',
+    goHome: 'На главную',
+    share: 'Поделиться',
+    export: 'Экспортировать',
+    import: 'Импортировать',
+  },
+} as const;
+
+export type TranslationKey = typeof ru;
+export default ru;

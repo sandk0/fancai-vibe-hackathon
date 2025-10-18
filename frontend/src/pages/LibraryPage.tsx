@@ -6,11 +6,13 @@ import { useUIStore } from '@/stores/ui';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import { BookUploadModal } from '@/components/Books/BookUploadModal';
 import { ParsingOverlay } from '@/components/UI/ParsingOverlay';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const LibraryPage: React.FC = () => {
   const navigate = useNavigate();
   const { books, isLoading, fetchBooks, error } = useBooksStore();
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     fetchBooks();
@@ -30,19 +32,21 @@ const LibraryPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            My Library
+            {t('library.title')}
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            {books.length} books in your collection
+            {books.length === 1
+              ? t('library.oneBook')
+              : t('library.booksCount', { count: books.length })}
           </p>
         </div>
-        
+
         <button
           onClick={() => setShowUploadModal(true)}
           className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors mt-4 sm:mt-0"
         >
           <Plus className="w-5 h-5 mr-2" />
-          Upload Book
+          {t('library.uploadBook')}
         </button>
       </div>
 
@@ -53,14 +57,14 @@ const LibraryPage: React.FC = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search your books..."
+              placeholder={t('library.searchPlaceholder')}
               className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             />
           </div>
         </div>
         <button className="inline-flex items-center px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
           <Filter className="w-5 h-5 mr-2 text-gray-500" />
-          Filters
+          {t('library.filters')}
         </button>
       </div>
 
@@ -69,17 +73,17 @@ const LibraryPage: React.FC = () => {
         <div className="text-center py-16">
           <Book className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            No books yet
+            {t('library.noBooksTitle')}
           </h3>
           <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-sm mx-auto">
-            Upload your first EPUB or FB2 file to start reading with AI-generated illustrations
+            {t('library.noBooksDesc')}
           </p>
           <button
             onClick={() => setShowUploadModal(true)}
             className="inline-flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
           >
             <Plus className="w-5 h-5 mr-2" />
-            Upload Your First Book
+            {t('library.uploadFirstBook')}
           </button>
         </div>
       ) : (
@@ -146,11 +150,15 @@ const LibraryPage: React.FC = () => {
                   {book.author}
                 </p>
                 <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-500">
-                  <span>{book.chapters_count} chapters</span>
+                  <span>
+                    {book.chapters_count === 1
+                      ? t('library.oneChapter')
+                      : `${book.chapters_count} ${t('library.chapters')}`}
+                  </span>
                   {!book.is_parsed ? (
                     <span className="text-yellow-600 dark:text-yellow-400 flex items-center">
                       <AlertCircle className="w-3 h-3 mr-1" />
-                      Processing
+                      {t('library.processing')}
                     </span>
                   ) : book.reading_progress_percent !== undefined && book.reading_progress_percent > 0 ? (
                     <span>{Math.round(book.reading_progress_percent)}%</span>

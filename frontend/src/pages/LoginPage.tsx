@@ -8,10 +8,11 @@ import { useAuthStore } from '@/stores/auth';
 import { notify } from '@/stores/ui';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import { cn } from '@/utils/cn';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  email: z.string().email('Неправильный email адрес'),
+  password: z.string().min(6, 'Пароль должен содержать минимум 6 символов'),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -21,6 +22,7 @@ const LoginPage: React.FC = () => {
   const { login, isLoading } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
 
   const from = (location.state as any)?.from || '/library';
 
@@ -35,12 +37,12 @@ const LoginPage: React.FC = () => {
   const onSubmit = async (data: LoginFormData) => {
     try {
       await login(data.email, data.password);
-      notify.success('Welcome back!', 'You have been successfully logged in.');
+      notify.success(t('auth.welcomeBack'), t('auth.loginSuccess'));
       navigate(from, { replace: true });
     } catch (error: any) {
       notify.error(
-        'Login Failed', 
-        error.message || 'Please check your credentials and try again.'
+        t('auth.loginFailed'),
+        error.message || t('auth.checkCredentials')
       );
     }
   };
@@ -56,10 +58,10 @@ const LoginPage: React.FC = () => {
             </div>
           </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back
+            {t('auth.loginTitle')}
           </h2>
           <p className="text-gray-600">
-            Sign in to continue reading with AI-generated illustrations
+            {t('auth.loginSubtitle')}
           </p>
         </div>
 
@@ -68,11 +70,11 @@ const LoginPage: React.FC = () => {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Email Field */}
             <div>
-              <label 
-                htmlFor="email" 
+              <label
+                htmlFor="email"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Email address
+                {t('auth.email')}
               </label>
               <input
                 {...register('email')}
@@ -84,7 +86,7 @@ const LoginPage: React.FC = () => {
                   errors.email ? 'border-error-500' : 'border-gray-300',
                   isLoading && 'opacity-50 cursor-not-allowed'
                 )}
-                placeholder="Enter your email"
+                placeholder={t('auth.emailPlaceholder')}
               />
               {errors.email && (
                 <p className="mt-1 text-sm text-error-600">
@@ -95,11 +97,11 @@ const LoginPage: React.FC = () => {
 
             {/* Password Field */}
             <div>
-              <label 
-                htmlFor="password" 
+              <label
+                htmlFor="password"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Password
+                {t('auth.password')}
               </label>
               <div className="relative">
                 <input
@@ -112,7 +114,7 @@ const LoginPage: React.FC = () => {
                     errors.password ? 'border-error-500' : 'border-gray-300',
                     isLoading && 'opacity-50 cursor-not-allowed'
                   )}
-                  placeholder="Enter your password"
+                  placeholder={t('auth.passwordPlaceholder')}
                 />
                 <button
                   type="button"
@@ -147,10 +149,10 @@ const LoginPage: React.FC = () => {
               {isLoading ? (
                 <div className="flex items-center justify-center">
                   <LoadingSpinner size="small" color="white" className="mr-2" />
-                  Signing in...
+                  {t('auth.signingIn')}
                 </div>
               ) : (
-                'Sign in'
+                t('auth.signIn')
               )}
             </button>
           </form>
@@ -158,12 +160,12 @@ const LoginPage: React.FC = () => {
           {/* Register Link */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              Don't have an account?{' '}
+              {t('auth.dontHaveAccount')}{' '}
               <Link
                 to="/register"
                 className="font-medium text-primary-600 hover:text-primary-500 transition-colors"
               >
-                Sign up here
+                {t('auth.signUpHere')}
               </Link>
             </p>
           </div>
@@ -172,13 +174,13 @@ const LoginPage: React.FC = () => {
         {/* Features */}
         <div className="text-center space-y-2">
           <p className="text-sm text-gray-500">
-            ✨ AI-powered image generation
+            ✨ {t('features.aiPoweredGeneration')}
           </p>
           <p className="text-sm text-gray-500">
-            📚 EPUB and FB2 support
+            📚 {t('features.epubFb2Support')}
           </p>
           <p className="text-sm text-gray-500">
-            🎨 Customizable reading experience
+            🎨 {t('features.customizableReading')}
           </p>
         </div>
       </div>
