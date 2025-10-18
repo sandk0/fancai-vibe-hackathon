@@ -16,7 +16,6 @@ import { useUIStore } from '@/stores/ui';
 import { useReaderStore } from '@/stores/reader';
 import { useTranslation } from '@/hooks/useTranslation';
 import { WebSocketStatus } from '@/services/websocket';
-import { cn } from '@/utils/cn';
 
 const Header: React.FC = () => {
   const { user, logout } = useAuthStore();

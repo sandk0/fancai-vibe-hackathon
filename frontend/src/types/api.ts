@@ -137,6 +137,7 @@ export interface BookUploadResponse {
   has_cover: boolean;
   created_at: string;
   message: string;
+  is_processing?: boolean;
 }
 
 // Description Types

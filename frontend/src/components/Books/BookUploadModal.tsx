@@ -5,7 +5,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { booksAPI } from '@/api/books';
 import { useUIStore } from '@/stores/ui';
 import { useTranslation } from '@/hooks/useTranslation';
-import { STORAGE_KEYS } from '@/types/state';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 
 interface BookUploadModalProps {
@@ -391,9 +390,9 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
                     {t('upload.processingInfo')}
                   </p>
                   <ul className="text-blue-700 dark:text-blue-300 space-y-1">
-                    {t('upload.processingInfoItems').map((item: string, index: number) => (
-                      <li key={index}>• {item}</li>
-                    ))}
+                    <li>• Книги автоматически обрабатываются для извлечения метаданных и глав</li>
+                    <li>• AI извлечет описания и сгенерирует изображения в фоновом режиме</li>
+                    <li>• Вы получите уведомление, когда обработка завершится</li>
                   </ul>
                 </div>
               </div>

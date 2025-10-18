@@ -5,7 +5,7 @@ import { imagesAPI } from '@/api/images';
 import { useUIStore } from '@/stores/ui';
 import { useTranslation } from '@/hooks/useTranslation';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
-import type { Description, GeneratedImage } from '@/types/api';
+import type { Description } from '@/types/api';
 
 interface ImageModalProps {
   imageUrl: string;
@@ -25,7 +25,6 @@ export const ImageModal: React.FC<ImageModalProps> = ({
   title,
   description,
   imageId,
-  descriptionData,
   onImageRegenerated
 }) => {
   const [isZoomed, setIsZoomed] = useState(false);
