@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, BookOpen, Settings, Eye, Volume2 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import DOMPurify from 'dompurify';
 import { useQuery } from '@tanstack/react-query';
 import { booksAPI } from '@/api/books';
 import { imagesAPI } from '@/api/images';
@@ -715,10 +716,10 @@ export const BookReader: React.FC<BookReaderProps> = ({
             >
               <div
                 dangerouslySetInnerHTML={{
-                  __html: (() => {
+                  __html: DOMPurify.sanitize((() => {
                     const pageContent = pages[currentPage - 1];
                     console.log(`Displaying page ${currentPage} of ${pages.length}, content length: ${pageContent?.length || 0}`);
-                    
+
                     if (pageContent) {
                       if (highlightedDescriptions.length > 0) {
                         console.log('Highlighting descriptions in page:', highlightedDescriptions.length);
@@ -726,7 +727,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
                       }
                       return pageContent;
                     }
-                    
+
                     // Fallback to full content if pagination failed
                     const fallbackContent = chapter.chapter?.html_content || chapter.chapter?.content || '';
                     console.log('Using fallback content, length:', fallbackContent.length);
