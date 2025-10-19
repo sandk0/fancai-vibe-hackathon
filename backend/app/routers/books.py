@@ -762,6 +762,9 @@ async def update_reading_progress(
 
         current_chapter = max(1, progress_data.get('current_chapter', 1))
 
+        # Получаем CFI если передан (для epub.js)
+        reading_location_cfi = progress_data.get('reading_location_cfi')
+
         # Поддерживаем оба формата: новый (current_position_percent) и старый (current_page)
         position_percent = progress_data.get('current_position_percent')
         if position_percent is None:
@@ -777,15 +780,17 @@ async def update_reading_progress(
             user_id=current_user.id,
             book_id=book_id,
             chapter_number=current_chapter,
-            position_percent=position_percent
+            position_percent=position_percent,
+            reading_location_cfi=reading_location_cfi
         )
-        
+
         return {
             "progress": {
                 "id": str(progress.id),
                 "current_chapter": progress.current_chapter,
                 "current_page": progress.current_page,
                 "current_position": progress.current_position,
+                "reading_location_cfi": progress.reading_location_cfi,
                 "reading_time_minutes": progress.reading_time_minutes,
                 "reading_speed_wpm": progress.reading_speed_wpm,
                 "last_read_at": progress.last_read_at.isoformat() if progress.last_read_at else None
@@ -1038,6 +1043,7 @@ async def get_reading_progress(
                 "current_chapter": progress.current_chapter if progress else 1,
                 "current_page": progress.current_page if progress else 1,
                 "current_position": progress.current_position if progress else 0,
+                "reading_location_cfi": progress.reading_location_cfi if progress else None,
                 "reading_time_minutes": progress.reading_time_minutes if progress else 0,
                 "reading_speed_wpm": progress.reading_speed_wpm if progress else 0.0,
                 "last_read_at": progress.last_read_at.isoformat() if progress and progress.last_read_at else None

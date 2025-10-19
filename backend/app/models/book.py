@@ -190,7 +190,8 @@ class ReadingProgress(Base):
     current_chapter = Column(Integer, default=1, nullable=False)
     current_page = Column(Integer, default=1, nullable=False)
     current_position = Column(Integer, default=0, nullable=False)  # позиция в главе
-    
+    reading_location_cfi = Column(String(500), nullable=True)  # CFI для epub.js (точная позиция)
+
     # Статистика чтения
     reading_time_minutes = Column(Integer, default=0, nullable=False)
     reading_speed_wpm = Column(Float, default=0.0, nullable=False)

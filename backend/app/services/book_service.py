@@ -356,7 +356,8 @@ class BookService:
         user_id: UUID,
         book_id: UUID,
         chapter_number: int,
-        position_percent: float = 0.0
+        position_percent: float = 0.0,
+        reading_location_cfi: str = None
     ) -> ReadingProgress:
         """
         Обновляет прогресс чтения книги пользователем.
@@ -367,6 +368,7 @@ class BookService:
             book_id: ID книги
             chapter_number: Номер текущей главы (начиная с 1)
             position_percent: Процент прочитанного в текущей главе (0.0-100.0)
+            reading_location_cfi: CFI (Canonical Fragment Identifier) для epub.js
 
         Returns:
             Объект ReadingProgress
@@ -408,7 +410,8 @@ class BookService:
                 book_id=book_id,
                 current_chapter=valid_chapter,
                 current_page=valid_page,
-                current_position=valid_position  # Теперь хранит процент 0-100
+                current_position=valid_position,  # Теперь хранит процент 0-100
+                reading_location_cfi=reading_location_cfi  # CFI для epub.js
             )
             db.add(progress)
         else:
@@ -416,6 +419,7 @@ class BookService:
             progress.current_chapter = valid_chapter
             progress.current_page = valid_page
             progress.current_position = valid_position  # Теперь хранит процент 0-100
+            progress.reading_location_cfi = reading_location_cfi  # CFI для epub.js
             progress.last_read_at = datetime.now(timezone.utc)
 
         # Обновляем время последнего доступа к книге
