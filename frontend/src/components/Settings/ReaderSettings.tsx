@@ -2,6 +2,7 @@ import React from 'react';
 import { Type, Palette, Monitor, RotateCcw } from 'lucide-react';
 import { useReaderStore } from '@/stores/reader';
 import { useUIStore } from '@/stores/ui';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const ReaderSettings: React.FC = () => {
   const {
@@ -21,6 +22,7 @@ const ReaderSettings: React.FC = () => {
   } = useReaderStore();
 
   const { notify } = useUIStore();
+  const { t } = useTranslation();
 
   const fontFamilyOptions = [
     { value: 'Georgia, serif', label: 'Georgia (Serif)', category: 'serif' },
@@ -32,14 +34,14 @@ const ReaderSettings: React.FC = () => {
   ];
 
   const themeOptions = [
-    { value: 'light', label: 'Light', description: 'Clean white background' },
-    { value: 'dark', label: 'Dark', description: 'Easy on the eyes' },
-    { value: 'sepia', label: 'Sepia', description: 'Warm, paper-like tone' },
+    { value: 'light', label: t('readerSettings.light'), description: t('readerSettings.lightDesc') },
+    { value: 'dark', label: t('readerSettings.dark'), description: t('readerSettings.darkDesc') },
+    { value: 'sepia', label: t('readerSettings.sepia'), description: t('readerSettings.sepiaDesc') },
   ];
 
   const handleReset = () => {
     resetSettings();
-    notify.success('Settings Reset', 'Reader settings have been restored to defaults');
+    notify.success(t('readerSettings.settingsReset'), t('readerSettings.settingsResetDesc'));
   };
 
   return (
@@ -49,7 +51,7 @@ const ReaderSettings: React.FC = () => {
         <div className="flex items-center space-x-2 mb-4">
           <Type className="h-5 w-5 text-primary-600" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-            Font Settings
+            {t('readerSettings.fontSettings')}
           </h3>
         </div>
         
@@ -57,7 +59,7 @@ const ReaderSettings: React.FC = () => {
           {/* Font Size */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Font Size: {fontSize}px
+              {t('readerSettings.fontSize')}: {fontSize}px
             </label>
             <input
               type="range"
@@ -78,7 +80,7 @@ const ReaderSettings: React.FC = () => {
           {/* Line Height */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Line Height: {lineHeight.toFixed(1)}
+              {t('readerSettings.lineHeight')}: {lineHeight.toFixed(1)}
             </label>
             <input
               type="range"
@@ -90,37 +92,37 @@ const ReaderSettings: React.FC = () => {
               className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
             />
             <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>Tight</span>
-              <span>Normal</span>
-              <span>Loose</span>
+              <span>{t('readerSettings.tight')}</span>
+              <span>{t('readerSettings.normal')}</span>
+              <span>{t('readerSettings.loose')}</span>
             </div>
           </div>
 
           {/* Font Family */}
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Font Family
+              {t('readerSettings.fontFamily')}
             </label>
             <select
               value={fontFamily}
               onChange={(e) => updateFontFamily(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             >
-              <optgroup label="Serif Fonts">
+              <optgroup label={t('readerSettings.serifFonts')}>
                 {fontFamilyOptions.filter(f => f.category === 'serif').map(font => (
                   <option key={font.value} value={font.value}>
                     {font.label}
                   </option>
                 ))}
               </optgroup>
-              <optgroup label="Sans-serif Fonts">
+              <optgroup label={t('readerSettings.sansSerifFonts')}>
                 {fontFamilyOptions.filter(f => f.category === 'sans-serif').map(font => (
                   <option key={font.value} value={font.value}>
                     {font.label}
                   </option>
                 ))}
               </optgroup>
-              <optgroup label="Monospace Fonts">
+              <optgroup label={t('readerSettings.monospaceFonts')}>
                 {fontFamilyOptions.filter(f => f.category === 'monospace').map(font => (
                   <option key={font.value} value={font.value}>
                     {font.label}
@@ -137,7 +139,7 @@ const ReaderSettings: React.FC = () => {
         <div className="flex items-center space-x-2 mb-4">
           <Palette className="h-5 w-5 text-primary-600" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-            Theme Settings
+            {t('readerSettings.themeSettings')}
           </h3>
         </div>
         
@@ -180,7 +182,7 @@ const ReaderSettings: React.FC = () => {
         <div className="flex items-center space-x-2 mb-4">
           <Monitor className="h-5 w-5 text-primary-600" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-            Preview
+            {t('readerSettings.preview')}
           </h3>
         </div>
         
@@ -196,19 +198,16 @@ const ReaderSettings: React.FC = () => {
           }}
         >
           <p className="mb-4">
-            <strong>Sample Text Preview</strong>
+            <strong>{t('readerSettings.sampleText')}</strong>
           </p>
           <p className="mb-3">
-            The quick brown fox jumps over the lazy dog. This sentence contains all the letters 
-            of the English alphabet and is commonly used to test fonts and text rendering.
+            {t('readerSettings.sampleParagraph1')}
           </p>
           <p className="mb-3">
-            "Reading is to the mind what exercise is to the body." - Joseph Addison
+            {t('readerSettings.sampleQuote')}
           </p>
           <p>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor 
-            incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis 
-            nostrud exercitation ullamco laboris.
+            {t('readerSettings.sampleParagraph2')}
           </p>
         </div>
       </div>
@@ -216,14 +215,14 @@ const ReaderSettings: React.FC = () => {
       {/* Advanced Settings */}
       <div>
         <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-          Advanced Settings
+          {t('readerSettings.advancedSettings')}
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Max Width */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Max Content Width: {maxWidth}px
+              {t('readerSettings.maxWidth')}: {maxWidth}px
             </label>
             <input
               type="range"
@@ -235,16 +234,16 @@ const ReaderSettings: React.FC = () => {
               className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
             />
             <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>Narrow</span>
-              <span>Medium</span>
-              <span>Wide</span>
+              <span>{t('readerSettings.narrow')}</span>
+              <span>{t('readerSettings.medium')}</span>
+              <span>{t('readerSettings.wide')}</span>
             </div>
           </div>
 
           {/* Margin */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Page Margin: {margin}px
+              {t('readerSettings.pageMargin')}: {margin}px
             </label>
             <input
               type="range"
@@ -256,9 +255,9 @@ const ReaderSettings: React.FC = () => {
               className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
             />
             <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>Minimal</span>
-              <span>Standard</span>
-              <span>Spacious</span>
+              <span>{t('readerSettings.minimal')}</span>
+              <span>{t('readerSettings.standard')}</span>
+              <span>{t('readerSettings.spacious')}</span>
             </div>
           </div>
         </div>
@@ -271,7 +270,7 @@ const ReaderSettings: React.FC = () => {
           className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
         >
           <RotateCcw className="h-4 w-4 mr-2" />
-          Reset to Defaults
+          {t('readerSettings.resetToDefaults')}
         </button>
       </div>
 
