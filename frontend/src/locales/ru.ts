@@ -489,6 +489,60 @@ export const ru = {
     minRead: 'мин',
     descriptions: 'описаний',
   },
+
+  // Настройки читалки / Reader settings
+  readerSettings: {
+    fontSettings: 'Настройки шрифта',
+    fontSize: 'Размер шрифта',
+    lineHeight: 'Межстрочный интервал',
+    fontFamily: 'Семейство шрифтов',
+
+    // Line height options
+    tight: 'Узкий',
+    normal: 'Обычный',
+    loose: 'Широкий',
+
+    // Font categories
+    serifFonts: 'Шрифты с засечками',
+    sansSerifFonts: 'Рубленые шрифты',
+    monospaceFonts: 'Моноширинные шрифты',
+
+    // Theme settings
+    themeSettings: 'Настройки темы',
+    light: 'Светлая',
+    dark: 'Темная',
+    sepia: 'Сепия',
+    lightDesc: 'Чистый белый фон',
+    darkDesc: 'Приятный для глаз',
+    sepiaDesc: 'Теплый тон, как у бумаги',
+
+    // Preview
+    preview: 'Предпросмотр',
+    sampleText: 'Образец текста',
+    sampleParagraph1: 'Съешь ещё этих мягких французских булок, да выпей же чаю. Это предложение содержит все буквы русского алфавита и часто используется для тестирования шрифтов.',
+    sampleQuote: '«Чтение для ума — то же, что физические упражнения для тела.» - Джозеф Аддисон',
+    sampleParagraph2: 'Широкая электрификация южных губерний даст мощный толчок подъёму сельского хозяйства. Эта классическая панграмма также используется для демонстрации шрифтов.',
+
+    // Advanced settings
+    advancedSettings: 'Расширенные настройки',
+    maxWidth: 'Максимальная ширина текста',
+    pageMargin: 'Отступы страницы',
+
+    // Width options
+    narrow: 'Узкая',
+    medium: 'Средняя',
+    wide: 'Широкая',
+
+    // Margin options
+    minimal: 'Минимальные',
+    standard: 'Стандартные',
+    spacious: 'Просторные',
+
+    // Actions
+    resetToDefaults: 'Сбросить настройки',
+    settingsReset: 'Настройки сброшены',
+    settingsResetDesc: 'Настройки читалки восстановлены по умолчанию',
+  },
 } as const;
 
 export type TranslationKey = typeof ru;
