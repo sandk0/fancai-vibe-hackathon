@@ -12,11 +12,24 @@ const LibraryPage: React.FC = () => {
   const navigate = useNavigate();
   const { books, isLoading, fetchBooks, error } = useBooksStore();
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const { t } = useTranslation();
 
   useEffect(() => {
     fetchBooks();
   }, [fetchBooks]);
+
+  // Filter books based on search query
+  const filteredBooks = books.filter(book => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      book.title.toLowerCase().includes(query) ||
+      book.author.toLowerCase().includes(query) ||
+      book.genre?.toLowerCase().includes(query)
+    );
+  });
 
   if (isLoading && books.length === 0) {
     return (
@@ -35,9 +48,9 @@ const LibraryPage: React.FC = () => {
             {t('library.title')}
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            {books.length === 1
+            {filteredBooks.length === 1
               ? t('library.oneBook')
-              : t('library.booksCount', { count: books.length })}
+              : t('library.booksCount', { count: filteredBooks.length })}
           </p>
         </div>
 
@@ -57,19 +70,49 @@ const LibraryPage: React.FC = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('library.searchPlaceholder')}
               className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             />
           </div>
         </div>
-        <button className="inline-flex items-center px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`inline-flex items-center px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${showFilters ? 'bg-gray-50 dark:bg-gray-700' : ''}`}
+        >
           <Filter className="w-5 h-5 mr-2 text-gray-500" />
           {t('library.filters')}
         </button>
       </div>
 
+      {/* Filters Panel */}
+      {showFilters && (
+        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            {t('library.filtersComingSoon')}
+          </p>
+        </div>
+      )}
+
       {/* Books Grid */}
-      {books.length === 0 ? (
+      {filteredBooks.length === 0 && searchQuery ? (
+        <div className="text-center py-16">
+          <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            {t('library.noResultsTitle')}
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-sm mx-auto">
+            {t('library.noResultsDesc').replace('{query}', searchQuery)}
+          </p>
+          <button
+            onClick={() => setSearchQuery('')}
+            className="inline-flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          >
+            {t('library.clearSearch')}
+          </button>
+        </div>
+      ) : filteredBooks.length === 0 ? (
         <div className="text-center py-16">
           <Book className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
@@ -88,7 +131,7 @@ const LibraryPage: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {books.map((book) => {
+          {filteredBooks.map((book) => {
             console.log(`[LibraryPage] Book ${book.title}: is_parsed=${book.is_parsed}`);
             return (
             <div
