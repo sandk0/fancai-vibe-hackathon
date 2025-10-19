@@ -170,10 +170,11 @@ export const BookReader: React.FC<BookReaderProps> = ({
 
       console.log(`Final pagination: ${newPages.length} pages created`);
       setPages(newPages);
-      
-      // Reset to page 1 if current page is out of bounds
+
+      // Don't modify currentPage here - let restore/navigation handle it
+      // This prevents race conditions where pagination resets the restored position
       if (currentPage > newPages.length) {
-        setCurrentPage(1);
+        console.log(`⚠️ Warning: Current page ${currentPage} > ${newPages.length} pages. User position will be managed by restore/navigation logic.`);
       }
     };
 
@@ -195,12 +196,31 @@ export const BookReader: React.FC<BookReaderProps> = ({
 
   // Restore reading position on initial load
   useEffect(() => {
+    console.log('📖 Restore useEffect called:', {
+      hasRestoredPosition,
+      pagesLength: pages.length,
+      currentChapter,
+      initialChapter,
+      willRestore: !hasRestoredPosition && pages.length > 0 && currentChapter === initialChapter
+    });
+
     // Only restore position once, for the initial chapter, and after pages are calculated
-    if (hasRestoredPosition || pages.length === 0 || currentChapter !== initialChapter) {
+    if (hasRestoredPosition) {
+      console.log('📖 Skipping restore - already restored');
       return;
     }
 
-    console.log('📖 Attempting to restore reading position...');
+    if (pages.length === 0) {
+      console.log('📖 Skipping restore - pages not ready');
+      return;
+    }
+
+    if (currentChapter !== initialChapter) {
+      console.log('📖 Skipping restore - chapter changed from initial');
+      return;
+    }
+
+    console.log('📖 ✅ Attempting to restore reading position...');
 
     // Load saved reading progress
     booksAPI.getReadingProgress(bookId)
@@ -211,11 +231,13 @@ export const BookReader: React.FC<BookReaderProps> = ({
           return;
         }
 
-        console.log('📖 Loaded progress:', {
+        console.log('📖 Loaded progress from API:', {
           currentChapter: progress.current_chapter,
           currentPosition: progress.current_position,
+          currentPositionType: typeof progress.current_position,
           savedChapter: progress.current_chapter,
-          urlChapter: initialChapter
+          urlChapter: initialChapter,
+          pagesLength: pages.length
         });
 
         // Only restore position if we're on the same chapter as saved progress
@@ -223,14 +245,32 @@ export const BookReader: React.FC<BookReaderProps> = ({
           // Calculate target page based on position percent (0-100)
           const targetPage = Math.max(1, Math.ceil((progress.current_position / 100) * pages.length));
 
-          console.log('📖 Restoring position:', {
+          console.log('📖 ✅ RESTORING POSITION:', {
             chapter: progress.current_chapter,
             positionPercent: progress.current_position + '%',
             totalPages: pages.length,
-            targetPage
+            targetPage,
+            calculation: `Math.ceil((${progress.current_position} / 100) * ${pages.length}) = ${targetPage}`
           });
 
           setCurrentPage(targetPage);
+
+          // Verify it was set
+          setTimeout(() => {
+            console.log('📖 Verification after setCurrentPage:', {
+              targetPage,
+              message: 'If currentPage is not ' + targetPage + ', something else is resetting it!'
+            });
+          }, 100);
+        } else {
+          console.log('📖 ⚠️ NOT restoring position:', {
+            chapterMatch: progress.current_chapter === currentChapter,
+            chapterMatchTypes: `${typeof progress.current_chapter} === ${typeof currentChapter}`,
+            hasPosition: progress.current_position > 0,
+            currentChapter,
+            savedChapter: progress.current_chapter,
+            position: progress.current_position
+          });
         }
 
         setHasRestoredPosition(true);
