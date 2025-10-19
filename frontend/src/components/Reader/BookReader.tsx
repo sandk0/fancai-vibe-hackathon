@@ -310,11 +310,23 @@ export const BookReader: React.FC<BookReaderProps> = ({
         positionPercent: positionPercent.toFixed(2) + '%'
       });
 
+      console.log('📊 Sending API request to save progress...', {
+        bookId,
+        data: {
+          current_chapter: currentChapter,
+          current_position_percent: positionPercent
+        }
+      });
+
       // Send progress to API with new format
-      booksAPI.updateReadingProgress(bookId, {
+      const savePromise = booksAPI.updateReadingProgress(bookId, {
         current_chapter: currentChapter,
         current_position_percent: positionPercent
-      })
+      });
+
+      console.log('📊 API request initiated, promise:', savePromise);
+
+      savePromise
         .then(response => {
           console.log('📊 ✅ Progress saved successfully:', {
             savedChapter: response.progress.current_chapter,
@@ -324,6 +336,11 @@ export const BookReader: React.FC<BookReaderProps> = ({
         })
         .catch(err => {
           console.error('❌ Failed to update progress:', err);
+          console.error('❌ Error details:', {
+            message: err.message,
+            response: err.response,
+            stack: err.stack
+          });
         });
     } else {
       console.log('📊 Not updating progress - conditions not met');
