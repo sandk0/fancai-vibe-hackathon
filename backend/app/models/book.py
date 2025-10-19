@@ -4,14 +4,19 @@
 Содержит модели Book, ReadingProgress и связанные функции.
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey, Float, JSON
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey, Float, JSON, select
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 import enum
+from typing import TYPE_CHECKING
 
 from ..core.database import Base
+
+if TYPE_CHECKING:
+    from .chapter import Chapter
 
 
 class BookFormat(enum.Enum):
@@ -99,57 +104,66 @@ class Book(Base):
     def __repr__(self):
         return f"<Book(id={self.id}, title='{self.title}', author='{self.author}')>"
     
-    def get_reading_progress_percent(self, user_id: UUID) -> float:
+    async def get_reading_progress_percent(self, db: AsyncSession, user_id: UUID) -> float:
         """
         Получает прогресс чтения книги пользователем в процентах.
-        
+
         Прогресс рассчитывается на основе глав, а не страниц,
         так как это более точный показатель для электронных книг.
-        
+
+        ИСПРАВЛЕНО: Теперь делает прямой запрос к БД для надежного подсчета глав,
+        вместо использования relationship который может быть не загружен.
+
         Args:
+            db: Асинхронная сессия БД
             user_id: ID пользователя
-            
+
         Returns:
             Прогресс чтения от 0.0 до 100.0
         """
         try:
-            # Безопасный доступ к reading_progress relationship
-            reading_progress_list = getattr(self, 'reading_progress', []) or []
-            
-            # Безопасное сравнение UUID - приводим оба к строке
-            user_id_str = str(user_id)
-            progress = next(
-                (p for p in reading_progress_list if str(p.user_id) == user_id_str), 
-                None
+            # Импортируем внутри метода чтобы избежать circular imports
+            from .chapter import Chapter
+
+            # Получаем reading_progress из БД
+            progress_query = select(ReadingProgress).where(
+                ReadingProgress.book_id == self.id,
+                ReadingProgress.user_id == user_id
             )
+            progress_result = await db.execute(progress_query)
+            progress = progress_result.scalar_one_or_none()
+
             if not progress:
                 return 0.0
-            
-            # Получаем общее количество глав
-            chapters_list = getattr(self, 'chapters', []) or []
-            total_chapters = len(chapters_list)
-            if total_chapters == 0:
+
+            # Получаем общее количество глав напрямую из БД
+            # Это надежнее чем полагаться на relationship который может быть не загружен
+            chapters_count_query = select(func.count(Chapter.id)).where(Chapter.book_id == self.id)
+            total_chapters = await db.scalar(chapters_count_query)
+
+            if not total_chapters or total_chapters == 0:
                 return 0.0
-            
+
             # Прогресс на основе глав: завершенные главы + прогресс внутри текущей
             current_chapter = max(1, progress.current_chapter)
-            
+
             if current_chapter > total_chapters:
                 return 100.0
-            
+
             # Базовый прогресс от завершенных глав
             completed_chapters = current_chapter - 1
             base_progress = (completed_chapters / total_chapters) * 100
-            
+
             # Добавляем прогресс внутри текущей главы (оцениваем как 0-20% от главы)
             if current_chapter <= total_chapters:
                 chapter_progress = min(20.0, (progress.current_position / 1000) * 20) if progress.current_position > 0 else 0.0
                 chapter_contribution = chapter_progress / total_chapters
                 base_progress += chapter_contribution
-            
+
             return min(100.0, base_progress)
-        except Exception:
+        except Exception as e:
             # В случае любой ошибки возвращаем 0
+            print(f"⚠️ Error calculating reading progress: {e}")
             return 0.0
 
 
