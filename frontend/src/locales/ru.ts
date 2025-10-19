@@ -102,11 +102,15 @@ export const ru = {
     uploadFirstBook: 'Загрузить первую книгу',
     searchPlaceholder: 'Поиск в ваших книгах...',
     filters: 'Фильтры',
+    filtersComingSoon: 'Фильтры скоро будут доступны',
     uploadBook: 'Загрузить книгу',
     chapters: 'глав',
     oneChapter: 'глава',
     processing: 'Обрабатывается',
     readingProgress: '{percent}% прочитано',
+    noResultsTitle: 'Ничего не найдено',
+    noResultsDesc: 'Нет книг, соответствующих запросу "{query}"',
+    clearSearch: 'Очистить поиск',
   },
 
   // Читалка / Reader
