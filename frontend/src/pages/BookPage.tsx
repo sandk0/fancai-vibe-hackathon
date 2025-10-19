@@ -143,7 +143,7 @@ const BookPage: React.FC = () => {
                   className="inline-flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                 >
                   <Play className="w-5 h-5 mr-2" />
-                  {book.reading_progress.progress_percent > 0 ? t('bookPage.continueReading') : t('bookPage.startReading')}
+                  {book.reading_progress.progress_percent > 0 && book.reading_progress.progress_percent < 100 ? t('bookPage.continueReading') : t('bookPage.startReading')}
                 </button>
                 <button
                   onClick={() => navigate(`/book/${book.id}/images`)}
