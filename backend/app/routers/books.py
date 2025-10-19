@@ -517,7 +517,7 @@ async def get_user_books(
 
 @router.get("/{book_id}")
 async def get_book(
-    book_id: str,
+    book_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session)
 ) -> Dict[str, Any]:
@@ -605,7 +605,7 @@ async def get_book(
 
 @router.get("/{book_id}/chapters/{chapter_number}")
 async def get_chapter(
-    book_id: str,
+    book_id: UUID,
     chapter_number: int,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session)
@@ -725,7 +725,7 @@ async def get_chapter(
 
 @router.post("/{book_id}/progress")
 async def update_reading_progress(
-    book_id: str,
+    book_id: UUID,
     progress_data: dict,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session)
@@ -795,7 +795,7 @@ async def update_reading_progress(
 
 @router.post("/{book_id}/process")
 async def process_book_descriptions(
-    book_id: str,
+    book_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session)
 ) -> Dict[str, Any]:
@@ -912,7 +912,7 @@ async def process_book_descriptions(
 
 @router.get("/{book_id}/parsing-status")
 async def get_parsing_status(
-    book_id: str,
+    book_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session)
 ) -> Dict[str, Any]:
@@ -980,7 +980,7 @@ async def get_parsing_status(
 
 @router.get("/{book_id}/progress")
 async def get_reading_progress(
-    book_id: str,
+    book_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session)
 ) -> Dict[str, Any]:
@@ -1038,7 +1038,7 @@ async def get_reading_progress(
 
 @router.get("/{book_id}/cover")
 async def get_book_cover(
-    book_id: str,
+    book_id: UUID,
     db: AsyncSession = Depends(get_database_session)
 ):
     """

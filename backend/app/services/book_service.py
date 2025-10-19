@@ -418,10 +418,8 @@ class BookService:
             progress.last_read_at = datetime.now(timezone.utc)
         
         # Обновляем время последнего доступа к книге
-        await db.execute(
-            select(Book).where(Book.id == book_id)
-        )
-        book = (await db.execute(select(Book).where(Book.id == book_id))).scalar_one()
+        book_result = await db.execute(select(Book).where(Book.id == book_id))
+        book = book_result.scalar_one()
         book.last_accessed = datetime.now(timezone.utc)
         
         await db.commit()

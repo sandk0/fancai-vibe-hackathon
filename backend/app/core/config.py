@@ -5,22 +5,23 @@
 """
 
 from pydantic_settings import BaseSettings
+from pydantic import model_validator
 from typing import Optional
 import os
 
 
 class Settings(BaseSettings):
     """Настройки приложения."""
-    
+
     # Основные настройки приложения
     APP_NAME: str = "BookReader AI"
     APP_VERSION: str = "0.1.0"
-    DEBUG: bool = True
+    DEBUG: bool = True  # Development mode по умолчанию (установите DEBUG=false в production!)
     SECRET_KEY: str = "dev-secret-key-change-in-production"
-    
+
     # База данных
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres123@postgres:5432/bookreader_dev"
-    
+
     # Redis
     REDIS_URL: str = "redis://:redis123@redis:6379"
     
@@ -61,13 +62,47 @@ class Settings(BaseSettings):
     # CORS  
     CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
     
+    @model_validator(mode='after')
+    def validate_production_settings(self):
+        """
+        Валидация критических настроек для production режима.
+
+        В production (DEBUG=False) требуются безопасные значения для:
+        - SECRET_KEY (не может быть дефолтным)
+        - DATABASE_URL (не может содержать тестовые пароли)
+        - REDIS_URL (не может содержать тестовые пароли)
+        """
+        if not self.DEBUG:
+            # Проверка SECRET_KEY
+            if self.SECRET_KEY == "dev-secret-key-change-in-production":
+                raise ValueError(
+                    "❌ SECURITY ERROR: SECRET_KEY must be set via environment variable in production mode. "
+                    "Default development secret key is not allowed in production."
+                )
+
+            # Проверка DATABASE_URL
+            if "postgres123" in self.DATABASE_URL or "bookreader_dev" in self.DATABASE_URL:
+                raise ValueError(
+                    "❌ SECURITY ERROR: DATABASE_URL contains default development credentials. "
+                    "Production database must use secure credentials set via environment variable."
+                )
+
+            # Проверка REDIS_URL
+            if "redis123" in self.REDIS_URL:
+                raise ValueError(
+                    "❌ SECURITY ERROR: REDIS_URL contains default development password. "
+                    "Production Redis must use secure credentials set via environment variable."
+                )
+
+        return self
+
     @property
     def cors_origins_list(self) -> list:
         """Возвращает список CORS origins из строки."""
         if isinstance(self.CORS_ORIGINS, str):
             return [origin.strip() for origin in self.CORS_ORIGINS.split(',') if origin.strip()]
         return self.CORS_ORIGINS
-    
+
     class Config:
         """Настройка загрузки переменных окружения."""
         env_file = ".env"
