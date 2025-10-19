@@ -351,25 +351,23 @@ class BookService:
         return result.scalars().all()
     
     async def update_reading_progress(
-        self, 
-        db: AsyncSession, 
+        self,
+        db: AsyncSession,
         user_id: UUID,
         book_id: UUID,
         chapter_number: int,
-        page_number: int,
-        position: int = 0
+        position_percent: float = 0.0
     ) -> ReadingProgress:
         """
         Обновляет прогресс чтения книги пользователем.
-        
+
         Args:
             db: Сессия базы данных
             user_id: ID пользователя
             book_id: ID книги
-            chapter_number: Номер текущей главы
-            page_number: Номер текущей страницы
-            position: Позиция в главе
-            
+            chapter_number: Номер текущей главы (начиная с 1)
+            position_percent: Процент прочитанного в текущей главе (0.0-100.0)
+
         Returns:
             Объект ReadingProgress
         """
@@ -380,26 +378,29 @@ class BookService:
         book = book_result.scalar_one_or_none()
         if not book:
             raise ValueError(f"Book with id {book_id} not found")
-        
+
         # Загружаем главы для валидации номера главы
         chapters_result = await db.execute(
             select(Chapter).where(Chapter.book_id == book_id)
         )
         chapters = chapters_result.scalars().all()
         total_chapters = len(chapters)
-        
+
         # Валидируем и нормализуем входные данные
         valid_chapter = max(1, min(chapter_number or 1, total_chapters)) if total_chapters > 0 else 1
-        valid_page = max(1, page_number or 1)
-        valid_position = max(0, position or 0)
-        
+        valid_position = max(0.0, min(100.0, float(position_percent or 0.0)))
+
+        # Для обратной совместимости сохраняем current_page = 1
+        # (в будущем можно убрать это поле из модели)
+        valid_page = 1
+
         # Ищем существующий прогресс
         result = await db.execute(
             select(ReadingProgress)
             .where(and_(ReadingProgress.user_id == user_id, ReadingProgress.book_id == book_id))
         )
         progress = result.scalar_one_or_none()
-        
+
         if not progress:
             # Создаем новый прогресс
             progress = ReadingProgress(
@@ -407,21 +408,21 @@ class BookService:
                 book_id=book_id,
                 current_chapter=valid_chapter,
                 current_page=valid_page,
-                current_position=valid_position
+                current_position=valid_position  # Теперь хранит процент 0-100
             )
             db.add(progress)
         else:
             # Обновляем существующий
             progress.current_chapter = valid_chapter
             progress.current_page = valid_page
-            progress.current_position = valid_position
+            progress.current_position = valid_position  # Теперь хранит процент 0-100
             progress.last_read_at = datetime.now(timezone.utc)
-        
+
         # Обновляем время последнего доступа к книге
         book_result = await db.execute(select(Book).where(Book.id == book_id))
         book = book_result.scalar_one()
         book.last_accessed = datetime.now(timezone.utc)
-        
+
         await db.commit()
         return progress
     

@@ -96,8 +96,8 @@ export const booksAPI = {
   async updateReadingProgress(
     bookId: string,
     data: {
-      current_page: number;
       current_chapter: number;
+      current_position_percent: number;
     }
   ): Promise<{
     progress: ReadingProgress;
@@ -116,7 +116,7 @@ export const booksAPI = {
     bookId: string,
     data: {
       chapter_number: number;
-      progress_percentage: number;
+      position_percent_in_chapter: number;
     }
   ): Promise<{
     progress: ReadingProgress;
@@ -124,7 +124,7 @@ export const booksAPI = {
   }> {
     return apiClient.post(`/books/${bookId}/progress`, {
       current_chapter: data.chapter_number,
-      current_page: Math.max(1, Math.round(data.progress_percentage * 10)), // Ensure page is at least 1
+      current_position_percent: Math.max(0, Math.min(100, data.position_percent_in_chapter)),
     });
   },
 

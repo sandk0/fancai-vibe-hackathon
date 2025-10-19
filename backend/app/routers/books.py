@@ -732,17 +732,20 @@ async def update_reading_progress(
 ) -> Dict[str, Any]:
     """
     Обновляет прогресс чтения книги пользователем.
-    
+
     Args:
         book_id: ID книги
-        progress_data: Данные прогресса (current_chapter, current_page)
+        progress_data: Данные прогресса:
+            - current_chapter: номер текущей главы (обязательно)
+            - current_position_percent: процент прочитанного в главе 0-100 (опционально)
+            - current_page: номер страницы для обратной совместимости (опционально)
         current_user: Текущий аутентифицированный пользователь
         db: Сессия базы данных
-        
+
     Returns:
         Обновленный прогресс чтения
     """
-    
+
     try:
         # Проверяем, что книга принадлежит пользователю
         book = await book_service.get_book_by_id(
@@ -750,25 +753,31 @@ async def update_reading_progress(
             book_id=book_id,
             user_id=current_user.id
         )
-        
+
         if not book:
             raise HTTPException(
                 status_code=404,
                 detail="Book not found"
             )
-        
-        current_chapter = progress_data.get('current_chapter') or 1
-        current_page = progress_data.get('current_page') or 1
-        current_chapter = max(1, current_chapter)
-        current_page = max(1, current_page)
-        
+
+        current_chapter = max(1, progress_data.get('current_chapter', 1))
+
+        # Поддерживаем оба формата: новый (current_position_percent) и старый (current_page)
+        position_percent = progress_data.get('current_position_percent')
+        if position_percent is None:
+            # Обратная совместимость: если передали current_page, игнорируем его
+            # и устанавливаем позицию в 0% (начало главы)
+            position_percent = 0.0
+
+        position_percent = max(0.0, min(100.0, float(position_percent)))
+
         # Обновляем прогресс чтения
         progress = await book_service.update_reading_progress(
             db=db,
             user_id=current_user.id,
             book_id=book_id,
             chapter_number=current_chapter,
-            page_number=current_page
+            position_percent=position_percent
         )
         
         return {

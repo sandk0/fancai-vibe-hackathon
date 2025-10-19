@@ -44,7 +44,6 @@ export const BookReader: React.FC<BookReaderProps> = ({
     fontFamily,
     lineHeight,
     theme,
-    updateReadingProgress,
     updateFontSize,
     updateTheme
   } = useReaderStore();
@@ -204,26 +203,27 @@ export const BookReader: React.FC<BookReaderProps> = ({
     });
 
     if (book && chapter && pages.length > 0) {
-      // Calculate progress: (completed chapters + current chapter progress) / total chapters
-      const chapterProgress = currentPage / pages.length; // 0 to 1 for current chapter
-      const chaptersCount = book.chapters?.length || book.chapters_count || 0;
-      const totalProgress = chaptersCount > 0 ? ((currentChapter - 1) + chapterProgress) / chaptersCount : 0;
-      const progressPercent = Math.min(Math.max(totalProgress * 100, 0), 100);
-      
-      console.log('📊 Updating reading progress:', {
-        chapterProgress,
-        chaptersCount,
-        totalProgress,
-        progressPercent,
+      // Calculate position percent in current chapter (0-100%)
+      const positionPercent = (currentPage / pages.length) * 100;
+
+      console.log('📊 Auto-save progress:', {
         currentChapter,
-        currentPage
+        currentPage,
+        totalPages: pages.length,
+        positionPercent: positionPercent.toFixed(2) + '%'
       });
-      
-      updateReadingProgress(bookId, currentChapter, progressPercent, currentPage);
+
+      // Send progress to API with new format
+      booksAPI.updateReadingProgress(bookId, {
+        current_chapter: currentChapter,
+        current_position_percent: positionPercent
+      }).catch(err => {
+        console.error('Failed to update progress:', err);
+      });
     } else {
       console.log('📊 Not updating progress - conditions not met');
     }
-  }, [bookId, currentChapter, currentPage, pages.length, book, chapter, updateReadingProgress]);
+  }, [bookId, currentChapter, currentPage, pages.length, book, chapter]);
 
   // Reset to first page when chapter changes
   useEffect(() => {
@@ -233,13 +233,15 @@ export const BookReader: React.FC<BookReaderProps> = ({
     
     // Save progress immediately when changing chapters
     if (book) {
-      const chaptersCount = book.chapters?.length || book.chapters_count || 0;
-      const totalProgress = chaptersCount > 0 ? (currentChapter - 1) / chaptersCount : 0;
-      const progressPercent = Math.min(Math.max(totalProgress * 100, 0), 100);
-      console.log(`📊 Saving progress for chapter change: ${currentChapter}, progress: ${progressPercent}%`);
-      updateReadingProgress(bookId, currentChapter, progressPercent, 1);
+      console.log(`📊 Saving progress for chapter change: ${currentChapter}, position: 0%`);
+      booksAPI.updateReadingProgress(bookId, {
+        current_chapter: currentChapter,
+        current_position_percent: 0  // Beginning of new chapter
+      }).catch(err => {
+        console.error('Failed to update progress:', err);
+      });
     }
-  }, [currentChapter, book, bookId, updateReadingProgress]);
+  }, [currentChapter, book, bookId]);
 
   // Handle descriptions from API response and auto-parsing
   useEffect(() => {
@@ -379,14 +381,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
     if (currentPage < pages.length) {
       const newPage = currentPage + 1;
       setCurrentPage(newPage);
-      // Manually save progress for next page
-      if (book && chapter && pages.length > 0) {
-        const chapterProgress = newPage / pages.length;
-        const chaptersCount = book.chapters?.length || book.chapters_count || 0;
-        const totalProgress = chaptersCount > 0 ? ((currentChapter - 1) + chapterProgress) / chaptersCount : 0;
-        const progressPercent = Math.min(Math.max(totalProgress * 100, 0), 100);
-        updateReadingProgress(bookId, currentChapter, progressPercent, newPage);
-      }
+      // Progress will be saved by useEffect
     } else if (currentChapter < (book?.chapters?.length || book?.chapters_count || 0)) {
       console.log('Moving to next chapter');
       setCurrentChapter(prev => prev + 1);
@@ -399,14 +394,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
     if (currentPage > 1) {
       const newPage = currentPage - 1;
       setCurrentPage(newPage);
-      // Manually save progress for previous page
-      if (book && chapter && pages.length > 0) {
-        const chapterProgress = newPage / pages.length;
-        const chaptersCount = book.chapters?.length || book.chapters_count || 0;
-        const totalProgress = chaptersCount > 0 ? ((currentChapter - 1) + chapterProgress) / chaptersCount : 0;
-        const progressPercent = Math.min(Math.max(totalProgress * 100, 0), 100);
-        updateReadingProgress(bookId, currentChapter, progressPercent, newPage);
-      }
+      // Progress will be saved by useEffect
     } else if (currentChapter > 1) {
       console.log('Moving to previous chapter');
       setCurrentChapter(prev => prev - 1);
@@ -419,13 +407,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
     if (chapterNum >= 1 && chapterNum <= (book?.chapters?.length || book?.chapters_count || 0)) {
       setCurrentChapter(chapterNum);
       setCurrentPage(1);
-      // Manually save progress when jumping to chapter
-      if (book) {
-        const chaptersCount = book.chapters?.length || book.chapters_count || 0;
-        const totalProgress = chaptersCount > 0 ? (chapterNum - 1) / chaptersCount : 0;
-        const progressPercent = Math.min(Math.max(totalProgress * 100, 0), 100);
-        updateReadingProgress(bookId, chapterNum, progressPercent, 1);
-      }
+      // Progress will be saved by useEffect
     }
   };
 
