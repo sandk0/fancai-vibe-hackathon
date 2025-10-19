@@ -12,6 +12,7 @@ import { STORAGE_KEYS } from '@/types/state';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import ErrorMessage from '@/components/UI/ErrorMessage';
 import { ImageModal } from '@/components/Images/ImageModal';
+import { useTranslation } from '@/hooks/useTranslation';
 import type { Chapter, Description, BookDetail } from '@/types/api';
 
 interface BookReaderProps {
@@ -19,10 +20,11 @@ interface BookReaderProps {
   chapterNumber?: number;
 }
 
-export const BookReader: React.FC<BookReaderProps> = ({ 
-  bookId: propBookId, 
-  chapterNumber: propChapterNumber 
+export const BookReader: React.FC<BookReaderProps> = ({
+  bookId: propBookId,
+  chapterNumber: propChapterNumber
 }) => {
+  const { t } = useTranslation();
   const params = useParams();
   const bookId = propBookId || params.bookId!;
   const initialChapter = propChapterNumber || parseInt(params.chapterNumber || '1');
@@ -36,12 +38,12 @@ export const BookReader: React.FC<BookReaderProps> = ({
   const [highlightedDescriptions, setHighlightedDescriptions] = useState<Description[]>([]);
 
   const contentRef = useRef<HTMLDivElement>(null);
-  const { 
-    fontSize, 
-    fontFamily, 
-    lineHeight, 
+  const {
+    fontSize,
+    fontFamily,
+    lineHeight,
     theme,
-    updateReadingProgress 
+    updateReadingProgress
   } = useReaderStore();
 
   // Fetch book data
@@ -488,7 +490,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
       console.log('🎨 No image found, trying to generate...');
       // Try to generate image if it doesn't exist
       try {
-        notify.info('Image Generation', 'Generating image for this description...');
+        notify.info(t('reader.imageGeneration'), t('reader.generatingImageDesc'));
         const result = await imagesAPI.generateImageForDescription(descriptionId);
         
         // Update the description with the new image
@@ -512,18 +514,18 @@ export const BookReader: React.FC<BookReaderProps> = ({
         setSelectedDescription(description);
         setSelectedImageId(result.image_id);
         
-        notify.success('Image Generated', `Image created in ${result.generation_time.toFixed(1)}s`);
+        notify.success(t('reader.imageGenerated'), t('reader.imageCreated').replace('{time}', result.generation_time.toFixed(1)));
       } catch (error: any) {
         console.error('Image generation failed:', error);
         if (error.response?.status === 409) {
-          notify.warning('Image Exists', 'An image for this description already exists');
+          notify.warning(t('reader.imageExists'), t('reader.imageExistsDesc'));
         } else {
-          notify.error('Generation Failed', 'Failed to generate image. Please try again later.');
+          notify.error(t('reader.generationFailed'), t('reader.generationFailedDesc'));
         }
       }
     } else {
       console.log('❌ Description not found for ID:', descriptionId);
-      notify.error('Error', 'Description not found');
+      notify.error(t('common.error'), t('reader.descriptionNotFound'));
     }
   };
 
@@ -577,7 +579,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
   if (bookLoading || chapterLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <LoadingSpinner size="lg" text="Loading chapter..." />
+        <LoadingSpinner size="lg" text={t('reader.loadingChapter')} />
       </div>
     );
   }
@@ -587,10 +589,10 @@ export const BookReader: React.FC<BookReaderProps> = ({
     if (!token) {
       return (
         <div className="flex items-center justify-center min-h-screen">
-          <ErrorMessage 
-            title="Authentication Required"
-            message="Please login to access this book. Use test@example.com / testpassword123"
-            action={{ label: "Go to Login", onClick: () => window.location.href = '/login' }}
+          <ErrorMessage
+            title={t('reader.authRequired')}
+            message={t('reader.authRequiredDesc')}
+            action={{ label: t('reader.goToLogin'), onClick: () => window.location.href = '/login' }}
           />
         </div>
       );
@@ -598,10 +600,10 @@ export const BookReader: React.FC<BookReaderProps> = ({
 
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <ErrorMessage 
-          title="Chapter Not Found"
-          message="The requested chapter could not be loaded."
-          action={{ label: "Go Back", onClick: () => window.history.back() }}
+        <ErrorMessage
+          title={t('reader.chapterNotFound')}
+          message={t('reader.chapterNotFoundDesc')}
+          action={{ label: t('reader.goBack'), onClick: () => window.history.back() }}
         />
       </div>
     );
@@ -679,14 +681,14 @@ export const BookReader: React.FC<BookReaderProps> = ({
                   {book.title}
                 </h1>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Chapter {currentChapter}: {chapter.chapter?.title}
+                  {t('reader.chapterLabel')} {currentChapter}: {chapter.chapter?.title}
                 </p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-600 dark:text-gray-400">
-                Page {currentPage} of {pages.length}
+                {t('reader.page').replace('{num}', String(currentPage)).replace('{total}', String(pages.length))}
               </span>
               <button className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
                 <Settings className="h-5 w-5" />
@@ -746,7 +748,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
                 className="flex items-center space-x-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronLeft className="h-5 w-5" />
-                <span>Previous</span>
+                <span>{t('reader.previous')}</span>
               </button>
 
               <div className="flex items-center space-x-4">
@@ -757,7 +759,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
                 >
                   {Array.from({ length: book.chapters?.length || book.chapters_count || 0 }, (_, i) => i + 1).map(num => (
                     <option key={num} value={num}>
-                      Chapter {num}
+                      {t('reader.chapterLabel')} {num}
                     </option>
                   ))}
                 </select>
@@ -768,7 +770,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
                 disabled={currentChapter === (book.chapters?.length || book.chapters_count) && currentPage === pages.length}
                 className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                <span>Next</span>
+                <span>{t('reader.next')}</span>
                 <ChevronRight className="h-5 w-5" />
               </button>
             </div>
@@ -776,7 +778,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
             {/* Progress Bar */}
             <div className="mt-6">
               <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
-                <span>Progress</span>
+                <span>{t('reader.progress')}</span>
                 <span>
                   {pages.length > 0 ? Math.round(
                     ((currentChapter - 1) + (currentPage - 1) / pages.length) / (book.chapters?.length || book.chapters_count || 1) * 100
@@ -800,7 +802,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
 
         {/* Keyboard Navigation Hint */}
         <div className="fixed bottom-4 right-4 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-3 py-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          Use ← → keys to navigate
+          {t('reader.navigationHint')}
         </div>
 
         {/* Image Modal */}
@@ -810,7 +812,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
               imageUrl={selectedImage}
               isOpen={!!selectedImage}
               onClose={handleCloseModal}
-              title={selectedDescription?.type ? `${selectedDescription.type.charAt(0).toUpperCase() + selectedDescription.type.slice(1)} Description` : 'Generated Image'}
+              title={selectedDescription?.type ? `${selectedDescription.type.charAt(0).toUpperCase() + selectedDescription.type.slice(1)} ${t('reader.descriptionType').replace('{type}', '')}` : t('reader.generatedImage')}
               description={selectedDescription?.content}
               imageId={selectedImageId || undefined}
               descriptionData={selectedDescription || undefined}

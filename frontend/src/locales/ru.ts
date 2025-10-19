@@ -112,9 +112,12 @@ export const ru = {
   // Читалка / Reader
   reader: {
     loading: 'Загрузка книги...',
+    loadingChapter: 'Загрузка главы...',
     error: 'Ошибка при загрузке книги',
     chapter: 'Глава {num}',
+    chapterLabel: 'Глава',
     page: 'Страница {num} из {total}',
+    progress: 'Прогресс',
     tableOfContents: 'Содержание',
     settings: 'Настройки',
     bookmarks: 'Закладки',
@@ -132,6 +135,35 @@ export const ru = {
     generatingImages: 'Генерируем изображения...',
     imageGenerated: 'Изображение сгенерировано',
     clickToView: 'Нажмите, чтобы увеличить',
+
+    // Navigation
+    previous: 'Назад',
+    next: 'Далее',
+    navigationHint: 'Используйте клавиши ← → для навигации',
+
+    // Authentication
+    authRequired: 'Требуется аутентификация',
+    authRequiredDesc: 'Пожалуйста, войдите в систему для доступа к этой книге. Используйте test@example.com / testpassword123',
+    goToLogin: 'Перейти к входу',
+
+    // Errors
+    chapterNotFound: 'Глава не найдена',
+    chapterNotFoundDesc: 'Запрошенная глава не может быть загружена.',
+    goBack: 'Вернуться назад',
+
+    // Image generation
+    imageGeneration: 'Генерация изображения',
+    generatingImageDesc: 'Генерируем изображение для этого описания...',
+    imageCreated: 'Изображение создано за {time}с',
+    imageExists: 'Изображение существует',
+    imageExistsDesc: 'Изображение для этого описания уже существует',
+    generationFailed: 'Генерация не удалась',
+    generationFailedDesc: 'Не удалось сгенерировать изображение. Пожалуйста, попробуйте позже.',
+    descriptionNotFound: 'Описание не найдено',
+
+    // Image modal
+    generatedImage: 'Сгенерированное изображение',
+    descriptionType: '{type} описание',
   },
 
   // Изображения / Images
@@ -267,23 +299,90 @@ export const ru = {
   // Административная панель / Admin dashboard
   admin: {
     title: 'Панель администратора',
+    subtitle: 'Управление системой и конфигурация',
+    accessDenied: 'Доступ запрещен',
+    accessDeniedDesc: 'Для доступа к этой странице необходимы права администратора.',
+
+    // Tabs
     overview: 'Обзор',
-    users: 'Пользователи',
-    books: 'Книги',
+    multiNlpSettings: 'Настройки Multi-NLP',
+    parsing: 'Парсинг',
     images: 'Изображения',
-    nlpSettings: 'Настройки NLP',
-    systemLogs: 'Системные логи',
+    system: 'Система',
+    users: 'Пользователи',
+
+    // Loading states
+    loadingDashboard: 'Загрузка панели администратора...',
+    loadingMultiNlp: 'Загрузка настроек multi-NLP...',
+    loadingParsing: 'Загрузка настроек парсинга...',
+
+    // Overview stats
     totalUsers: 'Всего пользователей',
     totalBooks: 'Всего книг',
-    totalImages: 'Всего изображений',
-    activeNow: 'Активны сейчас',
-    nlpProcessors: 'NLP процессоры',
-    processorStatus: 'Статус процессора',
-    enabled: 'Включен',
-    disabled: 'Отключен',
+    descriptions: 'Описания',
+    generatedImages: 'Сгенерировано изображений',
+    failedToLoadStats: 'Не удалось загрузить статистику системы',
+
+    // Multi-NLP Settings
+    globalNlpConfig: 'Глобальная конфигурация NLP',
+    processingMode: 'Режим обработки',
+    processingModeSingle: 'Один процессор',
+    processingModeParallel: 'Параллельная обработка',
+    processingModeSequential: 'Последовательная обработка',
+    processingModeEnsemble: 'Ансамбль (голосование)',
+    processingModeAdaptive: 'Адаптивный (AI-управляемый)',
+    processingModeHint: 'Режим ансамбля комбинирует результаты от нескольких процессоров',
+
+    defaultProcessor: 'Процессор по умолчанию',
+    ensembleThreshold: 'Порог голосования ансамбля',
+    ensembleThresholdHint: 'Минимальное согласие между процессорами',
+
+    // Processor settings
+    spacySettings: 'Настройки процессора spaCy',
+    natashaSettings: 'Настройки процессора Natasha',
+    stanzaSettings: 'Настройки процессора Stanza',
+
+    enableSpacy: 'Включить spaCy',
+    enableNatasha: 'Включить Natasha',
+    enableStanza: 'Включить Stanza',
+
+    model: 'Модель',
+    confidenceThreshold: 'Порог уверенности',
     weight: 'Вес',
-    threshold: 'Порог',
-    updateSettings: 'Обновить настройки',
+    characterDetectionBoost: 'Усиление обнаружения персонажей',
+    literaryPatterns: 'Литературные паттерны',
+    literaryBoost: 'Литературное усиление',
+    morphologyAnalysis: 'Морфологический анализ',
+    syntaxAnalysis: 'Синтаксический анализ',
+    namedEntityRecognition: 'Распознавание именованных сущностей',
+
+    // Parsing settings
+    parsingConfig: 'Конфигурация парсинга',
+    maxConcurrentTasks: 'Макс. одновременных задач',
+    timeoutMinutes: 'Таймаут (минуты)',
+
+    priorityWeights: 'Веса приоритетов',
+    freeUsers: 'Бесплатные пользователи',
+    premiumUsers: 'Премиум пользователи',
+    ultimateUsers: 'Ultimate пользователи',
+
+    // Buttons and actions
+    saving: 'Сохранение...',
+    saveMultiNlpSettings: 'Сохранить настройки Multi-NLP',
+    saveSettings: 'Сохранить настройки',
+
+    // Success/Error messages
+    settingsSaved: 'Настройки сохранены',
+    multiNlpUpdated: 'Настройки Multi-NLP успешно обновлены',
+    parsingUpdated: 'Настройки парсинга успешно обновлены',
+    imageUpdated: 'Настройки генерации изображений успешно обновлены',
+    systemUpdated: 'Системные настройки успешно обновлены',
+    saveFailed: 'Ошибка сохранения',
+
+    // Placeholders
+    imageSettings: 'Настройки генерации изображений будут доступны здесь.',
+    systemSettings: 'Настройки конфигурации системы будут доступны здесь.',
+    userManagement: 'Интерфейс управления пользователями будет доступен здесь.',
   },
 
   // Ошибки / Errors
