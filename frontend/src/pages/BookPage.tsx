@@ -139,7 +139,7 @@ const BookPage: React.FC = () => {
               {/* Action Buttons */}
               <div className="flex gap-3 mb-6">
                 <button
-                  onClick={() => navigate(`/book/${book.id}/chapter/${book.reading_progress.current_chapter}`)}
+                  onClick={() => navigate(`/book/${book.id}/read`)}
                   className="inline-flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                 >
                   <Play className="w-5 h-5 mr-2" />

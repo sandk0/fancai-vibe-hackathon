@@ -548,14 +548,18 @@ async def get_book(
         
         # Прогресс чтения - используем унифицированный метод из модели
         progress_percent = await book.get_reading_progress_percent(db, current_user.id)
-        
+
         # Получаем текущую позицию для интерфейса
         current_chapter = 1
         current_page = 1
+        current_position = 0
+        reading_location_cfi = None
         if book.reading_progress:
             progress = book.reading_progress[0]
             current_chapter = progress.current_chapter
             current_page = progress.current_page
+            current_position = progress.current_position
+            reading_location_cfi = progress.reading_location_cfi
         
         # Информация о главах
         chapters_data = []
@@ -588,6 +592,8 @@ async def get_book(
             "reading_progress": {
                 "current_chapter": current_chapter,
                 "current_page": current_page,
+                "current_position": current_position,
+                "reading_location_cfi": reading_location_cfi,
                 "progress_percent": round(progress_percent, 1)
             },
             "created_at": book.created_at.isoformat(),
@@ -600,6 +606,53 @@ async def get_book(
         raise HTTPException(
             status_code=500,
             detail=f"Error fetching book: {str(e)}"
+        )
+
+
+@router.get("/{book_id}/file")
+async def get_book_file(
+    book_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_database_session)
+):
+    """
+    Возвращает EPUB файл для чтения в epub.js.
+
+    Args:
+        book_id: ID книги
+        current_user: Текущий аутентифицированный пользователь
+        db: Сессия базы данных
+
+    Returns:
+        FileResponse с EPUB файлом
+    """
+    try:
+        book = await book_service.get_book_by_id(
+            db=db,
+            book_id=book_id,
+            user_id=current_user.id
+        )
+
+        if not book:
+            raise HTTPException(status_code=404, detail="Book not found")
+
+        # Проверяем существование файла
+        if not os.path.exists(book.file_path):
+            raise HTTPException(status_code=404, detail="Book file not found on server")
+
+        # Возвращаем файл
+        return FileResponse(
+            path=book.file_path,
+            media_type="application/epub+zip",
+            filename=f"{book.title}.epub"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving book file: {str(e)}"
         )
 
 

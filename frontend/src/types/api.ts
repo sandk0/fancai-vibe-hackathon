@@ -119,6 +119,7 @@ export interface BookDetail extends Book {
     current_chapter: number;
     current_page: number;
     current_position: number;  // Процент позиции в текущей главе (0-100)
+    reading_location_cfi?: string;  // CFI для epub.js (точная позиция в EPUB)
     progress_percent: number;
   };
   file_format: string;
@@ -276,6 +277,7 @@ export interface ReadingProgress {
   current_page: number;
   current_chapter: number;
   current_position: number;  // Процент позиции в текущей главе (0-100)
+  reading_location_cfi?: string;  // CFI для epub.js (точная позиция в EPUB)
   progress_percent: number;
   last_read_at: string;
 }

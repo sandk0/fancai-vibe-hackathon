@@ -51,7 +51,6 @@ export const booksAPI = {
       ...config,
       headers: {
         // Удаляем Content-Type чтобы браузер сам установил multipart/form-data с boundary
-        ...config?.headers,
         'Content-Type': undefined,
       },
     });
@@ -98,6 +97,7 @@ export const booksAPI = {
     data: {
       current_chapter: number;
       current_position_percent: number;
+      reading_location_cfi?: string;
     }
   ): Promise<{
     progress: ReadingProgress;
@@ -117,6 +117,7 @@ export const booksAPI = {
     data: {
       chapter_number: number;
       position_percent_in_chapter: number;
+      reading_location_cfi?: string;
     }
   ): Promise<{
     progress: ReadingProgress;
@@ -125,6 +126,7 @@ export const booksAPI = {
     return apiClient.post(`/books/${bookId}/progress`, {
       current_chapter: data.chapter_number,
       current_position_percent: Math.max(0, Math.min(100, data.position_percent_in_chapter)),
+      reading_location_cfi: data.reading_location_cfi,
     });
   },
 
@@ -221,5 +223,12 @@ export const booksAPI = {
         'Content-Type': 'multipart/form-data',
       },
     });
+  },
+
+  // Get book file for epub.js reader
+  getBookFileUrl(bookId: string): string {
+    // Возвращает URL для скачивания EPUB файла
+    const baseUrl = apiClient.client.defaults.baseURL || '';
+    return `${baseUrl}/books/${bookId}/file`;
   },
 };

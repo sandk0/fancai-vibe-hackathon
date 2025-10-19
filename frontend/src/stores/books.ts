@@ -131,8 +131,8 @@ export const useBooksStore = create<BooksState>((set, get) => ({
   updateReadingProgress: async (bookId: string, currentPage: number, chapterNumber: number) => {
     try {
       const response = await booksAPI.updateReadingProgress(bookId, {
-        current_page: currentPage,
         current_chapter: chapterNumber,
+        current_position_percent: 0, // Временное значение для совместимости
       });
 
       // Update the book in the current list
