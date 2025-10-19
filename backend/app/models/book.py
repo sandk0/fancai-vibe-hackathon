@@ -108,11 +108,10 @@ class Book(Base):
         """
         Получает прогресс чтения книги пользователем в процентах.
 
-        Прогресс рассчитывается на основе глав, а не страниц,
-        так как это более точный показатель для электронных книг.
+        Прогресс рассчитывается по формуле:
+        progress = ((current_chapter - 1) + current_position/100) / total_chapters * 100
 
-        ИСПРАВЛЕНО: Теперь делает прямой запрос к БД для надежного подсчета глав,
-        вместо использования relationship который может быть не загружен.
+        Где current_position - это процент прочитанного в текущей главе (0-100).
 
         Args:
             db: Асинхронная сессия БД
@@ -137,30 +136,29 @@ class Book(Base):
                 return 0.0
 
             # Получаем общее количество глав напрямую из БД
-            # Это надежнее чем полагаться на relationship который может быть не загружен
             chapters_count_query = select(func.count(Chapter.id)).where(Chapter.book_id == self.id)
             total_chapters = await db.scalar(chapters_count_query)
 
             if not total_chapters or total_chapters == 0:
                 return 0.0
 
-            # Прогресс на основе глав: завершенные главы + прогресс внутри текущей
-            current_chapter = max(1, progress.current_chapter)
+            # Валидация данных
+            current_chapter = max(1, min(progress.current_chapter, total_chapters))
+            current_position = max(0.0, min(100.0, float(progress.current_position)))
 
+            # Если читает главу за пределами книги, возвращаем 100%
             if current_chapter > total_chapters:
                 return 100.0
 
-            # Базовый прогресс от завершенных глав
-            completed_chapters = current_chapter - 1
-            base_progress = (completed_chapters / total_chapters) * 100
+            # Расчет прогресса:
+            # - Завершенные главы: (current_chapter - 1) глав = (current_chapter - 1) / total_chapters
+            # - Текущая глава: current_position% от 1/total_chapters
+            completed_chapters_progress = ((current_chapter - 1) / total_chapters) * 100
+            current_chapter_progress = (current_position / 100) * (100 / total_chapters)
 
-            # Добавляем прогресс внутри текущей главы (оцениваем как 0-20% от главы)
-            if current_chapter <= total_chapters:
-                chapter_progress = min(20.0, (progress.current_position / 1000) * 20) if progress.current_position > 0 else 0.0
-                chapter_contribution = chapter_progress / total_chapters
-                base_progress += chapter_contribution
+            total_progress = completed_chapters_progress + current_chapter_progress
 
-            return min(100.0, base_progress)
+            return min(100.0, max(0.0, total_progress))
         except Exception as e:
             # В случае любой ошибки возвращаем 0
             print(f"⚠️ Error calculating reading progress: {e}")
