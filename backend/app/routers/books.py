@@ -536,7 +536,7 @@ async def get_book(
     try:
         book = await book_service.get_book_by_id(
             db=db,
-            book_id=UUID(book_id),
+            book_id=book_id,
             user_id=current_user.id
         )
         
@@ -627,7 +627,7 @@ async def get_chapter(
         # Проверяем, что книга принадлежит пользователю
         book = await book_service.get_book_by_id(
             db=db,
-            book_id=UUID(book_id),
+            book_id=book_id,
             user_id=current_user.id
         )
         
@@ -747,7 +747,7 @@ async def update_reading_progress(
         # Проверяем, что книга принадлежит пользователю
         book = await book_service.get_book_by_id(
             db=db,
-            book_id=UUID(book_id),
+            book_id=book_id,
             user_id=current_user.id
         )
         
@@ -766,7 +766,7 @@ async def update_reading_progress(
         progress = await book_service.update_reading_progress(
             db=db,
             user_id=current_user.id,
-            book_id=UUID(book_id),
+            book_id=book_id,
             chapter_number=current_chapter,
             page_number=current_page
         )
@@ -814,7 +814,7 @@ async def process_book_descriptions(
         # Проверяем, что книга принадлежит пользователю
         book = await book_service.get_book_by_id(
             db=db,
-            book_id=UUID(book_id),
+            book_id=book_id,
             user_id=current_user.id
         )
         
@@ -932,7 +932,7 @@ async def get_parsing_status(
         # Проверяем, что книга принадлежит пользователю
         book = await book_service.get_book_by_id(
             db=db,
-            book_id=UUID(book_id),
+            book_id=book_id,
             user_id=current_user.id
         )
         
@@ -1000,7 +1000,7 @@ async def get_reading_progress(
         # Проверяем, что книга принадлежит пользователю
         book = await book_service.get_book_by_id(
             db=db,
-            book_id=UUID(book_id),
+            book_id=book_id,
             user_id=current_user.id
         )
         
@@ -1056,7 +1056,7 @@ async def get_book_cover(
     try:
         # Получаем книгу по ID (без проверки владельца для публичного доступа к обложке)
         result = await db.execute(
-            select(Book).where(Book.id == UUID(book_id))
+            select(Book).where(Book.id == book_id)
         )
         book = result.scalar_one_or_none()
         
