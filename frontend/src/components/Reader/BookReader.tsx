@@ -249,8 +249,15 @@ export const BookReader: React.FC<BookReaderProps> = ({
       pagesLength: pages.length,
       currentChapter,
       currentPage,
-      bookId
+      bookId,
+      hasRestoredPosition
     });
+
+    // Don't save progress until position has been restored on initial load
+    if (!hasRestoredPosition) {
+      console.log('📊 Skipping progress save - waiting for position restoration');
+      return;
+    }
 
     if (book && chapter && pages.length > 0) {
       // Calculate position percent in current chapter (0-100%)
@@ -273,7 +280,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
     } else {
       console.log('📊 Not updating progress - conditions not met');
     }
-  }, [bookId, currentChapter, currentPage, pages.length, book, chapter]);
+  }, [bookId, currentChapter, currentPage, pages.length, book, chapter, hasRestoredPosition]);
 
   // Reset to first page when chapter changes (skip first mount)
   useEffect(() => {
