@@ -1019,11 +1019,19 @@ async def get_reading_progress(
                 detail="Book not found"
             )
         
-        # Ищем прогресс
-        progress = None
-        if book.reading_progress:
-            progress = book.reading_progress[0]  # Первый прогресс для пользователя
-        
+        # Ищем прогресс напрямую в БД (не через relationship - избегаем кэширования)
+        from sqlalchemy import select, and_
+        from ..models.book import ReadingProgress
+
+        progress_query = select(ReadingProgress).where(
+            and_(
+                ReadingProgress.book_id == book_id,
+                ReadingProgress.user_id == current_user.id
+            )
+        )
+        progress_result = await db.execute(progress_query)
+        progress = progress_result.scalar_one_or_none()
+
         return {
             "progress": {
                 "id": str(progress.id) if progress else None,
