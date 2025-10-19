@@ -124,6 +124,7 @@ export const ru = {
     progress: 'Прогресс',
     tableOfContents: 'Содержание',
     settings: 'Настройки',
+    quickSettings: 'Быстрые настройки',
     bookmarks: 'Закладки',
     textSettings: 'Настройки текста',
     fontSize: 'Размер шрифта',
