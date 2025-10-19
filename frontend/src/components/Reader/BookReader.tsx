@@ -37,6 +37,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [highlightedDescriptions, setHighlightedDescriptions] = useState<Description[]>([]);
   const [showSettings, setShowSettings] = useState(false);
+  const [hasRestoredPosition, setHasRestoredPosition] = useState(false);
 
   const contentRef = useRef<HTMLDivElement>(null);
   const {
@@ -190,6 +191,54 @@ export const BookReader: React.FC<BookReaderProps> = ({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Restore reading position on initial load
+  useEffect(() => {
+    // Only restore position once, for the initial chapter, and after pages are calculated
+    if (hasRestoredPosition || pages.length === 0 || currentChapter !== initialChapter) {
+      return;
+    }
+
+    console.log('📖 Attempting to restore reading position...');
+
+    // Load saved reading progress
+    booksAPI.getReadingProgress(bookId)
+      .then(({ progress }) => {
+        if (!progress) {
+          console.log('📖 No saved progress found');
+          setHasRestoredPosition(true);
+          return;
+        }
+
+        console.log('📖 Loaded progress:', {
+          currentChapter: progress.current_chapter,
+          currentPosition: progress.current_position,
+          savedChapter: progress.current_chapter,
+          urlChapter: initialChapter
+        });
+
+        // Only restore position if we're on the same chapter as saved progress
+        if (progress.current_chapter === currentChapter && progress.current_position > 0) {
+          // Calculate target page based on position percent (0-100)
+          const targetPage = Math.max(1, Math.ceil((progress.current_position / 100) * pages.length));
+
+          console.log('📖 Restoring position:', {
+            chapter: progress.current_chapter,
+            positionPercent: progress.current_position + '%',
+            totalPages: pages.length,
+            targetPage
+          });
+
+          setCurrentPage(targetPage);
+        }
+
+        setHasRestoredPosition(true);
+      })
+      .catch(err => {
+        console.error('❌ Failed to load reading progress:', err);
+        setHasRestoredPosition(true);
+      });
+  }, [pages.length, currentChapter, initialChapter, bookId, hasRestoredPosition]);
 
   // Update reading progress
   useEffect(() => {
@@ -834,16 +883,16 @@ export const BookReader: React.FC<BookReaderProps> = ({
                 <span>{t('reader.progress')}</span>
                 <span>
                   {pages.length > 0 ? Math.round(
-                    ((currentChapter - 1) + (currentPage - 1) / pages.length) / (book.chapters?.length || book.chapters_count || 1) * 100
+                    ((currentChapter - 1) + currentPage / pages.length) / (book.chapters?.length || book.chapters_count || 1) * 100
                   ) : 0}%
                 </span>
               </div>
               <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                <div 
+                <div
                   className="bg-primary-600 h-2 rounded-full transition-all duration-300"
                   style={{
                     width: `${pages.length > 0 ? Math.min(
-                      ((currentChapter - 1) + (currentPage - 1) / pages.length) / (book.chapters?.length || book.chapters_count || 1) * 100,
+                      ((currentChapter - 1) + currentPage / pages.length) / (book.chapters?.length || book.chapters_count || 1) * 100,
                       100
                     ) : 0}%`
                   }}
