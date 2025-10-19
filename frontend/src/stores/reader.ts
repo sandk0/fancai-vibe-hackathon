@@ -124,7 +124,7 @@ export const useReaderStore = create<ReaderState>()(
         try {
           await booksAPI.updateReadingProgress(bookId, {
             current_chapter: chapter,
-            current_page: actualPage,
+            current_position_percent: 0, // Временное значение для совместимости
           });
         } catch (error) {
           console.error('Failed to sync reading progress:', error);

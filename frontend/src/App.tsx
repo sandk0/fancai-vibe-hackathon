@@ -17,6 +17,7 @@ import RegisterPage from '@/pages/RegisterPage';
 import LibraryPage from '@/pages/LibraryPage';
 import BookPage from '@/pages/BookPage';
 import BookImagesPage from '@/pages/BookImagesPage';
+import BookReaderPage from '@/pages/BookReaderPage';
 import ChapterPage from '@/pages/ChapterPage';
 import ProfilePage from '@/pages/ProfilePage';
 import SettingsPage from '@/pages/SettingsPage';
@@ -58,6 +59,16 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             
+            {/* Fullscreen reader route (no layout) */}
+            <Route
+              path="/book/:bookId/read"
+              element={
+                <AuthGuard>
+                  <BookReaderPage />
+                </AuthGuard>
+              }
+            />
+
             {/* Protected routes with layout */}
             <Route
               path="/*"
@@ -69,9 +80,9 @@ function App() {
                       <Route path="/library" element={<LibraryPage />} />
                       <Route path="/book/:bookId" element={<BookPage />} />
                       <Route path="/book/:bookId/images" element={<BookImagesPage />} />
-                      <Route 
-                        path="/book/:bookId/chapter/:chapterNumber" 
-                        element={<ChapterPage />} 
+                      <Route
+                        path="/book/:bookId/chapter/:chapterNumber"
+                        element={<ChapterPage />}
                       />
                       <Route path="/profile" element={<ProfilePage />} />
                       <Route path="/settings" element={<SettingsPage />} />
