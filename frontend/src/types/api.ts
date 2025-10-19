@@ -118,6 +118,7 @@ export interface BookDetail extends Book {
   reading_progress: {
     current_chapter: number;
     current_page: number;
+    current_position: number;  // Процент позиции в текущей главе (0-100)
     progress_percent: number;
   };
   file_format: string;
@@ -274,6 +275,7 @@ export interface ReadingProgress {
   book_id: string;
   current_page: number;
   current_chapter: number;
+  current_position: number;  // Процент позиции в текущей главе (0-100)
   progress_percent: number;
   last_read_at: string;
 }
