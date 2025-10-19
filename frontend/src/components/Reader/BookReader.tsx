@@ -314,9 +314,17 @@ export const BookReader: React.FC<BookReaderProps> = ({
       booksAPI.updateReadingProgress(bookId, {
         current_chapter: currentChapter,
         current_position_percent: positionPercent
-      }).catch(err => {
-        console.error('Failed to update progress:', err);
-      });
+      })
+        .then(response => {
+          console.log('📊 ✅ Progress saved successfully:', {
+            savedChapter: response.progress.current_chapter,
+            savedPosition: response.progress.current_position,
+            response
+          });
+        })
+        .catch(err => {
+          console.error('❌ Failed to update progress:', err);
+        });
     } else {
       console.log('📊 Not updating progress - conditions not met');
     }
