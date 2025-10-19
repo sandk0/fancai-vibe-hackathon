@@ -40,6 +40,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
   const [hasRestoredPosition, setHasRestoredPosition] = useState(false);
 
   const contentRef = useRef<HTMLDivElement>(null);
+  const isFirstMount = useRef(true);
   const {
     fontSize,
     fontFamily,
@@ -274,12 +275,18 @@ export const BookReader: React.FC<BookReaderProps> = ({
     }
   }, [bookId, currentChapter, currentPage, pages.length, book, chapter]);
 
-  // Reset to first page when chapter changes
+  // Reset to first page when chapter changes (skip first mount)
   useEffect(() => {
+    // Skip on first mount to allow position restoration
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+
     console.log(`Chapter changed to: ${currentChapter}`);
     setCurrentPage(1);
     setPages([]); // Clear pages to force re-pagination
-    
+
     // Save progress immediately when changing chapters
     if (book) {
       console.log(`📊 Saving progress for chapter change: ${currentChapter}, position: 0%`);
