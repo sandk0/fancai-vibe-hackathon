@@ -459,6 +459,35 @@ export const ru = {
     lightMode: 'светлую',
     darkMode: 'темную',
     sepiaMode: 'сепия',
+
+    // Sidebar navigation items
+    home: 'Главная',
+    myLibrary: 'Моя библиотека',
+    generatedImages: 'Изображения',
+    readingStats: 'Статистика',
+    adminDashboard: 'Панель администратора',
+    user: 'Пользователь',
+    freePlan: 'Бесплатный план',
+  },
+
+  // Страница книги / Book page
+  bookPage: {
+    notFound: 'Книга не найдена',
+    notFoundDesc: 'Запрошенная книга не найдена или у вас нет доступа к ней.',
+    backToLibrary: 'Вернуться в библиотеку',
+    chapters: 'глав',
+    chapter: 'глава',
+    pages: 'страниц',
+    readTime: 'ч чтения',
+    readingProgress: 'Прогресс чтения',
+    continueReading: 'Продолжить чтение',
+    startReading: 'Начать чтение',
+    viewImages: 'Просмотр изображений',
+    description: 'Описание',
+    chaptersList: 'Главы',
+    words: 'слов',
+    minRead: 'мин',
+    descriptions: 'описаний',
   },
 } as const;
 
