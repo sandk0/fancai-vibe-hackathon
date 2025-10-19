@@ -455,7 +455,7 @@ async def get_user_books(
         books_data = []
         for book in books:
             try:
-                reading_progress = book.get_reading_progress_percent(current_user.id)
+                reading_progress = await book.get_reading_progress_percent(db, current_user.id)
                 
                 books_data.append({
                     "id": str(book.id),
@@ -547,7 +547,7 @@ async def get_book(
             )
         
         # Прогресс чтения - используем унифицированный метод из модели
-        progress_percent = book.get_reading_progress_percent(current_user.id)
+        progress_percent = await book.get_reading_progress_percent(db, current_user.id)
         
         # Получаем текущую позицию для интерфейса
         current_chapter = 1
