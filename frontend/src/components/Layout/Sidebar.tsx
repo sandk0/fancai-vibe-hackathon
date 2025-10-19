@@ -1,10 +1,10 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  Home, 
-  Library, 
-  Image, 
-  Settings, 
+import {
+  Home,
+  Library,
+  Image,
+  Settings,
   BarChart3,
   BookOpen,
   Sparkles,
@@ -12,41 +12,43 @@ import {
 } from 'lucide-react';
 import { useUIStore } from '@/stores/ui';
 import { useAuthStore } from '@/stores/auth';
+import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/utils/cn';
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
   const { sidebarOpen, setSidebarOpen } = useUIStore();
   const { user } = useAuthStore();
+  const { t } = useTranslation();
 
   const navigation = [
     {
-      name: 'Home',
+      name: t('nav.home'),
       href: '/',
       icon: Home,
     },
     {
-      name: 'My Library',
+      name: t('nav.myLibrary'),
       href: '/library',
       icon: Library,
     },
     {
-      name: 'Generated Images',
+      name: t('nav.generatedImages'),
       href: '/images',
       icon: Image,
     },
     {
-      name: 'Reading Stats',
+      name: t('nav.readingStats'),
       href: '/stats',
       icon: BarChart3,
     },
     {
-      name: 'Settings',
+      name: t('nav.settings'),
       href: '/settings',
       icon: Settings,
     },
     ...(user?.is_admin ? [{
-      name: 'Admin Dashboard',
+      name: t('nav.adminDashboard'),
       href: '/admin',
       icon: Shield,
     }] : []),
@@ -185,11 +187,11 @@ const Sidebar: React.FC = () => {
               </div>
               <div className="ml-3">
                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {user?.full_name || 'User'}
+                  {user?.full_name || t('nav.user')}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
                   <Sparkles className="w-3 h-3 mr-1" />
-                  Free Plan
+                  {t('nav.freePlan')}
                 </p>
               </div>
             </div>

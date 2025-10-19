@@ -3,11 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Book, BookOpen, Clock, FileText, User, ArrowLeft, Play } from 'lucide-react';
 import { booksAPI } from '@/api/books';
+import { useTranslation } from '@/hooks/useTranslation';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 
 const BookPage: React.FC = () => {
   const { bookId } = useParams<{ bookId: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const { data: book, isLoading, error } = useQuery({
     queryKey: ['book', bookId],
@@ -29,17 +31,17 @@ const BookPage: React.FC = () => {
         <div className="text-center py-16">
           <Book className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            Book Not Found
+            {t('bookPage.notFound')}
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            The requested book could not be found or you don't have access to it.
+            {t('bookPage.notFoundDesc')}
           </p>
           <button
             onClick={() => navigate('/library')}
             className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Library
+            {t('bookPage.backToLibrary')}
           </button>
         </div>
       </div>
@@ -54,7 +56,7 @@ const BookPage: React.FC = () => {
         className="inline-flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-6"
       >
         <ArrowLeft className="w-4 h-4 mr-1" />
-        Back to Library
+        {t('bookPage.backToLibrary')}
       </button>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
@@ -101,15 +103,15 @@ const BookPage: React.FC = () => {
               <div className="flex flex-wrap gap-6 text-sm text-gray-600 dark:text-gray-400 mb-6">
                 <div className="flex items-center">
                   <BookOpen className="w-4 h-4 mr-1" />
-                  <span>{book.chapters.length} chapters</span>
+                  <span>{book.chapters.length} {t('bookPage.chapters')}</span>
                 </div>
                 <div className="flex items-center">
                   <FileText className="w-4 h-4 mr-1" />
-                  <span>{book.total_pages} pages</span>
+                  <span>{book.total_pages} {t('bookPage.pages')}</span>
                 </div>
                 <div className="flex items-center">
                   <Clock className="w-4 h-4 mr-1" />
-                  <span>~{book.estimated_reading_time_hours}h read</span>
+                  <span>~{book.estimated_reading_time_hours} {t('bookPage.readTime')}</span>
                 </div>
                 <div className="flex items-center">
                   <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs uppercase">
@@ -122,12 +124,12 @@ const BookPage: React.FC = () => {
               {book.reading_progress.progress_percent > 0 && (
                 <div className="mb-6">
                   <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
-                    <span>Reading Progress</span>
+                    <span>{t('bookPage.readingProgress')}</span>
                     <span>{Math.round(book.reading_progress.progress_percent)}%</span>
                   </div>
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                    <div 
-                      className="bg-primary-600 h-2 rounded-full transition-all" 
+                    <div
+                      className="bg-primary-600 h-2 rounded-full transition-all"
                       style={{ width: `${book.reading_progress.progress_percent}%` }}
                     />
                   </div>
@@ -141,13 +143,13 @@ const BookPage: React.FC = () => {
                   className="inline-flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                 >
                   <Play className="w-5 h-5 mr-2" />
-                  {book.reading_progress.progress_percent > 0 ? 'Continue Reading' : 'Start Reading'}
+                  {book.reading_progress.progress_percent > 0 ? t('bookPage.continueReading') : t('bookPage.startReading')}
                 </button>
                 <button
                   onClick={() => navigate(`/book/${book.id}/images`)}
                   className="inline-flex items-center px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
-                  View Images
+                  {t('bookPage.viewImages')}
                 </button>
               </div>
             </div>
@@ -156,7 +158,7 @@ const BookPage: React.FC = () => {
             {book.description && (
               <div className="mb-8">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-                  Description
+                  {t('bookPage.description')}
                 </h2>
                 <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
                   {book.description}
@@ -169,7 +171,7 @@ const BookPage: React.FC = () => {
         {/* Chapters List */}
         <div className="border-t border-gray-200 dark:border-gray-700 p-8">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-            Chapters ({book.chapters.length})
+            {t('bookPage.chaptersList')} ({book.chapters.length})
           </h2>
           <div className="space-y-2">
             {book.chapters.map((chapter) => (
@@ -187,14 +189,14 @@ const BookPage: React.FC = () => {
                       {chapter.title}
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {chapter.word_count} words • ~{chapter.estimated_reading_time_minutes} min read
+                      {chapter.word_count} {t('bookPage.words')} • ~{chapter.estimated_reading_time_minutes} {t('bookPage.minRead')}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center text-gray-400">
                   {chapter.is_description_parsed && (
                     <span className="text-xs text-green-600 dark:text-green-400 mr-2">
-                      {chapter.descriptions_found} descriptions
+                      {chapter.descriptions_found} {t('bookPage.descriptions')}
                     </span>
                   )}
                   <ArrowLeft className="w-4 h-4 rotate-180" />
