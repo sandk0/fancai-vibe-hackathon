@@ -57,6 +57,20 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
         const epubBook = ePub(arrayBuffer);
         bookRef.current = epubBook;
 
+        // Ждем полной загрузки книги
+        console.log('⏳ Waiting for book to load...');
+        await epubBook.ready;
+        console.log('✅ Book ready');
+
+        // Генерируем locations для отслеживания прогресса (ПОСЛЕ загрузки книги)
+        console.log('📊 Generating locations for progress tracking...');
+        await epubBook.locations.generate(1600); // 1600 символов на "страницу"
+        console.log('✅ Locations generated:', epubBook.locations.total);
+
+        if (epubBook.locations.total <= 0) {
+          console.warn('⚠️ Locations not generated, falling back to manual calculation');
+        }
+
         // Создаем rendition
         const rendition = epubBook.renderTo(viewerRef.current, {
           width: '100%',
@@ -82,11 +96,6 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
           },
         });
 
-        // Генерируем locations для отслеживания прогресса
-        console.log('📊 Generating locations for progress tracking...');
-        await epubBook.locations.generate(1024); // 1024 символов на "страницу"
-        console.log('✅ Locations generated:', epubBook.locations.total);
-
         // Загружаем прогресс чтения
         const { progress } = await booksAPI.getReadingProgress(book.id);
 
@@ -108,13 +117,25 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
 
           const cfi = location.start.cfi;
 
-          // Получаем прогресс из epub.js
-          const currentLocation = epubBook.locations.percentageFromCfi(cfi);
-          const progressPercent = Math.round((currentLocation || 0) * 100);
+          // Вычисляем прогресс
+          let progressPercent = 0;
+
+          if (epubBook.locations && epubBook.locations.total > 0) {
+            // Используем locations если они сгенерированы
+            const currentLocation = epubBook.locations.percentageFromCfi(cfi);
+            progressPercent = Math.round((currentLocation || 0) * 100);
+          } else {
+            // Альтернативный расчет через currentLocation()
+            const current = rendition.currentLocation();
+            if (current && current.start && current.start.percentage !== undefined) {
+              progressPercent = Math.round(current.start.percentage * 100);
+            }
+          }
 
           console.log('📍 Location changed:', {
             cfi: cfi.substring(0, 50),
-            progress: progressPercent + '%'
+            progress: progressPercent + '%',
+            locationsTotal: epubBook.locations?.total || 0
           });
 
           // Debounced сохранение
