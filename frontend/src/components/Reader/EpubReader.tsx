@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ReactReader } from 'react-reader';
 import { booksAPI } from '@/api/books';
+import { STORAGE_KEYS } from '@/types/state';
 import type { BookDetail } from '@/types/api';
 
 interface EpubReaderProps {
@@ -10,13 +11,58 @@ interface EpubReaderProps {
 export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   const [location, setLocation] = useState<string | number>(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [epubUrl, setEpubUrl] = useState<string>('');
+  const [error, setError] = useState<string>('');
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const hasRestoredPosition = useRef(false);
+  const blobUrlRef = useRef<string>('');
 
-  const epubUrl = booksAPI.getBookFileUrl(book.id);
+  // Загрузить EPUB файл и создать blob URL
+  useEffect(() => {
+    const loadEpubFile = async () => {
+      try {
+        console.log('📥 Downloading EPUB file...');
+
+        // Загружаем файл через fetch (с авторизацией)
+        const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+        const response = await fetch(booksAPI.getBookFileUrl(book.id), {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to download EPUB: ${response.statusText}`);
+        }
+
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+
+        blobUrlRef.current = blobUrl;
+        setEpubUrl(blobUrl);
+
+        console.log('✅ EPUB file downloaded successfully');
+      } catch (err) {
+        console.error('❌ Error downloading EPUB:', err);
+        setError(err instanceof Error ? err.message : 'Error loading book');
+        setIsLoading(false);
+      }
+    };
+
+    loadEpubFile();
+
+    // Очистка blob URL при размонтировании
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+      }
+    };
+  }, [book.id]);
 
   // Загрузить сохраненную позицию при монтировании
   useEffect(() => {
+    if (!epubUrl) return; // Ждем загрузки EPUB файла
+
     const loadProgress = async () => {
       try {
         const { progress } = await booksAPI.getReadingProgress(book.id);
@@ -36,7 +82,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     };
 
     loadProgress();
-  }, [book.id]);
+  }, [book.id, epubUrl]);
 
   // Debounced сохранение позиции чтения
   const saveProgress = useCallback(
@@ -88,7 +134,18 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     };
   }, []);
 
-  if (isLoading) {
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-900">
+        <div className="text-center">
+          <p className="text-red-400 mb-4">Ошибка загрузки книги</p>
+          <p className="text-gray-400 text-sm">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading || !epubUrl) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-900">
         <div className="text-center">
