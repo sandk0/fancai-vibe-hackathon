@@ -10,6 +10,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Frontend
 - **React 18+** с **TypeScript**
+- **epub.js 0.3.93** - EPUB парсинг и рендеринг (NEW: октябрь 2025)
+- **react-reader 2.0.15** - React wrapper для epub.js (NEW: октябрь 2025)
 - **Tailwind CSS** для стилизации
 - **React Query/TanStack Query** для управления состоянием сервера
 - **Zustand** для клиентского состояния
@@ -23,8 +25,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **SQLAlchemy** ORM с **Alembic** для миграций
 
 ### NLP & AI
-- **spaCy** (основная NLP для русского языка)
-- **NLTK, Stanza, Natasha** (альтернативные)
+- **Advanced Multi-NLP Manager** - координация 3 процессоров
+  - **SpaCy** (ru_core_news_lg) - entity recognition, вес 1.0
+  - **Natasha** - русская морфология и NER, вес 1.2 (специализация)
+  - **Stanza** (ru) - dependency parsing, вес 0.8
+
+- **5 режимов обработки**:
+  - SINGLE - один процессор (быстро)
+  - PARALLEL - параллельная обработка (максимальное покрытие)
+  - SEQUENTIAL - последовательная обработка
+  - ENSEMBLE - voting с consensus алгоритмом (максимальное качество)
+  - ADAPTIVE - автоматический выбор режима (интеллектуально)
+
+- **Ensemble Voting**:
+  - Weighted consensus: SpaCy (1.0), Natasha (0.8), Stanza (0.7)
+  - Consensus threshold: 0.6 (60%)
+  - Context enrichment + deduplication
+
 - **pollinations.ai** (основной сервис генерации изображений)
 - **OpenAI DALL-E, Midjourney, Stable Diffusion** (опциональные)
 
@@ -63,6 +80,16 @@ cd frontend && npm run type-check
 # База данных миграции
 cd backend && alembic upgrade head
 cd backend && alembic revision --autogenerate -m "description"
+
+# CFI и epub.js разработка
+# Тестирование CFI генерации
+cd backend && python -c "from app.services.book_parser import BookParser; parser = BookParser(); # test CFI"
+
+# Проверка reading_progress с CFI
+curl -X GET http://localhost:8000/api/v1/books/{book_id}/progress
+
+# Тестирование epub.js компонента (frontend)
+cd frontend && npm run dev  # проверить EpubReader.tsx
 ```
 
 ### Multi-NLP система и парсинг
@@ -208,6 +235,8 @@ pre-commit install
 fancai-vibe-hackathon/
 ├── frontend/                 # React приложение
 │   ├── src/components/      # React компоненты
+│   │   └── Reader/
+│   │       └── EpubReader.tsx  # ✅ epub.js компонент (835 строк, октябрь 2025)
 │   ├── src/hooks/          # Custom hooks
 │   ├── src/stores/         # Zustand stores
 │   └── src/types/          # TypeScript типы
@@ -215,19 +244,24 @@ fancai-vibe-hackathon/
 │   ├── app/models/         # SQLAlchemy модели
 │   │   ├── user.py         # ✅ User, Subscription модели
 │   │   ├── book.py         # ✅ Book, ReadingProgress модели
+│   │   │                   # NEW: reading_location_cfi, scroll_offset_percent (октябрь 2025)
+│   │   │                   # NEW: get_reading_progress_percent() метод с CFI логикой
 │   │   ├── chapter.py      # ✅ Chapter модель
 │   │   ├── description.py  # ✅ Description модель с типами
-│   │   └── image.py        # ✅ GeneratedImage модель
+│   │   ├── image.py        # ✅ GeneratedImage модель
+│   │   └── admin_settings.py # ORPHANED - модель существует, таблица УДАЛЕНА!
 │   ├── app/routers/        # API routes
 │   │   ├── users.py        # ✅ Пользовательские endpoints
-│   │   ├── books.py        # ✅ Управление книгами (12 endpoints)
+│   │   ├── books.py        # ✅ 16 endpoints (включая GET /{id}/file для epub.js)
+│   │   ├── admin.py        # ✅ Admin + Multi-NLP settings (5 endpoints)
 │   │   └── nlp.py          # ✅ NLP тестирование и обработка
 │   ├── app/core/           # Конфигурация и утилиты
 │   │   ├── config.py       # ✅ Настройки приложения
 │   │   └── database.py     # ✅ Асинхронная база данных
 │   └── app/services/       # Бизнес логика
-│       ├── book_parser.py  # ✅ EPUB/FB2 парсер
-│       ├── book_service.py # ✅ Сервис управления книгами
+│       ├── book_parser.py  # ✅ EPUB/FB2 парсер (796 строк) + CFI generation
+│       ├── book_service.py # ✅ Сервис управления книгами (621 строк)
+│       ├── multi_nlp_manager.py # ✅ Multi-NLP координатор (627 строк)
 │       └── nlp_processor.py # ✅ NLP обработка с приоритетами
 ├── docs/                   # Документация проекта
 │   ├── development/        # План, календарь, changelog
@@ -256,11 +290,34 @@ fancai-vibe-hackathon/
    - Кэширование и дедупликация изображений
 
 4. **Reading Interface:**
-   - Постраничная читалка с адаптивной пагинацией
+   - epub.js + react-reader для профессионального EPUB рендеринга
+   - CFI (Canonical Fragment Identifier) для точной навигации
    - Модальные окна для изображений по клику на описания
    - Офлайн-режим с Service Worker
 
 ### Database Schema (PostgreSQL)
+
+#### ВАЖНОЕ ЗАМЕЧАНИЕ о типах данных:
+**Enums vs VARCHAR:**
+Модели SQLAlchemy ОПРЕДЕЛЯЮТ Enums (BookGenre, BookFormat, ImageService, ImageStatus),
+НО в Column definitions используется String, а НЕ Enum!
+
+Примеры:
+- `books.genre` - String(50), а НЕ Enum(BookGenre)
+- `books.file_format` - String(10), а НЕ Enum(BookFormat)
+- `generated_images.service_used` - String(50), а НЕ Enum(ImageService)
+- `generated_images.status` - String(20), а НЕ Enum(ImageStatus)
+
+**JSON vs JSONB:**
+Для PostgreSQL используется JSON тип, НО рекомендуется JSONB для:
+- `books.book_metadata` - JSON (рекомендуется JSONB)
+- `generated_images.generation_parameters` - JSON (рекомендуется JSONB)
+- `generated_images.moderation_result` - JSON (рекомендуется JSONB)
+
+**Новые поля (октябрь 2025):**
+- `reading_progress.reading_location_cfi` - String(500) - CFI для epub.js
+- `reading_progress.scroll_offset_percent` - Float - точный scroll 0-100%
+
 ```sql
 -- Основные таблицы
 Users, Books, Chapters, Descriptions, Generated_Images
@@ -269,7 +326,8 @@ Users, Books, Chapters, Descriptions, Generated_Images
 Bookmarks, Highlights, Reading_Progress, Reading_Sessions
 
 -- Административные
-Subscriptions, Payment_History, Admin_Settings, System_Logs
+Subscriptions, Payment_History, System_Logs
+-- AdminSettings - модель существует в коде, но таблица УДАЛЕНА из БД!
 ```
 
 ### Key Performance Requirements
@@ -345,9 +403,12 @@ docker-compose exec backend python scripts/generate_docs.py
 ```
 
 ### Important File Locations
+- **CFI Reading System:** `backend/app/models/book.py` (ReadingProgress модель)
+- **epub.js Component:** `frontend/src/components/Reader/EpubReader.tsx` (835 строк)
+- **Multi-NLP Manager:** `backend/app/services/multi_nlp_manager.py` (627 строк)
+- **Admin multi-nlp settings:** `backend/app/routers/admin.py` (5 endpoints)
+- **Book Parser with CFI:** `backend/app/services/book_parser.py` (796 строк)
 - **Основной промпт:** `prompts.md`
-- **Multi-NLP Manager:** `backend/app/services/multi_nlp_manager.py`
-- **Admin multi-nlp settings:** `backend/app/routers/admin.py`
 - **Конфигурация Docker:** `docker-compose.yml`
 - **План разработки:** `docs/development/development-plan.md`
 - **API документация:** `docs/architecture/api-documentation.md`
