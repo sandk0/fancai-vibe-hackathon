@@ -370,6 +370,272 @@ docker system prune -f --volumes
 - [ ] No default passwords in use
 - [ ] Environment variables secured
 - [ ] Database access restricted
+- [ ] EPUB file upload validation enabled
+- [ ] CFI injection prevention implemented
+- [ ] epub.js XSS protection configured
+
+---
+
+## 🆕 October 2025 Production Updates
+
+### Pre-Deployment Checklist
+
+**Backend (Multi-NLP System):**
+- [ ] Multi-NLP models installed and tested (SpaCy, Natasha, Stanza)
+- [ ] CFI migrations applied (8ca7de033db9, e94cab18247f)
+- [ ] EPUB file serving endpoint tested (`GET /api/v1/books/{id}/file`)
+- [ ] Reading progress API with CFI fields tested
+- [ ] Ensemble voting configured (60% consensus threshold)
+- [ ] Admin multi-nlp settings API endpoints working
+
+**Frontend (epub.js Integration):**
+- [ ] epub.js 0.3.93 + react-reader 2.0.15 in package.json
+- [ ] EpubReader component renders correctly (835 lines verified)
+- [ ] CFI tracking saves to backend (debounced 2 seconds)
+- [ ] Smart highlights work with descriptions
+- [ ] Progress bar shows accurate percentage from CFI
+- [ ] Location generation completes (<10 seconds for average book)
+
+**Database (CFI Tracking):**
+- [ ] `reading_location_cfi` field exists (VARCHAR 500)
+- [ ] `scroll_offset_percent` field exists (FLOAT)
+- [ ] Indexes on CFI field for performance
+- [ ] Backward compatibility tested (old reading_progress data)
+- [ ] `get_reading_progress_percent()` method working
+
+**Performance Metrics:**
+- [ ] Multi-NLP: <5 seconds for 2000+ descriptions
+- [ ] CFI resolution: <100ms
+- [ ] EPUB loading: <2 seconds
+- [ ] Progress save debounce: 2 seconds working
+- [ ] Bundle size: <3MB (frontend)
+
+### New Environment Variables (October 2025)
+
+```bash
+# Multi-NLP Configuration
+MULTI_NLP_MODE=ensemble              # Options: single, parallel, sequential, ensemble, adaptive
+MULTI_NLP_PROCESSORS=spacy,natasha,stanza
+CONSENSUS_THRESHOLD=0.6              # 60% consensus for ensemble mode
+
+# Processor Weights
+SPACY_WEIGHT=1.0                     # Entity recognition specialist
+NATASHA_WEIGHT=1.2                   # Russian names specialist (higher weight)
+STANZA_WEIGHT=0.8                    # Dependency parsing
+
+# CFI Configuration
+CFI_MAX_LENGTH=500                   # Maximum CFI string length
+CFI_VALIDATION_ENABLED=true          # Enable CFI format validation
+
+# epub.js Frontend
+VITE_EPUB_VIEWER_ENABLED=true
+VITE_CFI_TRACKING_ENABLED=true
+VITE_SMART_HIGHLIGHTS_ENABLED=true
+```
+
+### Monitoring Alerts (October 2025)
+
+```yaml
+# Add to monitoring configuration
+alerts:
+  # Multi-NLP Performance
+  - name: slow_nlp_processing
+    condition: nlp_processing_time > 10s
+    severity: warning
+    description: "Multi-NLP processing taking longer than expected"
+
+  - name: nlp_consensus_low
+    condition: ensemble_consensus_rate < 0.5
+    severity: info
+    description: "Low consensus rate in ensemble voting"
+
+  # CFI Tracking
+  - name: cfi_resolution_slow
+    condition: cfi_resolution_time > 500ms
+    severity: warning
+    description: "CFI resolution taking longer than expected"
+
+  - name: cfi_save_failure_rate
+    condition: cfi_save_error_rate > 5%
+    severity: critical
+    description: "High failure rate saving reading progress CFI"
+
+  # epub.js Loading
+  - name: epub_load_failed
+    condition: epub_load_error_rate > 5%
+    severity: critical
+    description: "High failure rate loading EPUB files"
+
+  - name: epub_load_slow
+    condition: epub_load_time > 5s
+    severity: warning
+    description: "EPUB loading slower than target"
+
+  # Resource Usage (Multi-NLP)
+  - name: celery_worker_memory_high
+    condition: celery_worker_memory > 2GB
+    severity: warning
+    description: "Celery worker using more memory than expected (NLP models)"
+```
+
+### Deployment Scripts (October 2025)
+
+**NLP Models Installation Script:**
+```bash
+#!/bin/bash
+# scripts/install-nlp-models.sh
+
+set -e
+
+echo "🧠 Installing Multi-NLP models for BookReader AI..."
+
+# SpaCy Russian model (500MB)
+echo "📦 Installing SpaCy ru_core_news_lg..."
+python -m spacy download ru_core_news_lg
+
+# Natasha (included in requirements.txt)
+echo "📦 Natasha already installed via pip"
+
+# Stanza Russian model (800MB)
+echo "📦 Installing Stanza Russian model..."
+python -c "import stanza; stanza.download('ru', verbose=True)"
+
+# Verify installations
+echo "✅ Verifying NLP models..."
+python << EOF
+from app.services.multi_nlp_manager import multi_nlp_manager
+import asyncio
+
+async def verify():
+    await multi_nlp_manager.initialize()
+    status = await multi_nlp_manager.get_processor_status()
+
+    for processor, info in status.items():
+        loaded = info.get('loaded', False)
+        status_icon = '✅' if loaded else '❌'
+        print(f"{status_icon} {processor}: {'Loaded' if loaded else 'Failed'}")
+
+    all_loaded = all(info.get('loaded', False) for info in status.values())
+    return all_loaded
+
+if asyncio.run(verify()):
+    print("\n🎉 All NLP models installed and verified!")
+else:
+    print("\n❌ Some NLP models failed to load")
+    exit(1)
+EOF
+
+echo "📊 Disk usage:"
+du -sh ~/.cache/spacy/
+du -sh ~/stanza_resources/
+
+echo "✅ NLP models installation complete!"
+```
+
+**CFI Migration Verification Script:**
+```bash
+#!/bin/bash
+# scripts/verify-cfi-migrations.sh
+
+set -e
+
+echo "🔍 Verifying CFI database migrations..."
+
+# Check current migration version
+CURRENT_VERSION=$(docker-compose -f docker-compose.production.yml exec -T backend alembic current | grep -oP '(?<=\()[a-f0-9]+')
+
+echo "Current migration version: $CURRENT_VERSION"
+
+# Expected migrations
+EXPECTED_MIGRATIONS=("8ca7de033db9" "e94cab18247f")
+
+for migration in "${EXPECTED_MIGRATIONS[@]}"; do
+    if alembic history | grep -q "$migration"; then
+        echo "✅ Migration $migration found in history"
+    else
+        echo "❌ Migration $migration NOT found"
+        exit 1
+    fi
+done
+
+# Verify table structure
+echo "🔍 Verifying reading_progress table structure..."
+docker-compose -f docker-compose.production.yml exec -T postgres psql -U $DB_USER -d $DB_NAME << EOF
+\d reading_progress
+EOF
+
+# Check for CFI fields
+HAS_CFI=$(docker-compose -f docker-compose.production.yml exec -T postgres psql -U $DB_USER -d $DB_NAME -tAc "SELECT column_name FROM information_schema.columns WHERE table_name='reading_progress' AND column_name='reading_location_cfi';")
+
+HAS_SCROLL=$(docker-compose -f docker-compose.production.yml exec -T postgres psql -U $DB_USER -d $DB_NAME -tAc "SELECT column_name FROM information_schema.columns WHERE table_name='reading_progress' AND column_name='scroll_offset_percent';")
+
+if [ -n "$HAS_CFI" ] && [ -n "$HAS_SCROLL" ]; then
+    echo "✅ CFI fields verified in reading_progress table"
+else
+    echo "❌ CFI fields missing from reading_progress table"
+    exit 1
+fi
+
+echo "🎉 CFI migrations verified successfully!"
+```
+
+### Post-Deployment Verification (October 2025)
+
+```bash
+#!/bin/bash
+# scripts/verify-october-2025-deployment.sh
+
+set -e
+
+echo "🚀 Verifying October 2025 BookReader AI deployment..."
+
+# 1. Check Multi-NLP status
+echo "1️⃣ Checking Multi-NLP system..."
+NLP_STATUS=$(curl -s http://localhost:8000/api/v1/admin/multi-nlp-settings/status)
+echo "$NLP_STATUS" | jq .
+
+# Verify all processors loaded
+SPACY_LOADED=$(echo "$NLP_STATUS" | jq -r '.spacy.loaded')
+NATASHA_LOADED=$(echo "$NLP_STATUS" | jq -r '.natasha.loaded')
+STANZA_LOADED=$(echo "$NLP_STATUS" | jq -r '.stanza.loaded')
+
+if [ "$SPACY_LOADED" = "true" ] && [ "$NATASHA_LOADED" = "true" ] && [ "$STANZA_LOADED" = "true" ]; then
+    echo "✅ All NLP processors loaded"
+else
+    echo "❌ Some NLP processors failed to load"
+    exit 1
+fi
+
+# 2. Check CFI endpoint
+echo "2️⃣ Checking CFI tracking endpoint..."
+# (requires auth token and book_id)
+echo "⚠️  Manual verification required with auth token"
+
+# 3. Check epub.js frontend
+echo "3️⃣ Checking epub.js frontend build..."
+if [ -f "frontend/dist/index.html" ]; then
+    # Check for epub.js in bundle
+    if grep -r "epubjs" frontend/dist/assets/*.js > /dev/null; then
+        echo "✅ epub.js found in frontend bundle"
+    else
+        echo "❌ epub.js NOT found in frontend bundle"
+        exit 1
+    fi
+else
+    echo "❌ Frontend not built"
+    exit 1
+fi
+
+# 4. Check database migrations
+echo "4️⃣ Checking database migrations..."
+./scripts/verify-cfi-migrations.sh
+
+# 5. Resource check
+echo "5️⃣ Checking resource usage..."
+docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}"
+
+echo "🎉 October 2025 deployment verification complete!"
+```
 
 ---
 

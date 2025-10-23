@@ -873,6 +873,488 @@ class GDPRCompliance:
 
 ---
 
+## epub.js Security Considerations (October 2025)
+
+### XSS Prevention in EPUB Content
+
+**Проблема:** EPUB файлы могут содержать произвольный HTML/JavaScript, что создает риск XSS атак.
+
+**Решение:** epub.js sandboxing + CSP headers + content validation
+
+#### Frontend Protection (epub.js Configuration)
+
+```typescript
+// frontend/src/components/Reader/EpubReader.tsx
+
+const book = ePub(url, {
+  openAs: 'epub',
+  requestCredentials: true,
+
+  // Security: disable scripts in EPUB content
+  allowScriptedContent: false,
+
+  // Security: prevent loading external resources
+  requestMethod: 'fetch',
+  requestHeaders: {
+    'Authorization': `Bearer ${token}`
+  }
+});
+
+// Additional security: rendition options
+const rendition = book.renderTo('viewer', {
+  width: '100%',
+  height: '100%',
+  spread: 'none',
+
+  // Security: sandbox iframe
+  sandbox: 'allow-same-origin',
+
+  // Security: disable scripts in content
+  script: 'omit'
+});
+```
+
+#### Nginx CSP Headers for epub.js
+
+```nginx
+# nginx/nginx.prod.conf
+
+location / {
+    # Content Security Policy для epub.js
+    add_header Content-Security-Policy "
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' 'unsafe-eval';
+        style-src 'self' 'unsafe-inline' data:;
+        img-src 'self' data: blob: https:;
+        font-src 'self' data: blob:;
+        connect-src 'self' wss: https:;
+        worker-src 'self' blob:;
+        frame-src 'none';
+        object-src 'none';
+        base-uri 'self';
+    " always;
+
+    # X-Frame-Options
+    add_header X-Frame-Options "DENY" always;
+
+    # X-Content-Type-Options
+    add_header X-Content-Type-Options "nosniff" always;
+
+    # Referrer Policy
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+}
+
+# Специальный route для EPUB файлов
+location ~ ^/api/v1/books/.*/file$ {
+    # Требуется авторизация
+    proxy_pass http://backend:8000;
+    proxy_set_header Authorization $http_authorization;
+
+    # CORS для epub.js
+    add_header Access-Control-Allow-Origin $http_origin always;
+    add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Authorization, Range" always;
+    add_header Access-Control-Allow-Credentials "true" always;
+
+    # Content-Type для EPUB
+    add_header Content-Type "application/epub+zip" always;
+
+    # Security headers
+    add_header X-Content-Type-Options "nosniff" always;
+}
+```
+
+### EPUB File Upload Security
+
+#### Validation Pipeline
+
+```python
+# backend/app/services/epub_validator.py
+
+import zipfile
+import re
+from pathlib import Path
+from typing import Optional, Dict
+from fastapi import HTTPException, UploadFile
+import magic
+
+class EPUBValidator:
+    """Комплексная валидация EPUB файлов."""
+
+    ALLOWED_MIME_TYPES = [
+        'application/epub+zip',
+        'application/zip'
+    ]
+
+    MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+    MAX_FILES_IN_EPUB = 10000  # Защита от zip bombs
+    MAX_UNCOMPRESSED_SIZE = 200 * 1024 * 1024  # 200MB
+
+    # Разрешенные файлы внутри EPUB
+    ALLOWED_EXTENSIONS = {
+        '.xhtml', '.html', '.htm', '.xml',
+        '.css', '.otf', '.ttf', '.woff', '.woff2',
+        '.jpg', '.jpeg', '.png', '.gif', '.svg',
+        '.mp3', '.mp4', '.webm'
+    }
+
+    # Запрещенные файлы
+    FORBIDDEN_EXTENSIONS = {
+        '.exe', '.dll', '.so', '.dylib',
+        '.sh', '.bat', '.cmd', '.ps1',
+        '.jar', '.class', '.apk'
+    }
+
+    @classmethod
+    async def validate_epub_file(cls, file: UploadFile) -> Dict:
+        """Полная валидация EPUB файла."""
+
+        # 1. Проверка размера
+        file_size = 0
+        content = bytearray()
+
+        while chunk := await file.read(8192):
+            file_size += len(chunk)
+            if file_size > cls.MAX_FILE_SIZE:
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"File too large. Maximum: {cls.MAX_FILE_SIZE // 1024 // 1024}MB"
+                )
+            content.extend(chunk)
+
+        await file.seek(0)
+
+        # 2. MIME type verification
+        mime_type = magic.from_buffer(bytes(content[:1024]), mime=True)
+        if mime_type not in cls.ALLOWED_MIME_TYPES:
+            raise HTTPException(
+                status_code=415,
+                detail=f"Invalid file type: {mime_type}. Expected EPUB."
+            )
+
+        # 3. Проверка структуры ZIP
+        try:
+            with zipfile.ZipFile(file.file, 'r') as epub_zip:
+                # Проверка на zip bomb
+                file_list = epub_zip.namelist()
+                if len(file_list) > cls.MAX_FILES_IN_EPUB:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Too many files in EPUB (possible zip bomb)"
+                    )
+
+                # Проверка общего размера распакованных файлов
+                total_uncompressed = sum(
+                    info.file_size for info in epub_zip.infolist()
+                )
+                if total_uncompressed > cls.MAX_UNCOMPRESSED_SIZE:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Uncompressed EPUB too large (possible zip bomb)"
+                    )
+
+                # 4. Проверка обязательных файлов EPUB
+                if 'mimetype' not in file_list:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Invalid EPUB: missing mimetype file"
+                    )
+
+                mimetype_content = epub_zip.read('mimetype').decode('utf-8').strip()
+                if mimetype_content != 'application/epub+zip':
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Invalid EPUB mimetype: {mimetype_content}"
+                    )
+
+                # Проверка META-INF/container.xml
+                if 'META-INF/container.xml' not in file_list:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Invalid EPUB: missing container.xml"
+                    )
+
+                # 5. Проверка расширений файлов
+                for filename in file_list:
+                    extension = Path(filename).suffix.lower()
+
+                    # Проверка на запрещенные расширения
+                    if extension in cls.FORBIDDEN_EXTENSIONS:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Forbidden file type in EPUB: {filename}"
+                        )
+
+                    # Предупреждение о неизвестных расширениях
+                    if extension and extension not in cls.ALLOWED_EXTENSIONS:
+                        # Логируем для мониторинга
+                        print(f"Warning: unknown file extension in EPUB: {filename}")
+
+                # 6. Проверка на вредоносное содержимое
+                cls._scan_for_malicious_content(epub_zip, file_list)
+
+        except zipfile.BadZipFile:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid ZIP/EPUB structure"
+            )
+
+        await file.seek(0)
+
+        return {
+            "filename": file.filename,
+            "size": file_size,
+            "mime_type": mime_type,
+            "is_valid": True,
+            "files_count": len(file_list),
+            "uncompressed_size": total_uncompressed
+        }
+
+    @classmethod
+    def _scan_for_malicious_content(cls, epub_zip: zipfile.ZipFile, file_list: list):
+        """Сканирование содержимого EPUB на вредоносный код."""
+
+        # Подозрительные паттерны
+        malicious_patterns = [
+            rb'<script[^>]*>.*?</script>',  # JavaScript
+            rb'javascript:',
+            rb'vbscript:',
+            rb'data:text/html',
+            rb'onerror\s*=',
+            rb'onload\s*=',
+            rb'eval\s*\(',
+            rb'document\.write',
+            rb'<iframe',
+            rb'<embed',
+            rb'<object'
+        ]
+
+        # Сканируем HTML/XHTML файлы
+        for filename in file_list:
+            if filename.endswith(('.html', '.xhtml', '.htm')):
+                try:
+                    content = epub_zip.read(filename).lower()
+
+                    # Проверяем первые 100KB каждого файла
+                    sample = content[:102400]
+
+                    for pattern in malicious_patterns:
+                        if re.search(pattern, sample, re.IGNORECASE):
+                            raise HTTPException(
+                                status_code=400,
+                                detail=f"Potentially malicious content detected in {filename}"
+                            )
+
+                except Exception as e:
+                    # Если не можем прочитать файл - подозрительно
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Unable to verify content of {filename}"
+                    )
+```
+
+### CFI Injection Prevention
+
+**Проблема:** Malicious CFI strings могут вызвать DoS или XSS.
+
+**Решение:** Строгая валидация CFI формата.
+
+```python
+# backend/app/services/cfi_validator.py
+
+import re
+from typing import Optional
+from fastapi import HTTPException
+
+class CFIValidator:
+    """Валидация Canonical Fragment Identifier (CFI) для epub.js."""
+
+    # Regex для валидного CFI формата
+    # Формат: epubcfi(/6/4[chap01]!/4/2/1:0)
+    CFI_PATTERN = re.compile(
+        r'^epubcfi\('
+        r'\/\d+(?:\/\d+(?:\[[^\]]+\])?)*'  # Spine path
+        r'(?:!\/'                           # Optional content path
+        r'\d+(?:\/\d+)*'
+        r'(?::\d+)?'                        # Optional text offset
+        r')?'
+        r'\)$'
+    )
+
+    MAX_CFI_LENGTH = 500
+
+    @classmethod
+    def validate_cfi(cls, cfi: Optional[str]) -> bool:
+        """Валидация CFI строки."""
+
+        if not cfi:
+            return True  # Null CFI допустим
+
+        # Проверка длины
+        if len(cfi) > cls.MAX_CFI_LENGTH:
+            raise HTTPException(
+                status_code=400,
+                detail=f"CFI too long (max {cls.MAX_CFI_LENGTH} chars)"
+            )
+
+        # Проверка формата
+        if not cls.CFI_PATTERN.match(cfi):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid CFI format"
+            )
+
+        # Дополнительные проверки безопасности
+        dangerous_chars = ['<', '>', '"', "'", '\\', '\n', '\r', '\x00']
+        if any(char in cfi for char in dangerous_chars):
+            raise HTTPException(
+                status_code=400,
+                detail="CFI contains invalid characters"
+            )
+
+        return True
+
+    @classmethod
+    def sanitize_cfi(cls, cfi: str) -> str:
+        """Санитизация CFI строки."""
+
+        if not cfi:
+            return ""
+
+        # Удаляем whitespace
+        cfi = cfi.strip()
+
+        # Ограничиваем длину
+        cfi = cfi[:cls.MAX_CFI_LENGTH]
+
+        # Валидируем
+        cls.validate_cfi(cfi)
+
+        return cfi
+```
+
+### Storage Security
+
+#### EPUB Files Storage
+
+```python
+# backend/app/services/file_storage.py
+
+import uuid
+from pathlib import Path
+from typing import BinaryIO
+import os
+
+class SecureFileStorage:
+    """Безопасное хранение файлов EPUB."""
+
+    UPLOAD_DIR = Path("/app/data/books")
+    ALLOWED_EXTENSIONS = {'.epub', '.fb2'}
+
+    @classmethod
+    def generate_secure_filename(cls, original_filename: str, user_id: uuid.UUID) -> str:
+        """Генерация безопасного имени файла."""
+
+        # Получаем расширение
+        extension = Path(original_filename).suffix.lower()
+
+        if extension not in cls.ALLOWED_EXTENSIONS:
+            raise ValueError(f"Invalid file extension: {extension}")
+
+        # Генерируем случайное имя
+        random_name = str(uuid.uuid4())
+
+        # Добавляем user_id для изоляции
+        user_dir = cls.UPLOAD_DIR / str(user_id)
+        user_dir.mkdir(parents=True, exist_ok=True)
+
+        # Полный путь
+        secure_path = user_dir / f"{random_name}{extension}"
+
+        return str(secure_path)
+
+    @classmethod
+    async def save_file(cls, file_content: BinaryIO, user_id: uuid.UUID, original_filename: str) -> str:
+        """Безопасное сохранение файла."""
+
+        # Генерируем безопасное имя
+        secure_path = cls.generate_secure_filename(original_filename, user_id)
+
+        # Сохраняем с ограниченными правами
+        with open(secure_path, 'wb') as f:
+            f.write(file_content.read())
+
+        # Устанавливаем права доступа (owner read/write только)
+        os.chmod(secure_path, 0o600)
+
+        return secure_path
+
+    @classmethod
+    def delete_file(cls, file_path: str):
+        """Безопасное удаление файла."""
+
+        path = Path(file_path)
+
+        # Проверяем, что файл находится в разрешенной директории
+        if not str(path.resolve()).startswith(str(cls.UPLOAD_DIR.resolve())):
+            raise ValueError("Attempt to delete file outside allowed directory")
+
+        if path.exists():
+            path.unlink()
+```
+
+### Monitoring & Alerts
+
+```python
+# backend/app/services/security_monitor.py
+
+from app.core.logging import security_logger
+
+class EPUBSecurityMonitor:
+    """Мониторинг безопасности EPUB операций."""
+
+    @staticmethod
+    async def log_epub_upload(
+        user_id: uuid.UUID,
+        filename: str,
+        file_size: int,
+        validation_result: dict,
+        ip_address: str
+    ):
+        """Логирование загрузки EPUB."""
+
+        security_logger.info(
+            f"EPUB upload - User: {user_id}, File: {filename}, "
+            f"Size: {file_size}, Valid: {validation_result['is_valid']}, "
+            f"IP: {ip_address}"
+        )
+
+        # Алерт при подозрительной активности
+        if file_size > 30 * 1024 * 1024:  # >30MB
+            security_logger.warning(
+                f"Large EPUB upload: {file_size / 1024 / 1024:.2f}MB from {user_id}"
+            )
+
+    @staticmethod
+    async def log_malicious_epub_attempt(
+        user_id: uuid.UUID,
+        filename: str,
+        reason: str,
+        ip_address: str
+    ):
+        """Логирование попытки загрузить вредоносный EPUB."""
+
+        security_logger.error(
+            f"Malicious EPUB attempt - User: {user_id}, "
+            f"File: {filename}, Reason: {reason}, IP: {ip_address}"
+        )
+
+        # Критический алерт
+        # TODO: Send to SIEM, notify admins
+```
+
+---
+
 ## Заключение
 
 Система безопасности BookReader AI обеспечивает:
@@ -881,8 +1363,14 @@ class GDPRCompliance:
 - **Надежную JWT аутентификацию** с refresh токенами
 - **Шифрование в покое и при передаче** (TLS/SSL)
 - **Комплексную валидацию ввода** и санитайзацию
+- **epub.js XSS prevention** с CSP headers и sandboxing
+- **EPUB file validation** с защитой от zip bombs
+- **CFI injection prevention** с строгой валидацией
+- **Secure file storage** с изоляцией по пользователям
 - **Security monitoring** с детальным логированием
 - **GDPR compliance** для европейских пользователей
 - **Production-ready** конфигурации и мониторинг
 
 Все компоненты безопасности готовы для production использования.
+
+**Updated:** October 2025 с учетом epub.js integration и CFI tracking.
