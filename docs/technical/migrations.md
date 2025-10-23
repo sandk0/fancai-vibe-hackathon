@@ -165,6 +165,112 @@ alembic upgrade head --sql
 
 ## Примеры миграций
 
+### October 2025 Production Migrations
+
+#### Migration 1: CFI Location Tracking
+**Файл:** `backend/alembic/versions/2025_10_19_2348-8ca7de033db9_add_reading_location_cfi_field.py`
+
+```python
+"""add reading_location_cfi field for epub.js integration
+
+Revision ID: 8ca7de033db9
+Revises: previous_revision
+Create Date: 2025-10-19 23:48:00.000000
+"""
+from alembic import op
+import sqlalchemy as sa
+
+revision = '8ca7de033db9'
+down_revision = 'previous_revision'
+branch_labels = None
+depends_on = None
+
+def upgrade():
+    # Add CFI field to reading_progress table
+    op.add_column(
+        'reading_progress',
+        sa.Column('reading_location_cfi', sa.String(500), nullable=True,
+                 comment='EPUB CFI for exact position tracking in epub.js')
+    )
+
+    # Add index for faster CFI lookups
+    op.create_index(
+        'idx_reading_progress_cfi',
+        'reading_progress',
+        ['book_id', 'user_id', 'reading_location_cfi'],
+        postgresql_using='btree'
+    )
+
+def downgrade():
+    op.drop_index('idx_reading_progress_cfi', 'reading_progress')
+    op.drop_column('reading_progress', 'reading_location_cfi')
+```
+
+**Purpose:** Adds EPUB Canonical Fragment Identifier (CFI) support for precise position tracking in epub.js reader.
+
+**Impact:**
+- Enables pixel-perfect reading position restoration
+- Compatible with epub.js v0.3.93+ locations system
+- Backward compatible: NULL for non-EPUB or legacy books
+
+---
+
+#### Migration 2: Scroll Offset Tracking
+**Файл:** `backend/alembic/versions/2025_10_20_2328-e94cab18247f_add_scroll_offset_percent.py`
+
+```python
+"""add scroll_offset_percent for pixel-perfect positioning
+
+Revision ID: e94cab18247f
+Revises: 8ca7de033db9
+Create Date: 2025-10-20 23:28:00.000000
+"""
+from alembic import op
+import sqlalchemy as sa
+
+revision = 'e94cab18247f'
+down_revision = '8ca7de033db9'
+branch_labels = None
+depends_on = None
+
+def upgrade():
+    # Add scroll offset percentage field
+    op.add_column(
+        'reading_progress',
+        sa.Column('scroll_offset_percent', sa.Float(),
+                 nullable=False, server_default='0.0',
+                 comment='Scroll offset within page (0-100%) for pixel-perfect positioning')
+    )
+
+    # Add check constraint for valid percentage
+    op.create_check_constraint(
+        'check_scroll_offset_range',
+        'reading_progress',
+        'scroll_offset_percent >= 0.0 AND scroll_offset_percent <= 100.0'
+    )
+
+def downgrade():
+    op.drop_constraint('check_scroll_offset_range', 'reading_progress', type_='check')
+    op.drop_column('reading_progress', 'scroll_offset_percent')
+```
+
+**Purpose:** Adds precise scroll position tracking within a page/location for seamless reading experience.
+
+**Impact:**
+- Restores exact scroll position when reopening book
+- Works in conjunction with CFI for sub-location accuracy
+- Default 0.0 for backward compatibility
+
+---
+
+**Migration Statistics (October 2025):**
+- Total migrations: 2 new CFI-related migrations
+- Database downtime: 0 (both migrations are non-blocking)
+- Affected rows: 0 (new columns, no data migration)
+- Performance impact: Minimal (indexes added CONCURRENTLY)
+
+---
+
 ### 1. Добавление нового поля
 **Файл:** `backend/alembic/versions/001_add_book_rating.py`
 

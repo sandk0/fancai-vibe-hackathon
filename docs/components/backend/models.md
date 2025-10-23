@@ -454,26 +454,44 @@ def get_file_size_mb(self) -> float:
 
 **Файл:** `backend/app/models/book.py`
 
-**Назначение:** Отслеживание прогресса чтения книг пользователями.
+**Назначение:** Отслеживание прогресса чтения книг пользователями с CFI-based позиционированием (October 2025).
 
 ```python
 class ReadingProgress(Base):
+    """
+    Отслеживание прогресса чтения с CFI-based позиционированием (October 2025).
+
+    NEW October 2025:
+    - reading_location_cfi: EPUB CFI для точной позиции в epub.js
+    - scroll_offset_percent: Pixel-perfect scroll tracking (0-100%)
+    - current_position repurposed: теперь хранит overall % прогресса от epub.js
+
+    Миграции:
+    - 8ca7de033db9 (2025-10-19): Added reading_location_cfi
+    - e94cab18247f (2025-10-20): Added scroll_offset_percent
+    """
     __tablename__ = "reading_progress"
-    
+
     # Идентификация
     id: UUID = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: UUID = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     book_id: UUID = Column(UUID(as_uuid=True), ForeignKey("books.id"), nullable=False)
-    
+
     # Позиция чтения
-    current_chapter: int = Column(Integer, default=1, nullable=False)
-    current_page: int = Column(Integer, default=1, nullable=False)
-    current_position: int = Column(Integer, default=0, nullable=False)  # позиция в главе
-    
+    current_chapter: int = Column(Integer, default=1, nullable=False)  # Legacy для FB2
+    current_page: int = Column(Integer, default=1, nullable=False)      # Legacy для FB2
+    current_position: int = Column(Integer, default=0, nullable=False)  # NEW: epub.js overall % (0-100)
+
+    # ✨ NEW: CFI-based position tracking (October 2025)
+    reading_location_cfi: str = Column(String(500), nullable=True,
+        comment="EPUB CFI for exact position tracking in epub.js")
+    scroll_offset_percent: float = Column(Float, default=0.0, nullable=False,
+        comment="Scroll offset within page (0-100%) for pixel-perfect positioning")
+
     # Статистика чтения
     reading_time_minutes: int = Column(Integer, default=0, nullable=False)
     reading_speed_wpm: float = Column(Float, default=0.0, nullable=False)
-    
+
     # Временные метки
     created_at: datetime = Column(DateTime(timezone=True), server_default=func.now())
     updated_at: datetime = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -488,18 +506,70 @@ book = relationship("Book", back_populates="reading_progress")
 
 **Методы:**
 ```python
-def update_position(self, chapter: int, page: int, position: int = 0) -> None:
-    """Обновление позиции чтения."""
-    
+def update_position(self, chapter: int = None, page: int = None, position: int = None,
+                   cfi: str = None, scroll_percent: float = 0.0) -> None:
+    """
+    Обновление позиции чтения.
+
+    Args:
+        chapter: Номер главы (legacy, для FB2)
+        page: Номер страницы (legacy, для FB2)
+        position: Overall progress % от epub.js (0-100)
+        cfi: EPUB CFI для точной позиции
+        scroll_percent: Точный % скролла (0-100)
+
+    Example (October 2025 EPUB mode):
+        >>> progress.update_position(
+        ...     cfi="epubcfi(/6/14!/4/2/16/1:0)",
+        ...     scroll_percent=23.5,
+        ...     position=45  # от epub.js locations
+        ... )
+
+    Example (Legacy FB2 mode):
+        >>> progress.update_position(chapter=5, page=23)
+    """
+
 def add_reading_time(self, minutes: int) -> None:
     """Добавление времени чтения."""
-    
+
 def calculate_reading_speed(self, words_read: int, time_minutes: int) -> None:
     """Расчет скорости чтения."""
-    
-def get_progress_percentage(self) -> float:
-    """Получение прогресса в процентах."""
+
+def get_reading_progress_percent(self) -> float:
+    """
+    Вычисляет процент прогресса чтения (0-100%).
+
+    Supports two modes:
+    1. CFI-based (October 2025+): uses current_position from epub.js locations
+    2. Legacy (pre-CFI): calculates from current_chapter / total_chapters
+
+    Returns:
+        float: Progress percentage (0-100)
+
+    Example:
+        >>> # October 2025 EPUB with CFI
+        >>> progress = ReadingProgress(
+        ...     reading_location_cfi="epubcfi(/6/14!/4/2/16/1:0)",
+        ...     scroll_offset_percent=23.5,
+        ...     current_position=45  # from epub.js locations
+        ... )
+        >>> progress.get_reading_progress_percent()
+        45.0
+
+        >>> # Legacy FB2 without CFI
+        >>> progress = ReadingProgress(
+        ...     current_chapter=5,
+        ...     total_chapters=10
+        ... )
+        >>> progress.get_reading_progress_percent()
+        40.0  # (4 completed / 10 total) * 100
+    """
 ```
+
+**Backward Compatibility Notes:**
+- **Old data** without CFI: continues to work using chapter-based calculation
+- **New data** with CFI: uses epub.js locations for accurate percentage
+- **current_position repurposed**: now stores overall % from epub.js (0-100), not position in chapter
 
 ---
 

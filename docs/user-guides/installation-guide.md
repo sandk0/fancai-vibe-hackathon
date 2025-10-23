@@ -6,17 +6,20 @@
 
 ### Минимальные требования
 - **ОС:** Linux/macOS/Windows 10+
-- **Память:** 4GB RAM
-- **Процессор:** 2 CPU cores  
+- **Память:** 4GB RAM (минимум для одного NLP процессора)
+- **Процессор:** 2 CPU cores
 - **Место на диске:** 10GB свободного места
 - **Docker:** 20.10+ и Docker Compose 2.0+
+- **Node.js:** 18+ (для frontend разработки)
+- **Python:** 3.11+ (для backend разработки)
 
 ### Рекомендуемые требования
 - **ОС:** Ubuntu 20.04+ / CentOS 8+ / macOS 12+
-- **Память:** 8GB+ RAM
+- **Память:** 8GB+ RAM (для всех трёх NLP процессоров)
 - **Процессор:** 4+ CPU cores
 - **Место на диске:** 50GB+ SSD
 - **Интернет:** Стабильное соединение для AI сервисов
+- **NLP Models:** ~2GB для всех трёх моделей (SpaCy, Natasha, Stanza)
 
 ## Установка Docker
 
@@ -138,12 +141,51 @@ docker-compose -f docker-compose.dev.yml exec backend alembic upgrade head
 docker-compose -f docker-compose.dev.yml exec backend python scripts/create_test_user.py
 ```
 
-### 4. Установка NLP модели
+### 4. Установка зависимостей
+
+#### Frontend зависимости (epub.js для чтения книг)
 
 ```bash
-# Загрузка русской модели spaCy
-docker-compose -f docker-compose.dev.yml exec backend python -m spacy download ru_core_news_lg
+cd frontend
+
+# Установка всех зависимостей проекта (включая epub.js)
+npm install
+
+# Ключевые зависимости для EPUB чтения:
+# - epubjs@0.3.93 - профессиональная библиотека для EPUB рендеринга
+# - react-reader@2.0.15 - React wrapper для epub.js
+# - react@18+ - React библиотека
+# - typescript@5+ - TypeScript для type safety
 ```
+
+#### Backend NLP модели (для извлечения описаний)
+
+```bash
+# Установка SpaCy модели (Entity Recognition)
+docker-compose -f docker-compose.dev.yml exec backend python -m spacy download ru_core_news_lg
+
+# Установка Natasha (Russian Specialist)
+# Natasha устанавливается автоматически через requirements.txt
+docker-compose -f docker-compose.dev.yml exec backend pip install natasha
+
+# Установка Stanza модели (Complex Syntax)
+docker-compose -f docker-compose.dev.yml exec backend python -c "import stanza; stanza.download('ru')"
+
+# Проверка установки всех процессоров
+docker-compose -f docker-compose.dev.yml exec backend python -c "
+from app.services.multi_nlp_manager import multi_nlp_manager
+import asyncio
+asyncio.run(multi_nlp_manager.initialize())
+print('All NLP processors initialized successfully!')
+"
+```
+
+**Примечание:** Multi-NLP система работает в 5 режимах:
+- **SINGLE** - один процессор (быстро)
+- **PARALLEL** - все процессоры одновременно (максимальное покрытие)
+- **SEQUENTIAL** - последовательная обработка
+- **ENSEMBLE** - voting с consensus алгоритмом (рекомендуется, максимальное качество)
+- **ADAPTIVE** - автоматический выбор оптимального режима
 
 ### 5. Проверка работоспособности
 

@@ -104,28 +104,100 @@ class BookService:
     def __init__(self, session: AsyncSession):
         self.session = session
         self.nlp_processor = NLPProcessor(session)
-    
+
     async def create_book_from_file(self, file_path: str, user_id: UUID, metadata: dict) -> Book:
         """Создание книги из загруженного файла."""
-        
+
     async def get_user_books(self, user_id: UUID, filters: BookFilters) -> Tuple[List[Book], PaginationInfo]:
         """Получение книг пользователя с фильтрацией и пагинацией."""
-        
+
     async def get_book_with_progress(self, book_id: UUID, user_id: UUID) -> BookWithProgress:
         """Получение книги с прогрессом чтения."""
-        
-    async def update_reading_progress(self, progress_data: ReadingProgressUpdate) -> ReadingProgress:
-        """Обновление прогресса чтения."""
-        
+
+    # ✨ NEW October 2025: CFI-based progress tracking
+    async def update_reading_progress(
+        self,
+        book_id: UUID,
+        user_id: UUID,
+        reading_location_cfi: str = None,  # NEW: EPUB CFI
+        scroll_offset_percent: float = 0.0,  # NEW: Pixel-perfect scroll
+        current_position: int = 0,  # NEW: Overall % from epub.js (0-100)
+        current_chapter: int = None,  # Legacy: for FB2
+        current_page: int = None  # Legacy: for FB2
+    ) -> ReadingProgress:
+        """
+        Обновление прогресса чтения с поддержкой CFI (October 2025).
+
+        Args:
+            book_id: ID книги
+            user_id: ID пользователя
+            reading_location_cfi: EPUB CFI для точной позиции
+            scroll_offset_percent: Точный % скролла (0-100)
+            current_position: Overall progress % от epub.js (0-100)
+            current_chapter: Номер главы (legacy для FB2)
+            current_page: Номер страницы (legacy для FB2)
+
+        Returns:
+            Updated ReadingProgress object
+
+        Example (October 2025 EPUB mode):
+            >>> progress = await book_service.update_reading_progress(
+            ...     book_id=book.id,
+            ...     user_id=user.id,
+            ...     reading_location_cfi="epubcfi(/6/14!/4/2/16/1:0)",
+            ...     scroll_offset_percent=23.5,
+            ...     current_position=45
+            ... )
+
+        Example (Legacy FB2 mode):
+            >>> progress = await book_service.update_reading_progress(
+            ...     book_id=book.id,
+            ...     user_id=user.id,
+            ...     current_chapter=5,
+            ...     current_page=23
+            ... )
+        """
+
+    # ✨ NEW October 2025: EPUB file serving for epub.js
+    async def get_book_file(self, book_id: UUID, user_id: UUID) -> FileResponse:
+        """
+        Returns EPUB file for epub.js integration (October 2025).
+
+        Endpoint: GET /api/v1/books/{book_id}/file
+        Auth: JWT required
+        Content-Type: application/epub+zip
+
+        Args:
+            book_id: ID книги
+            user_id: ID пользователя (для проверки доступа)
+
+        Returns:
+            FileResponse with EPUB binary data
+
+        Raises:
+            HTTPException(404): Book not found
+            HTTPException(403): Access denied
+            HTTPException(400): Not an EPUB file
+
+        Example:
+            >>> # Frontend usage
+            >>> const response = await fetch(
+            ...     `/api/v1/books/${bookId}/file`,
+            ...     { headers: { Authorization: `Bearer ${token}` }}
+            ... );
+            >>> const epubBlob = await response.blob();
+            >>> rendition.display(epubBlob);
+        """
+
     async def get_chapter_content(self, book_id: UUID, chapter_number: int, user_id: UUID) -> ChapterContent:
         """Получение содержимого главы с описаниями."""
-        
+
     async def delete_book(self, book_id: UUID, user_id: UUID) -> bool:
         """Удаление книги и всех связанных данных."""
-        
+
     async def get_book_statistics(self, book_id: UUID, user_id: UUID) -> BookStatistics:
         """Получение статистики по книге."""
-        
+
     async def process_book_nlp(self, book_id: UUID, nlp_processor: NLPProcessor) -> ProcessingResult:
         """Асинхронная обработка книги через NLP процессор."""
 ```

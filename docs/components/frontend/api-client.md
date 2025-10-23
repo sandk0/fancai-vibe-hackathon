@@ -160,12 +160,77 @@ export class BooksAPI {
     return response.data;
   }
 
+  // NEW (October 2025): Get EPUB file for epub.js
+  async getBookFile(bookId: string): Promise<ArrayBuffer> {
+    const response = await this.client.get(`/books/${bookId}/file`, {
+      responseType: 'arraybuffer',
+      headers: {
+        'Accept': 'application/epub+zip'
+      }
+    });
+    return response.data;
+  }
+
+  // Helper to get file URL (for fetch with auth)
+  getBookFileUrl(bookId: string): string {
+    return `${this.client.baseURL}/books/${bookId}/file`;
+  }
+
+  // NEW (October 2025): Reading Progress with CFI support
+  async getReadingProgress(bookId: string): Promise<ReadingProgress> {
+    const response = await this.client.get<{progress: ReadingProgress}>(
+      `/books/${bookId}/progress`
+    );
+    return response.data.progress;
+  }
+
+  // NEW (October 2025): Update progress with CFI and scroll offset
+  async updateReadingProgress(
+    bookId: string,
+    data: {
+      reading_location_cfi?: string;
+      scroll_offset_percent?: number;
+      current_position?: number;
+      current_chapter?: number;
+      reading_time_minutes?: number;
+    }
+  ): Promise<ReadingProgress> {
+    const response = await this.client.put<{progress: ReadingProgress}>(
+      `/books/${bookId}/progress`,
+      data
+    );
+    return response.data.progress;
+  }
+
+  // DEPRECATED: Old progress update (pre-October 2025)
   async updateProgress(bookId: string, progress: ReadingProgress): Promise<ReadingProgress> {
+    console.warn('updateProgress is deprecated. Use updateReadingProgress instead.');
     const response = await this.client.post<{progress: ReadingProgress}>(
-      `/books/${bookId}/progress`, 
+      `/books/${bookId}/progress`,
       progress
     );
     return response.data.progress;
+  }
+
+  // NEW (October 2025): Get book locations for progress calculation
+  async getBookLocations(bookId: string): Promise<number> {
+    const response = await this.client.get<{percentage: number}>(
+      `/books/${bookId}/locations`
+    );
+    return response.data.percentage;
+  }
+
+  // NEW (October 2025): Get chapter descriptions with NLP analysis
+  async getChapterDescriptions(
+    bookId: string,
+    chapterNumber: number,
+    extract: boolean = false
+  ): Promise<ChapterDescriptionsResponse> {
+    const response = await this.client.get<ChapterDescriptionsResponse>(
+      `/books/${bookId}/chapters/${chapterNumber}/descriptions`,
+      { params: { extract } }
+    );
+    return response.data;
   }
 }
 ```
@@ -196,6 +261,73 @@ export class ImagesAPI {
     return response.data;
   }
 }
+```
+
+---
+
+## TypeScript Types (October 2025 Updates)
+
+### Reading Progress with CFI Support
+
+```typescript
+interface ReadingProgress {
+  id: string;
+  book_id: string;
+  user_id: string;
+  current_chapter: number;
+  current_page: number;
+  current_position: number;  // Updated: epub.js percentage (0-100)
+
+  // NEW (October 2025): CFI fields for epub.js
+  reading_location_cfi?: string;      // CFI string (e.g., "epubcfi(/6/4!/4/2/16/1:0)")
+  scroll_offset_percent?: number;     // Fine-tuned scroll position (0-100)
+
+  reading_time_minutes: number;
+  reading_speed_wpm: number;
+  last_read_at: string;
+  created_at: string;
+  updated_at: string;
+}
+```
+
+### Chapter Descriptions Response
+
+```typescript
+interface ChapterDescriptionsResponse {
+  chapter: {
+    id: string;
+    book_id: string;
+    chapter_number: number;
+    title: string;
+  };
+  nlp_analysis: {
+    descriptions: Description[];
+    total_descriptions: number;
+    processing_time_ms: number;
+  };
+}
+
+interface Description {
+  id: string;
+  chapter_id: string;
+  type: 'location' | 'character' | 'atmosphere' | 'object';
+  content: string;
+  confidence_score: number;
+  priority_score: number;
+  text_position: number;
+  created_at: string;
+}
+```
+
+### Book File Response
+
+```typescript
+// EPUB file is returned as ArrayBuffer
+type BookFileResponse = ArrayBuffer;
+
+// Usage with epub.js:
+const arrayBuffer: ArrayBuffer = await booksAPI.getBookFile(bookId);
+const book = ePub(arrayBuffer);
 ```
 
 ---

@@ -349,6 +349,276 @@ interface ReaderSettings {
 
 ---
 
+## epub.js State Management (October 2025)
+
+### Overview
+
+EpubReader компонент использует **локальное состояние** вместо глобального store, так как epub.js instances не должны быть сериализованы в Zustand. Вместо этого используется комбинация React state, refs и external API calls.
+
+### Local Component State (EpubReader.tsx)
+
+```typescript
+const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
+  // Book instance state
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string>('');
+  const [isReady, setIsReady] = useState(false);
+  const [renditionReady, setRenditionReady] = useState(false);
+
+  // Content state
+  const [descriptions, setDescriptions] = useState<Description[]>([]);
+  const [images, setImages] = useState<GeneratedImage[]>([]);
+  const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
+
+  // Navigation state
+  const [currentChapter, setCurrentChapter] = useState<number>(1);
+
+  // ... component logic
+};
+```
+
+**Why local state?**
+- epub.js Book and Rendition objects contain non-serializable data (DOM references, ArrayBuffers)
+- Component lifecycle tied to mount/unmount (cleanup required)
+- No need for cross-component sharing of epub.js instances
+
+### Persistent Refs
+
+```typescript
+// Persist across re-renders without triggering re-renders
+const viewerRef = useRef<HTMLDivElement>(null);           // DOM container
+const renditionRef = useRef<Rendition | null>(null);      // epub.js rendition
+const bookRef = useRef<Book | null>(null);                // epub.js book instance
+const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Debounce timer
+const restoredCfi = useRef<string | null>(null);          // CFI restoration tracking
+```
+
+**Why refs?**
+- Mutable values that persist between renders
+- Don't trigger re-renders when updated
+- Essential for epub.js instances (updating state would cause infinite loops)
+
+### External API State (React Query)
+
+```typescript
+// Book data
+const { data: bookData } = useQuery({
+  queryKey: ['book', bookId],
+  queryFn: () => booksAPI.getBook(bookId)
+});
+
+// Reading progress (loaded once on mount)
+const { data: progress } = useQuery({
+  queryKey: ['progress', bookId],
+  queryFn: () => booksAPI.getReadingProgress(bookId),
+  staleTime: Infinity  // Never refetch automatically
+});
+
+// Descriptions for highlighting (reload on chapter change)
+const { data: descriptionsData, refetch: refetchDescriptions } = useQuery({
+  queryKey: ['descriptions', bookId, currentChapter],
+  queryFn: () => booksAPI.getChapterDescriptions(bookId, currentChapter, false),
+  enabled: !!bookId && currentChapter > 0
+});
+
+// Images for current chapter
+const { data: imagesData, refetch: refetchImages } = useQuery({
+  queryKey: ['images', bookId, currentChapter],
+  queryFn: () => imagesAPI.getBookImages(bookId, currentChapter),
+  enabled: !!bookId && currentChapter > 0
+});
+```
+
+**Pattern:** Use React Query for server state, local state for UI/epub.js state.
+
+### Progress Saving Pattern
+
+```typescript
+// Mutation for saving progress
+const { mutate: saveProgress } = useMutation({
+  mutationFn: (data: ProgressUpdate) =>
+    booksAPI.updateReadingProgress(book.id, data),
+  onError: (error) => {
+    console.error('Failed to save progress:', error);
+    // Could add toast notification here
+  }
+});
+
+// Debounced save in relocated event
+rendition.on('relocated', (location: any) => {
+  const cfi = location.start.cfi;
+  const chapter = getChapterFromLocation(location);
+
+  // Skip initial relocated events (restoration)
+  if (restoredCfi.current && cfi === restoredCfi.current) {
+    return;
+  }
+
+  // Clear previous timeout
+  if (saveTimeoutRef.current) {
+    clearTimeout(saveTimeoutRef.current);
+  }
+
+  // Debounced save (2 seconds)
+  saveTimeoutRef.current = setTimeout(() => {
+    const progressPercent = Math.round(
+      bookRef.current!.locations.percentageFromCfi(cfi) * 100
+    );
+
+    // Calculate scroll offset for pixel-perfect restoration
+    const contents = renditionRef.current!.getContents();
+    const iframe = contents[0];
+    const doc = iframe.document;
+    const scrollTop = doc.documentElement.scrollTop;
+    const scrollHeight = doc.documentElement.scrollHeight;
+    const clientHeight = doc.documentElement.clientHeight;
+    const maxScroll = scrollHeight - clientHeight;
+    const scrollOffsetPercent = (scrollTop / maxScroll) * 100;
+
+    // Save to backend
+    saveProgress({
+      current_chapter: chapter,
+      current_position: progressPercent,
+      reading_location_cfi: cfi,
+      scroll_offset_percent: scrollOffsetPercent
+    });
+  }, 2000);
+});
+```
+
+**Key points:**
+- Debouncing prevents excessive API calls
+- CFI + scroll offset for hybrid restoration
+- Skip relocated events during restoration phase
+- Cleanup timeout on unmount
+
+### Chapter Change Detection
+
+```typescript
+// Auto-reload descriptions and images when chapter changes
+useEffect(() => {
+  const loadChapterData = async () => {
+    if (!book.id || currentChapter <= 0) return;
+
+    try {
+      // Reload descriptions
+      const descriptionsResponse = await booksAPI.getChapterDescriptions(
+        book.id,
+        currentChapter,
+        false  // use cache, don't re-extract
+      );
+      setDescriptions(descriptionsResponse.nlp_analysis.descriptions);
+
+      // Reload images
+      const imagesResponse = await imagesAPI.getBookImages(
+        book.id,
+        currentChapter
+      );
+      setImages(imagesResponse.images);
+
+      // Re-apply highlights after data loads
+      if (renditionReady) {
+        setTimeout(() => highlightDescriptionsInText(), 300);
+      }
+    } catch (error) {
+      console.error('Failed to load chapter data:', error);
+    }
+  };
+
+  loadChapterData();
+}, [book.id, currentChapter, renditionReady]);
+```
+
+**Pattern:** Side effects for chapter-specific data loading.
+
+### State Lifecycle
+
+```
+1. Mount
+   ↓
+2. setIsReady(true) after 100ms delay
+   ↓
+3. useEffect [isReady] → initEpub()
+   ↓
+4. Fetch EPUB file → ArrayBuffer
+   ↓
+5. ePub(arrayBuffer) → bookRef.current
+   ↓
+6. await book.ready
+   ↓
+7. await book.locations.generate(1600)
+   ↓
+8. book.renderTo() → renditionRef.current
+   ↓
+9. rendition.on('relocated', handler)
+   ↓
+10. Load progress from API
+   ↓
+11. await rendition.display(cfi) → restore position
+   ↓
+12. setRenditionReady(true)
+   ↓
+13. Load descriptions/images for currentChapter
+   ↓
+14. Apply highlights
+   ↓
+15. Ready for user interaction
+```
+
+### Cleanup Pattern
+
+```typescript
+useEffect(() => {
+  // Initialization logic...
+
+  // Cleanup on unmount
+  return () => {
+    // Clear debounce timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Destroy epub.js instances
+    if (renditionRef.current) {
+      renditionRef.current.destroy();
+    }
+    if (bookRef.current) {
+      bookRef.current.destroy();
+    }
+  };
+}, []);
+```
+
+**Critical:** Always cleanup epub.js instances to prevent memory leaks.
+
+### Integration with Global Stores
+
+While EpubReader uses local state, it can still interact with global stores when needed:
+
+```typescript
+// Example: Update global reading session
+import { useReaderStore } from '@/stores/readerStore';
+
+const { updateCurrentBook, recordReadingTime } = useReaderStore();
+
+useEffect(() => {
+  // Update global store when book loads
+  updateCurrentBook(book.id);
+
+  // Track reading time
+  const startTime = Date.now();
+
+  return () => {
+    const readingTime = Math.floor((Date.now() - startTime) / 60000);
+    recordReadingTime(book.id, readingTime);
+  };
+}, [book.id]);
+```
+
+**Pattern:** Local state for component, global store for cross-component data.
+
+---
+
 ## UIStore
 
 **Файл:** `frontend/src/stores/uiStore.ts`

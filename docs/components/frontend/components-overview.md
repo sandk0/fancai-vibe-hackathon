@@ -200,36 +200,108 @@ export const BookCard: React.FC<BookCardProps> = ({
 
 ---
 
-## Reader Components
+## Reading Components
 
-### BookReader (основной компонент)
+### EpubReader (October 2025) ⭐ PRIMARY
+**File:** `frontend/src/components/Reader/EpubReader.tsx` (835 lines)
+**Purpose:** Professional EPUB reader with CFI navigation
+**Technology:** epub.js 0.3.93 + react-reader 2.0.15
+**Status:** ✅ Production Ready
+
+**Key Features:**
+- 📍 **CFI-based position tracking** (pixel-perfect)
+- 🎯 **Hybrid restoration** (CFI + scroll offset)
+- ✨ **Smart description highlighting** with auto-generation
+- 📊 **Progress tracking** (2000 locations, accurate 0-100%)
+- 💾 **Auto-save** (debounced 2 seconds)
+- 🔄 **Chapter auto-detection** with description reload
+- 🎨 **Dark theme** with customizable styles
+- 📱 **Mobile-responsive** controls
+
+**Props:**
 ```typescript
+interface EpubReaderProps {
+  book: BookDetail;  // Full book object with metadata
+}
+```
+
+**State Management:**
+- Local state for epub.js instances (book, rendition)
+- Refs for persistence across re-renders
+- Automatic CFI restoration on mount
+- Debounced progress saving (2s delay)
+
+**Usage:**
+```typescript
+import { EpubReader } from '@/components/Reader/EpubReader';
+import { BookDetail } from '@/types/api';
+
+const ReaderPage = () => {
+  const { bookId } = useParams();
+  const { data: book } = useQuery(['book', bookId], () => fetchBook(bookId));
+
+  if (!book) return <LoadingSpinner />;
+
+  return <EpubReader book={book} />;
+};
+```
+
+**Architecture Highlights:**
+1. **EPUB Loading:** Fetches file with authorization, converts to ArrayBuffer
+2. **Locations Generation:** 2000 locations for accurate progress (1600 chars/location)
+3. **CFI Restoration:** Two-level system (CFI + scroll offset) for pixel-perfect positioning
+4. **Smart Highlights:** TreeWalker API for efficient text search and highlighting
+5. **Auto Chapter Detection:** Extracts chapter from spine index on 'relocated' event
+
+**Documentation:** [docs/components/frontend/epub-reader.md](./epub-reader.md)
+
+---
+
+### BookReader (DEPRECATED) ⚠️
+**Status:** ⚠️ Replaced by EpubReader in October 2025
+**File:** `frontend/src/components/Reader/BookReader.tsx` (historical)
+**Documentation:** [docs/components/frontend/reader-component.md](./reader-component.md) (marked as deprecated)
+
+**Why deprecated:**
+- No CFI support (couldn't restore exact position)
+- Chapter-based navigation only (not EPUB standard)
+- Manual pagination logic (epub.js does this better)
+- No smart highlights
+- Inaccurate progress tracking
+
+**Migration:** See [reader-component.md](./reader-component.md) for migration guide.
+
+---
+
+### Legacy BookReader Code (Historical Reference)
+```typescript
+// OLD: This is how BookReader worked (pre-October 2025)
 export const BookReader: React.FC<BookReaderProps> = ({ bookId }) => {
-  const { 
-    currentChapter, 
-    settings, 
+  const {
+    currentChapter,
+    settings,
     chapters,
     navigateToChapter,
-    updateSettings 
+    updateSettings
   } = useReaderStore();
-  
+
   const { data: content, isLoading } = useBookContent(bookId, currentChapter);
-  
+
   useKeyboardNavigation({
     onNextPage: () => navigateToPage(currentPage + 1),
     onPrevPage: () => navigateToPage(currentPage - 1),
     onNextChapter: () => navigateToChapter(currentChapter + 1),
     onPrevChapter: () => navigateToChapter(currentChapter - 1)
   });
-  
+
   return (
     <div className="min-h-screen bg-reader" data-theme={settings.theme}>
-      <ReaderHeader 
+      <ReaderHeader
         book={content?.chapter.book}
         chapter={content?.chapter}
         onSettingsOpen={() => setShowSettings(true)}
       />
-      
+
       <main className="reader-content" style={{
         fontSize: `${settings.fontSize}px`,
         fontFamily: settings.fontFamily,
@@ -241,21 +313,21 @@ export const BookReader: React.FC<BookReaderProps> = ({ bookId }) => {
         {isLoading ? (
           <ContentSkeleton />
         ) : (
-          <ChapterContent 
+          <ChapterContent
             content={content}
             onDescriptionClick={handleDescriptionClick}
             highlightDescriptions={settings.highlightDescriptions}
           />
         )}
       </main>
-      
-      <ReaderNavigation 
+
+      <ReaderNavigation
         currentChapter={currentChapter}
         totalChapters={chapters.length}
         onChapterChange={navigateToChapter}
       />
-      
-      <ReaderSettings 
+
+      <ReaderSettings
         isOpen={showSettings}
         settings={settings}
         onSettingsChange={updateSettings}
@@ -265,6 +337,8 @@ export const BookReader: React.FC<BookReaderProps> = ({ bookId }) => {
   );
 };
 ```
+
+> **Note:** The above code is historical. Current implementation uses EpubReader.
 
 ### ChapterContent
 ```typescript

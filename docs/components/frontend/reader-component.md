@@ -1,6 +1,67 @@
-# BookReader Component - Frontend Reading Interface
+# ⚠️ DEPRECATED: BookReader Component
 
-Компонент BookReader - это центральное решение для чтения книг в BookReader AI. Он обеспечивает современный, адаптивный и интуитивно понятный интерфейс чтения с интеграцией AI-сгенерированных изображений.
+**Status:** DEPRECATED as of October 2025
+**Replaced by:** EpubReader.tsx (835 lines)
+**Documentation:** See [docs/components/frontend/epub-reader.md](./epub-reader.md)
+
+---
+
+## Why Deprecated?
+
+The original BookReader component was replaced by the professional **EpubReader** component in October 2025 to provide:
+
+1. **CFI (Canonical Fragment Identifier) support** - Industry-standard EPUB navigation
+2. **epub.js 0.3.93 integration** - Professional EPUB rendering engine
+3. **Pixel-perfect position restoration** - Hybrid CFI + scroll offset system
+4. **Locations-based progress** - Accurate 0-100% progress calculation
+5. **Smart description highlighting** - Automatic text highlighting with clickable images
+6. **Cross-device consistency** - CFI positions work across all screen sizes
+
+### What the Old BookReader Lacked:
+
+❌ **No CFI support** - Couldn't restore exact reading position
+❌ **Chapter-based navigation only** - Not EPUB standard compliant
+❌ **No smart highlights** - Manual description tracking
+❌ **No locations generation** - Inaccurate progress tracking
+❌ **Basic functionality** - Missing professional EPUB features
+
+### Migration Guide
+
+If you're maintaining legacy code using BookReader, migrate to EpubReader:
+
+```typescript
+// OLD: BookReader (deprecated)
+<BookReader
+  bookId={bookId}
+  chapterNumber={chapter}
+  onPageChange={handlePageChange}
+/>
+
+// NEW: EpubReader (October 2025)
+<EpubReader
+  book={bookDetail}
+/>
+```
+
+**Migration steps:**
+1. Replace `<BookReader>` with `<EpubReader>`
+2. Update API calls to include CFI fields (`reading_location_cfi`, `scroll_offset_percent`)
+3. Use locations API for accurate progress tracking
+4. Remove custom pagination logic (epub.js handles this)
+5. See [epub-reader.md](./epub-reader.md) for full documentation
+
+**Backend changes required:**
+- Add `reading_location_cfi` field to `reading_progress` table ✅ (Done October 2025)
+- Add `scroll_offset_percent` field to `reading_progress` table ✅ (Done October 2025)
+- Implement `GET /books/{id}/file` endpoint ✅ (Done October 2025)
+- Update progress calculation to use CFI percentages ✅ (Done October 2025)
+
+---
+
+# Historical Documentation (BookReader - Pre-October 2025)
+
+> **Note:** This documentation is kept for historical reference only.
+> For current implementation, see [epub-reader.md](./epub-reader.md)
 
 ## Архитектура компонента
 

@@ -136,9 +136,263 @@ updateSettings({
 });
 ```
 
-### BookReader Component
+### EpubReader Component (October 2025) ⭐
+
+**Файл:** `frontend/src/components/Reader/EpubReader.tsx` (835 строк)
+
+**Technology Stack:**
+- **epub.js 0.3.93** - EPUB парсинг и рендеринг
+- **react-reader 2.0.15** - React wrapper для epub.js
+- **CFI System** - Canonical Fragment Identifiers для точной навигации
+
+**Core Features:**
+
+#### 1. Professional EPUB Rendering
+```typescript
+import { ReactReader } from 'react-reader';
+
+const EpubReader: React.FC<EpubReaderProps> = ({ bookId }) => {
+  const [location, setLocation] = useState<string | number>(0);
+  const renditionRef = useRef<Rendition | null>(null);
+
+  return (
+    <ReactReader
+      url={`/api/v1/books/${bookId}/file`}
+      location={location}
+      locationChanged={handleLocationChange}
+      getRendition={(rendition) => {
+        renditionRef.current = rendition;
+        applyCustomStyles(rendition);
+        applyDescriptionHighlights(rendition);
+      }}
+    />
+  );
+};
+```
+
+#### 2. CFI-based Progress Tracking
+```typescript
+// Hybrid система: CFI + scroll offset для точности
+const handleLocationChange = useCallback((epubcfi: string) => {
+  // Extract CFI
+  const cfi = epubcfi;
+
+  // Calculate scroll offset
+  const iframe = document.querySelector('.epub-view iframe');
+  const scrollOffset = calculateScrollOffset(iframe);
+
+  // Save progress (debounced)
+  debouncedSaveProgress({
+    reading_location_cfi: cfi,
+    scroll_offset_percent: scrollOffset,
+    current_chapter: getCurrentChapterFromCFI(cfi)
+  });
+}, [bookId]);
+
+function calculateScrollOffset(iframe: HTMLIFrameElement): number {
+  const doc = iframe?.contentDocument?.documentElement;
+  if (!doc) return 0;
+
+  const scrollableHeight = doc.scrollHeight - doc.clientHeight;
+  return scrollableHeight > 0
+    ? (doc.scrollTop / scrollableHeight) * 100
+    : 0;
+}
+```
+
+#### 3. Smart Highlights Integration (Multi-NLP)
+```typescript
+const applyDescriptionHighlights = useCallback((rendition: Rendition) => {
+  if (!descriptions.length) return;
+
+  descriptions.forEach(desc => {
+    // Create highlight annotation
+    rendition.annotations.highlight(
+      desc.epub_cfi,  // Position in EPUB
+      {},
+      (e) => handleDescriptionClick(desc.id),  // Click handler
+      'description-highlight',  // CSS class
+      {
+        'fill': 'yellow',
+        'fill-opacity': '0.3',
+        'mix-blend-mode': 'multiply'
+      }
+    );
+  });
+}, [descriptions]);
+
+// Handle description click → show modal with image gen option
+const handleDescriptionClick = (descriptionId: string) => {
+  const description = descriptions.find(d => d.id === descriptionId);
+
+  setSelectedDescription(description);
+  setShowImageModal(true);
+
+  // Check if image already generated
+  if (description.generated_image) {
+    setImageStatus('completed');
+  } else {
+    setImageStatus('not_generated');
+  }
+};
+```
+
+#### 4. Position Restore on Load
+```typescript
+useEffect(() => {
+  const restorePosition = async () => {
+    // Fetch saved progress
+    const progress = await fetchReadingProgress(bookId);
+
+    if (progress?.reading_location_cfi) {
+      // Navigate to saved CFI
+      renditionRef.current?.display(progress.reading_location_cfi);
+
+      // Apply scroll offset after render
+      setTimeout(() => {
+        const iframe = document.querySelector('.epub-view iframe');
+        const doc = iframe?.contentDocument?.documentElement;
+
+        if (doc && progress.scroll_offset_percent) {
+          const scrollableHeight = doc.scrollHeight - doc.clientHeight;
+          const targetScroll = (progress.scroll_offset_percent / 100) * scrollableHeight;
+          doc.scrollTop = targetScroll;
+        }
+      }, 500);
+    }
+  };
+
+  restorePosition();
+}, [bookId]);
+```
+
+#### 5. Keyboard Navigation & Gestures
+```typescript
+useEffect(() => {
+  const handleKeyPress = (e: KeyboardEvent) => {
+    switch (e.key) {
+      case 'ArrowLeft':
+        renditionRef.current?.prev();
+        break;
+      case 'ArrowRight':
+      case ' ':  // Spacebar
+        renditionRef.current?.next();
+        break;
+      case 'Home':
+        renditionRef.current?.display(0);  // First page
+        break;
+      case 'End':
+        renditionRef.current?.display('end');  // Last page
+        break;
+    }
+  };
+
+  window.addEventListener('keydown', handleKeyPress);
+  return () => window.removeEventListener('keydown', handleKeyPress);
+}, []);
+```
+
+#### 6. Image Generation Modal
+```typescript
+const ImageGenerationModal: React.FC<ModalProps> = ({
+  description,
+  show,
+  onClose
+}) => {
+  const [imageStatus, setImageStatus] = useState<'not_generated' | 'generating' | 'completed' | 'failed'>('not_generated');
+  const [image, setImage] = useState<GeneratedImage | null>(null);
+
+  const handleGenerateImage = async () => {
+    try {
+      setImageStatus('generating');
+
+      const result = await booksAPI.generateImageForDescription(description.id);
+
+      setImage(result.image);
+      setImageStatus('completed');
+    } catch (error) {
+      setImageStatus('failed');
+    }
+  };
+
+  return (
+    <Modal show={show} onClose={onClose}>
+      <Modal.Header>{description.content}</Modal.Header>
+
+      <Modal.Body>
+        {imageStatus === 'not_generated' && (
+          <Button onClick={handleGenerateImage}>Generate Image</Button>
+        )}
+
+        {imageStatus === 'generating' && (
+          <Spinner text="Generating... (~20-30 seconds)" />
+        )}
+
+        {imageStatus === 'completed' && image && (
+          <img src={image.image_url} alt={description.content} />
+        )}
+
+        {imageStatus === 'failed' && (
+          <Alert variant="error">Failed to generate image</Alert>
+        )}
+      </Modal.Body>
+    </Modal>
+  );
+};
+```
+
+#### 7. Custom Styling & Themes
+```typescript
+const applyCustomStyles = (rendition: Rendition) => {
+  const { theme, fontSize, fontFamily, lineHeight } = readerSettings;
+
+  // Theme-specific styles
+  const styles = {
+    dark: {
+      'body': {
+        'background-color': '#1a1a1a !important',
+        'color': '#e0e0e0 !important'
+      }
+    },
+    light: {
+      'body': {
+        'background-color': '#ffffff !important',
+        'color': '#000000 !important'
+      }
+    },
+    sepia: {
+      'body': {
+        'background-color': '#f4ecd8 !important',
+        'color': '#5c4a2f !important'
+      }
+    }
+  };
+
+  // Apply theme
+  rendition.themes.override('body', styles[theme].body);
+
+  // Apply typography
+  rendition.themes.fontSize(`${fontSize}px`);
+  rendition.themes.font(fontFamily);
+  rendition.themes.override('*', {
+    'line-height': `${lineHeight} !important`
+  });
+};
+```
+
+**Performance Optimizations:**
+
+- **Lazy loading** - renders only visible pages
+- **Debounced saving** - batches progress updates
+- **Efficient highlights** - SVG-based annotations
+- **Memory management** - cleans up previous chapter renders
+- **Touch gestures** - swipe для mobile navigation
+
+### BookReader Component (Legacy)
 
 **Файл:** `frontend/src/components/Reader/BookReader.tsx`
+
+**Note:** This is being phased out in favor of EpubReader (October 2025).
 
 **Возможности:**
 - **Умная пагинация** с адаптацией под размер экрана
