@@ -5,10 +5,20 @@
 ## Общая информация
 
 - **Base URL:** `http://localhost:8000/api/v1` (development) | `https://yourdomain.com/api/v1` (production)
-- **API Version:** v1
+- **API Version:** v1.2.0 (updated: октябрь 2025)
+- **Total Endpoints:** 35+
 - **Authentication:** JWT Bearer tokens
 - **Content-Type:** `application/json`
 - **Interactive Docs:** `/docs` (Swagger UI) | `/redoc` (ReDoc)
+
+## Key Features (v1.2.0)
+
+- **Multi-NLP System:** 3 процессора (SpaCy, Natasha, Stanza) с 5 режимами обработки
+- **epub.js Integration:** Полная поддержка EPUB чтения через GET /books/{id}/file
+- **CFI Support:** Canonical Fragment Identifier для точного трекинга прогресса
+- **Ensemble Voting:** Consensus алгоритм для максимального качества NLP
+- **Adaptive Processing:** Автоматический выбор оптимального режима обработки
+- **Admin Multi-NLP Management:** 5 новых endpoints для управления процессорами
 
 ## Аутентификация
 
@@ -395,7 +405,7 @@ file: <binary-file>
 
 ### POST /books/{book_id}/progress
 
-Обновление прогресса чтения.
+Обновление прогресса чтения (ОБНОВЛЕНО: поддержка CFI для epub.js).
 
 **Headers:** `Authorization: Bearer <token>`
 
@@ -405,25 +415,43 @@ file: <binary-file>
   "current_chapter": 5,
   "current_page": 23,
   "current_position": 1250,
+  "current_position_percent": 45.5,
+  "reading_location_cfi": "epubcfi(/6/4[chapter01]!/4/2/8[para05],/1:125,/1:250)",
+  "scroll_offset_percent": 32.8,
   "reading_time_minutes": 45
 }
 ```
 
+**Request Fields:**
+- `current_chapter` (int, обязательно) - номер текущей главы
+- `current_position_percent` (float, опционально) - процент прочитанного в главе 0-100
+- `reading_location_cfi` (string, опционально) - CFI (Canonical Fragment Identifier) для epub.js
+- `scroll_offset_percent` (float, опционально) - точный процент скролла внутри страницы 0-100
+- `current_page` (int, опционально) - номер страницы (обратная совместимость)
+- `reading_time_minutes` (int, опционально) - время чтения в минутах
+
 **Response (200):**
 ```json
 {
-  "message": "Reading progress updated",
+  "message": "Reading progress updated successfully",
   "progress": {
+    "id": "progress-uuid",
     "current_chapter": 5,
     "current_page": 23,
     "current_position": 1250,
-    "progress_percentage": 18.5,
+    "reading_location_cfi": "epubcfi(/6/4[chapter01]!/4/2/8[para05],/1:125,/1:250)",
+    "scroll_offset_percent": 32.8,
     "reading_time_minutes": 45,
     "reading_speed_wpm": 185.5,
-    "last_read_at": "2025-08-24T15:30:00Z"
+    "last_read_at": "2025-10-23T15:30:00Z"
   }
 }
 ```
+
+**CFI (Canonical Fragment Identifier):**
+CFI используется в epub.js для точного указания позиции в EPUB книге. Формат:
+- `epubcfi(/6/4[chapter01]!/4/2/8,/1:0,/1:100)` - полный CFI с главой и позицией
+- Обеспечивает корректное восстановление позиции чтения после перезагрузки
 
 ### GET /books/{book_id}/statistics
 
@@ -491,6 +519,23 @@ file: <binary-file>
 **Response:** Binary image data (JPEG/PNG)
 - **Content-Type:** `image/jpeg` or `image/png`
 - **Cache-Control:** `max-age=3600`
+
+### GET /books/{book_id}/file
+
+Получение EPUB файла для чтения в epub.js (NEW: октябрь 2025).
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response:** Binary EPUB file
+- **Content-Type:** `application/epub+zip`
+- **Content-Disposition:** `attachment; filename="book_title.epub"`
+
+**Errors:**
+- `404` - Book not found или file not found on server
+- `403` - Access denied (book doesn't belong to user)
+
+**Usage:**
+Этот endpoint используется frontend компонентом EpubReader.tsx для загрузки полного EPUB файла в epub.js библиотеку.
 
 ---
 
@@ -708,9 +753,9 @@ file: <binary-file>
 
 ## NLP Endpoints
 
-### GET /nlp/status (ОБНОВЛЕНО: Multi-NLP)
+### GET /nlp/status (ОБНОВЛЕНО: Multi-NLP с 3 процессорами)
 
-Статус Advanced Multi-NLP системы.
+Статус Advanced Multi-NLP системы с поддержкой 3 процессоров и 5 режимов обработки.
 
 **Response (200):**
 ```json
@@ -719,6 +764,7 @@ file: <binary-file>
   "available_processors": ["spacy", "natasha", "stanza"],
   "default_processor": "spacy",
   "processing_mode": "adaptive",
+  "available_modes": ["single", "parallel", "sequential", "ensemble", "adaptive"],
   "processors": {
     "spacy": {
       "type": "spacy",
@@ -777,9 +823,9 @@ file: <binary-file>
 }
 ```
 
-### POST /nlp/extract-descriptions (ОБНОВЛЕНО: Multi-NLP)
+### POST /nlp/extract-descriptions (ОБНОВЛЕНО: Multi-NLP с режимами)
 
-Извлечение описаний через Advanced Multi-NLP систему.
+Извлечение описаний через Advanced Multi-NLP систему с поддержкой 5 режимов обработки.
 
 **Headers:** `Authorization: Bearer <token>`
 
@@ -787,13 +833,21 @@ file: <binary-file>
 ```json
 {
   "text": "В старом замке на холме жили привидения...",
+  "chapter_id": "chapter-uuid",
   "language": "ru",
   "types_filter": ["location", "character"],
   "min_confidence": 0.7,
-  "processing_mode": "adaptive",
-  "processor_name": "spacy" 
+  "processing_mode": "ensemble",
+  "processor_name": "spacy"
 }
 ```
+
+**Processing Modes (NEW):**
+- `single` - один процессор (быстро, min latency)
+- `parallel` - параллельная обработка всеми процессорами (максимальное покрытие)
+- `sequential` - последовательная обработка (контролируемый порядок)
+- `ensemble` - ensemble voting с consensus алгоритмом (максимальное качество)
+- `adaptive` - автоматический выбор режима на основе анализа текста (интеллектуально)
 
 **Response (200) - Multi-NLP Result:**
 ```json
@@ -988,6 +1042,216 @@ file: <binary-file>
 
 ## Admin Endpoints
 
+### GET /admin/stats
+
+Системная статистика (только для администраторов).
+
+**Headers:** `Authorization: Bearer <admin_token>`
+
+**Response (200):**
+```json
+{
+  "total_users": 1250,
+  "total_books": 15750,
+  "total_descriptions": 125000,
+  "total_images": 45000,
+  "processing_rate": 85.5,
+  "generation_rate": 36.2,
+  "active_parsing_tasks": 2,
+  "queue_size": 5
+}
+```
+
+### GET /admin/multi-nlp-settings (NEW: Multi-NLP Management)
+
+Получение полных настроек Multi-NLP системы со всеми процессорами.
+
+**Headers:** `Authorization: Bearer <admin_token>`
+
+**Response (200):**
+```json
+{
+  "processing_mode": "adaptive",
+  "default_processor": "spacy",
+  "max_parallel_processors": 3,
+  "ensemble_voting_threshold": 0.6,
+  "adaptive_text_analysis": true,
+  "quality_monitoring": true,
+  "auto_processor_selection": true,
+
+  "spacy_settings": {
+    "enabled": true,
+    "weight": 1.0,
+    "confidence_threshold": 0.3,
+    "model_name": "ru_core_news_lg",
+    "literary_patterns": true,
+    "character_detection_boost": 1.2,
+    "location_detection_boost": 1.1,
+    "atmosphere_keywords": ["мрачный", "светлый", "таинственный"]
+  },
+
+  "natasha_settings": {
+    "enabled": true,
+    "weight": 1.2,
+    "confidence_threshold": 0.4,
+    "literary_boost": 1.3,
+    "enable_morphology": true,
+    "enable_syntax": true,
+    "enable_ner": true,
+    "person_patterns": ["юноша", "девушка", "старик"],
+    "location_patterns": ["дворец", "замок", "крепость"]
+  },
+
+  "stanza_settings": {
+    "enabled": false,
+    "weight": 0.8,
+    "confidence_threshold": 0.5,
+    "model_name": "ru",
+    "processors": ["tokenize", "pos", "lemma", "ner"],
+    "complex_syntax_analysis": true,
+    "dependency_parsing": true
+  },
+
+  "available_processors": ["spacy", "natasha", "stanza", "ensemble", "adaptive"]
+}
+```
+
+### PUT /admin/multi-nlp-settings (NEW: Update Multi-NLP Config)
+
+Обновление настроек Multi-NLP системы.
+
+**Headers:** `Authorization: Bearer <admin_token>`
+
+**Request Body:** (полный объект MultiNLPSettings как в GET)
+
+**Response (200):**
+```json
+{
+  "message": "Multi-NLP settings updated successfully",
+  "settings": { /* обновленные настройки */ },
+  "processors_reloaded": true
+}
+```
+
+### GET /admin/multi-nlp-settings/status (NEW: Processor Status)
+
+Получение детального статуса всех NLP процессоров.
+
+**Headers:** `Authorization: Bearer <admin_token>`
+
+**Response (200):**
+```json
+{
+  "status": "success",
+  "data": {
+    "multi_nlp_available": true,
+    "available_processors": ["spacy", "natasha"],
+    "processing_mode": "adaptive",
+    "processors": {
+      "spacy": {
+        "type": "spacy",
+        "loaded": true,
+        "available": true,
+        "model": "ru_core_news_lg",
+        "version": "3.7.2",
+        "weight": 1.0
+      },
+      "natasha": {
+        "type": "natasha",
+        "loaded": true,
+        "available": true,
+        "weight": 1.2
+      },
+      "stanza": {
+        "type": "stanza",
+        "loaded": false,
+        "available": false
+      }
+    },
+    "statistics": {
+      "total_processed": 1547,
+      "processor_usage": {
+        "spacy": 892,
+        "natasha": 655
+      }
+    }
+  },
+  "timestamp": "2025-10-23T12:00:00Z"
+}
+```
+
+### POST /admin/multi-nlp-settings/test (NEW: Test Processors)
+
+Тестирование NLP процессоров с образцом текста.
+
+**Headers:** `Authorization: Bearer <admin_token>`
+
+**Request Body:**
+```json
+{
+  "text": "В старом замке на холме жили привидения...",
+  "processors": ["spacy", "natasha"],
+  "mode": "ensemble"
+}
+```
+
+**Response (200):**
+```json
+{
+  "status": "success",
+  "test_text": "В старом замке на холме жили привидения...",
+  "processing_mode": "ensemble",
+  "processors_used": ["spacy", "natasha"],
+  "total_descriptions": 8,
+  "processing_time_seconds": 0.28,
+  "quality_metrics": {
+    "spacy": 0.78,
+    "natasha": 0.85
+  },
+  "recommendations": [
+    "Processor natasha showed excellent results.",
+    "Used ensemble voting for improved accuracy"
+  ],
+  "processor_results": {
+    "spacy": {
+      "count": 5,
+      "sample_descriptions": [/* первые 3 */]
+    },
+    "natasha": {
+      "count": 6,
+      "sample_descriptions": [/* первые 3 */]
+    }
+  },
+  "best_descriptions": [/* топ 5 с consensus */],
+  "timestamp": "2025-10-23T12:00:00Z"
+}
+```
+
+### GET /admin/nlp-processor-status (NEW: Detailed Processor Info)
+
+Детальная информация о статусе всех NLP процессоров.
+
+**Headers:** `Authorization: Bearer <admin_token>`
+
+**Response (200):**
+```json
+{
+  "status": "success",
+  "data": {
+    "multi_nlp_available": true,
+    "available_processors": ["spacy", "natasha"],
+    "processing_mode": "adaptive",
+    "processors": { /* детали процессоров */ },
+    "global_config": {
+      "max_parallel_processors": 3,
+      "ensemble_voting_threshold": 0.6,
+      "adaptive_text_analysis": true
+    }
+  },
+  "timestamp": "2025-10-23T12:00:00Z"
+}
+```
+
 ### GET /users/admin/stats
 
 Системная статистика (только для администраторов).
@@ -1160,9 +1424,81 @@ task = client.images.generate_for_description(description_id)
 
 ---
 
+## API Endpoints Summary
+
+### Total Endpoints: 35+
+
+**Books Router (16 endpoints):**
+- GET /books/parser-status
+- POST /books/validate-file
+- POST /books/parse-preview
+- POST /books/analyze-chapter
+- POST /books/upload
+- GET /books/
+- GET /books/{book_id}
+- GET /books/{book_id}/file (NEW: epub.js integration)
+- GET /books/{book_id}/chapters/{chapter_number}
+- GET /books/{book_id}/chapters/{chapter_number}/descriptions
+- POST /books/{book_id}/progress (UPDATED: CFI support)
+- GET /books/{book_id}/progress
+- POST /books/{book_id}/process
+- GET /books/{book_id}/parsing-status
+- GET /books/{book_id}/statistics
+- GET /books/{book_id}/cover
+- DELETE /books/{book_id}
+
+**Admin Router (13 endpoints):**
+- GET /admin/stats
+- GET /admin/multi-nlp-settings (NEW)
+- PUT /admin/multi-nlp-settings (NEW)
+- GET /admin/multi-nlp-settings/status (NEW)
+- POST /admin/multi-nlp-settings/test (NEW)
+- GET /admin/nlp-processor-status (NEW)
+- GET /admin/parsing-settings
+- PUT /admin/parsing-settings
+- GET /admin/users
+- GET /admin/queue-status
+- POST /admin/clear-queue
+- POST /admin/unlock-parsing
+- GET /admin/image-generation-settings
+- PUT /admin/image-generation-settings
+
+**NLP Router (4 endpoints):**
+- GET /nlp/status (UPDATED: Multi-NLP)
+- POST /nlp/extract-descriptions (UPDATED: processing modes)
+- GET /nlp/test-book-sample
+- GET /nlp/test-libraries
+
+**Auth Router (5 endpoints):**
+- POST /auth/register
+- POST /auth/login
+- POST /auth/refresh
+- GET /auth/me
+- POST /auth/logout
+
+**Images Router (~8 endpoints)** - see Images section above
+
+---
+
 ## Changelog
 
-### v1.0.0 (2025-08-24)
+### v1.2.0 (2025-10-23) - Multi-NLP & epub.js Integration
+- NEW: GET /books/{book_id}/file - EPUB file endpoint для epub.js
+- UPDATED: POST /books/{book_id}/progress - поддержка CFI и scroll_offset_percent
+- NEW: 5 Admin endpoints для управления Multi-NLP системой
+- UPDATED: GET /nlp/status - показывает все 3 процессора (spaCy, Natasha, Stanza)
+- UPDATED: POST /nlp/extract-descriptions - 5 режимов обработки (single, parallel, sequential, ensemble, adaptive)
+- Advanced Multi-NLP Manager с ensemble voting и consensus алгоритмом
+- CFI (Canonical Fragment Identifier) для точного трекинга прогресса в epub.js
+
+### v1.1.0 (2025-09-15) - Advanced NLP System
+- Advanced Multi-NLP Manager с 3 процессорами
+- Ensemble voting с weighted consensus
+- Adaptive processing mode
+- Processor-specific settings API
+- Quality monitoring и usage statistics
+
+### v1.0.0 (2025-08-24) - Initial Release
 - Initial API release
 - Authentication with JWT
 - Book upload and processing

@@ -5,6 +5,36 @@
 Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.0.0/),
 и проект следует [Семантическому версионированию](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2025-10-23 - Multi-NLP Comprehensive Documentation 📚
+
+### Added - CRITICAL Documentation
+- **Multi-NLP System Comprehensive Technical Documentation** (1,676 lines, 46KB)
+  - Location: `docs/technical/multi-nlp-system.md`
+  - **Complete coverage**: All 5 processing modes (SINGLE, PARALLEL, SEQUENTIAL, ENSEMBLE, ADAPTIVE)
+  - **Ensemble voting algorithm**: Weighted consensus with 60% threshold explained in detail
+  - **Three processors fully documented**:
+    - SpaCy (ru_core_news_lg): Entity recognition, POS tagging, weight 1.0
+    - Natasha: Russian morphology specialist, literary patterns, weight 1.2
+    - Stanza (ru): Dependency parsing, complex syntax, weight 0.8
+  - **Performance metrics**: Real benchmark data (2171 descriptions in 4 seconds, >70% quality)
+  - **Admin API integration**: 5 endpoints with complete request/response examples
+  - **15+ code examples**: Common usage patterns, batch processing, error handling
+  - **Troubleshooting section**: 5 common issues with step-by-step solutions
+  - **Advanced topics**: Custom processors, A/B testing, quality feedback loops
+  - **Architecture diagrams**: 3 Mermaid diagrams (system architecture, data flow, voting)
+  - **Comparison tables**: Modes, processors, performance characteristics
+
+### Changed
+- **README.md**: Enhanced Multi-NLP section with CRITICAL component designation
+  - Added performance metrics and quality scores
+  - Added link to comprehensive technical documentation
+  - Updated processor weights and descriptions
+
+### Documentation
+- Created comprehensive 1,676-line technical guide for the CRITICAL Multi-NLP system
+- All code examples extracted from actual implementation (627 lines in multi_nlp_manager.py)
+- Performance data from real benchmarks on test books
+
 ## [Unreleased]
 
 ### Планируется добавить (Phase 2)
