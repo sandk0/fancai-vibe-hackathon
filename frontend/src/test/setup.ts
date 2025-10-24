@@ -2,11 +2,16 @@ import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
 // Mock IntersectionObserver
-global.IntersectionObserver = vi.fn(() => ({
-  disconnect: vi.fn(),
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-}));
+global.IntersectionObserver = class IntersectionObserver {
+  constructor() {}
+  disconnect = vi.fn();
+  observe = vi.fn();
+  unobserve = vi.fn();
+  takeRecords = vi.fn(() => []);
+  root = null;
+  rootMargin = '';
+  thresholds = [];
+} as any;
 
 // Mock ResizeObserver
 global.ResizeObserver = vi.fn(() => ({
@@ -31,7 +36,7 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Mock scrollTo
-window.scrollTo = vi.fn();
+window.scrollTo = vi.fn() as any;
 
 // Mock localStorage
 const localStorageMock = {
@@ -39,8 +44,10 @@ const localStorageMock = {
   setItem: vi.fn(),
   removeItem: vi.fn(),
   clear: vi.fn(),
+  key: vi.fn(),
+  length: 0,
 };
-global.localStorage = localStorageMock;
+global.localStorage = localStorageMock as any;
 
 // Mock sessionStorage
-global.sessionStorage = localStorageMock;
+global.sessionStorage = localStorageMock as any;

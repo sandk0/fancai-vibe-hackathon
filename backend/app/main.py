@@ -1,17 +1,16 @@
 """
 BookReader AI - FastAPI Main Application
 
-Главный файл FastAPI приложения для веб-приложения чтения книг 
+Главный файл FastAPI приложения для веб-приложения чтения книг
 с автоматической генерацией изображений по описаниям.
 """
 
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
 from datetime import datetime, timezone
 from typing import Dict, Any
-import os
 
 from .routers import users, nlp, books, auth, images, admin
 from .core.config import settings
@@ -27,7 +26,7 @@ app = FastAPI(
     description="API для чтения книг с ИИ-генерацией изображений",
     version=VERSION,
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
 )
 
 # CORS настройки
@@ -52,14 +51,14 @@ app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
 async def startup_event():
     """Инициализация при запуске приложения."""
     print("🚀 Starting BookReader AI...")
-    
+
     # Инициализация настроек по умолчанию
     try:
         await settings_manager.initialize_default_settings()
         print("✅ Default settings initialized")
     except Exception as e:
         print(f"⚠️ Failed to initialize settings: {e}")
-    
+
     # Инициализация Multi-NLP Manager
     try:
         await multi_nlp_manager.initialize()
@@ -72,7 +71,7 @@ async def startup_event():
 async def root() -> Dict[str, Any]:
     """
     Базовый endpoint для проверки работоспособности API.
-    
+
     Returns:
         Dict с информацией о сервисе
     """
@@ -81,7 +80,7 @@ async def root() -> Dict[str, Any]:
         "version": VERSION,
         "status": "running",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "docs": "/docs"
+        "docs": "/docs",
     }
 
 
@@ -89,7 +88,7 @@ async def root() -> Dict[str, Any]:
 async def health_check() -> Dict[str, Any]:
     """
     Health check endpoint для мониторинга.
-    
+
     Returns:
         Dict со статусом здоровья сервиса
     """
@@ -100,8 +99,8 @@ async def health_check() -> Dict[str, Any]:
         "checks": {
             "api": "ok",
             "database": "checking...",  # TODO: добавить проверку БД
-            "redis": "checking..."      # TODO: добавить проверку Redis
-        }
+            "redis": "checking...",  # TODO: добавить проверку Redis
+        },
     }
 
 
@@ -109,7 +108,7 @@ async def health_check() -> Dict[str, Any]:
 async def api_info() -> Dict[str, Any]:
     """
     Информация о API и доступных endpoints.
-    
+
     Returns:
         Dict с информацией об API
     """
@@ -118,12 +117,12 @@ async def api_info() -> Dict[str, Any]:
         "app_version": VERSION,
         "features": [
             "book_upload",
-            "epub_parsing", 
+            "epub_parsing",
             "fb2_parsing",
             "nlp_description_extraction",
             "ai_image_generation",
             "user_authentication",
-            "subscription_management"
+            "subscription_management",
         ],
         "endpoints": {
             "health": "/health",
@@ -131,13 +130,12 @@ async def api_info() -> Dict[str, Any]:
             "books": "/api/v1/books",
             "users": "/api/v1/users",
             "auth": "/api/v1/auth",
-            "images": "/api/v1/images"
-        }
+            "images": "/api/v1/images",
+        },
     }
 
 
-
-# Обработчик ошибок  
+# Обработчик ошибок
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
     """Обработчик 404 ошибок."""
@@ -147,8 +145,8 @@ async def not_found_handler(request, exc):
             "error": "Not Found",
             "message": "Requested resource not found",
             "path": str(request.url.path),
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
     )
 
 
@@ -156,25 +154,20 @@ async def not_found_handler(request, exc):
 async def internal_error_handler(request, exc):
     """Обработчик внутренних ошибок сервера."""
     import traceback
+
     error_traceback = traceback.format_exc()
     print(f"[ERROR HANDLER] 500 error: {exc}")
     print(f"[ERROR HANDLER] Traceback: {error_traceback}")
     return JSONResponse(
         status_code=500,
         content={
-            "error": "Internal Server Error", 
+            "error": "Internal Server Error",
             "message": f"An internal server error occurred: {str(exc)}",
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
     )
 
 
 if __name__ == "__main__":
     # Запуск сервера для локальной разработки
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info"
-    )
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, log_level="info")

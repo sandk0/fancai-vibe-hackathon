@@ -101,6 +101,7 @@ export interface Chapter {
   word_count: number;
   estimated_reading_time_minutes: number;
   html_content?: string;
+  descriptions?: Description[];
 }
 
 export interface ChapterInfo {
@@ -148,7 +149,6 @@ export type DescriptionType = 'location' | 'character' | 'atmosphere' | 'object'
 export interface Description {
   id: string;
   type: DescriptionType;
-  text: string;
   content: string;
   confidence_score: number;
   priority_score: number;
@@ -278,6 +278,7 @@ export interface ReadingProgress {
   current_chapter: number;
   current_position: number;  // Процент позиции в текущей главе (0-100)
   reading_location_cfi?: string;  // CFI для epub.js (точная позиция в EPUB)
+  scroll_offset_percent?: number;  // Точный % скролла внутри страницы (0-100)
   progress_percent: number;
   last_read_at: string;
 }

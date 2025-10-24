@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, BookOpen, Settings, Eye, Volume2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, BookOpen, Settings } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import DOMPurify from 'dompurify';
@@ -7,13 +7,13 @@ import { useQuery } from '@tanstack/react-query';
 import { booksAPI } from '@/api/books';
 import { imagesAPI } from '@/api/images';
 import { useReaderStore } from '@/stores/reader';
-import { useUIStore, notify } from '@/stores/ui';
+import { notify } from '@/stores/ui';
 import { STORAGE_KEYS } from '@/types/state';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import ErrorMessage from '@/components/UI/ErrorMessage';
 import { ImageModal } from '@/components/Images/ImageModal';
 import { useTranslation } from '@/hooks/useTranslation';
-import type { Chapter, Description, BookDetail } from '@/types/api';
+import type { Description, BookDetail } from '@/types/api';
 
 interface BookReaderProps {
   bookId?: string;
@@ -374,19 +374,19 @@ export const BookReader: React.FC<BookReaderProps> = ({
   // Handle descriptions from API response and auto-parsing
   useEffect(() => {
     if (!chapter) return;
-    
+
     // Check for descriptions in different possible locations in API response
-    let descriptions = [];
-    
+    let descriptions: Description[] = [];
+
     if (chapter.descriptions && Array.isArray(chapter.descriptions)) {
       descriptions = chapter.descriptions;
-    } else if (chapter.chapter?.descriptions && Array.isArray(chapter.chapter.descriptions)) {
-      descriptions = chapter.chapter.descriptions;  
+    } else if ((chapter as any).chapter?.descriptions && Array.isArray((chapter as any).chapter.descriptions)) {
+      descriptions = (chapter as any).chapter.descriptions;
     } else if (Array.isArray(chapter)) {
       // Sometimes API returns descriptions array directly
-      descriptions = chapter;
+      descriptions = chapter as unknown as Description[];
     }
-    
+
     console.log('📖 Chapter API response analysis:', {
       hasDescriptions: descriptions.length > 0,
       descriptionsCount: descriptions.length,
@@ -396,7 +396,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
         content: descriptions[0].content?.substring(0, 100) + '...'
       } : null
     });
-    
+
     if (descriptions.length > 0) {
       console.log('✅ Descriptions loaded from chapter API:', descriptions.length);
       setHighlightedDescriptions(descriptions);
@@ -464,8 +464,8 @@ export const BookReader: React.FC<BookReaderProps> = ({
             attempts++;
             console.log(`🔄 Checking parsing completion (attempt ${attempts}/${maxAttempts})`);
             
-            refetch().then((newData) => {
-              const newDescriptions = newData?.descriptions || [];
+            refetch().then((result) => {
+              const newDescriptions = result?.data?.descriptions || [];
               if (newDescriptions.length > 0) {
                 console.log('✅ Descriptions found, parsing completed!');
                 notify.success('Парсинг завершен!', `Найдено ${newDescriptions.length} описаний. Перезагружаем...`);
@@ -553,17 +553,17 @@ export const BookReader: React.FC<BookReaderProps> = ({
     // First, clean any existing highlights to prevent nesting
     let highlightedText = cleanExistingHighlights(text);
     
-    // Sort descriptions by length (longest first) to prevent shorter descriptions 
+    // Sort descriptions by length (longest first) to prevent shorter descriptions
     // from being highlighted inside longer ones
     const sortedDescriptions = [...descriptions].sort((a, b) => {
-      const aText = a.content || a.text || '';
-      const bText = b.content || b.text || '';
+      const aText = a.content || '';
+      const bText = b.content || '';
       return bText.length - aText.length;
     });
-    
+
     sortedDescriptions.forEach((desc) => {
-      // Use content or text field
-      const descText = desc.content || desc.text;
+      // Use content field
+      const descText = desc.content;
       if (!descText || descText.length < 10) return; // Skip very short descriptions
       
       // Escape special regex characters and create pattern
@@ -613,9 +613,10 @@ export const BookReader: React.FC<BookReaderProps> = ({
               ...d,
               generated_image: {
                 id: result.image_id,
+                description_id: descriptionId,
                 image_url: result.image_url,
                 created_at: result.created_at,
-                generation_time_seconds: result.generation_time
+                generation_time: result.generation_time
               }
             };
           }

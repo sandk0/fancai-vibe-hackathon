@@ -51,6 +51,7 @@ cryptography==41.0.7
 pytest==7.4.3
 pytest-asyncio==0.21.1
 pytest-cov==4.1.0
+aiosqlite==0.19.0
 
 # Форматирование и линтинг
 black==23.11.0

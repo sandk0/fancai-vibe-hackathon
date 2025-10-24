@@ -1,20 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Settings,
   Users,
   BookOpen,
   Image,
   Activity,
   Database,
   Cpu,
-  MemoryStick,
   AlertTriangle,
-  CheckCircle,
   Save,
   RefreshCw,
   Server,
-  Zap,
   Shield
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
@@ -580,8 +576,8 @@ const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'nlp' | 'parsing' | 'images' | 'system' | 'users'>('overview');
   const [multiNlpSettings, setMultiNlpSettings] = useState<MultiNLPSettings | null>(null);
   const [parsingSettings, setParsingSettings] = useState<ParsingSettings | null>(null);
-  const [imageSettings, setImageSettings] = useState<ImageGenerationSettings | null>(null);
-  const [systemSettings, setSystemSettings] = useState<SystemSettings | null>(null);
+  const [_imageSettings, setImageSettings] = useState<ImageGenerationSettings | null>(null);
+  const [_systemSettings, setSystemSettings] = useState<SystemSettings | null>(null);
 
   // Always call hooks regardless of user state
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<SystemStats>({
@@ -603,13 +599,13 @@ const AdminDashboard: React.FC = () => {
     enabled: !!(user && user.is_admin)
   });
 
-  const { data: imageData, isLoading: imageLoading } = useQuery<ImageGenerationSettings>({
+  const { data: imageData, isLoading: _imageLoading } = useQuery<ImageGenerationSettings>({
     queryKey: ['admin', 'image-settings'],
     queryFn: () => adminAPI.getImageGenerationSettings(),
     enabled: !!(user && user.is_admin)
   });
 
-  const { data: systemData, isLoading: systemLoading } = useQuery<SystemSettings>({
+  const { data: systemData, isLoading: _systemLoading } = useQuery<SystemSettings>({
     queryKey: ['admin', 'system-settings'],
     queryFn: () => adminAPI.getSystemSettings(),
     enabled: !!(user && user.is_admin)
@@ -653,7 +649,9 @@ const AdminDashboard: React.FC = () => {
     }
   });
 
-  const saveImageSettings = useMutation({
+  // Reserved for future image settings functionality
+  // @ts-expect-error - Prepared for future feature, intentionally unused
+  const _saveImageSettings = useMutation({
     mutationFn: (settings: ImageGenerationSettings) => adminAPI.updateImageGenerationSettings(settings),
     onSuccess: () => {
       notify.success(t('admin.settingsSaved'), t('admin.imageUpdated'));
@@ -664,7 +662,9 @@ const AdminDashboard: React.FC = () => {
     }
   });
 
-  const saveSystemSettings = useMutation({
+  // Reserved for future system settings functionality
+  // @ts-expect-error - Prepared for future feature, intentionally unused
+  const _saveSystemSettings = useMutation({
     mutationFn: (settings: SystemSettings) => adminAPI.updateSystemSettings(settings),
     onSuccess: () => {
       notify.success(t('admin.settingsSaved'), t('admin.systemUpdated'));

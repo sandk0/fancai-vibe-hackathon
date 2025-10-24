@@ -1,4 +1,5 @@
-version: '3.8'
+# Docker Compose for BookReader AI Development
+# Note: version field is obsolete in Compose V2 (removed as per Docker Compose spec)
 
 services:
   # PostgreSQL Database
@@ -9,21 +10,40 @@ services:
       POSTGRES_DB: bookreader_dev
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres123
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - bookreader_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bookreader_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
 
   # Redis Cache & Queue
   redis:
     image: redis:7-alpine
     container_name: bookreader_redis
-    command: redis-server --appendonly yes --requirepass redis123
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass redis123
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     networks:
       - bookreader_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis123", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
   # FastAPI Backend
   backend:
@@ -44,10 +64,19 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - bookreader_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   # Celery Worker для фоновых задач
@@ -61,22 +90,30 @@ services:
       - REDIS_URL=redis://:redis123@redis:6379
       - SECRET_KEY=your-super-secret-key-change-in-production
       - POLLINATIONS_ENABLED=true
+      - CELERY_CONCURRENCY=2
+      - CELERY_MAX_TASKS_PER_CHILD=10
+      - CELERY_WORKER_MAX_MEMORY_PER_CHILD=5000000
     volumes:
       - ./backend:/app
       - uploaded_books:/app/uploads
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
     networks:
       - bookreader_network
     deploy:
       resources:
         limits:
-          memory: 4G
+          cpus: '2'
+          memory: 6G
         reservations:
-          memory: 1G
+          memory: 2G
     restart: unless-stopped
-    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2 --max-tasks-per-child=10
 
   # Celery Beat для планировщика задач
   celery-beat:
@@ -91,8 +128,10 @@ services:
     volumes:
       - ./backend:/app
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - bookreader_network
     deploy:
@@ -118,8 +157,18 @@ services:
       - /app/node_modules
     ports:
       - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
     networks:
       - bookreader_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
     command: npm run dev -- --host 0.0.0.0
 
 volumes:

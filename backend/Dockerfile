@@ -1,38 +1,52 @@
+# Development Dockerfile for Backend
 FROM python:3.11-slim
 
-# Установка системных зависимостей
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONPATH=/app
+
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     git \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Создание рабочей директории
+# Create working directory
 WORKDIR /app
 
-# Копирование файлов зависимостей
+# Copy requirements first for better layer caching
 COPY requirements.txt .
 
-# Установка Python зависимостей
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Загрузка NLP моделей
-RUN python -m spacy download ru_core_news_lg
-RUN python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords'); nltk.download('wordnet'); nltk.download('averaged_perceptron_tagger')"
-RUN python -c "import stanza; stanza.download('ru')"
+# Download NLP models (combine RUN commands to reduce layers)
+RUN python -m spacy download ru_core_news_lg && \
+    python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords'); nltk.download('wordnet'); nltk.download('averaged_perceptron_tagger')" && \
+    python -c "import stanza; stanza.download('ru')"
 
-# Копирование исходного кода
+# Copy source code
 COPY . .
 
-# Создание директорий для загрузок и логов
-RUN mkdir -p /app/uploads /app/logs
+# Create necessary directories
+RUN mkdir -p /app/uploads /app/logs /app/storage
 
-# Установка переменной окружения для Python
-ENV PYTHONPATH=/app
+# Create non-root user for development (but allow flexibility)
+RUN groupadd -r appuser && useradd -r -g appuser appuser && \
+    chown -R appuser:appuser /app
 
-# Экспорт порта
+# Expose port
 EXPOSE 8000
 
-# Команда по умолчанию
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
+
+# Default command (non-root user optional in dev for flexibility)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

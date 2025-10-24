@@ -5,7 +5,6 @@
 """
 
 import os
-import shutil
 from typing import List, Optional, Dict, Any, Tuple
 from pathlib import Path
 from uuid import UUID
@@ -14,47 +13,45 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func, desc
 from sqlalchemy.orm import selectinload
 
-from ..models.user import User, Subscription
 from ..models.book import Book, ReadingProgress, BookGenre
 from ..models.chapter import Chapter
 from ..models.description import Description, DescriptionType
-from ..models.image import GeneratedImage
-from ..services.book_parser import book_parser, ParsedBook
+from ..services.book_parser import ParsedBook
 from ..services.multi_nlp_manager import multi_nlp_manager
 
 
 class BookService:
     """Сервис для работы с книгами."""
-    
+
     def __init__(self):
         """Инициализация сервиса книг."""
         self.upload_directory = Path("/app/storage/books")
         self.upload_directory.mkdir(parents=True, exist_ok=True)
-    
+
     async def create_book_from_upload(
-        self, 
+        self,
         db: AsyncSession,
         user_id: UUID,
         file_path: str,
         original_filename: str,
-        parsed_book: ParsedBook
+        parsed_book: ParsedBook,
     ) -> Book:
         """
         Создает запись о книге в базе данных на основе загруженного файла.
-        
+
         Args:
             db: Сессия базы данных
             user_id: ID пользователя-владельца
             file_path: Путь к загруженному файлу
             original_filename: Оригинальное название файла
             parsed_book: Результат парсинга книги
-            
+
         Returns:
             Созданный объект Book
         """
         # Проверяем размер файла
         file_size = os.path.getsize(file_path)
-        
+
         # Создаем запись о книге
         book = Book(
             user_id=user_id,
@@ -70,26 +67,26 @@ class BookService:
                 "isbn": parsed_book.metadata.isbn,
                 "publisher": parsed_book.metadata.publisher,
                 "publish_date": parsed_book.metadata.publish_date,
-                "has_cover": parsed_book.metadata.cover_image_data is not None
+                "has_cover": parsed_book.metadata.cover_image_data is not None,
             },
             total_pages=parsed_book.total_pages,
             estimated_reading_time=parsed_book.estimated_reading_time,
             is_parsed=False,
-            parsing_progress=0
+            parsing_progress=0,
         )
-        
+
         db.add(book)
         await db.flush()  # Получаем ID книги
-        
+
         # Сохраняем обложку, если есть
         if parsed_book.metadata.cover_image_data:
             cover_path = await self._save_book_cover(
-                book.id, 
+                book.id,
                 parsed_book.metadata.cover_image_data,
-                parsed_book.metadata.cover_image_type
+                parsed_book.metadata.cover_image_type,
             )
             book.cover_image = str(cover_path)
-        
+
         # Создаем главы
         for chapter_data in parsed_book.chapters:
             chapter = Chapter(
@@ -99,39 +96,35 @@ class BookService:
                 content=chapter_data.content,
                 html_content=chapter_data.html_content,
                 word_count=chapter_data.word_count,
-                estimated_reading_time=max(1, chapter_data.word_count // 200)
+                estimated_reading_time=max(1, chapter_data.word_count // 200),
             )
             db.add(chapter)
-        
+
         # Создаем прогресс чтения для пользователя
         reading_progress = ReadingProgress(
             user_id=user_id,
             book_id=book.id,
             current_chapter=1,
             current_page=1,
-            current_position=0
+            current_position=0,
         )
         db.add(reading_progress)
-        
+
         await db.commit()
         return book
-    
+
     async def get_user_books(
-        self, 
-        db: AsyncSession, 
-        user_id: UUID,
-        skip: int = 0,
-        limit: int = 50
+        self, db: AsyncSession, user_id: UUID, skip: int = 0, limit: int = 50
     ) -> List[Book]:
         """
         Получает список книг пользователя.
-        
+
         Args:
             db: Сессия базы данных
             user_id: ID пользователя
             skip: Количество записей для пропуска
             limit: Максимальное количество записей
-            
+
         Returns:
             Список книг пользователя
         """
@@ -145,21 +138,124 @@ class BookService:
             .limit(limit)
         )
         return result.scalars().all()
-    
+
+    async def get_user_books_with_progress(
+        self, db: AsyncSession, user_id: UUID, skip: int = 0, limit: int = 50
+    ) -> List[Tuple[Book, float]]:
+        """
+        Получает список книг пользователя с предрасчитанным прогрессом чтения.
+
+        ОПТИМИЗАЦИЯ: Использует eager loading для устранения N+1 queries.
+        Вместо 51 запроса (1 для книг + 50 для прогресса) делает всего 2 запроса.
+
+        Args:
+            db: Сессия базы данных
+            user_id: ID пользователя
+            skip: Количество записей для пропуска
+            limit: Максимальное количество записей
+
+        Returns:
+            Список кортежей (Book, reading_progress_percent)
+        """
+        # Запрос 1: Загружаем книги с eager loading relationships
+        result = await db.execute(
+            select(Book)
+            .where(Book.user_id == user_id)
+            .options(selectinload(Book.chapters))
+            .options(selectinload(Book.reading_progress))
+            .order_by(desc(Book.created_at))
+            .offset(skip)
+            .limit(limit)
+        )
+        books = result.scalars().all()
+
+        # Вычисляем прогресс для каждой книги БЕЗ дополнительных запросов
+        books_with_progress = []
+        for book in books:
+            # Используем уже загруженную relationship reading_progress
+            progress_percent = self._calculate_reading_progress_from_loaded_data(
+                book, user_id
+            )
+            books_with_progress.append((book, progress_percent))
+
+        return books_with_progress
+
+    def _calculate_reading_progress_from_loaded_data(
+        self, book: Book, user_id: UUID
+    ) -> float:
+        """
+        Вычисляет прогресс чтения используя уже загруженные relationships.
+
+        ВАЖНО: Не делает дополнительных запросов к БД!
+        Использует book.reading_progress и book.chapters которые уже загружены.
+
+        Args:
+            book: Объект книги с загруженными relationships
+            user_id: ID пользователя
+
+        Returns:
+            Прогресс чтения от 0.0 до 100.0
+        """
+        try:
+            # Находим reading_progress для текущего пользователя
+            # из уже загруженной relationship (NO QUERY!)
+            progress = None
+            for rp in book.reading_progress:
+                if rp.user_id == user_id:
+                    progress = rp
+                    break
+
+            if not progress:
+                return 0.0
+
+            # НОВАЯ ЛОГИКА: Если есть CFI - это EPUB reader с точным процентом
+            if progress.reading_location_cfi:
+                # current_position уже содержит общий процент по всей книге (0-100)
+                current_position = max(
+                    0.0, min(100.0, float(progress.current_position))
+                )
+                return current_position
+
+            # СТАРАЯ ЛОГИКА: Для обратной совместимости со старыми данными без CFI
+            # Используем уже загруженные chapters (NO QUERY!)
+            total_chapters = len(book.chapters) if book.chapters else 0
+
+            if not total_chapters or total_chapters == 0:
+                return 0.0
+
+            # Валидация данных
+            current_chapter = max(1, min(progress.current_chapter, total_chapters))
+            current_position = max(0.0, min(100.0, float(progress.current_position)))
+
+            # Если читает главу за пределами книги, возвращаем 100%
+            if current_chapter > total_chapters:
+                return 100.0
+
+            # Расчет прогресса:
+            # - Завершенные главы: (current_chapter - 1) глав
+            # - Текущая глава: current_position% от 1/total_chapters
+            completed_chapters_progress = ((current_chapter - 1) / total_chapters) * 100
+            current_chapter_progress = (current_position / 100) * (100 / total_chapters)
+
+            total_progress = completed_chapters_progress + current_chapter_progress
+
+            return min(100.0, max(0.0, total_progress))
+        except Exception as e:
+            # В случае любой ошибки возвращаем 0
+            print(f"⚠️ Error calculating reading progress: {e}")
+            return 0.0
+
     async def get_book_by_id(
-        self, 
-        db: AsyncSession, 
-        book_id: UUID,
-        user_id: Optional[UUID] = None
+        self, db: AsyncSession, book_id: UUID, user_id: Optional[UUID] = None
     ) -> Optional[Book]:
         """
         Получает книгу по ID.
-        
+
         Args:
             db: Сессия базы данных
             book_id: ID книги
             user_id: ID пользователя (для проверки доступа)
-            
+
         Returns:
             Объект Book или None
         """
@@ -169,27 +265,24 @@ class BookService:
             .options(selectinload(Book.reading_progress))
             .where(Book.id == book_id)
         )
-        
+
         if user_id:
             query = query.where(Book.user_id == user_id)
-        
+
         result = await db.execute(query)
         return result.scalar_one_or_none()
-    
+
     async def get_book_chapters(
-        self, 
-        db: AsyncSession, 
-        book_id: UUID,
-        user_id: Optional[UUID] = None
+        self, db: AsyncSession, book_id: UUID, user_id: Optional[UUID] = None
     ) -> List[Chapter]:
         """
         Получает главы книги.
-        
+
         Args:
             db: Сессия базы данных
             book_id: ID книги
             user_id: ID пользователя (для проверки доступа)
-            
+
         Returns:
             Список глав
         """
@@ -200,7 +293,7 @@ class BookService:
             )
             if not book_check.scalar_one_or_none():
                 return []
-        
+
         result = await db.execute(
             select(Chapter)
             .where(Chapter.book_id == book_id)
@@ -208,23 +301,23 @@ class BookService:
             .order_by(Chapter.chapter_number)
         )
         return result.scalars().all()
-    
+
     async def get_chapter_by_number(
-        self, 
-        db: AsyncSession, 
+        self,
+        db: AsyncSession,
         book_id: UUID,
         chapter_number: int,
-        user_id: Optional[UUID] = None
+        user_id: Optional[UUID] = None,
     ) -> Optional[Chapter]:
         """
         Получает главу по номеру.
-        
+
         Args:
             db: Сессия базы данных
             book_id: ID книги
             chapter_number: Номер главы
             user_id: ID пользователя (для проверки доступа)
-            
+
         Returns:
             Объект Chapter или None
         """
@@ -235,51 +328,50 @@ class BookService:
             )
             if not book_check.scalar_one_or_none():
                 return None
-        
+
         result = await db.execute(
             select(Chapter)
-            .where(and_(Chapter.book_id == book_id, Chapter.chapter_number == chapter_number))
+            .where(
+                and_(
+                    Chapter.book_id == book_id, Chapter.chapter_number == chapter_number
+                )
+            )
             .options(selectinload(Chapter.descriptions))
         )
         return result.scalar_one_or_none()
-    
+
     async def extract_chapter_descriptions(
-        self, 
-        db: AsyncSession, 
-        chapter_id: UUID
+        self, db: AsyncSession, chapter_id: UUID
     ) -> List[Description]:
         """
         Извлекает описания из главы с помощью NLP и сохраняет в БД.
-        
+
         Args:
             db: Сессия базы данных
             chapter_id: ID главы
-            
+
         Returns:
             Список извлеченных описаний
         """
         # Получаем главу
-        result = await db.execute(
-            select(Chapter).where(Chapter.id == chapter_id)
-        )
+        result = await db.execute(select(Chapter).where(Chapter.id == chapter_id))
         chapter = result.scalar_one_or_none()
         if not chapter:
             raise ValueError(f"Chapter {chapter_id} not found")
-        
+
         # Проверяем, не обработана ли уже глава
         if chapter.is_description_parsed:
             existing_descriptions = await db.execute(
                 select(Description).where(Description.chapter_id == chapter_id)
             )
             return existing_descriptions.scalars().all()
-        
+
         # Извлекаем описания с помощью NLP
         result = await multi_nlp_manager.extract_descriptions(
-            text=chapter.content, 
-            chapter_id=str(chapter_id)
+            text=chapter.content, chapter_id=str(chapter_id)
         )
         nlp_descriptions = result.descriptions
-        
+
         # Сохраняем описания в базу данных
         saved_descriptions = []
         for desc_data in nlp_descriptions:
@@ -291,7 +383,7 @@ class BookService:
                 entities_str = ", ".join(entities_list)
             else:
                 entities_str = ""
-            
+
             description = Description(
                 chapter_id=chapter_id,
                 type=desc_data["type"],
@@ -302,37 +394,38 @@ class BookService:
                 word_count=desc_data["word_count"],
                 priority_score=desc_data["priority_score"],
                 entities_mentioned=entities_str,
-                is_suitable_for_generation=desc_data["confidence_score"] > 0.3  # Минимальный порог
+                is_suitable_for_generation=desc_data["confidence_score"]
+                > 0.3,  # Минимальный порог
             )
-            
+
             db.add(description)
             saved_descriptions.append(description)
-        
+
         # Обновляем статус главы
         chapter.is_description_parsed = True
         chapter.descriptions_found = len(saved_descriptions)
         chapter.parsing_progress = 100
         chapter.parsed_at = datetime.now(timezone.utc)
-        
+
         await db.commit()
         return saved_descriptions
-    
+
     async def get_book_descriptions(
-        self, 
-        db: AsyncSession, 
+        self,
+        db: AsyncSession,
         book_id: UUID,
         description_type: Optional[DescriptionType] = None,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[Description]:
         """
         Получает описания из всех глав книги.
-        
+
         Args:
             db: Сессия базы данных
             book_id: ID книги
             description_type: Фильтр по типу описания
             limit: Максимальное количество описаний
-            
+
         Returns:
             Список описаний, отсортированных по приоритету
         """
@@ -343,13 +436,13 @@ class BookService:
             .order_by(desc(Description.priority_score))
             .limit(limit)
         )
-        
+
         if description_type:
             query = query.where(Description.type == description_type)
-        
+
         result = await db.execute(query)
         return result.scalars().all()
-    
+
     async def update_reading_progress(
         self,
         db: AsyncSession,
@@ -357,7 +450,8 @@ class BookService:
         book_id: UUID,
         chapter_number: int,
         position_percent: float = 0.0,
-        reading_location_cfi: str = None
+        reading_location_cfi: str = None,
+        scroll_offset_percent: float = 0.0,
     ) -> ReadingProgress:
         """
         Обновляет прогресс чтения книги пользователем.
@@ -369,14 +463,13 @@ class BookService:
             chapter_number: Номер текущей главы (начиная с 1)
             position_percent: Процент прочитанного в текущей главе (0.0-100.0)
             reading_location_cfi: CFI (Canonical Fragment Identifier) для epub.js
+            scroll_offset_percent: Точный процент скролла внутри страницы (0.0-100.0)
 
         Returns:
             Объект ReadingProgress
         """
         # Получаем книгу для валидации
-        book_result = await db.execute(
-            select(Book).where(Book.id == book_id)
-        )
+        book_result = await db.execute(select(Book).where(Book.id == book_id))
         book = book_result.scalar_one_or_none()
         if not book:
             raise ValueError(f"Book with id {book_id} not found")
@@ -389,7 +482,11 @@ class BookService:
         total_chapters = len(chapters)
 
         # Валидируем и нормализуем входные данные
-        valid_chapter = max(1, min(chapter_number or 1, total_chapters)) if total_chapters > 0 else 1
+        valid_chapter = (
+            max(1, min(chapter_number or 1, total_chapters))
+            if total_chapters > 0
+            else 1
+        )
         valid_position = max(0.0, min(100.0, float(position_percent or 0.0)))
 
         # Для обратной совместимости сохраняем current_page = 1
@@ -398,8 +495,12 @@ class BookService:
 
         # Ищем существующий прогресс
         result = await db.execute(
-            select(ReadingProgress)
-            .where(and_(ReadingProgress.user_id == user_id, ReadingProgress.book_id == book_id))
+            select(ReadingProgress).where(
+                and_(
+                    ReadingProgress.user_id == user_id,
+                    ReadingProgress.book_id == book_id,
+                )
+            )
         )
         progress = result.scalar_one_or_none()
 
@@ -411,7 +512,8 @@ class BookService:
                 current_chapter=valid_chapter,
                 current_page=valid_page,
                 current_position=valid_position,  # Теперь хранит процент 0-100
-                reading_location_cfi=reading_location_cfi  # CFI для epub.js
+                reading_location_cfi=reading_location_cfi,  # CFI для epub.js
+                scroll_offset_percent=scroll_offset_percent,  # Точный скролл внутри страницы
             )
             db.add(progress)
         else:
@@ -420,6 +522,9 @@ class BookService:
             progress.current_page = valid_page
             progress.current_position = valid_position  # Теперь хранит процент 0-100
             progress.reading_location_cfi = reading_location_cfi  # CFI для epub.js
+            progress.scroll_offset_percent = (
+                scroll_offset_percent  # Точный скролл внутри страницы
+            )
             progress.last_read_at = datetime.now(timezone.utc)
 
         # Обновляем время последнего доступа к книге
@@ -429,69 +534,63 @@ class BookService:
 
         await db.commit()
         return progress
-    
-    async def delete_book(
-        self, 
-        db: AsyncSession, 
-        book_id: UUID,
-        user_id: UUID
-    ) -> bool:
+
+    async def delete_book(self, db: AsyncSession, book_id: UUID, user_id: UUID) -> bool:
         """
         Удаляет книгу и все связанные данные.
-        
+
         Args:
             db: Сессия базы данных
             book_id: ID книги
             user_id: ID пользователя (для проверки прав)
-            
+
         Returns:
             True если книга успешно удалена
         """
         # Получаем книгу с проверкой прав доступа
         result = await db.execute(
-            select(Book)
-            .where(and_(Book.id == book_id, Book.user_id == user_id))
+            select(Book).where(and_(Book.id == book_id, Book.user_id == user_id))
         )
         book = result.scalar_one_or_none()
-        
+
         if not book:
             return False
-        
+
         # Удаляем файл книги
         try:
             if os.path.exists(book.file_path):
                 os.remove(book.file_path)
         except Exception as e:
             print(f"Warning: Could not delete book file {book.file_path}: {e}")
-        
+
         # Удаляем обложку
         try:
             if book.cover_image and os.path.exists(book.cover_image):
                 os.remove(book.cover_image)
         except Exception as e:
             print(f"Warning: Could not delete cover image {book.cover_image}: {e}")
-        
+
         # Удаляем запись из БД (cascade удалит связанные записи)
         db.delete(book)  # delete() не async в AsyncSession
         await db.commit()
-        
+
         return True
-    
+
     def _map_genre(self, genre_string: str) -> str:
         """
         Маппит строку жанра в значение перечисления BookGenre.
-        
+
         Args:
             genre_string: Строка жанра из метаданных
-            
+
         Returns:
             Значение BookGenre
         """
         if not genre_string:
             return BookGenre.OTHER.value
-        
+
         genre_lower = genre_string.lower()
-        
+
         # Простой маппинг жанров
         genre_mapping = {
             "fantasy": BookGenre.FANTASY.value,
@@ -511,29 +610,26 @@ class BookService:
             "horror": BookGenre.HORROR.value,
             "ужасы": BookGenre.HORROR.value,
             "classic": BookGenre.CLASSIC.value,
-            "классика": BookGenre.CLASSIC.value
+            "классика": BookGenre.CLASSIC.value,
         }
-        
+
         for keyword, genre in genre_mapping.items():
             if keyword in genre_lower:
                 return genre
-        
+
         return BookGenre.OTHER.value
-    
+
     async def _save_book_cover(
-        self, 
-        book_id: UUID, 
-        image_data: bytes, 
-        content_type: str
+        self, book_id: UUID, image_data: bytes, content_type: str
     ) -> Path:
         """
         Сохраняет обложку книги.
-        
+
         Args:
             book_id: ID книги
             image_data: Данные изображения
             content_type: MIME-тип изображения
-            
+
         Returns:
             Путь к сохраненному файлу
         """
@@ -543,32 +639,30 @@ class BookService:
             extension = "png"
         elif "webp" in content_type:
             extension = "webp"
-        
+
         # Создаем директорию для обложек
         covers_dir = self.upload_directory / "covers"
         covers_dir.mkdir(exist_ok=True)
-        
+
         # Путь к файлу обложки
         cover_path = covers_dir / f"{book_id}.{extension}"
-        
+
         # Сохраняем файл
         with open(cover_path, "wb") as f:
             f.write(image_data)
-        
+
         return cover_path
-    
+
     async def get_book_statistics(
-        self, 
-        db: AsyncSession, 
-        user_id: UUID
+        self, db: AsyncSession, user_id: UUID
     ) -> Dict[str, Any]:
         """
         Получает статистику книг пользователя.
-        
+
         Args:
             db: Сессия базы данных
             user_id: ID пользователя
-            
+
         Returns:
             Словарь со статистикой
         """
@@ -577,21 +671,23 @@ class BookService:
             select(func.count(Book.id)).where(Book.user_id == user_id)
         )
         total_books_count = total_books.scalar()
-        
+
         # Количество прочитанных страниц
         total_pages_read = await db.execute(
-            select(func.sum(ReadingProgress.current_page))
-            .where(ReadingProgress.user_id == user_id)
+            select(func.sum(ReadingProgress.current_page)).where(
+                ReadingProgress.user_id == user_id
+            )
         )
         pages_read = total_pages_read.scalar() or 0
-        
+
         # Общее время чтения
         total_reading_time = await db.execute(
-            select(func.sum(ReadingProgress.reading_time_minutes))
-            .where(ReadingProgress.user_id == user_id)
+            select(func.sum(ReadingProgress.reading_time_minutes)).where(
+                ReadingProgress.user_id == user_id
+            )
         )
         reading_time = total_reading_time.scalar() or 0
-        
+
         # Количество описаний по типам
         descriptions_by_type = await db.execute(
             select(Description.type, func.count(Description.id))
@@ -600,17 +696,17 @@ class BookService:
             .where(Book.user_id == user_id)
             .group_by(Description.type)
         )
-        
+
         descriptions_stats = {}
         for desc_type, count in descriptions_by_type.fetchall():
             descriptions_stats[desc_type.value] = count
-        
+
         return {
             "total_books": total_books_count,
             "total_pages_read": pages_read,
             "total_reading_time_hours": round(reading_time / 60, 1),
             "descriptions_extracted": sum(descriptions_stats.values()),
-            "descriptions_by_type": descriptions_stats
+            "descriptions_by_type": descriptions_stats,
         }
 
 

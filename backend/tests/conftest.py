@@ -7,13 +7,14 @@ from sqlalchemy.orm import sessionmaker
 from unittest.mock import AsyncMock
 
 from app.main import app
-from app.core.database import get_database
-from app.models import Base
-from app.core.config import get_settings
+from app.core.database import get_database_session, Base
+from app.core.config import settings
+from app.models import User, Book, Chapter, Description, GeneratedImage
 
 
-# Test database URL
-TEST_DATABASE_URL = "sqlite+aiosqlite:///./test_bookreader.db"
+# Test database URL - using PostgreSQL since models use UUID type
+# This connects to the same postgres container but with a test database
+TEST_DATABASE_URL = "postgresql+asyncpg://postgres:postgres123@postgres:5432/bookreader_test"
 
 # Create test engine
 test_engine = create_async_engine(
@@ -57,11 +58,11 @@ async def db_session(test_db):
 
 @pytest_asyncio.fixture(scope="function")
 async def override_get_database(db_session):
-    """Override the get_database dependency."""
+    """Override the get_database_session dependency."""
     def _override_get_database():
         yield db_session
-    
-    app.dependency_overrides[get_database] = _override_get_database
+
+    app.dependency_overrides[get_database_session] = _override_get_database
     yield
     app.dependency_overrides.clear()
 
@@ -125,6 +126,67 @@ def sample_book_data():
     }
 
 
+@pytest_asyncio.fixture
+async def test_user(db_session: AsyncSession, sample_user_data):
+    """Create a test user in database."""
+    from app.models.user import User
+    from app.services.auth_service import AuthService
+
+    auth_service = AuthService()
+    user = User(
+        email=sample_user_data["email"],
+        full_name=sample_user_data["full_name"],
+        password_hash=auth_service.get_password_hash(sample_user_data["password"])
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+async def test_book(db_session: AsyncSession, test_user: User):
+    """Create a test book in database."""
+    from app.models.book import Book, BookGenre
+
+    book = Book(
+        user_id=test_user.id,
+        title="Test Book",
+        author="Test Author",
+        genre=BookGenre.FICTION,
+        language="ru",
+        file_path="/tmp/test.epub",
+        file_format="epub",
+        file_size=1024000,
+        total_pages=100,
+        estimated_reading_time=50,
+        is_parsed=True
+    )
+    db_session.add(book)
+    await db_session.commit()
+    await db_session.refresh(book)
+    return book
+
+
+@pytest_asyncio.fixture
+async def test_chapter(db_session: AsyncSession, test_book: Book):
+    """Create a test chapter in database."""
+    from app.models.chapter import Chapter
+
+    chapter = Chapter(
+        book_id=test_book.id,
+        chapter_number=1,
+        title="Chapter 1",
+        content="This is a test chapter content with a beautiful forest and tall trees.",
+        html_content="<p>This is a test chapter content with a beautiful forest and tall trees.</p>",
+        word_count=15
+    )
+    db_session.add(chapter)
+    await db_session.commit()
+    await db_session.refresh(chapter)
+    return chapter
+
+
 @pytest.fixture
 def sample_chapter_data():
     """Sample chapter data for testing."""
@@ -169,12 +231,9 @@ def authenticated_headers(client, sample_user_data):
 
 
 # Test settings override
-@pytest.fixture(autouse=True)
+# Note: Settings object is a Pydantic BaseSettings which is immutable
+# Tests use TEST_DATABASE_URL configured in test engine above
+@pytest.fixture(autouse=False)
 def override_settings():
-    """Override settings for testing."""
-    settings = get_settings()
-    settings.database_url = TEST_DATABASE_URL
-    settings.environment = "test"
-    settings.secret_key = "test-secret-key"
-    settings.jwt_secret_key = "test-jwt-secret"
+    """Override settings for testing (disabled - Pydantic settings are immutable)."""
     yield settings

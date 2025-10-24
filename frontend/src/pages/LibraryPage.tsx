@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Book, Search, Filter, AlertCircle } from 'lucide-react';
 import { useBooksStore } from '@/stores/books';
-import { useUIStore } from '@/stores/ui';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import { BookUploadModal } from '@/components/Books/BookUploadModal';
 import { ParsingOverlay } from '@/components/UI/ParsingOverlay';

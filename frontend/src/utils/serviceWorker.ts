@@ -1,7 +1,9 @@
 // Service Worker Registration and Management
 import { useUIStore } from '@/stores/ui';
 
-const isLocalhost = Boolean(
+// Reserved for future localhost-specific logic
+// @ts-expect-error - Prepared for future feature, intentionally unused
+const _isLocalhost = Boolean(
   window.location.hostname === 'localhost' ||
   window.location.hostname === '[::1]' ||
   window.location.hostname.match(
@@ -30,14 +32,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
                 // New content available
                 notify.info(
                   'App Update Available',
-                  'New content is available. Refresh to update.',
-                  {
-                    duration: 10000,
-                    action: {
-                      label: 'Refresh',
-                      onClick: () => window.location.reload(),
-                    },
-                  }
+                  'New content is available. Refresh to update.'
                 );
               } else {
                 // Content cached for offline use
@@ -93,8 +88,12 @@ export function checkServiceWorkerUpdate(): void {
 }
 
 export function skipWaiting(): void {
-  if ('serviceWorker' in navigator && navigator.serviceWorker.waiting) {
-    navigator.serviceWorker.waiting.postMessage({ type: 'SKIP_WAITING' });
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistration().then(registration => {
+      if (registration?.waiting) {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+    });
   }
 }
 
@@ -224,9 +223,10 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription |
   try {
     const registration = await navigator.serviceWorker.ready;
     
+    const vapidKey = urlBase64ToUint8Array(process.env.REACT_APP_VAPID_PUBLIC_KEY || '');
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(process.env.REACT_APP_VAPID_PUBLIC_KEY || ''),
+      applicationServerKey: vapidKey as unknown as ArrayBuffer,
     });
 
     console.log('Push subscription:', subscription);
