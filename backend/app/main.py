@@ -12,7 +12,7 @@ import uvicorn
 from datetime import datetime, timezone
 from typing import Dict, Any
 
-from .routers import users, nlp, books, auth, images, admin
+from .routers import users, nlp, books, auth, images, admin, chapters, reading_progress, descriptions
 from .core.config import settings
 from .services.settings_manager import settings_manager
 from .services.multi_nlp_manager import multi_nlp_manager
@@ -42,9 +42,14 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(users.router, prefix="/api/v1", tags=["users"])
 app.include_router(nlp.router, prefix="/api/v1", tags=["nlp"])
-app.include_router(books.router, prefix="/api/v1/books", tags=["books"])
 app.include_router(images.router, prefix="/api/v1", tags=["images"])
 app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
+
+# Books routers (refactored into focused modules)
+app.include_router(books.router, prefix="/api/v1/books", tags=["books"])
+app.include_router(chapters.router, prefix="/api/v1/books", tags=["chapters"])
+app.include_router(reading_progress.router, prefix="/api/v1/books", tags=["reading_progress"])
+app.include_router(descriptions.router, prefix="/api/v1/books", tags=["descriptions"])
 
 
 @app.on_event("startup")

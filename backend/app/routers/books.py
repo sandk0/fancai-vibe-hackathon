@@ -1,5 +1,14 @@
 """
-API роуты для работы с книгами в BookReader AI.
+API роуты для работы с книгами в BookReader AI (Core CRUD operations).
+
+Этот модуль содержит базовые CRUD операции для книг:
+- Загрузка книг
+- Получение списка книг
+- Получение деталей книги
+- Скачивание файлов книг
+- Получение обложек
+- Валидация и превью
+- Обработка книг
 """
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
@@ -18,14 +27,15 @@ from ..services.nlp_processor import nlp_processor
 from ..services.book_service import book_service
 from ..models.book import Book
 from ..models.user import User
-from ..models.description import Description
-from ..models.image import GeneratedImage
 from ..core.tasks import process_book_task
 import shutil
 from uuid import uuid4, UUID
 
 
 router = APIRouter()
+
+
+# ==================== Testing & Debug Endpoints ====================
 
 
 @router.get("/simple-test")
@@ -38,6 +48,21 @@ async def simple_test():
 async def test_with_params(skip: int = 0, limit: int = 12):
     """Test with query parameters like main endpoint"""
     return {"status": "ok", "skip": skip, "limit": limit}
+
+
+@router.post("/debug-upload")
+async def debug_upload_book(file: UploadFile = File(None)) -> Dict[str, Any]:
+    """Debug endpoint to check what frontend sends."""
+    print(f"[DEBUG] File received: {file}")
+    if file:
+        print(f"[DEBUG] File name: {file.filename}")
+        print(f"[DEBUG] File type: {file.content_type}")
+    else:
+        print("[DEBUG] No file received")
+    return {"debug": "ok", "has_file": file is not None}
+
+
+# ==================== Validation & Preview Endpoints ====================
 
 
 @router.get("/parser-status")
@@ -67,6 +92,9 @@ async def validate_book_file(file: UploadFile = File(...)) -> Dict[str, Any]:
 
     Returns:
         Результат валидации файла
+
+    Raises:
+        HTTPException: 400 если файл невалидный
     """
     # Проверяем базовые параметры файла
     if not file.filename:
@@ -113,7 +141,7 @@ async def validate_book_file(file: UploadFile = File(...)) -> Dict[str, Any]:
         try:
             os.unlink(temp_file_path)
         except OSError:
-            pass  # File already deleted or doesn't exist
+            pass
 
 
 @router.post("/parse-preview")
@@ -126,6 +154,9 @@ async def parse_book_preview(file: UploadFile = File(...)) -> Dict[str, Any]:
 
     Returns:
         Метаданные и превью содержимого книги
+
+    Raises:
+        HTTPException: 400 если файл невалидный
     """
     # Валидируем файл
     if not file.filename:
@@ -204,111 +235,10 @@ async def parse_book_preview(file: UploadFile = File(...)) -> Dict[str, Any]:
         try:
             os.unlink(temp_file_path)
         except OSError:
-            pass  # File already deleted or doesn't exist
+            pass
 
 
-@router.post("/analyze-chapter")
-async def analyze_chapter_content(
-    file: UploadFile = File(...), chapter_number: int = 1
-) -> Dict[str, Any]:
-    """
-    Анализирует конкретную главу книги с помощью NLP.
-
-    Args:
-        file: Загруженный файл книги
-        chapter_number: Номер главы для анализа
-
-    Returns:
-        NLP анализ главы с извлеченными описаниями
-    """
-    if not nlp_processor.is_available():
-        raise HTTPException(status_code=503, detail="NLP processor is not available")
-
-    # Парсим книгу (как в предыдущем endpoint)
-    file_content = await file.read()
-    file_extension = Path(file.filename).suffix.lower()
-
-    with tempfile.NamedTemporaryFile(suffix=file_extension, delete=False) as temp_file:
-        temp_file.write(file_content)
-        temp_file_path = temp_file.name
-
-    try:
-        parsed_book = book_parser.parse_book(temp_file_path)
-
-        # Находим нужную главу
-        target_chapter = None
-        for chapter in parsed_book.chapters:
-            if chapter.number == chapter_number:
-                target_chapter = chapter
-                break
-
-        if not target_chapter:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Chapter {chapter_number} not found. Available chapters: 1-{len(parsed_book.chapters)}",
-            )
-
-        # Анализируем главу с помощью NLP
-        descriptions = nlp_processor.extract_descriptions_from_text(
-            target_chapter.content, str(target_chapter.number)
-        )
-
-        # Статистика по типам описаний
-        type_stats = {}
-        for desc in descriptions:
-            desc_type = desc["type"].value
-            if desc_type not in type_stats:
-                type_stats[desc_type] = 0
-            type_stats[desc_type] += 1
-
-        return {
-            "chapter_info": {
-                "number": target_chapter.number,
-                "title": target_chapter.title,
-                "word_count": target_chapter.word_count,
-                "content_preview": target_chapter.content[:300] + "...",
-            },
-            "nlp_analysis": {
-                "total_descriptions": len(descriptions),
-                "by_type": type_stats,
-                "descriptions": [
-                    {
-                        "type": desc["type"].value,
-                        "content": desc["content"],
-                        "confidence_score": round(desc["confidence_score"], 3),
-                        "priority_score": round(desc["priority_score"], 2),
-                        "entities_mentioned": desc["entities_mentioned"],
-                    }
-                    for desc in descriptions[:10]  # Топ-10 описаний
-                ],
-            },
-            "message": f"Chapter {chapter_number} analyzed: {len(descriptions)} descriptions extracted",
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error analyzing chapter: {str(e)}"
-        )
-
-    finally:
-        try:
-            os.unlink(temp_file_path)
-        except OSError:
-            pass  # File already deleted or doesn't exist
-
-
-@router.post("/debug-upload")
-async def debug_upload_book(file: UploadFile = File(None)) -> Dict[str, Any]:
-    """Debug endpoint to check what frontend sends."""
-    print(f"[DEBUG] File received: {file}")
-    if file:
-        print(f"[DEBUG] File name: {file.filename}")
-        print(f"[DEBUG] File type: {file.content_type}")
-    else:
-        print("[DEBUG] No file received")
-    return {"debug": "ok", "has_file": file is not None}
+# ==================== Core CRUD Endpoints ====================
 
 
 @router.post("/upload")
@@ -327,12 +257,12 @@ async def upload_book(
 
     Returns:
         Информация о загруженной и обработанной книге
-    """
 
+    Raises:
+        HTTPException: 400 если файл невалидный
+    """
     print(f"[UPLOAD] Request received from user: {current_user.email}")
     print(f"[UPLOAD] File info: name={file.filename}, type={file.content_type}")
-    print(f"[UPLOAD] File object: {file}")
-    print("[UPLOAD] File size check...")
 
     # Валидируем файл
     if not file.filename:
@@ -355,7 +285,6 @@ async def upload_book(
     if file_size > 50 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File too large (max 50MB)")
 
-    print("[UPLOAD] Creating temporary file...")
     # Создаем временный файл для парсинга
     with tempfile.NamedTemporaryFile(suffix=file_extension, delete=False) as temp_file:
         temp_file.write(file_content)
@@ -368,9 +297,7 @@ async def upload_book(
         print(f"[UPLOAD] Book parsed successfully: {parsed_book.metadata.title}")
 
         # Создаем постоянное хранилище для файла
-        storage_dir = Path(
-            "/app/storage/books"
-        )  # Используем тот же путь, что и в book_service
+        storage_dir = Path("/app/storage/books")
         storage_dir.mkdir(parents=True, exist_ok=True)
 
         permanent_path = storage_dir / f"{uuid4()}{file_extension}"
@@ -420,7 +347,7 @@ async def upload_book(
             if os.path.exists(temp_file_path):
                 os.unlink(temp_file_path)
         except OSError:
-            pass  # File already deleted or doesn't exist
+            pass
 
         raise HTTPException(status_code=500, detail=f"Error processing book: {str(e)}")
 
@@ -432,9 +359,6 @@ async def get_user_books(
     db: AsyncSession = Depends(get_database_session),
     current_user: User = Depends(get_current_active_user),
 ) -> Dict[str, Any]:
-    print(
-        f"[BOOKS ENDPOINT] FUNCTION CALLED - user={current_user.id}, skip={skip}, limit={limit}"
-    )
     """
     Получает список книг пользователя.
 
@@ -449,14 +373,8 @@ async def get_user_books(
     """
     print(f"[BOOKS ENDPOINT] Starting books request for user {current_user.id}")
     try:
-        print(
-            f"[BOOKS ENDPOINT] Getting books for user {current_user.id} (type: {type(current_user.id)}) (skip={skip}, limit={limit})"
-        )
-
         # ОПТИМИЗАЦИЯ: Получаем книги пользователя с предрасчитанным прогрессом
         # Использует eager loading, чтобы избежать N+1 queries
-        # Было: 51 запроса (1 для книг + 50 для прогресса)
-        # Стало: 2 запроса (1 для книг + 1 для всех relationships)
         books_with_progress = await book_service.get_user_books_with_progress(
             db, current_user.id, skip, limit
         )
@@ -499,30 +417,6 @@ async def get_user_books(
                 )
             except Exception as e:
                 print(f"[BOOKS ENDPOINT] Error processing book {book.id}: {e}")
-                # Добавляем книгу с базовыми данными
-                books_data.append(
-                    {
-                        "id": str(book.id),
-                        "title": book.title,
-                        "author": book.author or "Неизвестный автор",
-                        "genre": book.genre,
-                        "language": book.language,
-                        "description": book.description or "",
-                        "total_pages": book.total_pages,
-                        "estimated_reading_time_hours": 0.0,
-                        "chapters_count": 0,
-                        "reading_progress_percent": 0.0,
-                        "has_cover": bool(book.cover_image),
-                        "is_parsed": book.is_parsed,
-                        "parsing_progress": book.parsing_progress,
-                        "created_at": book.created_at.isoformat()
-                        if book.created_at
-                        else None,
-                        "last_accessed": book.last_accessed.isoformat()
-                        if book.last_accessed
-                        else None,
-                    }
-                )
 
         # Получаем общее количество книг для пагинации
         total_books_result = await db.execute(
@@ -557,8 +451,10 @@ async def get_book(
 
     Returns:
         Подробная информация о книге
-    """
 
+    Raises:
+        HTTPException: 404 если книга не найдена
+    """
     try:
         book = await book_service.get_book_by_id(
             db=db, book_id=book_id, user_id=current_user.id
@@ -647,6 +543,9 @@ async def get_book_file(
 
     Returns:
         FileResponse с EPUB файлом
+
+    Raises:
+        HTTPException: 404 если книга или файл не найден
     """
     try:
         book = await book_service.get_book_by_id(
@@ -675,358 +574,49 @@ async def get_book_file(
         )
 
 
-@router.get("/{book_id}/chapters/{chapter_number}")
-async def get_chapter(
-    book_id: UUID,
-    chapter_number: int,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
+@router.get("/{book_id}/cover")
+async def get_book_cover(
+    book_id: UUID, db: AsyncSession = Depends(get_database_session)
+):
     """
-    Получает содержимое конкретной главы книги.
+    Получает обложку книги.
 
     Args:
         book_id: ID книги
-        chapter_number: Номер главы
-        current_user: Текущий аутентифицированный пользователь
         db: Сессия базы данных
 
     Returns:
-        Содержимое главы с навигационной информацией
-    """
+        Файл обложки книги
 
+    Raises:
+        HTTPException: 404 если книга или обложка не найдена
+    """
     try:
-        # Проверяем, что книга принадлежит пользователю
-        book = await book_service.get_book_by_id(
-            db=db, book_id=book_id, user_id=current_user.id
-        )
+        # Получаем книгу по ID (без проверки владельца для публичного доступа к обложке)
+        result = await db.execute(select(Book).where(Book.id == book_id))
+        book = result.scalar_one_or_none()
 
         if not book:
             raise HTTPException(status_code=404, detail="Book not found")
 
-        # Ищем главу
-        chapter = None
-        for c in book.chapters:
-            if c.chapter_number == chapter_number:
-                chapter = c
-                break
+        # Проверяем, есть ли обложка
+        if not book.cover_image or not os.path.exists(book.cover_image):
+            raise HTTPException(status_code=404, detail="Cover image not found")
 
-        if not chapter:
-            raise HTTPException(
-                status_code=404, detail=f"Chapter {chapter_number} not found"
-            )
-
-        # Получаем описания для этой главы с изображениями (лимитируем до 50)
-        descriptions_result = await db.execute(
-            select(Description, GeneratedImage)
-            .outerjoin(GeneratedImage, Description.id == GeneratedImage.description_id)
-            .where(Description.chapter_id == chapter.id)
-            .order_by(Description.priority_score.desc())
-            .limit(
-                50
-            )  # Лимитируем количество описаний для предотвращения проблем с памятью
+        # Возвращаем файл обложки
+        return FileResponse(
+            path=book.cover_image,
+            media_type="image/jpeg",
+            filename=f"{book.title}_cover.jpg",
         )
-
-        descriptions_data = []
-        descriptions_rows = descriptions_result.fetchall()
-
-        for description, generated_image in descriptions_rows:
-            # Упрощенная структура данных для уменьшения потребления памяти
-            desc_data = {
-                "id": str(description.id),
-                "type": description.type.value,
-                "content": description.content,
-                "confidence_score": description.confidence_score,
-                "priority_score": description.priority_score,
-                "position_in_chapter": description.position_in_chapter,
-            }
-
-            # Добавляем изображение только если оно есть
-            if generated_image:
-                desc_data["generated_image"] = {
-                    "id": str(generated_image.id),
-                    "image_url": generated_image.image_url,
-                    "created_at": generated_image.created_at.isoformat(),
-                }
-
-            descriptions_data.append(desc_data)
-
-        # Навигационная информация
-        has_previous = chapter_number > 1
-        has_next = chapter_number < len(book.chapters)
-        previous_chapter = chapter_number - 1 if has_previous else None
-        next_chapter = chapter_number + 1 if has_next else None
-
-        return {
-            "chapter": {
-                "id": str(chapter.id),
-                "number": chapter.chapter_number,
-                "title": chapter.title,
-                "content": chapter.content,
-                "html_content": chapter.html_content,
-                "word_count": chapter.word_count,
-                "estimated_reading_time_minutes": chapter.estimated_reading_time,
-            },
-            "descriptions": descriptions_data,
-            "navigation": {
-                "has_previous": has_previous,
-                "has_next": has_next,
-                "previous_chapter": previous_chapter,
-                "next_chapter": next_chapter,
-            },
-            "book_info": {
-                "id": str(book.id),
-                "title": book.title,
-                "author": book.author,
-                "total_chapters": len(book.chapters),
-            },
-        }
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching chapter: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching cover: {str(e)}")
 
 
-@router.get("/{book_id}/chapters/{chapter_number}/descriptions")
-async def get_chapter_descriptions(
-    book_id: UUID,
-    chapter_number: int,
-    extract_new: bool = False,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
-    """
-    Получает описания для конкретной главы книги.
-
-    Args:
-        book_id: ID книги
-        chapter_number: Номер главы
-        extract_new: Извлечь новые описания (перепарсить главу)
-        current_user: Текущий аутентифицированный пользователь
-        db: Сессия базы данных
-
-    Returns:
-        NLP анализ главы с описаниями
-    """
-
-    try:
-        print("[DEBUG] get_chapter_descriptions called:")
-        print(f"[DEBUG]   book_id: {book_id}")
-        print(f"[DEBUG]   chapter_number: {chapter_number}")
-        print(f"[DEBUG]   current_user.id: {current_user.id}")
-        print(f"[DEBUG]   current_user.email: {current_user.email}")
-
-        # Проверяем, что книга принадлежит пользователю
-        book = await book_service.get_book_by_id(
-            db=db, book_id=book_id, user_id=current_user.id
-        )
-        print(f"[DEBUG] Book found: {book is not None}")
-
-        if not book:
-            raise HTTPException(status_code=404, detail="Book not found")
-
-        # Ищем главу
-        chapter = None
-        print(f"[DEBUG] Searching for chapter {chapter_number} in book {book_id}")
-        print(f"[DEBUG] Book has {len(book.chapters)} chapters loaded")
-        for c in book.chapters:
-            print(f"[DEBUG] Checking chapter: {c.chapter_number}")
-            if c.chapter_number == chapter_number:
-                chapter = c
-                break
-
-        if not chapter:
-            print(f"[DEBUG] Chapter {chapter_number} not found in book!")
-            raise HTTPException(
-                status_code=404, detail=f"Chapter {chapter_number} not found"
-            )
-
-        # Если требуется извлечь новые описания
-        if extract_new:
-            if not nlp_processor.is_available():
-                raise HTTPException(
-                    status_code=503, detail="NLP processor is not available"
-                )
-
-            # Удаляем старые описания для этой главы
-            await db.execute(
-                select(Description).where(Description.chapter_id == chapter.id)
-            )
-            old_descriptions = (
-                (
-                    await db.execute(
-                        select(Description).where(Description.chapter_id == chapter.id)
-                    )
-                )
-                .scalars()
-                .all()
-            )
-
-            for old_desc in old_descriptions:
-                await db.delete(old_desc)
-
-            # Извлекаем описания из контента главы
-            descriptions_data = nlp_processor.extract_descriptions_from_text(
-                chapter.content, str(chapter.chapter_number)
-            )
-
-            # Сохраняем новые описания в базе
-            for desc_data in descriptions_data:
-                new_description = Description(
-                    chapter_id=chapter.id,
-                    type=desc_data["type"],
-                    content=desc_data["content"],
-                    confidence_score=desc_data["confidence_score"],
-                    priority_score=desc_data["priority_score"],
-                    entities_mentioned=desc_data.get("entities_mentioned", []),
-                    position_in_chapter=desc_data.get("position_in_chapter", 0),
-                )
-                db.add(new_description)
-
-            await db.commit()
-            await db.refresh(chapter)
-
-        # Получаем описания для этой главы
-        descriptions_result = await db.execute(
-            select(Description)
-            .where(Description.chapter_id == chapter.id)
-            .order_by(Description.priority_score.desc())
-        )
-
-        descriptions = descriptions_result.scalars().all()
-
-        # Статистика по типам описаний
-        type_stats = {}
-        for desc in descriptions:
-            desc_type = desc.type.value
-            if desc_type not in type_stats:
-                type_stats[desc_type] = 0
-            type_stats[desc_type] += 1
-
-        # Формируем ответ
-        descriptions_data = []
-        for desc in descriptions:
-            descriptions_data.append(
-                {
-                    "id": str(desc.id),
-                    "type": desc.type.value,
-                    "text": desc.content,  # Добавляем text как алиас для content
-                    "content": desc.content,
-                    "confidence_score": desc.confidence_score,
-                    "priority_score": desc.priority_score,
-                    "entities_mentioned": desc.entities_mentioned or [],
-                    "position_in_chapter": desc.position_in_chapter,
-                }
-            )
-
-        return {
-            "chapter_info": {
-                "id": str(chapter.id),
-                "number": chapter.chapter_number,
-                "title": chapter.title,
-                "word_count": chapter.word_count,
-            },
-            "nlp_analysis": {
-                "total_descriptions": len(descriptions),
-                "by_type": type_stats,
-                "descriptions": descriptions_data,
-            },
-            "message": f"Found {len(descriptions)} descriptions in chapter {chapter_number}",
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error fetching chapter descriptions: {str(e)}"
-        )
-
-
-@router.post("/{book_id}/progress")
-async def update_reading_progress(
-    book_id: UUID,
-    progress_data: dict,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
-    """
-    Обновляет прогресс чтения книги пользователем.
-
-    Args:
-        book_id: ID книги
-        progress_data: Данные прогресса:
-            - current_chapter: номер текущей главы (обязательно)
-            - current_position_percent: процент прочитанного в главе 0-100 (опционально)
-            - current_page: номер страницы для обратной совместимости (опционально)
-        current_user: Текущий аутентифицированный пользователь
-        db: Сессия базы данных
-
-    Returns:
-        Обновленный прогресс чтения
-    """
-
-    try:
-        # Проверяем, что книга принадлежит пользователю
-        book = await book_service.get_book_by_id(
-            db=db, book_id=book_id, user_id=current_user.id
-        )
-
-        if not book:
-            raise HTTPException(status_code=404, detail="Book not found")
-
-        current_chapter = max(1, progress_data.get("current_chapter", 1))
-
-        # Получаем CFI если передан (для epub.js)
-        reading_location_cfi = progress_data.get("reading_location_cfi")
-
-        # Получаем scroll_offset_percent если передан (для точного восстановления позиции)
-        scroll_offset_percent = progress_data.get("scroll_offset_percent", 0.0)
-        scroll_offset_percent = max(0.0, min(100.0, float(scroll_offset_percent)))
-
-        # Поддерживаем оба формата: новый (current_position_percent) и старый (current_page)
-        position_percent = progress_data.get("current_position_percent")
-        if position_percent is None:
-            # Обратная совместимость: если передали current_page, игнорируем его
-            # и устанавливаем позицию в 0% (начало главы)
-            position_percent = 0.0
-
-        position_percent = max(0.0, min(100.0, float(position_percent)))
-
-        # Обновляем прогресс чтения
-        progress = await book_service.update_reading_progress(
-            db=db,
-            user_id=current_user.id,
-            book_id=book_id,
-            chapter_number=current_chapter,
-            position_percent=position_percent,
-            reading_location_cfi=reading_location_cfi,
-            scroll_offset_percent=scroll_offset_percent,
-        )
-
-        return {
-            "progress": {
-                "id": str(progress.id),
-                "current_chapter": progress.current_chapter,
-                "current_page": progress.current_page,
-                "current_position": progress.current_position,
-                "reading_location_cfi": progress.reading_location_cfi,
-                "scroll_offset_percent": progress.scroll_offset_percent,
-                "reading_time_minutes": progress.reading_time_minutes,
-                "reading_speed_wpm": progress.reading_speed_wpm,
-                "last_read_at": progress.last_read_at.isoformat()
-                if progress.last_read_at
-                else None,
-            },
-            "message": "Reading progress updated successfully",
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error updating progress: {str(e)}"
-        )
+# ==================== Processing Endpoints ====================
 
 
 @router.post("/{book_id}/process")
@@ -1045,6 +635,9 @@ async def process_book_descriptions(
 
     Returns:
         Статус запуска обработки
+
+    Raises:
+        HTTPException: 404 если книга не найдена
     """
     try:
         # Проверяем, что книга принадлежит пользователю
@@ -1155,6 +748,9 @@ async def get_parsing_status(
 
     Returns:
         Статус парсинга и прогресс
+
+    Raises:
+        HTTPException: 404 если книга не найдена
     """
     print(f"[PARSING-STATUS] Request for book_id={book_id}, user={current_user.email}")
     try:
@@ -1201,119 +797,3 @@ async def get_parsing_status(
         raise HTTPException(
             status_code=500, detail=f"Error fetching parsing status: {str(e)}"
         )
-
-
-@router.get("/{book_id}/progress")
-async def get_reading_progress(
-    book_id: UUID,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
-    """
-    Получает прогресс чтения книги пользователем.
-
-    Args:
-        book_id: ID книги
-        current_user: Текущий аутентифицированный пользователь
-        db: Сессия базы данных
-
-    Returns:
-        Текущий прогресс чтения
-    """
-
-    try:
-        # Проверяем, что книга принадлежит пользователю
-        book = await book_service.get_book_by_id(
-            db=db, book_id=book_id, user_id=current_user.id
-        )
-
-        if not book:
-            raise HTTPException(status_code=404, detail="Book not found")
-
-        # Ищем прогресс напрямую в БД (не через relationship - избегаем кэширования)
-        from sqlalchemy import select, and_
-        from ..models.book import ReadingProgress
-
-        progress_query = select(ReadingProgress).where(
-            and_(
-                ReadingProgress.book_id == book_id,
-                ReadingProgress.user_id == current_user.id,
-            )
-        )
-        progress_result = await db.execute(progress_query)
-        progress = progress_result.scalar_one_or_none()
-
-        return {
-            "progress": {
-                "id": str(progress.id) if progress else None,
-                "current_chapter": progress.current_chapter if progress else 1,
-                "current_page": progress.current_page if progress else 1,
-                "current_position": progress.current_position if progress else 0,
-                "current_position_percent": progress.current_position
-                if progress
-                else 0,  # Процент для EPUB reader (совпадает с current_position)
-                "reading_location_cfi": progress.reading_location_cfi
-                if progress
-                else None,
-                "scroll_offset_percent": progress.scroll_offset_percent
-                if progress
-                else 0.0,  # Точный % скролла внутри страницы
-                "reading_time_minutes": progress.reading_time_minutes
-                if progress
-                else 0,
-                "reading_speed_wpm": progress.reading_speed_wpm if progress else 0.0,
-                "last_read_at": progress.last_read_at.isoformat()
-                if progress and progress.last_read_at
-                else None,
-            }
-            if progress
-            else None
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error fetching progress: {str(e)}"
-        )
-
-
-@router.get("/{book_id}/cover")
-async def get_book_cover(
-    book_id: UUID, db: AsyncSession = Depends(get_database_session)
-):
-    """
-    Получает обложку книги.
-
-    Args:
-        book_id: ID книги
-        current_user: Текущий аутентифицированный пользователь
-        db: Сессия базы данных
-
-    Returns:
-        Файл обложки книги
-    """
-
-    try:
-        # Получаем книгу по ID (без проверки владельца для публичного доступа к обложке)
-        result = await db.execute(select(Book).where(Book.id == book_id))
-        book = result.scalar_one_or_none()
-
-        if not book:
-            raise HTTPException(status_code=404, detail="Book not found")
-
-        # Проверяем, есть ли обложка
-        if not book.cover_image or not os.path.exists(book.cover_image):
-            raise HTTPException(status_code=404, detail="Cover image not found")
-
-        # Возвращаем файл обложки
-        return FileResponse(
-            path=book.cover_image,
-            media_type="image/jpeg",
-            filename=f"{book.title}_cover.jpg",
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching cover: {str(e)}")

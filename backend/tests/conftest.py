@@ -153,7 +153,7 @@ async def test_book(db_session: AsyncSession, test_user: User):
         user_id=test_user.id,
         title="Test Book",
         author="Test Author",
-        genre=BookGenre.FICTION,
+        genre=BookGenre.FANTASY.value,  # Use .value for string column
         language="ru",
         file_path="/tmp/test.epub",
         file_format="epub",
