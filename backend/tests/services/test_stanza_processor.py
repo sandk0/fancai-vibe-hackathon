@@ -19,8 +19,7 @@ def processor_config():
     """Default processor configuration."""
     return ProcessorConfig(
         weight=0.8,
-        threshold=0.3,
-        timeout_seconds=5,
+        confidence_threshold=0.3,  # Fixed: was 'threshold'
         custom_settings={
             "stanza": {
                 "model_name": "ru",
@@ -56,10 +55,14 @@ class TestStanzaProcessorInitialization:
         assert stanza_processor.stanza_config["complex_syntax_analysis"] is True
         assert stanza_processor.stanza_config["dependency_parsing"] is True
 
-    def test_dependency_types_configured(self, stanza_processor):
+    def test_dependency_types_configured(self):
         """Test dependency types for description extraction."""
-        # Assert
-        dep_types = stanza_processor.stanza_config["description_dependency_types"]
+        # Create processor with default config to check defaults
+        processor = EnhancedStanzaProcessor()
+
+        # Assert - check defaults from __init__
+        dep_types = processor.stanza_config.get("description_dependency_types", [])
+        assert len(dep_types) > 0, "Should have default dependency types"
         assert "amod" in dep_types  # Adjectival modifier
         assert "nmod" in dep_types  # Nominal modifier
         assert "acl" in dep_types   # Clausal modifier
@@ -272,16 +275,24 @@ class TestStanzaDependencyAnalysis:
     """Test dependency parsing specific features."""
 
     @pytest.mark.asyncio
-    async def test_amod_dependency_detection(self, stanza_processor):
+    async def test_amod_dependency_detection(self):
         """Test adjectival modifier (amod) detection."""
+        # Create processor with defaults
+        processor = EnhancedStanzaProcessor()
+
         # Assert config includes amod
-        assert "amod" in stanza_processor.stanza_config["description_dependency_types"]
+        dep_types = processor.stanza_config.get("description_dependency_types", [])
+        assert "amod" in dep_types
 
     @pytest.mark.asyncio
-    async def test_nmod_dependency_detection(self, stanza_processor):
+    async def test_nmod_dependency_detection(self):
         """Test nominal modifier (nmod) detection."""
+        # Create processor with defaults
+        processor = EnhancedStanzaProcessor()
+
         # Assert config includes nmod
-        assert "nmod" in stanza_processor.stanza_config["description_dependency_types"]
+        dep_types = processor.stanza_config.get("description_dependency_types", [])
+        assert "nmod" in dep_types
 
     def test_complex_syntax_analysis_enabled(self, stanza_processor):
         """Test complex syntax analysis is enabled."""

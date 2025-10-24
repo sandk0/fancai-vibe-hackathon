@@ -146,8 +146,9 @@ async def test_user(db_session: AsyncSession, sample_user_data):
 
 @pytest_asyncio.fixture
 async def test_book(db_session: AsyncSession, test_user: User):
-    """Create a test book in database."""
+    """Create a test book in database with chapters."""
     from app.models.book import Book, BookGenre
+    from app.models.chapter import Chapter
 
     book = Book(
         user_id=test_user.id,
@@ -163,6 +164,20 @@ async def test_book(db_session: AsyncSession, test_user: User):
         is_parsed=True
     )
     db_session.add(book)
+    await db_session.flush()  # Get book.id without committing
+
+    # Add chapters for the book
+    for i in range(1, 4):  # 3 chapters
+        chapter = Chapter(
+            book_id=book.id,
+            chapter_number=i,
+            title=f"Chapter {i}",
+            content=f"Content of chapter {i} with beautiful forest and tall trees.",
+            html_content=f"<p>Content of chapter {i} with beautiful forest and tall trees.</p>",
+            word_count=10
+        )
+        db_session.add(chapter)
+
     await db_session.commit()
     await db_session.refresh(book)
     return book
