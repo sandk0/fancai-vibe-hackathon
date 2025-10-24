@@ -1,408 +1,395 @@
-# Refactoring Architecture - God Components to Clean Hooks
+# BookReader Refactoring Architecture
 
-## Before: Monolithic EpubReader (841 lines)
+## Before: Monolithic Component (1,038 lines)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     EpubReader.tsx                          │
-│                      (841 lines)                            │
 │                                                             │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │ 10+ useState hooks (book, rendition, location, etc.) │  │
-│  └──────────────────────────────────────────────────────┘  │
+│                    BookReader.tsx                           │
+│                     (1,038 lines)                           │
 │                                                             │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │ 5+ useEffect hooks (complex dependencies)            │  │
-│  │ - EPUB initialization                                │  │
-│  │ - Location generation                                │  │
-│  │ - Progress tracking                                  │  │
-│  │ - Chapter management                                 │  │
-│  │ - Description highlighting                           │  │
-│  └──────────────────────────────────────────────────────┘  │
+│  ┌───────────────────────────────────────────────────────┐ │
+│  │ • Pagination Logic (90 lines)                         │ │
+│  │ • Reading Progress (151 lines)                        │ │
+│  │ • Auto-parsing (130 lines)                            │ │
+│  │ • Description Highlighting (102 lines)                │ │
+│  │ • Image Modal (38 lines)                              │ │
+│  │ • Settings Management (73 lines)                      │ │
+│  │ • Navigation (33 lines)                                │ │
+│  │ • Chapter Management (22 lines)                        │ │
+│  │ • UI Rendering (409 lines)                             │ │
+│  └───────────────────────────────────────────────────────┘ │
 │                                                             │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │ 15+ callback functions                               │  │
-│  │ - getChapterFromLocation()                           │  │
-│  │ - highlightDescriptionsInText()                      │  │
-│  │ - handleDescriptionClick()                           │  │
-│  │ - handlePrevPage(), handleNextPage()                 │  │
-│  │ - etc...                                             │  │
-│  └──────────────────────────────────────────────────────┘  │
+│              ❌ Hard to maintain                            │
+│              ❌ Hard to test                                │
+│              ❌ Hard to reuse                               │
 │                                                             │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │ 200+ lines of inline logic                           │  │
-│  │ - CFI calculation                                    │  │
-│  │ - Progress percentage calculation                    │  │
-│  │ - Scroll offset tracking                             │  │
-│  │ - Description search and highlight                   │  │
-│  └──────────────────────────────────────────────────────┘  │
-│                                                             │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │ JSX render (100+ lines)                              │  │
-│  └──────────────────────────────────────────────────────┘  │
-│                                                             │
-│  Problems:                                                  │
-│  ❌ Hard to understand (10+ useState, 5+ useEffect)        │
-│  ❌ Hard to test (everything coupled together)             │
-│  ❌ Hard to maintain (change one thing, break everything)  │
-│  ❌ Hard to reuse (logic tied to component)                │
-│  ❌ Memory leaks (no proper cleanup)                       │
-│  ❌ Performance issues (no caching, debouncing)            │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## After: Clean Architecture with Custom Hooks (226 lines)
+---
+
+## After: Modular Architecture (370 + 867 + 354 lines)
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        EpubReader.tsx                               │
-│                         (226 lines)                                 │
-│                                                                     │
-│  ┌──────────────────────────────────────────────────────────────┐  │
-│  │ Declarative Hook Composition                                 │  │
-│  │                                                              │  │
-│  │  const { book, rendition, isLoading } = useEpubLoader()     │  │
-│  │  const { locations } = useLocationGeneration()              │  │
-│  │  const { currentCFI, progress } = useCFITracking()          │  │
-│  │  const { currentChapter, descriptions } = useChapterMgmt()  │  │
-│  │  useProgressSync()                                          │  │
-│  │  const { nextPage, prevPage } = useEpubNavigation()         │  │
-│  │  const { openModal, closeModal } = useImageModal()          │  │
-│  │  useDescriptionHighlighting()                               │  │
-│  │                                                              │  │
-│  │  // Clean, simple render                                    │  │
-│  │  return <div>...</div>                                      │  │
-│  └──────────────────────────────────────────────────────────────┘  │
-│                                                                     │
-│  Benefits:                                                          │
-│  ✅ Easy to understand (declarative hooks)                         │
-│  ✅ Easy to test (isolated hooks)                                  │
-│  ✅ Easy to maintain (change one hook, don't touch others)         │
-│  ✅ Easy to reuse (hooks can be used anywhere)                     │
-│  ✅ No memory leaks (proper cleanup in hooks)                      │
-│  ✅ Excellent performance (caching, debouncing built-in)           │
-└─────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│                                                                       │
+│                        BookReader.tsx                                 │
+│                         (370 lines)                                   │
+│                                                                       │
+│  ┌─────────────────────────────────────────────────────────────────┐ │
+│  │                    Hook Integration Layer                       │ │
+│  │                                                                 │ │
+│  │  const { pages, currentPage } = usePagination(...)             │ │
+│  │  const { hasRestored } = useReadingProgress(...)               │ │
+│  │  useAutoParser(...)                                            │ │
+│  │  const { highlightDescription } = useDescriptionManagement(...) │ │
+│  │  const { nextPage, prevPage } = useChapterNavigation(...)      │ │
+│  │  const { openModal, closeModal } = useReaderImageModal()       │ │
+│  │  useKeyboardNavigation(...)                                     │ │
+│  └─────────────────────────────────────────────────────────────────┘ │
+│                                                                       │
+│  ┌─────────────────────────────────────────────────────────────────┐ │
+│  │                 Component Composition Layer                     │ │
+│  │                                                                 │ │
+│  │  <ReaderHeader {...headerProps} />                             │ │
+│  │  <ReaderSettingsPanel {...settingsProps} />                    │ │
+│  │  <ReaderContent {...contentProps} />                           │ │
+│  │  <ReaderNavigationControls {...navProps} />                    │ │
+│  │  <ImageModal {...modalProps} />                                │ │
+│  └─────────────────────────────────────────────────────────────────┘ │
+│                                                                       │
+└───────────────────────────────────────────────────────────────────────┘
                                     │
-                                    │ Uses
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                     Custom Hooks Layer                              │
-│                      (8 hooks, 1,377 lines)                         │
-│                                                                     │
-│  ┌────────────────────┐  ┌────────────────────┐                    │
-│  │ useEpubLoader      │  │ useLocationGen     │                    │
-│  │  (175 lines)       │  │  (184 lines)       │                    │
-│  │                    │  │                    │                    │
-│  │ - Downloads EPUB   │  │ - Generates locs   │                    │
-│  │ - Creates Book     │  │ - Caches IndexedDB │                    │
-│  │ - Creates Rendition│  │ - 98% faster ⚡    │                    │
-│  │ - Applies theme    │  │                    │                    │
-│  │ - Cleanup on unmnt │  │                    │                    │
-│  └────────────────────┘  └────────────────────┘                    │
-│                                                                     │
-│  ┌────────────────────┐  ┌────────────────────┐                    │
-│  │ useCFITracking     │  │ useProgressSync    │                    │
-│  │  (228 lines)       │  │  (185 lines)       │                    │
-│  │                    │  │                    │                    │
-│  │ - Tracks CFI       │  │ - Debounces 5s     │                    │
-│  │ - Calc progress %  │  │ - 99.7% less API   │                    │
-│  │ - Scroll offset    │  │ - sendBeacon       │                    │
-│  │ - Skip restored    │  │                    │                    │
-│  └────────────────────┘  └────────────────────┘                    │
-│                                                                     │
-│  ┌────────────────────┐  ┌────────────────────┐                    │
-│  │ useEpubNavigation  │  │ useChapterMgmt     │                    │
-│  │  (96 lines)        │  │  (161 lines)       │                    │
-│  │                    │  │                    │                    │
-│  │ - next(), prev()   │  │ - Extract chapter# │                    │
-│  │ - Keyboard support │  │ - Load descriptions│                    │
-│  │                    │  │ - Load images      │                    │
-│  └────────────────────┘  └────────────────────┘                    │
-│                                                                     │
-│  ┌────────────────────┐  ┌────────────────────┐                    │
-│  │ useDescHighlight   │  │ useImageModal      │                    │
-│  │  (202 lines)       │  │  (122 lines)       │                    │
-│  │                    │  │                    │                    │
-│  │ - Find desc text   │  │ - Modal state      │                    │
-│  │ - Inject highlights│  │ - Auto-generate    │                    │
-│  │ - Click handlers   │  │ - Update image     │                    │
-│  └────────────────────┘  └────────────────────┘                    │
-│                                                                     │
-│  Each hook:                                                         │
-│  ✅ Single responsibility (SRP)                                    │
-│  ✅ Fully typed (TypeScript)                                       │
-│  ✅ JSDoc documented                                               │
-│  ✅ Proper cleanup (useEffect returns)                             │
-│  ✅ Reusable (can use in other projects)                           │
-└─────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    │ Uses
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                    External Dependencies                            │
-│                                                                     │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │  epub.js     │  │  IndexedDB   │  │  Backend API │             │
-│  │  (library)   │  │  (browser)   │  │  (REST)      │             │
-│  └──────────────┘  └──────────────┘  └──────────────┘             │
-│                                                                     │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │  React       │  │  TypeScript  │  │  localStorage│             │
-│  │  (framework) │  │  (types)     │  │  (browser)   │             │
-│  └──────────────┘  └──────────────┘  └──────────────┘             │
-└─────────────────────────────────────────────────────────────────────┘
+                ┌───────────────────┴───────────────────┐
+                │                                       │
+                ▼                                       ▼
+    ┌─────────────────────┐              ┌──────────────────────────┐
+    │   Custom Hooks      │              │   Sub-Components         │
+    │   (867 lines)       │              │   (354 lines)            │
+    │                     │              │                          │
+    │ ┌─────────────────┐ │              │ ┌──────────────────────┐ │
+    │ │ usePagination   │ │              │ │ ReaderHeader         │ │
+    │ │ (139 lines)     │ │              │ │ (70 lines)           │ │
+    │ └─────────────────┘ │              │ └──────────────────────┘ │
+    │                     │              │                          │
+    │ ┌─────────────────┐ │              │ ┌──────────────────────┐ │
+    │ │ useReading      │ │              │ │ ReaderSettings       │ │
+    │ │ Progress        │ │              │ │ Panel                │ │
+    │ │ (161 lines)     │ │              │ │ (96 lines)           │ │
+    │ └─────────────────┘ │              │ └──────────────────────┘ │
+    │                     │              │                          │
+    │ ┌─────────────────┐ │              │ ┌──────────────────────┐ │
+    │ │ useAutoParser   │ │              │ │ ReaderContent        │ │
+    │ │ (175 lines)     │ │              │ │ (79 lines)           │ │
+    │ └─────────────────┘ │              │ └──────────────────────┘ │
+    │                     │              │                          │
+    │ ┌─────────────────┐ │              │ ┌──────────────────────┐ │
+    │ │ useDescription  │ │              │ │ ReaderNavigation     │ │
+    │ │ Management      │ │              │ │ Controls             │ │
+    │ │ (166 lines)     │ │              │ │ (109 lines)          │ │
+    │ └─────────────────┘ │              │ └──────────────────────┘ │
+    │                     │              │                          │
+    │ ┌─────────────────┐ │              └──────────────────────────┘
+    │ │ useChapter      │ │
+    │ │ Navigation      │ │              ✅ Presentational
+    │ │ (136 lines)     │ │              ✅ Reusable
+    │ └─────────────────┘ │              ✅ React.memo optimized
+    │                     │
+    │ ┌─────────────────┐ │
+    │ │ useReaderImage  │ │
+    │ │ Modal           │ │
+    │ │ (68 lines)      │ │
+    │ └─────────────────┘ │
+    │                     │
+    └─────────────────────┘
+
+    ✅ Reusable
+    ✅ Testable
+    ✅ Single responsibility
 ```
 
-## Hook Interaction Flow
-
-```
-User opens book
-      │
-      ▼
-┌───────────────────────────────────────────────────────────┐
-│ 1. useEpubLoader                                          │
-│    - Downloads EPUB file from backend                     │
-│    - Creates epub.js Book instance                        │
-│    - Creates Rendition and renders to DOM                 │
-│    - Applies dark theme                                   │
-└───────────────────────────────────────────────────────────┘
-      │
-      ▼
-┌───────────────────────────────────────────────────────────┐
-│ 2. useLocationGeneration                                  │
-│    - Checks IndexedDB cache for book ID                   │
-│    - If cached: load instantly (<100ms) ⚡                │
-│    - If not cached: generate (2-3s), then cache           │
-│    - Returns locations object for progress tracking       │
-└───────────────────────────────────────────────────────────┘
-      │
-      ▼
-┌───────────────────────────────────────────────────────────┐
-│ 3. Restore Reading Position                               │
-│    - Fetch saved progress from backend API                │
-│    - useCFITracking.goToCFI(savedCFI, scrollOffset)       │
-│    - Hybrid restoration: CFI + scroll for pixel-perfect   │
-│    - skipNextRelocated() to prevent auto-save on restore  │
-└───────────────────────────────────────────────────────────┘
-      │
-      ▼
-┌───────────────────────────────────────────────────────────┐
-│ 4. useChapterManagement                                   │
-│    - Listen to relocated events                           │
-│    - Extract chapter number from spine location           │
-│    - Load descriptions & images for chapter               │
-│    - Update state when chapter changes                    │
-└───────────────────────────────────────────────────────────┘
-      │
-      ▼
-┌───────────────────────────────────────────────────────────┐
-│ 5. useDescriptionHighlighting                             │
-│    - Wait for rendition to be ready                       │
-│    - Find description text in rendered DOM                │
-│    - Inject <span> highlights with click handlers         │
-│    - Re-highlight on each page rendered event             │
-└───────────────────────────────────────────────────────────┘
-      │
-      │ User reads...
-      │
-      ▼
-┌───────────────────────────────────────────────────────────┐
-│ 6. useCFITracking (on page turn)                          │
-│    - Listen to relocated event from epub.js               │
-│    - Calculate CFI from location                          │
-│    - Calculate progress % using locations                 │
-│    - Calculate scroll offset % within page                │
-│    - Trigger onLocationChange callback                    │
-└───────────────────────────────────────────────────────────┘
-      │
-      ▼
-┌───────────────────────────────────────────────────────────┐
-│ 7. useProgressSync (debounced)                            │
-│    - Receives CFI + progress + scroll from tracking       │
-│    - Debounces for 5 seconds (prevents spam)              │
-│    - Sends to backend API (0.2 req/s instead of 60!)      │
-│    - On unmount: saves immediately via sendBeacon         │
-└───────────────────────────────────────────────────────────┘
-      │
-      │ User clicks description...
-      │
-      ▼
-┌───────────────────────────────────────────────────────────┐
-│ 8. useImageModal                                          │
-│    - Check if image exists for description                │
-│    - If yes: open modal with image                        │
-│    - If no: generate via API, then open modal             │
-│    - Handle image regeneration (update URL)               │
-└───────────────────────────────────────────────────────────┘
-```
+---
 
 ## Data Flow Architecture
 
 ```
-┌──────────────┐
-│ EpubReader   │
-│ Component    │
-└──────┬───────┘
-       │
-       │ uses
-       ▼
-┌──────────────────────────────────────────────────────┐
-│              Custom Hooks (8 hooks)                  │
-│                                                      │
-│  State Management:                                   │
-│  - useState (local component state)                  │
-│  - useRef (references to epub.js objects)            │
-│  - useCallback (memoized callbacks)                  │
-│                                                      │
-│  Side Effects:                                       │
-│  - useEffect (lifecycle management)                  │
-│  - Event listeners (epub.js events)                  │
-│  - Cleanup functions (prevent memory leaks)          │
-└──────┬───────────────────────────────────────────────┘
-       │
-       │ reads/writes
-       ▼
-┌──────────────────────────────────────────────────────┐
-│              Data Layer                              │
-│                                                      │
-│  ┌────────────┐  ┌─────────────┐  ┌──────────────┐ │
-│  │ IndexedDB  │  │ localStorage│  │ Backend API  │ │
-│  │            │  │             │  │              │ │
-│  │ - Locations│  │ - Auth token│  │ - Progress   │ │
-│  │   cache    │  │ - Settings  │  │ - Desc's     │ │
-│  │            │  │             │  │ - Images     │ │
-│  └────────────┘  └─────────────┘  └──────────────┘ │
-│                                                      │
-│  Caching Strategy:                                   │
-│  - IndexedDB: Long-term (locations)                  │
-│  - localStorage: Session (auth, settings)            │
-│  - Backend: Source of truth (progress, data)         │
-└──────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                         User Interaction                        │
+└────────────────────┬────────────────────────────────────────────┘
+                     │
+                     ▼
+    ┌────────────────────────────────────────────────────┐
+    │              Event Handlers                        │
+    │  (onClick, onChange, onKeyPress)                   │
+    └────────────────┬───────────────────────────────────┘
+                     │
+                     ▼
+    ┌────────────────────────────────────────────────────┐
+    │            Custom Hook Actions                     │
+    │                                                    │
+    │  • setCurrentPage() - usePagination                │
+    │  • nextPage() - useChapterNavigation               │
+    │  • handleDescriptionClick() - useDescriptionMgmt   │
+    │  • openModal() - useReaderImageModal               │
+    └────────────────┬───────────────────────────────────┘
+                     │
+                     ▼
+    ┌────────────────────────────────────────────────────┐
+    │            State Updates                           │
+    │  (useState, Zustand store)                         │
+    └────────────────┬───────────────────────────────────┘
+                     │
+                     ▼
+    ┌────────────────────────────────────────────────────┐
+    │            Side Effects                            │
+    │  (useEffect, API calls)                            │
+    │                                                    │
+    │  • Save reading progress                           │
+    │  • Re-paginate content                             │
+    │  • Fetch chapter data                              │
+    └────────────────┬───────────────────────────────────┘
+                     │
+                     ▼
+    ┌────────────────────────────────────────────────────┐
+    │            Component Re-render                     │
+    │  (React.memo prevents unnecessary renders)         │
+    └────────────────┬───────────────────────────────────┘
+                     │
+                     ▼
+    ┌────────────────────────────────────────────────────┐
+    │              UI Update                             │
+    │  (Sub-components receive new props)                │
+    └────────────────────────────────────────────────────┘
 ```
-
-## Comparison: State Management
-
-### Before (10+ useState, tangled dependencies)
-```typescript
-const [book, setBook] = useState<Book | null>(null);
-const [rendition, setRendition] = useState<Rendition | null>(null);
-const [isLoading, setIsLoading] = useState(true);
-const [error, setError] = useState<string>('');
-const [isReady, setIsReady] = useState(false);
-const [renditionReady, setRenditionReady] = useState(false);
-const [descriptions, setDescriptions] = useState<Description[]>([]);
-const [images, setImages] = useState<GeneratedImage[]>([]);
-const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
-const [currentChapter, setCurrentChapter] = useState<number>(1);
-
-// ❌ Hard to track which state depends on what
-// ❌ Easy to create infinite useEffect loops
-// ❌ Difficult to test
-```
-
-### After (1 useState, clean dependencies)
-```typescript
-const [renditionReady, setRenditionReady] = useState(false);
-
-// All other state managed by hooks:
-const { book, rendition, isLoading, error } = useEpubLoader(...);
-const { locations, isGenerating } = useLocationGeneration(...);
-const { currentCFI, progress, scrollOffsetPercent } = useCFITracking(...);
-const { currentChapter, descriptions, images } = useChapterManagement(...);
-const { selectedImage, openModal, closeModal } = useImageModal();
-
-// ✅ Clear dependencies (each hook manages its own state)
-// ✅ No infinite loops (hooks are self-contained)
-// ✅ Easy to test (mock individual hooks)
-```
-
-## Key Architectural Decisions
-
-### 1. Separation of Concerns
-Each hook has **one clear responsibility**:
-- ✅ `useEpubLoader` - Loading only
-- ✅ `useCFITracking` - Position tracking only
-- ✅ `useProgressSync` - API sync only
-- etc.
-
-### 2. Loose Coupling
-Hooks communicate via **simple data passing**:
-```typescript
-// Hook A provides data
-const { book, rendition } = useEpubLoader(...);
-
-// Hook B consumes data
-const { locations } = useLocationGeneration(book, bookId);
-
-// Hook C consumes data from both
-const { currentCFI } = useCFITracking({ rendition, locations, book });
-```
-
-### 3. Performance Optimization
-Built into hooks:
-- ✅ `useLocationGeneration` - IndexedDB caching
-- ✅ `useProgressSync` - Debouncing + sendBeacon
-- ✅ `useEpubLoader` - Proper cleanup (no leaks)
-- ✅ `useCFITracking` - Skip restored positions
-
-### 4. Type Safety
-All hooks fully typed:
-```typescript
-interface UseEpubLoaderOptions {
-  bookUrl: string;
-  viewerRef: React.RefObject<HTMLDivElement>;
-  authToken: string | null;
-  onReady?: () => void;
-}
-
-interface UseEpubLoaderReturn {
-  book: Book | null;
-  rendition: Rendition | null;
-  isLoading: boolean;
-  error: string;
-}
-```
-
-### 5. Reusability
-Hooks can be used anywhere:
-```typescript
-// In EpubReader component
-const { book, rendition } = useEpubLoader(...);
-
-// In a different custom reader component
-const { book, rendition } = useEpubLoader(...);
-
-// In tests
-const { result } = renderHook(() => useEpubLoader(...));
-```
-
-## Lessons Learned
-
-### What Worked Well ✅
-1. **Custom hooks pattern** - Perfect for complex stateful logic
-2. **IndexedDB caching** - 98% performance improvement
-3. **Debouncing** - 99.7% reduction in API calls
-4. **Hybrid CFI + scroll** - Pixel-perfect position restoration
-5. **Cleanup functions** - 100% memory leak prevention
-
-### What Could Be Improved ⚠️
-1. **BookReader component** - Still needs refactoring (1,038 lines)
-2. **Unit tests** - Need to add tests for all 8 hooks
-3. **Error boundaries** - Could add error boundaries for hooks
-4. **Loading states** - Could improve loading UX between hook states
-
-### Best Practices Applied ✅
-- ✅ Single Responsibility Principle (SRP)
-- ✅ Don't Repeat Yourself (DRY)
-- ✅ Separation of Concerns (SoC)
-- ✅ Open/Closed Principle (hooks extensible)
-- ✅ Composition over Inheritance
-- ✅ TypeScript strict mode
-- ✅ JSDoc documentation
-- ✅ Performance monitoring
 
 ---
 
-**Generated:** 2025-10-24
-**Architect:** Frontend Developer Agent (AI)
-**Status:** ✅ Production Ready
+## Hook Dependency Graph
+
+```
+BookReader Component
+    │
+    ├─▶ usePagination
+    │       └─▶ chapter data, fontSize, lineHeight
+    │
+    ├─▶ useReadingProgress
+    │       ├─▶ bookId, currentChapter, currentPage
+    │       └─▶ booksAPI.getReadingProgress()
+    │
+    ├─▶ useAutoParser
+    │       ├─▶ chapter data
+    │       └─▶ booksAPI.processBook()
+    │
+    ├─▶ useDescriptionManagement
+    │       ├─▶ descriptions array
+    │       ├─▶ imagesAPI.generateImage()
+    │       └─▶ openModal callback
+    │
+    ├─▶ useChapterNavigation
+    │       ├─▶ currentChapter, currentPage
+    │       ├─▶ setCurrentChapter, setCurrentPage
+    │       └─▶ totalPages, totalChapters
+    │
+    ├─▶ useReaderImageModal
+    │       └─▶ (independent - modal state only)
+    │
+    └─▶ useKeyboardNavigation
+            └─▶ nextPage, prevPage callbacks
+```
+
+---
+
+## Component Hierarchy
+
+```
+<BookReader>
+    │
+    ├─▶ <ReaderHeader>
+    │       ├─ Book title
+    │       ├─ Chapter info
+    │       ├─ Page counter
+    │       └─ Settings button
+    │
+    ├─▶ <ReaderSettingsPanel> (conditional)
+    │       ├─ Font size slider
+    │       └─ Theme buttons
+    │
+    ├─▶ <div className="reading-area">
+    │       │
+    │       ├─▶ <ReaderContent>
+    │       │       ├─ Highlighted content
+    │       │       └─ Framer Motion animation
+    │       │
+    │       └─▶ <ReaderNavigationControls>
+    │               ├─ Previous button
+    │               ├─ Chapter selector
+    │               ├─ Next button
+    │               └─ Progress bar
+    │
+    └─▶ <ImageModal> (via AnimatePresence)
+            ├─ Generated image
+            ├─ Description text
+            └─ Regenerate button
+```
+
+---
+
+## Performance Optimizations
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                   Optimization Layer                     │
+└──────────────────────────────────────────────────────────┘
+
+1. React.memo on all sub-components
+   ────────────────────────────────
+   ✓ ReaderHeader - memoized by props
+   ✓ ReaderSettingsPanel - memoized by props
+   ✓ ReaderContent - memoized by props
+   ✓ ReaderNavigationControls - memoized by props
+
+2. useCallback for event handlers
+   ────────────────────────────────
+   ✓ nextPage() - stable reference
+   ✓ prevPage() - stable reference
+   ✓ handleDescriptionClick() - stable reference
+   ✓ All navigation functions
+
+3. Debouncing
+   ────────────────────────────────
+   ✓ Pagination (200ms) - prevents excessive calculations
+   ✓ Progress save - via useEffect dependencies
+
+4. Conditional Rendering
+   ────────────────────────────────
+   ✓ Settings panel - only when showSettings === true
+   ✓ Image modal - AnimatePresence for smooth transitions
+
+5. Memoization
+   ────────────────────────────────
+   ✓ Pages array - only recalculate on content/font change
+   ✓ Highlighted text - only recalculate on descriptions change
+```
+
+---
+
+## Testing Strategy
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                    Testing Pyramid                       │
+└──────────────────────────────────────────────────────────┘
+
+                      ╱╲
+                     ╱  ╲
+                    ╱ E2E╲
+                   ╱──────╲
+                  ╱        ╲
+                 ╱Integration╲
+                ╱────────────╲
+               ╱              ╱
+              ╱     Unit      ╱
+             ╱────────────────╱
+
+Unit Tests (hooks & components)
+────────────────────────────────
+• usePagination.test.ts
+  - Test page calculation
+  - Test HTML vs plain text
+  - Test debouncing
+
+• useReadingProgress.test.ts
+  - Test position restoration
+  - Test auto-save
+  - Test race conditions
+
+• useAutoParser.test.ts
+  - Test cooldown mechanism
+  - Test polling
+  - Test error handling
+
+• useDescriptionManagement.test.ts
+  - Test highlighting logic
+  - Test nesting prevention
+  - Test image generation
+
+• useChapterNavigation.test.ts
+  - Test next/prev page
+  - Test chapter boundaries
+  - Test keyboard shortcuts
+
+• ReaderHeader.test.tsx
+  - Test props rendering
+  - Test button clicks
+
+• ReaderContent.test.tsx
+  - Test content rendering
+  - Test highlighting
+  - Test DOMPurify
+
+Integration Tests
+────────────────────────────────
+• BookReader.integration.test.tsx
+  - Test hook interactions
+  - Test data flow
+  - Test side effects
+
+E2E Tests (Playwright/Cypress)
+────────────────────────────────
+• Full reading flow
+• Navigation between chapters
+• Progress restoration
+• Image generation
+```
+
+---
+
+## Migration Path (For Future Components)
+
+```
+Step 1: Identify Responsibilities
+──────────────────────────────────
+└─▶ List all things the component does
+    └─▶ Group related functionality
+
+Step 2: Extract Hooks
+──────────────────────────────────
+└─▶ Create custom hook for each responsibility
+    ├─▶ Write JSDoc comments
+    ├─▶ Add TypeScript types
+    └─▶ Export from index.ts
+
+Step 3: Create Sub-Components
+──────────────────────────────────
+└─▶ Extract presentational logic
+    ├─▶ Define props interface
+    ├─▶ Add React.memo
+    └─▶ Use semantic HTML
+
+Step 4: Refactor Main Component
+──────────────────────────────────
+└─▶ Replace inline logic with hooks
+    ├─▶ Replace UI blocks with components
+    ├─▶ Simplify event handlers
+    └─▶ Clean up useEffects
+
+Step 5: Test & Verify
+──────────────────────────────────
+└─▶ Run TypeScript checks
+    ├─▶ Run existing tests
+    ├─▶ Add new tests
+    └─▶ Manual testing
+
+Step 6: Document
+──────────────────────────────────
+└─▶ Write refactoring report
+    ├─▶ Update component docs
+    └─▶ Create migration guide
+```
+
+---
+
+**Architecture designed by:** Claude Code (Frontend Developer Agent)
+**Date:** October 24, 2025
+**Pattern:** Hooks + Composition Architecture
