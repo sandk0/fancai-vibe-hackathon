@@ -235,6 +235,10 @@ nano .env.production.local  # Настроить домен и пароли
 - [Reader компонент](docs/components/frontend/reader-component.md)
 - [Система Claude Code Agents](docs/development/claude-code-agents-system.md)
 
+### Операционная документация
+- [Backup and Restore Guide](docs/operations/BACKUP_AND_RESTORE.md) - Complete backup/restore procedures
+- [Backup and Restore (RU)](docs/operations/BACKUP_AND_RESTORE.ru.md) - Полное руководство по бэкапу
+
 ### Руководства пользователя
 - [Инструкция по установке](docs/user-guides/installation-guide.md)
 - [Руководство пользователя](docs/user-guides/user-manual.md)
