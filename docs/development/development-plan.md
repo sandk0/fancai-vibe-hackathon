@@ -116,6 +116,14 @@
   - [x] ReadingProgress endpoints с поддержкой CFI полей
   - [x] Все endpoints протестированы с реальными данными
 
+- [x] **Operations Documentation** (Завершено: 24.10)
+  - [x] Backup and Restore Documentation (English version)
+  - [x] Backup and Restore Documentation (Russian version)
+  - [x] Automated backup script с полной автоматизацией
+  - [x] Complete restoration procedures (full + partial)
+  - [x] Best practices для security, storage, testing
+  - [x] Troubleshooting guide с common issues
+
 ### 🚀 Phase 1 Результаты:
 - ✅ Полнофункциональная читалка с профессиональным epub.js движком
 - ✅ Точное позиционирование через CFI (Canonical Fragment Identifier)

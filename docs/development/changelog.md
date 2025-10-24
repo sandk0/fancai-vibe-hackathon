@@ -35,6 +35,66 @@
 - All code examples extracted from actual implementation (627 lines in multi_nlp_manager.py)
 - Performance data from real benchmarks on test books
 
+## [1.2.0] - 2025-10-24 - BACKUP & RESTORE DOCUMENTATION! 💾
+
+### Added - OPERATIONS DOCUMENTATION
+- **Complete Backup and Restore Documentation**: Полное руководство по резервному копированию
+  - Location: `docs/operations/BACKUP_AND_RESTORE.md` (English version)
+  - Location: `docs/operations/BACKUP_AND_RESTORE.ru.md` (Russian version)
+  - **Comprehensive coverage**: Все аспекты backup и restore системы
+  - **Components included**:
+    - PostgreSQL database (full dumps + custom format)
+    - Redis data (BGSAVE + dump.rdb)
+    - Storage files (books, images, covers)
+    - Git repository (code versioning)
+    - Configuration files (encrypted)
+  - **Automated backup script**: Shell script с полной автоматизацией
+    - Daily incremental backups
+    - Weekly full system backups
+    - Automatic cleanup (30-day retention)
+    - Cloud upload support (S3/GCS)
+    - Backup manifest generation
+    - Integrity verification
+  - **Restoration procedures**: Complete и partial restoration guides
+    - Full system restore (disaster recovery)
+    - Database-only restore
+    - Storage files restore
+    - Redis restore
+    - Single table restore
+  - **Best practices**: Security, storage, testing, monitoring
+    - GPG encryption для sensitive данных
+    - 3-2-1 backup strategy
+    - Regular restore testing procedures
+    - Automated monitoring и alerting
+  - **Troubleshooting section**: 10+ common issues с solutions
+  - **Schedule recommendations**: Production и staging environments
+  - **Backup integrity verification**: Automated и manual checks
+  - **Recovery time objectives (RTO)**: Детальные метрики
+  - **File size estimates**: Small/Medium/Large site projections
+
+### Documentation
+- Created comprehensive backup and restore guide (English + Russian)
+- Total documentation: ~30KB content (15KB each language)
+- Includes automated backup script (~200 lines bash)
+- Full CLI examples и real-world scenarios
+
+### Technical Information
+- **Новых файлов**: 2 (English + Russian versions)
+- **Документации**: ~30KB backup/restore guides
+- **Shell scripts**: Complete backup automation script
+- **Coverage**: Database, Redis, Storage, Config, Git
+- **Languages**: English (primary) + Russian translation
+
+### Impact - OPERATIONAL EXCELLENCE
+- 💾 **Data Safety**: Complete backup strategy для всех компонентов
+- 🔄 **Disaster Recovery**: Четкие процедуры восстановления
+- ⚡ **Quick Restore**: Пошаговые инструкции для всех сценариев
+- 🔐 **Security**: GPG encryption для конфиденциальных данных
+- 📊 **Monitoring**: Automated backup verification и alerting
+- 🌐 **Bilingual**: English + Russian documentation
+
+---
+
 ## [Unreleased]
 
 ### Планируется добавить (Phase 2)
