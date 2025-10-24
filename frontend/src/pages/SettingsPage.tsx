@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Book, User, Bell, Shield, Palette, Info } from 'lucide-react';
+import { Book, User, Bell, Shield, Info } from 'lucide-react';
 import ReaderSettings from '@/components/Settings/ReaderSettings';
 import { useAuthStore } from '@/stores/auth';
 import { useTranslation } from '@/hooks/useTranslation';

@@ -98,6 +98,7 @@ export const booksAPI = {
       current_chapter: number;
       current_position_percent: number;
       reading_location_cfi?: string;
+      scroll_offset_percent?: number;
     }
   ): Promise<{
     progress: ReadingProgress;

@@ -1,354 +1,221 @@
 """
-Сервис для управления настройками администратора.
+Settings Manager для управления настройками приложения.
 
-Обеспечивает централизованное управление конфигурацией системы
-с сохранением в базе данных и кэшированием в Redis.
+ВАЖНО: Это STUB реализация, которая использует in-memory хранилище вместо БД.
+Оригинальная реализация зависела от orphaned AdminSettings модели (таблица удалена из БД).
+
+TODO: Implement Redis-based persistence or create new DB model for settings.
 """
 
-import json
-import os
-from typing import Dict, Any, Optional, List
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete
-import redis.asyncio as redis
+import logging
+from typing import Any, Dict
+from dataclasses import dataclass, field
 
-from ..models.admin_settings import AdminSettings
-from ..core.database import AsyncSessionLocal
+logger = logging.getLogger(__name__)
 
 
+@dataclass
 class SettingsManager:
     """
-    Менеджер настроек системы с поддержкой кэширования и персистентности.
+    Менеджер настроек приложения (stub implementation).
+
+    Хранит настройки в памяти. Настройки НЕ персистентны между перезапусками.
     """
-    
-    def __init__(self):
-        self.redis_client = None
-        self._cache_prefix = "bookreader:settings:"
-        self._cache_ttl = 3600  # 1 час
-        
-    async def _get_redis_client(self):
-        """Получает Redis клиент для кэширования."""
-        if self.redis_client is None:
-            redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-            self.redis_client = redis.from_url(redis_url)
-        return self.redis_client
-    
-    async def get_setting(self, category: str, key: str, default: Any = None) -> Any:
-        """
-        Получает настройку из кэша или базы данных.
-        
-        Args:
-            category: Категория настройки
-            key: Ключ настройки
-            default: Значение по умолчанию
-            
-        Returns:
-            Значение настройки или default если не найдено
-        """
-        cache_key = f"{self._cache_prefix}{category}:{key}"
-        
-        try:
-            # Сначала проверяем кэш
-            redis_client = await self._get_redis_client()
-            cached_value = await redis_client.get(cache_key)
-            
-            if cached_value is not None:
-                return json.loads(cached_value)
-                
-        except Exception:
-            # Если кэш недоступен, продолжаем с базой данных
-            pass
-        
-        # Если в кэше нет, ищем в базе данных
-        async with AsyncSessionLocal() as db:
-            result = await db.execute(
-                select(AdminSettings)
-                .where(
-                    AdminSettings.category == category,
-                    AdminSettings.key == key,
-                    AdminSettings.is_active == True
-                )
-            )
-            setting = result.scalar_one_or_none()
-            
-            if setting:
-                value = setting.get_value()
-                
-                # Кэшируем результат
-                try:
-                    redis_client = await self._get_redis_client()
-                    await redis_client.setex(
-                        cache_key, 
-                        self._cache_ttl, 
-                        json.dumps(value)
-                    )
-                except Exception:
-                    pass  # Игнорируем ошибки кэширования
-                
-                return value
-        
-        return default
-    
-    async def set_setting(self, category: str, key: str, value: Any, description: str = None) -> bool:
-        """
-        Устанавливает настройку в базе данных и обновляет кэш.
-        
-        Args:
-            category: Категория настройки
-            key: Ключ настройки
-            value: Значение настройки
-            description: Описание настройки
-            
-        Returns:
-            True если настройка была успешно сохранена
-        """
-        async with AsyncSessionLocal() as db:
-            try:
-                # Ищем существующую настройку
-                result = await db.execute(
-                    select(AdminSettings)
-                    .where(
-                        AdminSettings.category == category,
-                        AdminSettings.key == key
-                    )
-                )
-                setting = result.scalar_one_or_none()
-                
-                if setting:
-                    # Обновляем существующую
-                    setting.set_value(value)
-                    if description:
-                        setting.description = description
-                    setting.is_active = True
-                else:
-                    # Создаем новую
-                    setting = AdminSettings(
-                        category=category,
-                        key=key,
-                        description=description,
-                        is_active=True
-                    )
-                    setting.set_value(value)
-                    db.add(setting)
-                
-                await db.commit()
-                
-                # Обновляем кэш
-                try:
-                    cache_key = f"{self._cache_prefix}{category}:{key}"
-                    redis_client = await self._get_redis_client()
-                    await redis_client.setex(
-                        cache_key,
-                        self._cache_ttl,
-                        json.dumps(value)
-                    )
-                except Exception:
-                    pass  # Игнорируем ошибки кэширования
-                
-                return True
-                
-            except Exception as e:
-                await db.rollback()
-                print(f"Ошибка сохранения настройки {category}:{key}: {e}")
-                return False
-    
-    async def get_category_settings(self, category: str) -> Dict[str, Any]:
-        """
-        Получает все настройки для указанной категории.
-        
-        Args:
-            category: Категория настроек
-            
-        Returns:
-            Словарь настроек {key: value}
-        """
-        async with AsyncSessionLocal() as db:
-            result = await db.execute(
-                select(AdminSettings)
-                .where(
-                    AdminSettings.category == category,
-                    AdminSettings.is_active == True
-                )
-            )
-            settings = result.scalars().all()
-            
-            return {
-                setting.key: setting.get_value()
-                for setting in settings
-            }
-    
-    async def get_all_settings(self) -> Dict[str, Dict[str, Any]]:
-        """
-        Получает все настройки, сгруппированные по категориям.
-        
-        Returns:
-            Словарь {category: {key: value}}
-        """
-        async with AsyncSessionLocal() as db:
-            result = await db.execute(
-                select(AdminSettings)
-                .where(AdminSettings.is_active == True)
-            )
-            settings = result.scalars().all()
-            
-            grouped = {}
-            for setting in settings:
-                if setting.category not in grouped:
-                    grouped[setting.category] = {}
-                grouped[setting.category][setting.key] = setting.get_value()
-            
-            return grouped
-    
-    async def delete_setting(self, category: str, key: str) -> bool:
-        """
-        Удаляет настройку (помечает как неактивную).
-        
-        Args:
-            category: Категория настройки
-            key: Ключ настройки
-            
-        Returns:
-            True если настройка была удалена
-        """
-        async with AsyncSessionLocal() as db:
-            try:
-                result = await db.execute(
-                    update(AdminSettings)
-                    .where(
-                        AdminSettings.category == category,
-                        AdminSettings.key == key
-                    )
-                    .values(is_active=False)
-                )
-                
-                await db.commit()
-                
-                # Удаляем из кэша
-                try:
-                    cache_key = f"{self._cache_prefix}{category}:{key}"
-                    redis_client = await self._get_redis_client()
-                    await redis_client.delete(cache_key)
-                except Exception:
-                    pass
-                
-                return result.rowcount > 0
-                
-            except Exception as e:
-                await db.rollback()
-                print(f"Ошибка удаления настройки {category}:{key}: {e}")
-                return False
-    
-    async def clear_cache(self, category: str = None, key: str = None):
-        """
-        Очищает кэш настроек.
-        
-        Args:
-            category: Очистить только указанную категорию
-            key: Очистить только указанный ключ (требует category)
-        """
-        try:
-            redis_client = await self._get_redis_client()
-            
-            if category and key:
-                # Очищаем конкретную настройку
-                cache_key = f"{self._cache_prefix}{category}:{key}"
-                await redis_client.delete(cache_key)
-            elif category:
-                # Очищаем всю категорию
-                pattern = f"{self._cache_prefix}{category}:*"
-                keys = await redis_client.keys(pattern)
-                if keys:
-                    await redis_client.delete(*keys)
-            else:
-                # Очищаем весь кэш настроек
-                pattern = f"{self._cache_prefix}*"
-                keys = await redis_client.keys(pattern)
-                if keys:
-                    await redis_client.delete(*keys)
-                    
-        except Exception as e:
-            print(f"Ошибка очистки кэша настроек: {e}")
-    
+
+    _settings: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    _initialized: bool = False
+
     async def initialize_default_settings(self, force: bool = False) -> bool:
         """
         Инициализирует настройки по умолчанию.
-        
+
         Args:
-            force: Перезаписывать существующие настройки
-            
+            force: Принудительная переинициализация
+
         Returns:
-            True если инициализация прошла успешно
+            True если успешно
         """
-        async with AsyncSessionLocal() as db:
-            try:
-                # Проверяем, есть ли уже настройки
-                if not force:
-                    result = await db.execute(select(AdminSettings).limit(1))
-                    if result.scalar_one_or_none():
-                        return True  # Настройки уже есть
-                
-                # Создаем настройки по умолчанию
-                default_settings = AdminSettings.create_default_settings(db)
-                
-                for setting_data in default_settings:
-                    # Проверяем, существует ли настройка
-                    if not force:
-                        result = await db.execute(
-                            select(AdminSettings)
-                            .where(
-                                AdminSettings.category == setting_data['category'],
-                                AdminSettings.key == setting_data['key']
-                            )
-                        )
-                        existing = result.scalar_one_or_none()
-                        if existing:
-                            continue  # Пропускаем существующие
-                    
-                    # Создаем новую настройку
-                    setting = AdminSettings(**setting_data)
-                    setting.set_value(
-                        setting_data.get('value') or
-                        setting_data.get('value_string') or
-                        setting_data.get('value_int') or
-                        setting_data.get('value_float') or
-                        setting_data.get('value_bool')
-                    )
-                    
-                    db.add(setting)
-                
-                await db.commit()
-                
-                # Очищаем кэш для обновления
-                await self.clear_cache()
-                
-                return True
-                
-            except Exception as e:
-                await db.rollback()
-                print(f"Ошибка инициализации настроек по умолчанию: {e}")
-                return False
+        if self._initialized and not force:
+            logger.info("Settings already initialized, skipping")
+            return True
+
+        logger.info("Initializing default settings (in-memory)")
+
+        # NLP Global settings
+        self._settings["nlp_global"] = {
+            "processing_mode": "single",
+            "default_processor": "spacy",
+            "max_parallel_processors": 3,
+            "ensemble_voting_threshold": 0.6,
+        }
+
+        # SpaCy settings
+        self._settings["nlp_spacy"] = {
+            "enabled": True,
+            "weight": 1.0,
+            "confidence_threshold": 0.3,
+            "model_name": "ru_core_news_lg",
+            "literary_patterns": True,
+            "character_detection_boost": 1.2,
+            "location_detection_boost": 1.1,
+            "atmosphere_keywords": [],
+        }
+
+        # Natasha settings
+        self._settings["nlp_natasha"] = {
+            "enabled": True,
+            "weight": 1.2,
+            "confidence_threshold": 0.4,
+            "literary_boost": 1.3,
+            "enable_morphology": True,
+            "enable_syntax": True,
+            "enable_ner": True,
+            "person_patterns": [],
+            "location_patterns": [],
+            "atmosphere_indicators": [],
+        }
+
+        # Stanza settings
+        self._settings["nlp_stanza"] = {
+            "enabled": False,
+            "weight": 0.8,
+            "confidence_threshold": 0.5,
+            "model_name": "ru",
+            "processors": "tokenize,pos,lemma,depparse,ner",
+            "complex_syntax_analysis": True,
+            "dependency_parsing": True,
+        }
+
+        # Parsing settings
+        self._settings["parsing"] = {
+            "max_concurrent_parsing": 1,
+            "priority_free": 1,
+            "priority_premium": 5,
+            "priority_ultimate": 10,
+            "timeout_minutes": 30,
+            "retry_attempts": 3,
+        }
+
+        # Image generation settings
+        self._settings["image_generation"] = {
+            "primary_service": "pollinations",
+            "fallback_services": [],
+            "enable_caching": True,
+            "image_quality": "high",
+            "max_generation_time": 30,
+        }
+
+        # System settings
+        self._settings["system"] = {
+            "maintenance_mode": False,
+            "max_upload_size_mb": 50,
+            "supported_book_formats": ["epub", "fb2"],
+            "enable_debug_mode": False,
+        }
+
+        self._initialized = True
+        logger.info(f"Initialized {len(self._settings)} setting categories")
+        return True
+
+    async def get_setting(self, category: str, key: str, default: Any = None) -> Any:
+        """
+        Получить значение настройки.
+
+        Args:
+            category: Категория настроек (например, 'nlp_spacy')
+            key: Ключ настройки
+            default: Значение по умолчанию
+
+        Returns:
+            Значение настройки или default
+        """
+        if not self._initialized:
+            await self.initialize_default_settings()
+
+        category_settings = self._settings.get(category, {})
+        return category_settings.get(key, default)
+
+    async def set_setting(self, category: str, key: str, value: Any) -> bool:
+        """
+        Установить значение настройки.
+
+        Args:
+            category: Категория настроек
+            key: Ключ настройки
+            value: Новое значение
+
+        Returns:
+            True если успешно
+        """
+        if not self._initialized:
+            await self.initialize_default_settings()
+
+        if category not in self._settings:
+            self._settings[category] = {}
+
+        self._settings[category][key] = value
+        logger.debug(f"Set {category}.{key} = {value}")
+        return True
+
+    async def get_category_settings(self, category: str) -> Dict[str, Any]:
+        """
+        Получить все настройки категории.
+
+        Args:
+            category: Категория настроек
+
+        Returns:
+            Словарь с настройками категории
+        """
+        if not self._initialized:
+            await self.initialize_default_settings()
+
+        return self._settings.get(category, {}).copy()
+
+    async def set_category_settings(
+        self, category: str, settings: Dict[str, Any]
+    ) -> bool:
+        """
+        Установить все настройки категории.
+
+        Args:
+            category: Категория настроек
+            settings: Словарь с настройками
+
+        Returns:
+            True если успешно
+        """
+        if not self._initialized:
+            await self.initialize_default_settings()
+
+        self._settings[category] = settings.copy()
+        logger.info(f"Updated {category} settings with {len(settings)} keys")
+        return True
+
+    async def get_processor_config(self, processor_name: str) -> Dict[str, Any]:
+        """
+        Получить конфигурацию процессора.
+
+        Args:
+            processor_name: Название процессора (spacy, natasha, stanza)
+
+        Returns:
+            Конфигурация процессора
+        """
+        category = f"nlp_{processor_name}"
+        return await self.get_category_settings(category)
+
+    async def reset_to_defaults(self) -> bool:
+        """
+        Сбросить все настройки к значениям по умолчанию.
+
+        Returns:
+            True если успешно
+        """
+        self._settings.clear()
+        self._initialized = False
+        return await self.initialize_default_settings(force=True)
 
 
-# Создаем глобальный экземпляр менеджера настроек
+# Global singleton instance
 settings_manager = SettingsManager()
-
-
-# Вспомогательные функции для быстрого доступа к настройкам
-async def get_nlp_settings() -> Dict[str, Any]:
-    """Получает настройки NLP модуля."""
-    return await settings_manager.get_category_settings('nlp')
-
-
-async def get_parsing_settings() -> Dict[str, Any]:
-    """Получает настройки парсинга."""
-    return await settings_manager.get_category_settings('parsing')
-
-
-async def get_image_generation_settings() -> Dict[str, Any]:
-    """Получает настройки генерации изображений."""
-    return await settings_manager.get_category_settings('image_generation')
-
-
-async def get_system_settings() -> Dict[str, Any]:
-    """Получает системные настройки."""
-    return await settings_manager.get_category_settings('system')

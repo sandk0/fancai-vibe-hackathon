@@ -14,7 +14,6 @@ export const ParsingOverlay: React.FC<ParsingOverlayProps> = ({
   forceBlock = false 
 }) => {
   const [progress, setProgress] = useState(0);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
 
   useEffect(() => {
@@ -29,7 +28,6 @@ export const ParsingOverlay: React.FC<ParsingOverlayProps> = ({
         const currentProgress = status.progress || 0;
         console.log(`[ParsingOverlay] Updating progress: ${progress}% -> ${currentProgress}%`);
         setProgress(currentProgress);
-        setIsProcessing(status.status === 'processing' || status.status === 'queued');
         
         if (status.status === 'completed' || currentProgress >= 100) {
           setIsComplete(true);

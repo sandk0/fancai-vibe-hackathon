@@ -1,5 +1,4 @@
 import React from 'react';
-import { useAuthStore } from '@/stores/auth';
 import { useUIStore } from '@/stores/ui';
 import { useAutoWebSocket } from '@/services/websocket';
 import Header from './Header';
@@ -11,7 +10,6 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { user } = useAuthStore();
   const { sidebarOpen, mobileMenuOpen, setSidebarOpen, setMobileMenuOpen } = useUIStore();
   
   // Auto-connect WebSocket for real-time updates

@@ -7,7 +7,6 @@
 from pydantic_settings import BaseSettings
 from pydantic import model_validator
 from typing import Optional
-import os
 
 
 class Settings(BaseSettings):
@@ -16,53 +15,57 @@ class Settings(BaseSettings):
     # Основные настройки приложения
     APP_NAME: str = "BookReader AI"
     APP_VERSION: str = "0.1.0"
-    DEBUG: bool = True  # Development mode по умолчанию (установите DEBUG=false в production!)
+    DEBUG: bool = (
+        True  # Development mode по умолчанию (установите DEBUG=false в production!)
+    )
     SECRET_KEY: str = "dev-secret-key-change-in-production"
 
     # База данных
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres123@postgres:5432/bookreader_dev"
+    DATABASE_URL: str = (
+        "postgresql+asyncpg://postgres:postgres123@postgres:5432/bookreader_dev"
+    )
 
     # Redis
     REDIS_URL: str = "redis://:redis123@redis:6379"
-    
+
     # Безопасность
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 720  # 12 hours
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     ALGORITHM: str = "HS256"
-    
+
     # Файловые загрузки
     MAX_UPLOAD_SIZE: int = 52428800  # 50MB
     UPLOAD_DIRECTORY: str = "./uploads"
     ALLOWED_EXTENSIONS: list = [".epub", ".fb2"]
-    
+
     # AI сервисы
     POLLINATIONS_ENABLED: bool = True
     POLLINATIONS_BASE_URL: str = "https://image.pollinations.ai"
     OPENAI_API_KEY: Optional[str] = None
     MIDJOURNEY_API_KEY: Optional[str] = None
-    
+
     # Платежные системы
     YOOKASSA_SHOP_ID: Optional[str] = None
     YOOKASSA_SECRET_KEY: Optional[str] = None
     CLOUDPAYMENTS_PUBLIC_ID: Optional[str] = None
-    
+
     # NLP настройки
     SPACY_MODEL: str = "ru_core_news_lg"
     NLTK_DATA_PATH: str = "./nltk_data"
-    
+
     # Лимиты подписок
     FREE_BOOKS_LIMIT: int = 3
     FREE_GENERATIONS_LIMIT: int = 50
     PREMIUM_BOOKS_LIMIT: int = 50
     PREMIUM_GENERATIONS_LIMIT: int = 500
-    
+
     # Логирование
     LOG_LEVEL: str = "INFO"
-    
-    # CORS  
+
+    # CORS
     CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
-    
-    @model_validator(mode='after')
+
+    @model_validator(mode="after")
     def validate_production_settings(self):
         """
         Валидация критических настроек для production режима.
@@ -81,7 +84,10 @@ class Settings(BaseSettings):
                 )
 
             # Проверка DATABASE_URL
-            if "postgres123" in self.DATABASE_URL or "bookreader_dev" in self.DATABASE_URL:
+            if (
+                "postgres123" in self.DATABASE_URL
+                or "bookreader_dev" in self.DATABASE_URL
+            ):
                 raise ValueError(
                     "❌ SECURITY ERROR: DATABASE_URL contains default development credentials. "
                     "Production database must use secure credentials set via environment variable."
@@ -100,11 +106,16 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> list:
         """Возвращает список CORS origins из строки."""
         if isinstance(self.CORS_ORIGINS, str):
-            return [origin.strip() for origin in self.CORS_ORIGINS.split(',') if origin.strip()]
+            return [
+                origin.strip()
+                for origin in self.CORS_ORIGINS.split(",")
+                if origin.strip()
+            ]
         return self.CORS_ORIGINS
 
     class Config:
         """Настройка загрузки переменных окружения."""
+
         env_file = ".env"
         case_sensitive = True
 

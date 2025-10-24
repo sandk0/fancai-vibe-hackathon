@@ -12,10 +12,10 @@ from .image import GeneratedImage
 
 __all__ = [
     "User",
-    "Subscription", 
+    "Subscription",
     "Book",
     "ReadingProgress",
     "Chapter",
-    "Description", 
-    "GeneratedImage"
+    "Description",
+    "GeneratedImage",
 ]

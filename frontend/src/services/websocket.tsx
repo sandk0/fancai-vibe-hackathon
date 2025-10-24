@@ -150,7 +150,7 @@ class WebSocketService {
           'New Images Generated',
           `${message.data.images_count} new images generated for "${message.data.book_title}"`
         );
-        refreshImages(message.data.book_id);
+        refreshImages();
         break;
 
       case 'image_generation_failed':
@@ -167,10 +167,14 @@ class WebSocketService {
         );
         break;
 
-      case 'user_notification':
+      case 'user_notification': {
         const level = message.data.level || 'info';
-        notify[level](message.data.title, message.data.message);
+        const notifyMethod = notify[level as keyof typeof notify];
+        if (typeof notifyMethod === 'function') {
+          notifyMethod(message.data.title, message.data.message);
+        }
         break;
+      }
 
       default:
         console.log('Unknown message type:', message.type);

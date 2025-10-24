@@ -58,8 +58,8 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
     // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(img => 
-        img.description?.text.toLowerCase().includes(query) ||
+      filtered = filtered.filter(img =>
+        img.description?.content.toLowerCase().includes(query) ||
         img.description?.type.toLowerCase().includes(query)
       );
     }
@@ -102,7 +102,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
       try {
         await navigator.share({
           title: 'BookReader AI - Generated Image',
-          text: image.description?.text || 'AI-generated book illustration',
+          text: image.description?.content || 'AI-generated book illustration',
           url: image.image_url,
         });
       } catch (error) {
@@ -201,7 +201,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
           <option value="all">All Types</option>
           {availableTypes.map(type => (
             <option key={type} value={type}>
-              {type.charAt(0).toUpperCase() + type.slice(1)}
+              {(type ?? '').charAt(0).toUpperCase() + (type ?? '').slice(1)}
             </option>
           ))}
         </select>
@@ -224,7 +224,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
               >
                 <img
                   src={image.image_url}
-                  alt={image.description?.text || 'Generated image'}
+                  alt={image.description?.content || 'Generated image'}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   loading="lazy"
                 />
@@ -262,7 +262,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
               {/* Info */}
               <div className="p-3">
                 <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                  {image.description?.text || 'Generated image'}
+                  {image.description?.content || 'Generated image'}
                 </p>
                 {image.description?.type && (
                   <span className="inline-block mt-2 px-2 py-1 text-xs bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-200 rounded-full">
@@ -289,7 +289,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
               >
                 <img
                   src={image.image_url}
-                  alt={image.description?.text || 'Generated image'}
+                  alt={image.description?.content || 'Generated image'}
                   className="w-full h-full object-cover hover:scale-105 transition-transform"
                   loading="lazy"
                 />
@@ -297,7 +297,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
               
               <div className="flex-1 min-w-0">
                 <p className="text-gray-900 dark:text-white text-sm font-medium line-clamp-2">
-                  {image.description?.text || 'Generated image'}
+                  {image.description?.content || 'Generated image'}
                 </p>
                 {image.description?.type && (
                   <span className="inline-block mt-1 px-2 py-1 text-xs bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-200 rounded-full">
@@ -353,7 +353,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
           <ImageModal
             imageUrl={selectedImage.image_url}
             title={selectedImage.description?.type}
-            description={selectedImage.description?.text}
+            description={selectedImage.description?.content}
             isOpen={!!selectedImage}
             onClose={() => setSelectedImage(null)}
           />

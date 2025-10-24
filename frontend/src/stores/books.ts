@@ -85,11 +85,16 @@ export const useBooksStore = create<BooksState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const response = await booksAPI.uploadBook(file, (progressEvent) => {
-        const percentCompleted = Math.round(
-          (progressEvent.loaded * 100) / progressEvent.total
-        );
-        console.log(`Upload progress: ${percentCompleted}%`);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await booksAPI.uploadBook(formData, {
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          console.log(`Upload progress: ${percentCompleted}%`);
+        }
       });
 
       // Refresh books list
@@ -128,7 +133,7 @@ export const useBooksStore = create<BooksState>((set, get) => ({
     }
   },
 
-  updateReadingProgress: async (bookId: string, currentPage: number, chapterNumber: number) => {
+  updateReadingProgress: async (bookId: string, _currentPage: number, chapterNumber: number) => {
     try {
       const response = await booksAPI.updateReadingProgress(bookId, {
         current_chapter: chapterNumber,
