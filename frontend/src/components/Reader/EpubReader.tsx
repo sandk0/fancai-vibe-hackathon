@@ -108,17 +108,44 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   });
 
   /**
-   * Restore reading position on mount
+   * Initial display - show first page immediately when rendition is ready
    */
   useEffect(() => {
-    if (!rendition || !locations || !epubBook) return;
+    if (!rendition || !renditionReady) return;
+
+    let isMounted = true;
+
+    const displayInitial = async () => {
+      try {
+        console.log('📖 [EpubReader] Displaying initial page...');
+        await rendition.display();
+        console.log('✅ [EpubReader] Initial page displayed');
+      } catch (err) {
+        console.error('❌ [EpubReader] Error displaying initial page:', err);
+      }
+    };
+
+    displayInitial();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [rendition, renditionReady]);
+
+  /**
+   * Restore reading position when locations are ready
+   */
+  useEffect(() => {
+    if (!rendition || !locations || !epubBook || !renditionReady) return;
+
+    let isMounted = true;
 
     const restorePosition = async () => {
       try {
         const { progress: savedProgress } = await booksAPI.getReadingProgress(book.id);
 
-        if (savedProgress?.reading_location_cfi) {
-          console.log('📖 [EpubReader] Restoring position:', {
+        if (savedProgress?.reading_location_cfi && isMounted) {
+          console.log('📖 [EpubReader] Restoring saved position:', {
             cfi: savedProgress.reading_location_cfi.substring(0, 80) + '...',
             progress: savedProgress.current_position + '%',
             scrollOffset: savedProgress.scroll_offset_percent || 0,
@@ -126,18 +153,18 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
 
           skipNextRelocated(); // Skip auto-save on restored position
           await goToCFI(savedProgress.reading_location_cfi, savedProgress.scroll_offset_percent || 0);
-        } else {
-          console.log('📖 [EpubReader] Starting from beginning');
-          await rendition.display();
         }
       } catch (err) {
         console.error('❌ [EpubReader] Error restoring position:', err);
-        await rendition.display();
       }
     };
 
     restorePosition();
-  }, [rendition, locations, epubBook, book.id, goToCFI, skipNextRelocated]); // Run once when all ready
+
+    return () => {
+      isMounted = false;
+    };
+  }, [rendition, locations, epubBook, renditionReady, book.id, goToCFI, skipNextRelocated]);
 
   /**
    * Handle image regeneration
