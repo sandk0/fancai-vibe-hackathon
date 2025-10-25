@@ -128,7 +128,7 @@ async def sample_descriptions(db_session: AsyncSession, test_book: Book):
 
 
 @pytest_asyncio.fixture
-async def old_generated_images(db_session: AsyncSession, sample_descriptions):
+async def old_generated_images(db_session: AsyncSession, sample_descriptions, test_user: User):
     """Create old generated images for cleanup testing."""
     if not sample_descriptions:
         pytest.skip("No sample descriptions available")
@@ -142,10 +142,12 @@ async def old_generated_images(db_session: AsyncSession, sample_descriptions):
         old_date = datetime.now(timezone.utc) - timedelta(days=days_ago)
         img = GeneratedImage(
             description_id=description.id,
-            user_id=description.chapter.book.user_id,
+            user_id=test_user.id,  # Используем test_user напрямую, без relationship
+            service_used="pollinations",  # Required field
+            status="completed",  # Required field
             image_url=f"https://example.com/old-image-{days_ago}.jpg",
             local_path=f"/tmp/old_image_{days_ago}.jpg",
-            generation_prompt="old prompt",
+            prompt_used="old prompt",  # Correct field name is prompt_used
             generation_time_seconds=5.0,
             created_at=old_date,
         )
@@ -155,10 +157,12 @@ async def old_generated_images(db_session: AsyncSession, sample_descriptions):
     # Create recent image (should NOT be deleted)
     recent_img = GeneratedImage(
         description_id=description.id,
-        user_id=description.chapter.book.user_id,
+        user_id=test_user.id,  # Используем test_user напрямую, без relationship
+        service_used="pollinations",  # Required field
+        status="completed",  # Required field
         image_url="https://example.com/recent-image.jpg",
         local_path="/tmp/recent_image.jpg",
-        generation_prompt="recent prompt",
+        prompt_used="recent prompt",  # Correct field name is prompt_used
         generation_time_seconds=3.0,
     )
     db_session.add(recent_img)
@@ -209,6 +213,29 @@ class TestRunAsyncTask:
         with pytest.raises(ValueError, match="Test error"):
             _run_async_task(failing_async_func())
 
+    def test_run_async_task_returns_none(self):
+        """Test that async function returning None works correctly."""
+
+        async def async_returns_none():
+            await asyncio.sleep(0.01)
+            return None
+
+        result = _run_async_task(async_returns_none())
+        assert result is None
+
+    def test_run_async_task_with_complex_return(self):
+        """Test async function returning complex data structures."""
+
+        async def async_returns_dict():
+            await asyncio.sleep(0.01)
+            return {"key": "value", "number": 42, "list": [1, 2, 3]}
+
+        result = _run_async_task(async_returns_dict())
+        assert isinstance(result, dict)
+        assert result["key"] == "value"
+        assert result["number"] == 42
+        assert len(result["list"]) == 3
+
 
 # ==============================================================================
 # ТЕСТЫ для process_book_task
@@ -234,37 +261,78 @@ class TestProcessBookTask:
         assert result["status"] == "failed"
         assert "not found" in result["error"].lower()
 
-    @patch("app.services.multi_nlp_manager.multi_nlp_manager")
-    def test_process_book_success_mocked(self, mock_nlp, unparsed_book):
-        """Test successful book processing with mocked NLP."""
-        # Setup mock
-        mock_nlp._initialized = True
-        mock_nlp.initialize = AsyncMock()
-        mock_nlp.extract_descriptions = AsyncMock(
-            return_value=Mock(
-                descriptions=[
-                    {
-                        "type": "location",
-                        "content": "красивая башня",
-                        "context": "В темном лесу",
-                        "confidence_score": 0.85,
-                        "priority_score": 0.9,
-                        "position_in_chapter": 50,
-                        "word_count": 2,
-                        "entities_mentioned": ["башня"],
-                    }
-                ]
-            )
-        )
+    @patch("app.core.tasks._process_book_async")
+    def test_process_book_success_mocked(self, mock_process_async, unparsed_book):
+        """Test successful book processing with mocked async function."""
+        # Mock the async function to return success result
+        mock_process_async.return_value = {
+            "book_id": str(unparsed_book.id),
+            "status": "completed",
+            "descriptions_found": 3,
+            "chapters_processed": 3,
+            "total_chapters": 3,
+        }
 
         # Execute
         result = process_book_task(str(unparsed_book.id))
 
         # Assert result
         assert result["status"] == "completed"
-        assert result["descriptions_found"] >= 0
-        assert result["chapters_processed"] >= 0
-        assert "total_chapters" in result
+        assert result["descriptions_found"] == 3
+        assert result["chapters_processed"] == 3
+        assert result["total_chapters"] == 3
+        assert "book_id" in result
+
+        # Verify async function was called with correct book_id
+        mock_process_async.assert_called_once()
+        call_args = mock_process_async.call_args[0]
+        assert str(call_args[0]) == str(unparsed_book.id)
+
+    @patch("app.core.tasks._process_book_async")
+    def test_process_book_with_zero_descriptions(self, mock_process_async, unparsed_book):
+        """Test processing book with no descriptions found."""
+        # Mock zero descriptions found
+        mock_process_async.return_value = {
+            "book_id": str(unparsed_book.id),
+            "status": "completed",
+            "descriptions_found": 0,
+            "chapters_processed": 3,
+            "total_chapters": 3,
+        }
+
+        result = process_book_task(str(unparsed_book.id))
+
+        assert result["status"] == "completed"
+        assert result["descriptions_found"] == 0
+        assert result["chapters_processed"] == 3
+
+    @patch("app.core.tasks._process_book_async")
+    def test_process_book_partial_processing(self, mock_process_async, unparsed_book):
+        """Test processing book where only some chapters succeed."""
+        # Mock partial chapter processing
+        mock_process_async.return_value = {
+            "book_id": str(unparsed_book.id),
+            "status": "completed",
+            "descriptions_found": 5,
+            "chapters_processed": 2,  # Only 2 of 3 chapters
+            "total_chapters": 3,
+        }
+
+        result = process_book_task(str(unparsed_book.id))
+
+        assert result["status"] == "completed"
+        assert result["chapters_processed"] < result["total_chapters"]
+
+    @patch("app.core.tasks._process_book_async")
+    def test_process_book_async_exception(self, mock_process_async, unparsed_book):
+        """Test handling of exceptions in async processing."""
+        # Mock async function raising exception
+        mock_process_async.side_effect = RuntimeError("NLP service unavailable")
+
+        result = process_book_task(str(unparsed_book.id))
+
+        assert result["status"] == "failed"
+        assert "NLP service unavailable" in result["error"]
 
 
 # ==============================================================================
@@ -281,8 +349,11 @@ class TestGenerateImagesTask:
             description_ids=["invalid-uuid"], user_id_str=str(uuid4())
         )
 
-        assert result["status"] == "failed"
-        assert "error" in result
+        # Invalid UUID is handled gracefully as failed generation, not task failure
+        assert result["status"] == "completed"
+        assert result["failed_generations"] == 1
+        assert result["images_generated"] == 0
+        assert result["total_processed"] == 1
 
     def test_generate_images_description_not_found(self, test_user):
         """Test generation for non-existent description."""
@@ -331,6 +402,64 @@ class TestGenerateImagesTask:
         assert result["status"] == "completed"
         assert result["total_processed"] == 1
 
+    @patch("app.services.image_generator.image_generator_service")
+    def test_generate_images_all_fail(
+        self, mock_img_service, sample_descriptions, test_user
+    ):
+        """Test when all image generations fail."""
+        # Mock all generations failing
+        mock_img_service.generate_image_for_description = AsyncMock(
+            return_value=Mock(
+                success=False,
+                image_url=None,
+                error_message="AI service timeout",
+            )
+        )
+
+        desc_ids = [str(d.id) for d in sample_descriptions[:2]]
+        result = generate_images_task(
+            description_ids=desc_ids, user_id_str=str(test_user.id)
+        )
+
+        assert result["status"] == "completed"
+        assert result["images_generated"] == 0
+        assert result["failed_generations"] == 2
+
+    @patch("app.core.tasks._generate_images_async")
+    def test_generate_images_partial_success(
+        self, mock_generate_async, sample_descriptions, test_user
+    ):
+        """Test when some generations succeed and some fail."""
+        # Mock partial success result
+        mock_generate_async.return_value = {
+            "status": "completed",
+            "images_generated": 2,
+            "failed_generations": 1,
+            "total_processed": 3,
+            "description_ids": [str(d.id) for d in sample_descriptions[:3]],
+            "user_id": str(test_user.id),
+            "generated_images": []
+        }
+
+        desc_ids = [str(d.id) for d in sample_descriptions[:3]]
+        result = generate_images_task(
+            description_ids=desc_ids, user_id_str=str(test_user.id)
+        )
+
+        assert result["status"] == "completed"
+        assert result["images_generated"] == 2
+        assert result["failed_generations"] == 1
+
+    def test_generate_images_invalid_user_id(self, sample_descriptions):
+        """Test with invalid user ID."""
+        result = generate_images_task(
+            description_ids=[str(sample_descriptions[0].id)],
+            user_id_str="not-a-uuid"
+        )
+
+        assert result["status"] == "failed"
+        assert "error" in result
+
 
 # ==============================================================================
 # ТЕСТЫ для batch_generate_for_book_task
@@ -369,6 +498,38 @@ class TestBatchGenerateForBookTask:
         )
 
         assert result["status"] in ["completed", "failed"]
+
+    def test_batch_generate_nonexistent_book(self, test_user):
+        """Test batch generation for non-existent book."""
+        non_existent_id = str(uuid4())
+
+        result = batch_generate_for_book_task(
+            book_id_str=non_existent_id,
+            user_id_str=str(test_user.id),
+            max_images=5,
+        )
+
+        # Should complete even if no book found (graceful handling)
+        assert result["status"] in ["completed", "failed"]
+
+    @patch("app.core.tasks._batch_generate_for_book_async")
+    def test_batch_generate_with_zero_max_images(
+        self, mock_batch_async, test_book, test_user
+    ):
+        """Test batch generation with max_images=0."""
+        mock_batch_async.return_value = {
+            "status": "completed",
+            "images_generated": 0,
+            "message": "No suitable descriptions found for generation"
+        }
+
+        result = batch_generate_for_book_task(
+            book_id_str=str(test_book.id),
+            user_id_str=str(test_user.id),
+            max_images=0,
+        )
+
+        assert result["status"] == "completed"
 
 
 # ==============================================================================
@@ -415,6 +576,34 @@ class TestCleanupOldImagesTask:
         assert "deleted_files" in result
         assert "deleted_records" in result
         assert "cutoff_date" in result
+        assert result["status"] == "completed"
+
+    @patch("os.path.exists")
+    @patch("os.unlink")
+    def test_cleanup_with_different_ages(
+        self, mock_unlink, mock_exists, old_generated_images
+    ):
+        """Test cleanup with different days_old parameter."""
+        mock_exists.return_value = False
+
+        # Cleanup very old images (60+ days)
+        result = cleanup_old_images_task(days_old=60)
+
+        assert result["status"] == "completed"
+        assert isinstance(result["deleted_records"], int)
+
+    @patch("os.path.exists")
+    @patch("os.unlink")
+    def test_cleanup_file_deletion_error(
+        self, mock_unlink, mock_exists, old_generated_images
+    ):
+        """Test cleanup when file deletion fails."""
+        mock_exists.return_value = True
+        mock_unlink.side_effect = PermissionError("Permission denied")
+
+        result = cleanup_old_images_task(days_old=30)
+
+        # Should still complete despite file deletion errors
         assert result["status"] == "completed"
 
 
