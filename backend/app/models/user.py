@@ -14,10 +14,14 @@ from sqlalchemy import (
     Enum as SQLEnum,
 )
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy.sql import func
 import uuid
 import enum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .book import Book
 
 from ..core.database import Base
 
@@ -118,10 +122,10 @@ class Subscription(Base):
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
     )
 
-    plan = Column(
+    plan: Mapped[SubscriptionPlan] = Column(
         SQLEnum(SubscriptionPlan), default=SubscriptionPlan.FREE, nullable=False
     )
-    status = Column(
+    status: Mapped[SubscriptionStatus] = Column(
         SQLEnum(SubscriptionStatus), default=SubscriptionStatus.ACTIVE, nullable=False
     )
 
