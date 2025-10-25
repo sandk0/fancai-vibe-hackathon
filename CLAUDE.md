@@ -74,8 +74,16 @@ cd frontend && npm test
 cd backend && ruff check . && black --check .
 cd frontend && npm run lint
 
-# Типы (TypeScript)
+# Типы (TypeScript + Python) - NEW Phase 3
 cd frontend && npm run type-check
+cd backend && mypy app/ --strict  # NEW: MyPy strict type checking
+
+# Type checking только core modules (100% coverage required)
+cd backend && mypy app/core/ --disallow-any-expr
+
+# Pre-commit hooks (NEW Phase 3)
+pre-commit install  # Install hooks
+pre-commit run --all-files  # Run all checks
 
 # База данных миграции
 cd backend && alembic upgrade head
@@ -230,7 +238,7 @@ pre-commit install
 - Сканирование на секреты
 ```
 
-### File Structure
+### File Structure (Updated: Phase 3 - 25.10.2025)
 ```
 fancai-vibe-hackathon/
 ├── frontend/                 # React приложение
@@ -241,6 +249,11 @@ fancai-vibe-hackathon/
 │   ├── src/stores/         # Zustand stores
 │   └── src/types/          # TypeScript типы
 ├── backend/                 # FastAPI приложение
+│   ├── app/core/           # ✅ REFACTORED (Phase 3) - Core utilities
+│   │   ├── config.py       # ✅ Настройки приложения
+│   │   ├── database.py     # ✅ Асинхронная база данных
+│   │   ├── exceptions.py   # ✅ NEW: 35+ custom exception classes (DRY)
+│   │   └── dependencies.py # ✅ NEW: 10 reusable FastAPI dependencies
 │   ├── app/models/         # SQLAlchemy модели
 │   │   ├── user.py         # ✅ User, Subscription модели
 │   │   ├── book.py         # ✅ Book, ReadingProgress модели
@@ -250,26 +263,63 @@ fancai-vibe-hackathon/
 │   │   ├── description.py  # ✅ Description модель с типами
 │   │   ├── image.py        # ✅ GeneratedImage модель
 │   │   └── admin_settings.py # ORPHANED - модель существует, таблица УДАЛЕНА!
-│   ├── app/routers/        # API routes
+│   ├── app/routers/        # ✅ REFACTORED (Phase 3) - Modular API routes
+│   │   ├── admin/          # ✅ NEW: Admin router модули (6 modules, 904→485 lines)
+│   │   │   ├── __init__.py
+│   │   │   ├── stats.py           # System statistics (2 endpoints)
+│   │   │   ├── nlp_settings.py    # Multi-NLP config (5 endpoints)
+│   │   │   ├── parsing.py         # Book parsing management (3 endpoints)
+│   │   │   ├── images.py          # Image generation (3 endpoints)
+│   │   │   ├── system.py          # Health & maintenance (2 endpoints)
+│   │   │   └── users.py           # User management (2 endpoints)
+│   │   ├── books/          # ✅ NEW: Books router модули (3 modules, 799 lines refactored)
+│   │   │   ├── __init__.py
+│   │   │   ├── crud.py            # CRUD operations (8 endpoints)
+│   │   │   ├── validation.py      # Validation utilities
+│   │   │   └── processing.py      # Processing & progress (5 endpoints)
 │   │   ├── users.py        # ✅ Пользовательские endpoints
-│   │   ├── books.py        # ✅ 16 endpoints (включая GET /{id}/file для epub.js)
-│   │   ├── admin.py        # ✅ Admin + Multi-NLP settings (5 endpoints)
 │   │   └── nlp.py          # ✅ NLP тестирование и обработка
-│   ├── app/core/           # Конфигурация и утилиты
-│   │   ├── config.py       # ✅ Настройки приложения
-│   │   └── database.py     # ✅ Асинхронная база данных
-│   └── app/services/       # Бизнес логика
-│       ├── book_parser.py  # ✅ EPUB/FB2 парсер (796 строк) + CFI generation
-│       ├── book_service.py # ✅ Сервис управления книгами (621 строк)
-│       ├── multi_nlp_manager.py # ✅ Multi-NLP координатор (627 строк)
-│       └── nlp_processor.py # ✅ NLP обработка с приоритетами
+│   ├── app/services/       # ✅ REFACTORED (Phase 3) - Business logic
+│   │   ├── book/           # ✅ NEW: Book services модули (4 services, SRP applied)
+│   │   │   ├── __init__.py
+│   │   │   ├── book_service.py             # CRUD operations (~250 lines)
+│   │   │   ├── book_progress_service.py    # Reading progress (~180 lines)
+│   │   │   ├── book_statistics_service.py  # Analytics (~150 lines)
+│   │   │   └── book_parsing_service.py     # Parsing coordination (~200 lines)
+│   │   ├── book_parser.py  # ✅ EPUB/FB2 парсер (796 строк) + CFI generation
+│   │   ├── multi_nlp_manager.py # ✅ Multi-NLP координатор (627 строк)
+│   │   └── nlp_processor.py # ✅ NLP обработка с приоритетами
+│   └── docs/               # ✅ NEW: Backend documentation
+│       └── TYPE_CHECKING.md # ✅ NEW: MyPy strict mode guide (~30KB)
 ├── docs/                   # Документация проекта
 │   ├── development/        # План, календарь, changelog
 │   ├── architecture/       # Техническая документация
 │   ├── components/         # Документация компонентов
 │   └── user-guides/        # Руководства пользователей
+├── .github/                # ✅ NEW: CI/CD workflows
+│   └── workflows/
+│       └── type-check.yml  # ✅ NEW: MyPy type checking в CI/CD
+├── .pre-commit-config.yaml # ✅ NEW: Pre-commit hooks (mypy, ruff, black)
 └── scripts/                # Вспомогательные скрипты
 ```
+
+### Phase 3 Refactoring Highlights (25.10.2025)
+
+**Modularization:**
+- Admin Router: 904 lines → 6 modules (46% size reduction)
+- Books Router: 799 lines → 3 modules (clean separation)
+- BookService: 714 lines → 4 services (68% avg size reduction)
+
+**DRY Principle:**
+- Custom Exceptions: 35+ classes in `app/core/exceptions.py`
+- Reusable Dependencies: 10 dependencies in `app/core/dependencies.py`
+- Eliminated: ~200-300 lines duplicate error handling
+
+**Type Safety:**
+- Type Coverage: 70% → 95%+ (100% in core modules)
+- MyPy strict mode enabled
+- CI/CD type checking
+- Pre-commit hooks
 
 ## Architecture Overview
 
