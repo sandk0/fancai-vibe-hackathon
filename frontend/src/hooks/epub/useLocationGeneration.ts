@@ -106,6 +106,24 @@ export const useLocationGeneration = (
         setIsGenerating(true);
         setError(null);
 
+        // Ensure book is ready and spine is loaded
+        await book.ready;
+
+        // Check if spine exists and is ready
+        const spine = (book as any).spine;
+        if (!spine || !spine.items || spine.items.length === 0) {
+          console.warn('⚠️ [useLocationGeneration] Spine not ready yet, waiting...');
+          // Wait a bit more for spine to load
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          // Check again
+          if (!spine || !spine.items || spine.items.length === 0) {
+            throw new Error('Book spine is not available');
+          }
+        }
+
+        console.log('✅ [useLocationGeneration] Book spine ready with', spine.items.length, 'items');
+
         // Try to load from cache first
         console.log('📊 [useLocationGeneration] Checking cache for book:', bookId);
         const cachedLocations = await getCachedLocations(bookId);
