@@ -15,7 +15,7 @@ from uuid import UUID
 
 from ..core.database import get_database_session
 from ..core.auth import get_current_active_user
-from ..services.book_service import book_service
+from ..services.book import book_service, book_progress_service
 from ..models.user import User
 from ..models.book import ReadingProgress
 
@@ -152,7 +152,7 @@ async def update_reading_progress(
         position_percent = max(0.0, min(100.0, float(position_percent)))
 
         # Обновляем прогресс чтения
-        progress = await book_service.update_reading_progress(
+        progress = await book_progress_service.update_reading_progress(
             db=db,
             user_id=current_user.id,
             book_id=book_id,

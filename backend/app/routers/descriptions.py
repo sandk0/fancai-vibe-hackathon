@@ -18,7 +18,7 @@ import os
 
 from ..core.database import get_database_session
 from ..core.auth import get_current_active_user
-from ..services.book_service import book_service
+from ..services.book import book_service, book_parsing_service
 from ..services.book_parser import book_parser
 from ..services.nlp_processor import nlp_processor
 from ..models.user import User
@@ -324,7 +324,7 @@ async def get_book_descriptions(
                     status_code=400, detail=f"Invalid description type: {description_type}"
                 )
 
-        descriptions = await book_service.get_book_descriptions(
+        descriptions = await book_parsing_service.get_book_descriptions(
             db=db, book_id=book_id, description_type=desc_type_filter, limit=limit
         )
 

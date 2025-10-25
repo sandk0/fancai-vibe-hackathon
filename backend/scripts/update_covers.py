@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.core.database import AsyncSessionLocal
 from app.models.book import Book
 from app.services.book_parser import book_parser
-from app.services.book_service import BookService
+from app.services.book import BookService
 from sqlalchemy import select
 
 

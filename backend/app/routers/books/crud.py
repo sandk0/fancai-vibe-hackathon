@@ -23,7 +23,7 @@ from uuid import uuid4, UUID
 from ...core.database import get_database_session
 from ...core.auth import get_current_active_user
 from ...services.book_parser import book_parser
-from ...services.book_service import book_service
+from ...services.book import book_service, book_progress_service
 from ...models.book import Book
 from ...models.user import User
 from ...core.tasks import process_book_task
@@ -166,7 +166,7 @@ async def get_user_books(
     try:
         # ОПТИМИЗАЦИЯ: Получаем книги пользователя с предрасчитанным прогрессом
         # Использует eager loading, чтобы избежать N+1 queries
-        books_with_progress = await book_service.get_user_books_with_progress(
+        books_with_progress = await book_progress_service.get_books_with_progress(
             db, current_user.id, skip, limit
         )
         print(

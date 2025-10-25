@@ -14,7 +14,7 @@ from uuid import UUID
 
 from ...core.database import get_database_session
 from ...core.auth import get_current_active_user
-from ...services.book_service import book_service
+from ...services.book import book_service
 from ...models.user import User
 from ...core.tasks import process_book_task
 
