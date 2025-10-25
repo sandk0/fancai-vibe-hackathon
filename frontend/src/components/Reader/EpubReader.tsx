@@ -146,11 +146,15 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     updateImage(newImageUrl);
   }, [updateImage]);
 
-  // Render loading state
-  if (isLoading || isGenerating) {
-    return (
-      <div className="relative h-full w-full bg-gray-900">
-        <div className="absolute inset-0 flex items-center justify-center">
+  // Main render - viewerRef MUST stay in same DOM location to prevent rendition destruction
+  return (
+    <div className="relative h-full w-full bg-gray-900">
+      {/* EPUB Viewer - Always rendered in same location */}
+      <div ref={viewerRef} className="h-full w-full" />
+
+      {/* Loading Overlay */}
+      {(isLoading || isGenerating) && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900 z-10">
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
             <p className="text-gray-300">
@@ -158,31 +162,17 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
             </p>
           </div>
         </div>
-        <div ref={viewerRef} className="h-full w-full" />
-      </div>
-    );
-  }
+      )}
 
-  // Render error state
-  if (error) {
-    return (
-      <div className="relative h-full w-full bg-gray-900">
-        <div className="absolute inset-0 flex items-center justify-center">
+      {/* Error Overlay */}
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900 z-10">
           <div className="text-center">
             <p className="text-red-400 mb-4">Ошибка загрузки книги</p>
             <p className="text-gray-400 text-sm">{error}</p>
           </div>
         </div>
-        <div ref={viewerRef} className="h-full w-full" />
-      </div>
-    );
-  }
-
-  // Main render
-  return (
-    <div className="relative h-full w-full bg-gray-900">
-      {/* EPUB Viewer */}
-      <div ref={viewerRef} className="h-full w-full" />
+      )}
 
       {/* Navigation Arrows */}
       <button
