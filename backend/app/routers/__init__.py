@@ -1,6 +1,6 @@
 """Routers package для API endpoints BookReader AI."""
 
-from .books import router as books_router
+from .books import books_router
 from .chapters import router as chapters_router
 from .reading_progress import router as reading_progress_router
 from .descriptions import router as descriptions_router
