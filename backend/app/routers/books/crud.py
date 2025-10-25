@@ -22,6 +22,20 @@ from uuid import uuid4, UUID
 
 from ...core.database import get_database_session
 from ...core.auth import get_current_active_user
+from ...core.dependencies import get_user_book, get_any_book
+from ...core.exceptions import (
+    InvalidFileFormatException,
+    FileTooLargeException,
+    NoFilenameProvidedException,
+    FileReadException,
+    BookProcessingException,
+    BookListFetchException,
+    BookFetchException,
+    BookFileNotFoundException,
+    BookRetrievalException,
+    CoverImageNotFoundException,
+    CoverFetchException,
+)
 from ...services.book_parser import book_parser
 from ...services.book import book_service, book_progress_service
 from ...models.book import Book
@@ -57,13 +71,11 @@ async def upload_book(
 
     # Валидируем файл
     if not file.filename:
-        raise HTTPException(status_code=400, detail="No filename provided")
+        raise NoFilenameProvidedException()
 
     file_extension = Path(file.filename).suffix.lower()
     if file_extension not in [".epub", ".fb2"]:
-        raise HTTPException(
-            status_code=400, detail=f"Unsupported file type: {file_extension}"
-        )
+        raise InvalidFileFormatException(file_extension, [".epub", ".fb2"])
 
     try:
         file_content = await file.read()
@@ -71,10 +83,10 @@ async def upload_book(
         print(f"[UPLOAD] File read successfully, size: {file_size} bytes")
     except Exception as e:
         print(f"[UPLOAD ERROR] Failed to read file: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to read file: {str(e)}")
+        raise FileReadException(str(e))
 
     if file_size > 50 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File too large (max 50MB)")
+        raise FileTooLargeException(50)
 
     # Создаем временный файл для парсинга
     with tempfile.NamedTemporaryFile(suffix=file_extension, delete=False) as temp_file:
@@ -140,7 +152,7 @@ async def upload_book(
         except OSError:
             pass
 
-        raise HTTPException(status_code=500, detail=f"Error processing book: {str(e)}")
+        raise BookProcessingException(str(e))
 
 
 @router.get("/")
@@ -223,12 +235,12 @@ async def get_user_books(
 
     except Exception as e:
         print(f"[BOOKS ENDPOINT] Error: {e}")
-        raise HTTPException(status_code=500, detail=f"Error fetching books: {str(e)}")
+        raise BookListFetchException(str(e))
 
 
 @router.get("/{book_id}")
 async def get_book(
-    book_id: UUID,
+    book: Book = Depends(get_user_book),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
 ) -> Dict[str, Any]:
@@ -236,7 +248,7 @@ async def get_book(
     Получает информацию о конкретной книге.
 
     Args:
-        book_id: ID книги
+        book: Книга (автоматически получена через dependency)
         current_user: Текущий аутентифицированный пользователь
         db: Сессия базы данных
 
@@ -244,15 +256,10 @@ async def get_book(
         Подробная информация о книге
 
     Raises:
-        HTTPException: 404 если книга не найдена
+        BookNotFoundException: Если книга не найдена
+        BookAccessDeniedException: Если доступ запрещен
     """
     try:
-        book = await book_service.get_book_by_id(
-            db=db, book_id=book_id, user_id=current_user.id
-        )
-
-        if not book:
-            raise HTTPException(status_code=404, detail="Book not found")
 
         # Прогресс чтения - используем унифицированный метод из модели
         progress_percent = await book.get_reading_progress_percent(db, current_user.id)
@@ -315,40 +322,31 @@ async def get_book(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching book: {str(e)}")
+        raise BookFetchException(str(e))
 
 
 @router.get("/{book_id}/file")
 async def get_book_file(
-    book_id: UUID,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_database_session),
+    book: Book = Depends(get_user_book),
 ):
     """
     Возвращает EPUB файл для чтения в epub.js.
 
     Args:
-        book_id: ID книги
-        current_user: Текущий аутентифицированный пользователь
-        db: Сессия базы данных
+        book: Книга (автоматически получена через dependency)
 
     Returns:
         FileResponse с EPUB файлом
 
     Raises:
-        HTTPException: 404 если книга или файл не найден
+        BookNotFoundException: Если книга не найдена
+        BookAccessDeniedException: Если доступ запрещен
+        BookFileNotFoundException: Если файл книги не найден на сервере
     """
     try:
-        book = await book_service.get_book_by_id(
-            db=db, book_id=book_id, user_id=current_user.id
-        )
-
-        if not book:
-            raise HTTPException(status_code=404, detail="Book not found")
-
         # Проверяем существование файла
         if not os.path.exists(book.file_path):
-            raise HTTPException(status_code=404, detail="Book file not found on server")
+            raise BookFileNotFoundException(book.id)
 
         # Возвращаем файл
         return FileResponse(
@@ -360,39 +358,30 @@ async def get_book_file(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error retrieving book file: {str(e)}"
-        )
+        raise BookRetrievalException(str(e))
 
 
 @router.get("/{book_id}/cover")
 async def get_book_cover(
-    book_id: UUID, db: AsyncSession = Depends(get_database_session)
+    book: Book = Depends(get_any_book),
 ):
     """
     Получает обложку книги.
 
     Args:
-        book_id: ID книги
-        db: Сессия базы данных
+        book: Книга (автоматически получена через dependency, публичный доступ)
 
     Returns:
         Файл обложки книги
 
     Raises:
-        HTTPException: 404 если книга или обложка не найдена
+        BookNotFoundException: Если книга не найдена
+        CoverImageNotFoundException: Если обложка не найдена
     """
     try:
-        # Получаем книгу по ID (без проверки владельца для публичного доступа к обложке)
-        result = await db.execute(select(Book).where(Book.id == book_id))
-        book = result.scalar_one_or_none()
-
-        if not book:
-            raise HTTPException(status_code=404, detail="Book not found")
-
         # Проверяем, есть ли обложка
         if not book.cover_image or not os.path.exists(book.cover_image):
-            raise HTTPException(status_code=404, detail="Cover image not found")
+            raise CoverImageNotFoundException(book.id)
 
         # Возвращаем файл обложки
         return FileResponse(
@@ -404,4 +393,4 @@ async def get_book_cover(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching cover: {str(e)}")
+        raise CoverFetchException(str(e))

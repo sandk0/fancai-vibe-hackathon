@@ -18,10 +18,20 @@ import os
 
 from ..core.database import get_database_session
 from ..core.auth import get_current_active_user
+from ..core.dependencies import get_user_book
+from ..core.exceptions import (
+    ChapterNotFoundException,
+    NLPProcessorUnavailableException,
+    InvalidDescriptionTypeException,
+    ChapterDescriptionFetchException,
+    ChapterAnalysisException,
+    DescriptionFetchException,
+)
 from ..services.book import book_service, book_parsing_service
 from ..services.book_parser import book_parser
 from ..services.nlp_processor import nlp_processor
 from ..models.user import User
+from ..models.book import Book
 from ..models.description import Description
 
 
@@ -60,14 +70,15 @@ async def get_chapter_descriptions(
         print(f"[DEBUG]   current_user.id: {current_user.id}")
         print(f"[DEBUG]   current_user.email: {current_user.email}")
 
-        # Проверяем, что книга принадлежит пользователю
+        # Получаем книгу через dependency (уже проверена)
         book = await book_service.get_book_by_id(
             db=db, book_id=book_id, user_id=current_user.id
         )
         print(f"[DEBUG] Book found: {book is not None}")
 
         if not book:
-            raise HTTPException(status_code=404, detail="Book not found")
+            from ..core.exceptions import BookNotFoundException
+            raise BookNotFoundException(book_id)
 
         # Ищем главу
         chapter = None
@@ -81,16 +92,12 @@ async def get_chapter_descriptions(
 
         if not chapter:
             print(f"[DEBUG] Chapter {chapter_number} not found in book!")
-            raise HTTPException(
-                status_code=404, detail=f"Chapter {chapter_number} not found"
-            )
+            raise ChapterNotFoundException(chapter_number, book_id)
 
         # Если требуется извлечь новые описания
         if extract_new:
             if not nlp_processor.is_available():
-                raise HTTPException(
-                    status_code=503, detail="NLP processor is not available"
-                )
+                raise NLPProcessorUnavailableException()
 
             # Удаляем старые описания для этой главы
             old_descriptions = (
@@ -178,9 +185,7 @@ async def get_chapter_descriptions(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error fetching chapter descriptions: {str(e)}"
-        )
+        raise ChapterDescriptionFetchException(str(e))
 
 
 @router.post("/analyze-chapter")

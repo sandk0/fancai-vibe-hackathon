@@ -14,8 +14,11 @@ from uuid import UUID
 
 from ...core.database import get_database_session
 from ...core.auth import get_current_active_user
+from ...core.dependencies import get_user_book
+from ...core.exceptions import ParsingStartException, ParsingStatusException
 from ...services.book import book_service
 from ...models.user import User
+from ...models.book import Book
 from ...core.tasks import process_book_task
 
 
@@ -24,7 +27,7 @@ router = APIRouter()
 
 @router.post("/{book_id}/process")
 async def process_book_descriptions(
-    book_id: UUID,
+    book: Book = Depends(get_user_book),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
 ) -> Dict[str, Any]:
@@ -32,7 +35,7 @@ async def process_book_descriptions(
     Запускает обработку книги для извлечения описаний.
 
     Args:
-        book_id: ID книги
+        book: Книга (автоматически получена через dependency)
         current_user: Текущий пользователь
         db: Сессия базы данных
 
@@ -40,16 +43,11 @@ async def process_book_descriptions(
         Статус запуска обработки
 
     Raises:
-        HTTPException: 404 если книга не найдена
+        BookNotFoundException: Если книга не найдена
+        BookAccessDeniedException: Если доступ запрещен
     """
     try:
-        # Проверяем, что книга принадлежит пользователю
-        book = await book_service.get_book_by_id(
-            db=db, book_id=book_id, user_id=current_user.id
-        )
-
-        if not book:
-            raise HTTPException(status_code=404, detail="Book not found")
+        book_id = book.id
 
         # Импортируем менеджер парсинга
         from ...services.parsing_manager import parsing_manager
@@ -130,14 +128,12 @@ async def process_book_descriptions(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error starting book processing: {str(e)}"
-        )
+        raise ParsingStartException(str(e))
 
 
 @router.get("/{book_id}/parsing-status")
 async def get_parsing_status(
-    book_id: UUID,
+    book: Book = Depends(get_user_book),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
 ) -> Dict[str, Any]:
@@ -145,7 +141,7 @@ async def get_parsing_status(
     Получает статус парсинга книги.
 
     Args:
-        book_id: ID книги
+        book: Книга (автоматически получена через dependency)
         current_user: Текущий пользователь
         db: Сессия базы данных
 
@@ -153,17 +149,12 @@ async def get_parsing_status(
         Статус парсинга и прогресс
 
     Raises:
-        HTTPException: 404 если книга не найдена
+        BookNotFoundException: Если книга не найдена
+        BookAccessDeniedException: Если доступ запрещен
     """
-    print(f"[PARSING-STATUS] Request for book_id={book_id}, user={current_user.email}")
+    print(f"[PARSING-STATUS] Request for book_id={book.id}, user={current_user.email}")
     try:
-        # Проверяем, что книга принадлежит пользователю
-        book = await book_service.get_book_by_id(
-            db=db, book_id=book_id, user_id=current_user.id
-        )
-
-        if not book:
-            raise HTTPException(status_code=404, detail="Book not found")
+        book_id = book.id
 
         # Определяем статус парсинга на основе данных книги
         if book.is_parsed:
@@ -197,6 +188,4 @@ async def get_parsing_status(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error fetching parsing status: {str(e)}"
-        )
+        raise ParsingStatusException(str(e))

@@ -15,8 +15,12 @@ from uuid import UUID
 
 from ..core.database import get_database_session
 from ..core.auth import get_current_active_user
+from ..core.dependencies import get_user_book, get_chapter_by_number, validate_chapter_number_in_book
+from ..core.exceptions import ChapterFetchException
 from ..services.book import book_service
 from ..models.user import User
+from ..models.book import Book
+from ..models.chapter import Chapter
 from ..models.description import Description
 from ..models.image import GeneratedImage
 
@@ -26,7 +30,7 @@ router = APIRouter()
 
 @router.get("/{book_id}/chapters")
 async def list_chapters(
-    book_id: UUID,
+    book: Book = Depends(get_user_book),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
 ) -> Dict[str, Any]:
@@ -34,7 +38,7 @@ async def list_chapters(
     Получает список всех глав книги.
 
     Args:
-        book_id: ID книги
+        book: Книга (автоматически получена через dependency)
         current_user: Текущий аутентифицированный пользователь
         db: Сессия базы данных
 
@@ -42,16 +46,11 @@ async def list_chapters(
         Список глав с метаданными
 
     Raises:
-        HTTPException: 404 если книга не найдена
+        BookNotFoundException: Если книга не найдена
+        BookAccessDeniedException: Если доступ запрещен
     """
     try:
-        # Проверяем доступ к книге
-        book = await book_service.get_book_by_id(
-            db=db, book_id=book_id, user_id=current_user.id
-        )
-
-        if not book:
-            raise HTTPException(status_code=404, detail="Book not found")
+        book_id = book.id
 
         # Получаем главы
         chapters = await book_service.get_book_chapters(
@@ -82,53 +81,35 @@ async def list_chapters(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error fetching chapters: {str(e)}"
-        )
+        raise ChapterFetchException(str(e))
 
 
 @router.get("/{book_id}/chapters/{chapter_number}")
 async def get_chapter(
-    book_id: UUID,
-    chapter_number: int,
-    current_user: User = Depends(get_current_active_user),
+    chapter: Chapter = Depends(get_chapter_by_number),
     db: AsyncSession = Depends(get_database_session),
 ) -> Dict[str, Any]:
     """
     Получает содержимое конкретной главы книги.
 
     Args:
-        book_id: ID книги
-        chapter_number: Номер главы
-        current_user: Текущий аутентифицированный пользователь
+        chapter: Глава (автоматически получена через dependency)
         db: Сессия базы данных
 
     Returns:
         Содержимое главы с навигационной информацией
 
     Raises:
-        HTTPException: 404 если книга или глава не найдена
+        BookNotFoundException: Если книга не найдена
+        BookAccessDeniedException: Если доступ к книге запрещен
+        ChapterNotFoundException: Если глава не найдена
     """
     try:
-        # Проверяем, что книга принадлежит пользователю
-        book = await book_service.get_book_by_id(
-            db=db, book_id=book_id, user_id=current_user.id
+        # Загружаем книгу для навигационной информации
+        book_result = await db.execute(
+            select(Book).where(Book.id == chapter.book_id)
         )
-
-        if not book:
-            raise HTTPException(status_code=404, detail="Book not found")
-
-        # Ищем главу
-        chapter = None
-        for c in book.chapters:
-            if c.chapter_number == chapter_number:
-                chapter = c
-                break
-
-        if not chapter:
-            raise HTTPException(
-                status_code=404, detail=f"Chapter {chapter_number} not found"
-            )
+        book = book_result.scalar_one()
 
         # Получаем описания для этой главы с изображениями (лимитируем до 50)
         descriptions_result = await db.execute(
@@ -164,10 +145,10 @@ async def get_chapter(
             descriptions_data.append(desc_data)
 
         # Навигационная информация
-        has_previous = chapter_number > 1
-        has_next = chapter_number < len(book.chapters)
-        previous_chapter = chapter_number - 1 if has_previous else None
-        next_chapter = chapter_number + 1 if has_next else None
+        has_previous = chapter.chapter_number > 1
+        has_next = chapter.chapter_number < len(book.chapters)
+        previous_chapter = chapter.chapter_number - 1 if has_previous else None
+        next_chapter = chapter.chapter_number + 1 if has_next else None
 
         return {
             "chapter": {
@@ -197,4 +178,4 @@ async def get_chapter(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching chapter: {str(e)}")
+        raise ChapterFetchException(str(e))
