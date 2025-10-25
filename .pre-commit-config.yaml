@@ -1,0 +1,74 @@
+# Pre-commit hooks для BookReader AI
+# Установка: pip install pre-commit && pre-commit install
+
+repos:
+  # Python форматирование - Black
+  - repo: https://github.com/psf/black
+    rev: 23.11.0
+    hooks:
+      - id: black
+        language_version: python3.11
+        files: ^backend/
+        args: [--config=backend/pyproject.toml]
+
+  # Python линтинг - Ruff
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.6
+    hooks:
+      - id: ruff
+        files: ^backend/
+        args: [--fix, --exit-non-zero-on-fix]
+
+  # Python type checking - mypy
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.7.1
+    hooks:
+      - id: mypy
+        name: mypy type checking
+        files: ^backend/app/
+        args: [--config-file=backend/mypy.ini]
+        additional_dependencies:
+          - sqlalchemy[mypy]==2.0.23
+          - types-redis==4.6.0.10
+          - types-requests==2.31.0.10
+          - types-aiofiles==23.2.0.0
+          - fastapi==0.104.1
+          - pydantic==2.5.0
+        pass_filenames: false
+        entry: bash -c 'cd backend && mypy app/ --config-file=mypy.ini'
+
+  # Trailing whitespace
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: \.(md|txt)$
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--unsafe]  # для docker-compose.yml
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # TypeScript/JavaScript - ESLint + Prettier
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v8.54.0
+    hooks:
+      - id: eslint
+        files: ^frontend/src/.*\.[jt]sx?$
+        types: [file]
+        additional_dependencies:
+          - eslint@8.54.0
+          - typescript@5.3.0
+          - '@typescript-eslint/parser@6.13.0'
+          - '@typescript-eslint/eslint-plugin@6.13.0'
+        args: [--fix]
+
+  # Проверка секретов
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: [--baseline, .secrets.baseline]
+        exclude: (package-lock.json|.*\.lock|.*\.sum)$

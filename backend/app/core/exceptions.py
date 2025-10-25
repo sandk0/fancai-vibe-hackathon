@@ -29,8 +29,8 @@ class BookNotFoundException(HTTPException):
 class ChapterNotFoundException(HTTPException):
     """Исключение, когда глава не найдена."""
 
-    def __init__(self, chapter_number: int, book_id: Optional[UUID] = None):
-        detail = f"Chapter {chapter_number} not found"
+    def __init__(self, chapter_identifier: int | UUID, book_id: UUID | None = None):
+        detail = f"Chapter {chapter_identifier} not found"
         if book_id:
             detail += f" in book {book_id}"
         super().__init__(
@@ -132,7 +132,7 @@ class ImageAccessDeniedException(HTTPException):
 class InvalidFileFormatException(HTTPException):
     """Исключение для невалидного формата файла."""
 
-    def __init__(self, file_format: str, supported_formats: list = None):
+    def __init__(self, file_format: str, supported_formats: list[str] | None = None):
         if supported_formats is None:
             supported_formats = ["EPUB", "FB2"]
         super().__init__(

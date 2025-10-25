@@ -6,7 +6,7 @@ Reusable FastAPI dependencies для BookReader AI.
 """
 
 from uuid import UUID
-from typing import Optional
+from typing import Optional, cast
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -57,7 +57,7 @@ async def get_user_book(
         BookAccessDeniedException: Если пользователь не имеет доступа к книге
     """
     book = await book_service.get_book_by_id(
-        db=db, book_id=book_id, user_id=current_user.id
+        db=db, book_id=book_id, user_id=UUID(str(current_user.id))
     )
 
     if not book:
@@ -335,7 +335,8 @@ async def get_user_image_with_description(
             # Изображение не существует
             raise ImageNotFoundException(image_id)
 
-    return row
+    # Cast Row to tuple for type safety
+    return cast(tuple[GeneratedImage, Description], tuple(row))
 
 
 # ============================================================================
@@ -343,7 +344,7 @@ async def get_user_image_with_description(
 # ============================================================================
 
 
-def validate_chapter_number_in_book(book: Book, chapter_number: int) -> Optional[Chapter]:
+def validate_chapter_number_in_book(book: Book, chapter_number: int) -> Chapter | None:
     """
     Проверяет существование главы по номеру в книге.
 
@@ -357,8 +358,10 @@ def validate_chapter_number_in_book(book: Book, chapter_number: int) -> Optional
     Raises:
         ChapterNotFoundException: Если глава не найдена
     """
-    for chapter in book.chapters:
+    # Приводим к list для итерации (SQLAlchemy relationship может быть Mapped)
+    chapters_list = list(book.chapters) if hasattr(book.chapters, '__iter__') else []
+    for chapter in chapters_list:
         if chapter.chapter_number == chapter_number:
-            return chapter
+            return cast(Chapter, chapter)
 
-    raise ChapterNotFoundException(chapter_number, book.id)
+    raise ChapterNotFoundException(chapter_number, UUID(str(book.id)))

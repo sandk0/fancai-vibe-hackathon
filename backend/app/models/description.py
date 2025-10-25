@@ -108,8 +108,9 @@ class Description(Base):
         "GeneratedImage", back_populates="description", cascade="all, delete-orphan"
     )
 
-    def __repr__(self):
-        return f"<Description(id={self.id}, type={self.type.value}, confidence={self.confidence_score:.2f})>"
+    def __repr__(self) -> str:
+        type_val = self.type.value if self.type else "unknown"
+        return f"<Description(id={self.id}, type={type_val}, confidence={self.confidence_score:.2f})>"
 
     def get_type_priority(self) -> int:
         """
@@ -118,6 +119,9 @@ class Description(Base):
         Returns:
             Приоритет от 30 до 75
         """
+        if not self.type:
+            return 30
+
         priorities = {
             DescriptionType.LOCATION: 75,
             DescriptionType.CHARACTER: 60,
@@ -144,17 +148,17 @@ class Description(Base):
             return 0.0
 
         type_priority = self.get_type_priority()
-        confidence_weight = self.confidence_score * 20  # 0-20 points
+        confidence_weight = float(self.confidence_score or 0) * 20  # 0-20 points
 
         # Бонус за оптимальную длину (15-300 символов)
-        length_score = 0
-        content_length = len(self.content)
+        length_score: float = 0
+        content_length = len(self.content or "")
         if 15 <= content_length <= 300:
             length_score = 15
         elif content_length < 15:
-            length_score = max(0, content_length - 5)
+            length_score = float(max(0, content_length - 5))
         else:
-            length_score = max(0, 15 - (content_length - 300) / 50)
+            length_score = max(0.0, 15.0 - (content_length - 300) / 50.0)
 
         return min(100.0, type_priority + confidence_weight + length_score)
 
@@ -168,7 +172,9 @@ class Description(Base):
         Returns:
             Отрывок описания
         """
-        if len(self.content) <= max_length:
-            return self.content
+        content = self.content or ""
+        if len(content) <= max_length:
+            return content
 
-        return self.content[:max_length].rsplit(" ", 1)[0] + "..."
+        excerpt_parts = content[:max_length].rsplit(" ", 1)
+        return excerpt_parts[0] + "..." if excerpt_parts else ""
