@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User
 from app.models.book import Book, ReadingProgress
 from app.models.chapter import Chapter
-from app.services.book_service import BookService
+from app.services.book import BookService
 
 
 class QueryCounter:

@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.services.book_service import BookService
+from app.services.book import BookService, BookProgressService, BookStatisticsService
 from app.models.book import Book, ReadingProgress, BookGenre
 from app.models.chapter import Chapter
 from app.models.user import User

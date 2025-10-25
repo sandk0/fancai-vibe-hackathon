@@ -29,7 +29,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from app.models.user import User
 from app.models.book import Book, ReadingProgress
 from app.models.chapter import Chapter
-from app.services.book_service import BookService
+from app.services.book import BookService
 from app.core.database import Base
 
 
