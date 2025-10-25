@@ -1,28 +1,20 @@
 """
-Admin API routes for system management and configuration.
+Admin API routes for Multi-NLP configuration and management.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
-from typing import Dict, Any
-import os
-import redis.asyncio as redis
 from pydantic import BaseModel
+from typing import Dict, Any
 from datetime import datetime, timezone
 import logging
 
-from ..core.database import get_database_session
-from ..core.auth import get_current_admin_user
-from ..models.user import User
-from ..models.book import Book
-from ..models.description import Description
-from ..models.image import GeneratedImage
-from ..services.settings_manager import settings_manager
+from ...core.auth import get_current_admin_user
+from ...models.user import User
+from ...services.settings_manager import settings_manager
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter()
 
 
 # Pydantic models for settings
@@ -121,98 +113,12 @@ class MultiNLPSettings(BaseModel):
     ]
 
 
-class ParsingSettings(BaseModel):
-    max_concurrent_parsing: int
-    queue_priority_weights: Dict[str, int]
-    timeout_minutes: int
-    retry_attempts: int
-
-
-class ImageGenerationSettings(BaseModel):
-    primary_service: str
-    fallback_services: list[str]
-    enable_caching: bool
-    image_quality: str
-    max_generation_time: int
-
-
-class SystemSettings(BaseModel):
-    maintenance_mode: bool
-    max_upload_size_mb: int
-    supported_book_formats: list[str]
-    enable_debug_mode: bool
-
-
-class SystemStats(BaseModel):
-    total_users: int
-    total_books: int
-    total_descriptions: int
-    total_images: int
-    processing_rate: float
-    generation_rate: float
-    active_parsing_tasks: int
-    queue_size: int
-
-
-@router.get("/stats", response_model=SystemStats)
-async def get_system_stats(
-    db: AsyncSession = Depends(get_database_session),
-    admin_user: User = Depends(get_current_admin_user),
-):
-    """Get comprehensive system statistics."""
-
-    # Get counts from database
-    users_result = await db.execute(select(func.count(User.id)))
-    total_users = users_result.scalar()
-
-    books_result = await db.execute(select(func.count(Book.id)))
-    total_books = books_result.scalar()
-
-    descriptions_result = await db.execute(select(func.count(Description.id)))
-    total_descriptions = descriptions_result.scalar()
-
-    images_result = await db.execute(select(func.count(GeneratedImage.id)))
-    total_images = images_result.scalar()
-
-    # Get parsing queue info from Redis
-    try:
-        redis_client = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"))
-
-        # Check for active parsing lock
-        parsing_lock = await redis_client.get("global_parsing_lock")
-        active_parsing_tasks = 1 if parsing_lock else 0
-
-        # Get queue size
-        queue_size = await redis_client.llen("parsing_queue")
-
-        await redis_client.close()
-    except Exception:
-        active_parsing_tasks = 0
-        queue_size = 0
-
-    # Calculate processing and generation rates
-    # These would be based on actual metrics in production
-    processing_rate = min(100.0, (total_descriptions / max(total_books, 1)) * 10)
-    generation_rate = min(100.0, (total_images / max(total_descriptions, 1)) * 100)
-
-    return SystemStats(
-        total_users=total_users,
-        total_books=total_books,
-        total_descriptions=total_descriptions,
-        total_images=total_images,
-        processing_rate=round(processing_rate, 1),
-        generation_rate=round(generation_rate, 1),
-        active_parsing_tasks=active_parsing_tasks,
-        queue_size=queue_size,
-    )
-
-
 @router.get("/multi-nlp-settings", response_model=MultiNLPSettings)
 async def get_multi_nlp_settings(admin_user: User = Depends(get_current_admin_user)):
     """Get comprehensive multi-processor NLP configuration settings."""
 
-    from ..services.settings_manager import settings_manager
-    from ..services.multi_nlp_manager import multi_nlp_manager
+    from ...services.settings_manager import settings_manager
+    from ...services.multi_nlp_manager import multi_nlp_manager
 
     try:
         # Получаем статус NLP системы
@@ -338,8 +244,8 @@ async def update_multi_nlp_settings(
 ):
     """Update comprehensive multi-processor NLP configuration settings."""
 
-    from ..services.settings_manager import settings_manager
-    from ..services.multi_nlp_manager import multi_nlp_manager
+    from ...services.settings_manager import settings_manager
+    from ...services.multi_nlp_manager import multi_nlp_manager
 
     try:
         # Сохраняем глобальные настройки
@@ -468,7 +374,7 @@ async def update_multi_nlp_settings(
 async def get_nlp_processor_status(admin_user: User = Depends(get_current_admin_user)):
     """Get detailed status of all NLP processors."""
 
-    from ..services.multi_nlp_manager import multi_nlp_manager
+    from ...services.multi_nlp_manager import multi_nlp_manager
 
     try:
         status = await multi_nlp_manager.get_processor_status()
@@ -491,7 +397,7 @@ async def test_nlp_processors(
 ):
     """Test NLP processors with sample text and compare results."""
 
-    from ..services.multi_nlp_manager import multi_nlp_manager, ProcessingMode
+    from ...services.multi_nlp_manager import multi_nlp_manager, ProcessingMode
 
     try:
         text = request.get("text", "")
@@ -538,336 +444,11 @@ async def test_nlp_processors(
         )
 
 
-@router.get("/parsing-settings", response_model=ParsingSettings)
-async def get_parsing_settings(admin_user: User = Depends(get_current_admin_user)):
-    """Get current parsing queue configuration."""
-
-    from ..services.settings_manager import settings_manager
-
-    max_concurrent = await settings_manager.get_setting(
-        "parsing", "max_concurrent_parsing", 1
-    )
-    free_priority = await settings_manager.get_setting("parsing", "priority_free", 1)
-    premium_priority = await settings_manager.get_setting(
-        "parsing", "priority_premium", 5
-    )
-    ultimate_priority = await settings_manager.get_setting(
-        "parsing", "priority_ultimate", 10
-    )
-    timeout_minutes = await settings_manager.get_setting(
-        "parsing", "timeout_minutes", 30
-    )
-    retry_attempts = await settings_manager.get_setting("parsing", "retry_attempts", 3)
-
-    return ParsingSettings(
-        max_concurrent_parsing=max_concurrent,
-        queue_priority_weights={
-            "free": free_priority,
-            "premium": premium_priority,
-            "ultimate": ultimate_priority,
-        },
-        timeout_minutes=timeout_minutes,
-        retry_attempts=retry_attempts,
-    )
-
-
-@router.put("/parsing-settings")
-async def update_parsing_settings(
-    settings: ParsingSettings, admin_user: User = Depends(get_current_admin_user)
-):
-    """Update parsing queue configuration."""
-
-    # Validate settings
-    if settings.max_concurrent_parsing < 1 or settings.max_concurrent_parsing > 10:
-        raise HTTPException(
-            status_code=400, detail="Max concurrent parsing must be between 1-10"
-        )
-
-    if settings.timeout_minutes < 10 or settings.timeout_minutes > 120:
-        raise HTTPException(
-            status_code=400, detail="Timeout must be between 10-120 minutes"
-        )
-
-    from ..services.settings_manager import settings_manager
-
-    # Save settings to database
-    await settings_manager.set_setting(
-        "parsing", "max_concurrent_parsing", settings.max_concurrent_parsing
-    )
-    await settings_manager.set_setting(
-        "parsing", "priority_free", settings.queue_priority_weights["free"]
-    )
-    await settings_manager.set_setting(
-        "parsing", "priority_premium", settings.queue_priority_weights["premium"]
-    )
-    await settings_manager.set_setting(
-        "parsing", "priority_ultimate", settings.queue_priority_weights["ultimate"]
-    )
-    await settings_manager.set_setting(
-        "parsing", "timeout_minutes", settings.timeout_minutes
-    )
-    await settings_manager.set_setting(
-        "parsing", "retry_attempts", settings.retry_attempts
-    )
-
-    return {"message": "Parsing settings updated successfully", "settings": settings}
-
-
-@router.get("/users")
-async def get_users_list(
-    skip: int = 0,
-    limit: int = 50,
-    admin_user: User = Depends(get_current_admin_user),
-    db: AsyncSession = Depends(get_database_session),
-):
-    """Get paginated list of users for admin management."""
-
-    from sqlalchemy.orm import selectinload
-
-    result = await db.execute(
-        select(User)
-        .options(selectinload(User.subscription))
-        .offset(skip)
-        .limit(limit)
-        .order_by(User.created_at.desc())
-    )
-    users = result.scalars().all()
-
-    # Get total count
-    count_result = await db.execute(select(func.count(User.id)))
-    total = count_result.scalar()
-
-    return {
-        "users": [
-            {
-                "id": str(user.id),
-                "email": user.email,
-                "username": user.full_name or "Unknown",
-                "subscription_plan": user.subscription.plan.value
-                if user.subscription
-                else "free",
-                "is_active": user.is_active,
-                "is_admin": user.is_admin,
-                "created_at": user.created_at.isoformat(),
-                "last_login": user.last_login.isoformat() if user.last_login else None,
-            }
-            for user in users
-        ],
-        "total": total,
-        "skip": skip,
-        "limit": limit,
-    }
-
-
-@router.get("/queue-status")
-async def get_queue_status(admin_user: User = Depends(get_current_admin_user)):
-    """Get detailed parsing queue status."""
-
-    try:
-        redis_client = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"))
-
-        # Get current parsing lock info
-        lock_data = await redis_client.get("global_parsing_lock")
-
-        # Get queue items
-        queue_items = await redis_client.lrange("parsing_queue", 0, -1)
-
-        await redis_client.close()
-
-        return {
-            "is_parsing_active": lock_data is not None,
-            "current_parsing": lock_data,
-            "queue_size": len(queue_items),
-            "queue_items": queue_items[:10],  # Show first 10 items
-        }
-    except Exception as e:
-        return {
-            "is_parsing_active": False,
-            "current_parsing": None,
-            "queue_size": 0,
-            "queue_items": [],
-            "error": str(e),
-        }
-
-
-@router.post("/clear-queue")
-async def clear_parsing_queue(admin_user: User = Depends(get_current_admin_user)):
-    """Clear all items from parsing queue (emergency function)."""
-
-    try:
-        redis_client = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"))
-
-        # Clear the queue
-        await redis_client.delete("parsing_queue")
-
-        await redis_client.close()
-
-        return {"message": "Parsing queue cleared successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to clear queue: {str(e)}")
-
-
-@router.post("/unlock-parsing")
-async def unlock_parsing(admin_user: User = Depends(get_current_admin_user)):
-    """Force unlock parsing (emergency function)."""
-
-    try:
-        redis_client = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"))
-
-        # Remove parsing lock
-        await redis_client.delete("global_parsing_lock")
-
-        await redis_client.close()
-
-        return {"message": "Parsing lock removed successfully"}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to unlock parsing: {str(e)}"
-        )
-
-
-# New endpoints for comprehensive settings management
-
-
-@router.get("/image-generation-settings", response_model=ImageGenerationSettings)
-async def get_image_generation_settings(
-    admin_user: User = Depends(get_current_admin_user),
-):
-    """Get image generation settings from database."""
-
-    try:
-        img_settings = await settings_manager.get_category_settings("image_generation")
-
-        return ImageGenerationSettings(
-            primary_service=img_settings.get("primary_service", "pollinations"),
-            fallback_services=img_settings.get(
-                "fallback_services", ["stable_diffusion"]
-            ),
-            enable_caching=img_settings.get("enable_caching", True),
-            image_quality=img_settings.get("image_quality", "high"),
-            max_generation_time=img_settings.get("max_generation_time", 60),
-        )
-    except Exception as e:
-        print(f"Error getting image generation settings: {e}")
-        return ImageGenerationSettings(
-            primary_service="pollinations",
-            fallback_services=["stable_diffusion"],
-            enable_caching=True,
-            image_quality="high",
-            max_generation_time=60,
-        )
-
-
-@router.put("/image-generation-settings")
-async def update_image_generation_settings(
-    settings: ImageGenerationSettings,
-    admin_user: User = Depends(get_current_admin_user),
-):
-    """Update image generation settings."""
-
-    try:
-        await settings_manager.set_setting(
-            "image_generation", "primary_service", settings.primary_service
-        )
-        await settings_manager.set_setting(
-            "image_generation", "fallback_services", settings.fallback_services
-        )
-        await settings_manager.set_setting(
-            "image_generation", "enable_caching", settings.enable_caching
-        )
-        await settings_manager.set_setting(
-            "image_generation", "image_quality", settings.image_quality
-        )
-        await settings_manager.set_setting(
-            "image_generation", "max_generation_time", settings.max_generation_time
-        )
-
-        return {
-            "message": "Image generation settings saved successfully",
-            "settings": settings,
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to update image generation settings: {str(e)}",
-        )
-
-
-@router.get("/system-settings", response_model=SystemSettings)
-async def get_system_settings(admin_user: User = Depends(get_current_admin_user)):
-    """Get system settings from database."""
-
-    try:
-        sys_settings = await settings_manager.get_category_settings("system")
-
-        return SystemSettings(
-            maintenance_mode=sys_settings.get("maintenance_mode", False),
-            max_upload_size_mb=sys_settings.get("max_upload_size_mb", 50),
-            supported_book_formats=sys_settings.get(
-                "supported_book_formats", ["epub", "fb2"]
-            ),
-            enable_debug_mode=sys_settings.get("enable_debug_mode", False),
-        )
-    except Exception as e:
-        print(f"Error getting system settings: {e}")
-        return SystemSettings(
-            maintenance_mode=False,
-            max_upload_size_mb=50,
-            supported_book_formats=["epub", "fb2"],
-            enable_debug_mode=False,
-        )
-
-
-@router.put("/system-settings")
-async def update_system_settings(
-    settings: SystemSettings, admin_user: User = Depends(get_current_admin_user)
-):
-    """Update system settings."""
-
-    try:
-        await settings_manager.set_setting(
-            "system", "maintenance_mode", settings.maintenance_mode
-        )
-        await settings_manager.set_setting(
-            "system", "max_upload_size_mb", settings.max_upload_size_mb
-        )
-        await settings_manager.set_setting(
-            "system", "supported_book_formats", settings.supported_book_formats
-        )
-        await settings_manager.set_setting(
-            "system", "enable_debug_mode", settings.enable_debug_mode
-        )
-
-        return {"message": "System settings saved successfully", "settings": settings}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to update system settings: {str(e)}"
-        )
-
-
-@router.post("/initialize-settings")
-async def initialize_default_settings(
-    admin_user: User = Depends(get_current_admin_user),
-):
-    """Initialize default settings in database."""
-
-    try:
-        success = await settings_manager.initialize_default_settings(force=False)
-        if success:
-            return {"message": "Default settings initialized successfully"}
-        else:
-            return {"message": "Settings already exist, no changes made"}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to initialize settings: {str(e)}"
-        )
-
-
 @router.get("/nlp-processor-info")
 async def get_nlp_processor_info(admin_user: User = Depends(get_current_admin_user)):
     """Get current NLP processor information."""
 
-    from ..services.multi_nlp_manager import multi_nlp_manager
+    from ...services.multi_nlp_manager import multi_nlp_manager
 
     try:
         # Получаем статус всех процессоров
