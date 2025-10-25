@@ -12,8 +12,9 @@ import uvicorn
 from datetime import datetime, timezone
 from typing import Dict, Any
 
-from .routers import users, nlp, books, auth, images, chapters, reading_progress, descriptions
+from .routers import users, nlp, auth, images, chapters, reading_progress, descriptions
 from .routers.admin import admin_router
+from .routers.books import books_router
 from .core.config import settings
 from .services.settings_manager import settings_manager
 from .services.multi_nlp_manager import multi_nlp_manager
@@ -46,8 +47,8 @@ app.include_router(nlp.router, prefix="/api/v1", tags=["nlp"])
 app.include_router(images.router, prefix="/api/v1", tags=["images"])
 app.include_router(admin_router, prefix="/api/v1")
 
-# Books routers (refactored into focused modules)
-app.include_router(books.router, prefix="/api/v1/books", tags=["books"])
+# Books routers (refactored into modular structure)
+app.include_router(books_router, prefix="/api/v1")
 app.include_router(chapters.router, prefix="/api/v1/books", tags=["chapters"])
 app.include_router(reading_progress.router, prefix="/api/v1/books", tags=["reading_progress"])
 app.include_router(descriptions.router, prefix="/api/v1/books", tags=["descriptions"])
