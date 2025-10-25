@@ -131,14 +131,28 @@ export const useChapterManagement = ({
 
     rendition.on('relocated', handleRelocated);
 
-    // Get initial chapter
-    const currentLocation = rendition.currentLocation();
-    if (currentLocation) {
-      const initialChapter = getChapterFromLocation(currentLocation);
-      setCurrentChapter(initialChapter);
-    }
+    // Get initial chapter - safely check if currentLocation exists
+    // Wait a bit for rendition to be fully initialized
+    const timer = setTimeout(() => {
+      try {
+        // Check if currentLocation method exists and rendition.location is ready
+        if (rendition.currentLocation && typeof rendition.currentLocation === 'function') {
+          const currentLocation = rendition.currentLocation();
+          if (currentLocation) {
+            const initialChapter = getChapterFromLocation(currentLocation);
+            setCurrentChapter(initialChapter);
+            console.log('📖 [useChapterManagement] Initial chapter set:', initialChapter);
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ [useChapterManagement] Could not get initial location:', error);
+        // Fallback to chapter 1
+        setCurrentChapter(1);
+      }
+    }, 100); // Small delay to ensure rendition is ready
 
     return () => {
+      clearTimeout(timer);
       rendition.off('relocated', handleRelocated);
     };
   }, [rendition, book, getChapterFromLocation]);

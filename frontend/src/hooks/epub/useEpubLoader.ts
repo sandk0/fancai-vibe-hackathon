@@ -146,23 +146,54 @@ export const useEpubLoader = ({
       isMounted = false;
       console.log('🧹 [useEpubLoader] Cleaning up...');
 
+      // Cleanup rendition first
       if (renditionRef.current) {
         try {
-          renditionRef.current.destroy();
-          console.log('✅ [useEpubLoader] Rendition destroyed');
+          const currentRendition = renditionRef.current;
+
+          // Remove event listeners before destroying
+          try {
+            currentRendition.off('relocated');
+            currentRendition.off('rendered');
+            currentRendition.off('displayed');
+            currentRendition.off('selected');
+          } catch (err) {
+            // Ignore event listener errors
+            console.debug('⚠️ [useEpubLoader] Could not remove event listeners:', err);
+          }
+
+          // Safely destroy rendition
+          if (typeof currentRendition.destroy === 'function') {
+            currentRendition.destroy();
+            console.log('✅ [useEpubLoader] Rendition destroyed');
+          }
+
+          renditionRef.current = null;
         } catch (err) {
           console.warn('⚠️ [useEpubLoader] Error destroying rendition:', err);
         }
       }
 
+      // Cleanup book instance
       if (bookRef.current) {
         try {
-          bookRef.current.destroy();
-          console.log('✅ [useEpubLoader] Book destroyed');
+          const currentBook = bookRef.current;
+
+          // Safely destroy book
+          if (typeof currentBook.destroy === 'function') {
+            currentBook.destroy();
+            console.log('✅ [useEpubLoader] Book destroyed');
+          }
+
+          bookRef.current = null;
         } catch (err) {
           console.warn('⚠️ [useEpubLoader] Error destroying book:', err);
         }
       }
+
+      // Clear state
+      setBook(null);
+      setRendition(null);
     };
   }, [bookUrl, authToken]);
 
