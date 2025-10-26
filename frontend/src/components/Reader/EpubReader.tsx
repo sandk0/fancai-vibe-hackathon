@@ -10,6 +10,13 @@
  * - Debounced progress sync (60 req/s → 0.2 req/s)
  * - Description highlighting with image modal
  * - Memory leak prevention via proper cleanup
+ * - Keyboard navigation (Arrow keys, Spacebar)
+ * - Theme switcher (Light/Dark/Sepia) with localStorage persistence
+ * - Font size controls (75%-200%) with localStorage persistence
+ *
+ * Keyboard Shortcuts:
+ * - Arrow Left/Up: Previous page
+ * - Arrow Right/Down/Space: Next page
  *
  * @component
  */
@@ -27,9 +34,11 @@ import {
   useCFITracking,
   useProgressSync,
   useEpubNavigation,
+  useKeyboardNavigation,
   useChapterManagement,
   useDescriptionHighlighting,
   useImageModal,
+  useEpubThemes,
 } from '@/hooks/epub';
 
 interface EpubReaderProps {
@@ -39,6 +48,7 @@ interface EpubReaderProps {
 export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   const viewerRef = useRef<HTMLDivElement>(null);
   const [renditionReady, setRenditionReady] = useState(false);
+  const hasRestoredPosition = useRef(false);
 
   // Get auth token
   const authToken = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
@@ -96,7 +106,13 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   // Hook 7: Image modal management
   const { selectedImage, isOpen: isModalOpen, openModal, closeModal, updateImage } = useImageModal();
 
-  // Hook 8: Description highlighting
+  // Hook 8: Keyboard navigation (disabled when modal is open)
+  useKeyboardNavigation(nextPage, prevPage, renditionReady && !isModalOpen);
+
+  // Hook 9: Theme management
+  const { theme, fontSize, setTheme, setFontSize, increaseFontSize, decreaseFontSize } = useEpubThemes(rendition);
+
+  // Hook 10: Description highlighting
   useDescriptionHighlighting({
     rendition,
     descriptions,
@@ -134,9 +150,16 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
 
   /**
    * Restore reading position when locations are ready
+   * IMPORTANT: Only runs ONCE on initial load, not on every navigation
    */
   useEffect(() => {
     if (!rendition || !locations || !epubBook || !renditionReady) return;
+
+    // Skip if already restored position
+    if (hasRestoredPosition.current) {
+      console.log('⏭️ [EpubReader] Position already restored, skipping');
+      return;
+    }
 
     let isMounted = true;
 
@@ -153,6 +176,10 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
 
           skipNextRelocated(); // Skip auto-save on restored position
           await goToCFI(savedProgress.reading_location_cfi, savedProgress.scroll_offset_percent || 0);
+
+          // Mark as restored
+          hasRestoredPosition.current = true;
+          console.log('✅ [EpubReader] Position restoration complete');
         }
       } catch (err) {
         console.error('❌ [EpubReader] Error restoring position:', err);
@@ -173,18 +200,31 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     updateImage(newImageUrl);
   }, [updateImage]);
 
+  // Get background color based on theme
+  const getBackgroundColor = () => {
+    switch (theme) {
+      case 'light':
+        return 'bg-white';
+      case 'sepia':
+        return 'bg-amber-50';
+      case 'dark':
+      default:
+        return 'bg-gray-900';
+    }
+  };
+
   // Main render - viewerRef MUST stay in same DOM location to prevent rendition destruction
   return (
-    <div className="relative h-full w-full bg-gray-900">
+    <div className={`relative h-full w-full transition-colors ${getBackgroundColor()}`}>
       {/* EPUB Viewer - Always rendered in same location */}
       <div ref={viewerRef} className="h-full w-full" />
 
       {/* Loading Overlay */}
       {(isLoading || isGenerating) && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900 z-10">
+        <div className={`absolute inset-0 flex items-center justify-center ${getBackgroundColor()} z-10`}>
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-            <p className="text-gray-300">
+            <p className={theme === 'light' ? 'text-gray-700' : 'text-gray-300'}>
               {isGenerating ? 'Подготовка книги...' : 'Загрузка книги...'}
             </p>
           </div>
@@ -193,10 +233,75 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
 
       {/* Error Overlay */}
       {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900 z-10">
+        <div className={`absolute inset-0 flex items-center justify-center ${getBackgroundColor()} z-10`}>
           <div className="text-center">
             <p className="text-red-400 mb-4">Ошибка загрузки книги</p>
-            <p className="text-gray-400 text-sm">{error}</p>
+            <p className={theme === 'light' ? 'text-gray-600' : 'text-gray-400 text-sm'}>{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Reader Controls Toolbar */}
+      {renditionReady && !isLoading && !isGenerating && (
+        <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-gray-800/90 backdrop-blur-sm rounded-lg p-2 shadow-lg">
+          {/* Theme Switcher */}
+          <div className="flex items-center gap-1 border-r border-gray-600 pr-2">
+            <button
+              onClick={() => setTheme('light')}
+              className={`px-3 py-1.5 rounded text-sm transition-colors ${
+                theme === 'light'
+                  ? 'bg-white text-gray-900'
+                  : 'text-gray-300 hover:bg-gray-700'
+              }`}
+              title="Светлая тема"
+            >
+              ☀️
+            </button>
+            <button
+              onClick={() => setTheme('dark')}
+              className={`px-3 py-1.5 rounded text-sm transition-colors ${
+                theme === 'dark'
+                  ? 'bg-gray-900 text-gray-100'
+                  : 'text-gray-300 hover:bg-gray-700'
+              }`}
+              title="Тёмная тема"
+            >
+              🌙
+            </button>
+            <button
+              onClick={() => setTheme('sepia')}
+              className={`px-3 py-1.5 rounded text-sm transition-colors ${
+                theme === 'sepia'
+                  ? 'bg-amber-100 text-amber-900'
+                  : 'text-gray-300 hover:bg-gray-700'
+              }`}
+              title="Сепия"
+            >
+              📜
+            </button>
+          </div>
+
+          {/* Font Size Controls */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={decreaseFontSize}
+              className="px-2 py-1.5 rounded text-sm text-gray-300 hover:bg-gray-700 transition-colors"
+              title="Уменьшить шрифт"
+              disabled={fontSize <= 75}
+            >
+              A-
+            </button>
+            <span className="text-xs text-gray-400 min-w-[3rem] text-center">
+              {fontSize}%
+            </span>
+            <button
+              onClick={increaseFontSize}
+              className="px-2 py-1.5 rounded text-sm text-gray-300 hover:bg-gray-700 transition-colors"
+              title="Увеличить шрифт"
+              disabled={fontSize >= 200}
+            >
+              A+
+            </button>
           </div>
         </div>
       )}
