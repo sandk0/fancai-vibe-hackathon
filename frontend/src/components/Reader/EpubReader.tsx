@@ -1,22 +1,31 @@
 /**
- * EpubReader - Refactored EPUB reading component
+ * EpubReader - Professional EPUB reading component with advanced features
  *
- * Reduced from 841 lines to ~150 lines by extracting logic into custom hooks.
+ * Reduced from 841 lines to modular hooks architecture.
  *
- * Features:
+ * Core Features:
  * - EPUB.js integration for professional book rendering
  * - CFI-based position tracking with pixel-perfect restoration
  * - IndexedDB caching for instant location generation (5-10s → <100ms)
  * - Debounced progress sync (60 req/s → 0.2 req/s)
  * - Description highlighting with image modal
  * - Memory leak prevention via proper cleanup
- * - Keyboard navigation (Arrow keys, Spacebar)
- * - Theme switcher (Light/Dark/Sepia) with localStorage persistence
- * - Font size controls (75%-200%) with localStorage persistence
  *
- * Keyboard Shortcuts:
- * - Arrow Left/Up: Previous page
- * - Arrow Right/Down/Space: Next page
+ * User Customization:
+ * - Theme switcher (☀️ Light / 🌙 Dark / 📜 Sepia) with localStorage
+ * - Font size controls (75%-200%, A-/A+ buttons) with localStorage
+ * - Visual progress indicator (percentage, chapter, page)
+ *
+ * Navigation:
+ * - Keyboard: ← ↑ (prev) / → ↓ Space (next)
+ * - Touch/Swipe: Swipe left (next) / Swipe right (prev)
+ * - Buttons: Click navigation arrows
+ *
+ * Advanced epub.js Features:
+ * - Content hooks for custom CSS injection
+ * - Theme-aware styling
+ * - Image optimization and error handling
+ * - Improved typography (justified text, hyphenation, spacing)
  *
  * @component
  */
@@ -39,7 +48,12 @@ import {
   useDescriptionHighlighting,
   useImageModal,
   useEpubThemes,
+  useTouchNavigation,
+  useContentHooks,
 } from '@/hooks/epub';
+
+// Import components
+import { ProgressIndicator } from './ProgressIndicator';
 
 interface EpubReaderProps {
   book: BookDetail;
@@ -112,7 +126,18 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   // Hook 9: Theme management
   const { theme, fontSize, setTheme, setFontSize, increaseFontSize, decreaseFontSize } = useEpubThemes(rendition);
 
-  // Hook 10: Description highlighting
+  // Hook 10: Touch/swipe navigation
+  useTouchNavigation({
+    rendition,
+    nextPage,
+    prevPage,
+    enabled: renditionReady && !isModalOpen,
+  });
+
+  // Hook 11: Content hooks for style injection
+  useContentHooks(rendition, theme);
+
+  // Hook 12: Description highlighting
   useDescriptionHighlighting({
     rendition,
     descriptions,
@@ -309,7 +334,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
       {/* Navigation Arrows */}
       <button
         onClick={prevPage}
-        className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-gray-800/80 hover:bg-gray-700 text-white rounded-full flex items-center justify-center transition-colors"
+        className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-gray-800/80 hover:bg-gray-700 text-white rounded-full flex items-center justify-center transition-colors z-10"
         aria-label="Previous page"
       >
         ←
@@ -317,11 +342,19 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
 
       <button
         onClick={nextPage}
-        className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-gray-800/80 hover:bg-gray-700 text-white rounded-full flex items-center justify-center transition-colors"
+        className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-gray-800/80 hover:bg-gray-700 text-white rounded-full flex items-center justify-center transition-colors z-10"
         aria-label="Next page"
       >
         →
       </button>
+
+      {/* Progress Indicator */}
+      <ProgressIndicator
+        progress={progress}
+        currentChapter={currentChapter}
+        theme={theme}
+        isVisible={renditionReady && !isLoading && !isGenerating}
+      />
 
       {/* Image Modal */}
       {isModalOpen && selectedImage && (

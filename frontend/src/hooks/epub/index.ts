@@ -23,3 +23,5 @@ export { useChapterManagement } from './useChapterManagement';
 export { useDescriptionHighlighting } from './useDescriptionHighlighting';
 export { useImageModal } from './useImageModal';
 export { useEpubThemes, type ThemeName } from './useEpubThemes';
+export { useTouchNavigation } from './useTouchNavigation';
+export { useContentHooks } from './useContentHooks';
