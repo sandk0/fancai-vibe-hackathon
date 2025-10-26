@@ -106,23 +106,7 @@ export const useEpubLoader = ({
         renditionRef.current = newRendition;
         setRendition(newRendition);
 
-        // Apply dark theme
-        newRendition.themes.default({
-          body: {
-            color: '#e5e7eb !important',
-            background: '#1f2937 !important',
-            'font-family': 'Georgia, serif !important',
-            'font-size': '1.1em !important',
-            'line-height': '1.6 !important',
-          },
-          p: {
-            'margin-bottom': '1em !important',
-          },
-          a: {
-            color: '#60a5fa !important',
-          },
-        });
-
+        // Note: Theme is now applied by useEpubThemes hook
         console.log('✅ [useEpubLoader] EPUB loaded successfully');
         setIsLoading(false);
 
@@ -151,12 +135,10 @@ export const useEpubLoader = ({
         try {
           const currentRendition = renditionRef.current;
 
-          // Remove event listeners before destroying
+          // Clear all event listeners
+          // Note: rendition.off() without arguments clears all listeners
           try {
-            currentRendition.off('relocated');
-            currentRendition.off('rendered');
-            currentRendition.off('displayed');
-            currentRendition.off('selected');
+            (currentRendition as any).off?.();
           } catch (err) {
             // Ignore event listener errors
             console.debug('⚠️ [useEpubLoader] Could not remove event listeners:', err);

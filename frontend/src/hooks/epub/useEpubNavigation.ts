@@ -10,7 +10,7 @@
  * const { nextPage, prevPage, canGoNext, canGoPrev } = useEpubNavigation(rendition);
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import type { Rendition } from 'epubjs';
 
 interface UseEpubNavigationReturn {
@@ -66,7 +66,7 @@ export const useKeyboardNavigation = (
   prevPage: () => void,
   enabled: boolean = true
 ): void => {
-  useCallback(() => {
+  useEffect(() => {
     if (!enabled) return;
 
     const handleKeyPress = (e: KeyboardEvent) => {
