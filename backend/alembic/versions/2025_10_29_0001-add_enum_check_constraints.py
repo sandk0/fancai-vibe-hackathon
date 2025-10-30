@@ -21,7 +21,6 @@ These constraints enforce validation at the database level.
 """
 
 from alembic import op
-import sqlalchemy as sa
 
 # Revision identifiers, used by Alembic.
 revision = 'enum_checks_2025'

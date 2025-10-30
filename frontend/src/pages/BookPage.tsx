@@ -24,10 +24,8 @@ import {
   FileText,
   Sparkles,
   CheckCircle2,
-  Circle,
 } from 'lucide-react';
 import { booksAPI } from '@/api/books';
-import { cn } from '@/lib/utils';
 
 const BookPage: React.FC = () => {
   const { bookId } = useParams<{ bookId: string }>();

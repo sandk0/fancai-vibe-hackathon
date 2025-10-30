@@ -3,13 +3,19 @@
 import asyncio
 import os
 from logging.config import fileConfig
-from typing import Any
-
-from sqlalchemy import pool, create_engine
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.engine import Connection
 
 from alembic import context
+from sqlalchemy import create_engine, pool
+from sqlalchemy.engine import Connection
+from sqlalchemy.ext.asyncio import create_async_engine
+
+# Import all models to ensure they are registered with SQLAlchemy
+from app.core.database import Base
+from app.models.book import Book, ReadingProgress  # noqa: F401
+from app.models.chapter import Chapter  # noqa: F401
+from app.models.description import Description  # noqa: F401
+from app.models.image import GeneratedImage  # noqa: F401
+from app.models.user import Subscription, User  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -24,15 +30,6 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-
-# Import all models to ensure they are registered with SQLAlchemy
-from app.models.user import User, Subscription  # noqa: F401
-from app.models.book import Book, ReadingProgress  # noqa: F401
-from app.models.chapter import Chapter  # noqa: F401
-from app.models.description import Description  # noqa: F401
-from app.models.image import GeneratedImage  # noqa: F401
-
-from app.core.database import Base
 
 target_metadata = Base.metadata
 

@@ -19,7 +19,6 @@ import {
   Image as ImageIcon,
   Filter,
   Search,
-  SortAsc,
   BookOpen,
   MapPin,
   User as UserIcon,
@@ -30,7 +29,6 @@ import {
 import { booksAPI } from '@/api/books';
 import { imagesAPI } from '@/api/images';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
-import ErrorMessage from '@/components/UI/ErrorMessage';
 import { cn } from '@/lib/utils';
 import type { GeneratedImage } from '@/types/api';
 

@@ -20,7 +20,6 @@ import { ImageGallery } from '@/components/Images/ImageGallery';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import ErrorMessage from '@/components/UI/ErrorMessage';
 import { useTranslation } from '@/hooks/useTranslation';
-import { cn } from '@/lib/utils';
 
 const BookImagesPage: React.FC = () => {
   const { bookId } = useParams<{ bookId: string }>();

@@ -32,6 +32,6 @@
       "@/api/*": ["src/api/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "playwright.config.ts", "tests/**/*.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
