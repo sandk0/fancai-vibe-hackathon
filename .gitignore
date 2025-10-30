@@ -1,8 +1,14 @@
-# Environment variables
+# Environment variables (SECURITY CRITICAL!)
+# Never commit real credentials to git!
 .env
 .env.local
+.env.development         # Development environment config (added: security fix)
 .env.development.local
+.env.test
 .env.test.local
+.env.staging
+.env.staging.local
+.env.production          # Already listed below, but added here for clarity
 .env.production.local
 
 # Python
