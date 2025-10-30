@@ -1,5 +1,5 @@
 # Development Dockerfile for Backend
-FROM python:3.11-slim
+FROM python:3.14-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
