@@ -1,10 +1,21 @@
 """
 Скрипт для создания администратора в системе.
+
+SECURITY: Использует environment variables для credentials.
+Никогда не хардкодить пароли в коде!
+
+Usage:
+    ADMIN_EMAIL=admin@fancai.ru ADMIN_PASSWORD=your_secure_password python create_admin.py
+
+Environment Variables:
+    ADMIN_EMAIL - email администратора (default: admin@bookreader.local)
+    ADMIN_PASSWORD - пароль администратора (REQUIRED, minimum 12 chars)
 """
 
 import asyncio
 import sys
 import os
+import secrets
 from pathlib import Path
 
 # Добавляем путь к проекту в sys.path
@@ -17,10 +28,43 @@ from app.models.user import User, SubscriptionPlan
 from sqlalchemy.ext.asyncio import AsyncSession
 
 async def create_admin_user():
-    """Создает администратора с заданными учетными данными."""
-    
-    email = "admin@fancai.ru"
-    password = "Tre21bgU"
+    """
+    Создает администратора с заданными учетными данными из environment variables.
+
+    Security requirements:
+    - ADMIN_PASSWORD must be at least 12 characters
+    - Password must not be hardcoded
+    - Production deployment requires strong password
+    """
+
+    # Читаем credentials из environment variables
+    email = os.getenv("ADMIN_EMAIL", "admin@bookreader.local")
+    password = os.getenv("ADMIN_PASSWORD")
+
+    # SECURITY CHECK: Password is required
+    if not password:
+        print("❌ ОШИБКА: ADMIN_PASSWORD environment variable не задана!")
+        print("📝 Использование:")
+        print("   ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=your_secure_password python create_admin.py")
+        print("\n💡 Генерация безопасного пароля:")
+        print("   python -c \"import secrets; print(secrets.token_urlsafe(32))\"")
+        print(f"\n🎲 Случайный пароль (пример): {secrets.token_urlsafe(32)}")
+        sys.exit(1)
+
+    # SECURITY CHECK: Password strength
+    if len(password) < 12:
+        print("❌ ОШИБКА: Пароль должен быть минимум 12 символов!")
+        print(f"   Текущая длина: {len(password)}")
+        print("\n💡 Сгенерируйте безопасный пароль:")
+        print("   python -c \"import secrets; print(secrets.token_urlsafe(32))\"")
+        sys.exit(1)
+
+    # SECURITY CHECK: Warn about weak passwords
+    if password in ["password", "admin", "12345678", "qwerty", "admin123"]:
+        print("❌ ОШИБКА: Слабый пароль! Используйте криптографически стойкий пароль.")
+        print("\n💡 Сгенерируйте безопасный пароль:")
+        print("   python -c \"import secrets; print(secrets.token_urlsafe(32))\"")
+        sys.exit(1)
     
     print(f"🔐 Создание администратора с email: {email}")
     
@@ -76,14 +120,16 @@ async def create_admin_user():
 async def main():
     """Главная функция скрипта."""
     print("🚀 Запуск скрипта создания администратора...")
-    
+    print(f"🔒 Environment: {os.getenv('ENVIRONMENT', 'unknown')}")
+
     try:
         admin_user = await create_admin_user()
         print(f"\n🎉 Администратор готов к использованию!")
         print(f"📧 Email: {admin_user.email}")
-        print(f"🔑 Пароль: Tre21bgU")
         print(f"🔗 Доступ к админ-панели: http://localhost:3000/admin")
-        
+        print("\n⚠️  ВАЖНО: Сохраните пароль в надежном месте!")
+        print("   Пароль НЕ отображается в целях безопасности.")
+
     except Exception as e:
         print(f"\n💥 Критическая ошибка: {str(e)}")
         sys.exit(1)
