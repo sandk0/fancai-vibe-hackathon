@@ -46,7 +46,7 @@ SAMPLE_RUSSIAN_TEXT = """
 
 async def benchmark_v2():
     """Benchmark refactored version (v2)."""
-    from app.services.multi_nlp_manager_v2 import MultiNLPManager
+    from app.services.multi_nlp_manager import MultiNLPManager
 
     print("=" * 70)
     print("BENCHMARKING v2 (Refactored with Strategy Pattern)")
@@ -102,7 +102,7 @@ async def benchmark_v2():
 
 async def benchmark_large_text():
     """Benchmark with larger text (simulating full book)."""
-    from app.services.multi_nlp_manager_v2 import MultiNLPManager
+    from app.services.multi_nlp_manager import MultiNLPManager
 
     print("\n" + "=" * 70)
     print("FULL BOOK SIMULATION (10x text)")

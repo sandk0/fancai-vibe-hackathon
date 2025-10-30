@@ -10,7 +10,7 @@ import asyncio
 import time
 from datetime import datetime
 
-from app.services.multi_nlp_manager_v2 import MultiNLPManager
+from app.services.multi_nlp_manager import MultiNLPManager
 from app.services.nlp.strategies import ProcessingMode
 
 
@@ -232,7 +232,7 @@ class TestMultiNLPIntegration:
 @pytest.mark.asyncio
 async def test_global_manager_instance():
     """Test global manager instance works."""
-    from app.services.multi_nlp_manager_v2 import multi_nlp_manager
+    from app.services.multi_nlp_manager import multi_nlp_manager
 
     await multi_nlp_manager.initialize()
 
