@@ -1,5 +1,5 @@
 # Development Dockerfile for Frontend
-FROM node:20-alpine
+FROM node:25-alpine
 
 # Install system dependencies (including wget for health checks)
 RUN apk add --no-cache \
