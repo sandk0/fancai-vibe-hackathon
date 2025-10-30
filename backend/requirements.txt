@@ -47,7 +47,7 @@ prometheus-fastapi-instrumentator==6.1.0
 
 # Безопасность
 python-decouple==3.8
-cryptography==41.0.7
+cryptography==46.0.3
 
 # Тестирование
 pytest==7.4.3
