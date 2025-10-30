@@ -1,23 +1,26 @@
 # Monitoring and logging stack for BookReader AI
-version: '3.8'
+# Note: version field removed (obsolete in Compose V2)
 
 services:
   # Grafana for metrics visualization
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.3.0
     container_name: bookreader_grafana
     restart: unless-stopped
     environment:
-      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:?GRAFANA_PASSWORD is required}
       - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel:1.1.5
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=false
     volumes:
       - ./monitoring/grafana/data:/var/lib/grafana
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
       - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./monitoring/grafana/provisioning/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
     ports:
-      - "3000:3000"
+      - "3001:3000"
     networks:
       - bookreader_network
 
@@ -35,6 +38,7 @@ services:
       - '--web.enable-lifecycle'
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus/alerts:/etc/prometheus/alerts
       - ./monitoring/prometheus/data:/prometheus
     ports:
       - "9090:9090"
@@ -62,12 +66,14 @@ services:
 
   # cAdvisor for container metrics
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
     container_name: bookreader_cadvisor
     restart: unless-stopped
-    privileged: true
-    devices:
-      - /dev/kmsg:/dev/kmsg
+    # Security: Remove privileged mode, use specific capabilities instead
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - apparmor=unconfined
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -106,6 +112,7 @@ services:
 
 networks:
   bookreader_network:
+    name: fancai-vibe-hackathon_bookreader_network
     external: true
 
 volumes:

@@ -26,6 +26,7 @@ from sqlalchemy.orm import selectinload
 from ...models.book import Book, ReadingProgress, BookGenre
 from ...models.chapter import Chapter
 from ...services.book_parser import ParsedBook
+from ...core.cache import cache_manager
 
 
 class BookService:
@@ -282,6 +283,11 @@ class BookService:
         # Удаляем запись из БД (cascade удалит связанные записи)
         db.delete(book)  # delete() не async в AsyncSession
         await db.commit()
+
+        # Invalidate all cache related to this book
+        await cache_manager.delete_pattern(f"book:{book_id}:*")
+        await cache_manager.delete_pattern(f"user:{user_id}:books:*")
+        await cache_manager.delete_pattern(f"user:{user_id}:progress:{book_id}")
 
         return True
 

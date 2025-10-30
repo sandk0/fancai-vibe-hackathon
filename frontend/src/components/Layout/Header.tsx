@@ -8,33 +8,46 @@ import {
   Settings,
   LogOut,
   Upload,
-  Moon,
-  Sun
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
 import { useUIStore } from '@/stores/ui';
-import { useReaderStore } from '@/stores/reader';
 import { useTranslation } from '@/hooks/useTranslation';
+import { ThemeSwitcher } from '@/components/UI/ThemeSwitcher';
 
 const Header: React.FC = () => {
   const { user, logout } = useAuthStore();
   const { sidebarOpen, setSidebarOpen, setShowUploadModal, setShowProfileModal } = useUIStore();
-  const { theme, updateTheme } = useReaderStore();
   const { t } = useTranslation();
   const [showUserMenu, setShowUserMenu] = React.useState(false);
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : theme === 'dark' ? 'sepia' : 'light';
-    updateTheme(newTheme);
-  };
+  const menuRef = React.useRef<HTMLDivElement>(null);
 
   const handleLogout = () => {
     logout();
     setShowUserMenu(false);
   };
 
+  // Close menu when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showUserMenu]);
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+    <header className="fixed top-0 left-0 right-0 z-40 transition-colors" style={{
+      backgroundColor: 'var(--bg-primary)',
+      borderBottom: '1px solid var(--border-color)',
+    }}>
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Left side - Logo and Navigation */}
@@ -79,35 +92,36 @@ const Header: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowUploadModal(true)}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-white transition-all hover:scale-105"
+              style={{
+                backgroundColor: 'var(--accent-color)',
+              }}
             >
-              <Upload className="w-4 h-4 mr-2" />
+              <Upload className="w-4 h-4" />
               <span className="hidden sm:block">{t('nav.uploadBook')}</span>
             </button>
 
-            {/* Theme toggle */}
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              title={t('nav.switchTheme').replace('{theme}', t(`nav.${theme === 'light' ? 'darkMode' : theme === 'dark' ? 'sepiaMode' : 'lightMode'}`))}
-            >
-              {theme === 'light' ? (
-                <Moon className="w-5 h-5" />
-              ) : (
-                <Sun className="w-5 h-5" />
-              )}
-            </button>
+            {/* Theme Switcher */}
+            <ThemeSwitcher />
 
             {/* User menu */}
-            <div className="relative">
+            <div className="relative" ref={menuRef}>
               <button
                 type="button"
-                className="flex items-center max-w-xs text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                className="flex items-center justify-center rounded-full border-2 p-0.5 transition-all hover:scale-105"
+                style={{
+                  borderColor: 'var(--border-color)',
+                  backgroundColor: 'transparent',
+                }}
                 onClick={() => setShowUserMenu(!showUserMenu)}
               >
                 <span className="sr-only">{t('nav.openUserMenu')}</span>
-                <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center"
+                  style={{
+                    backgroundColor: 'var(--accent-color)',
+                  }}
+                >
                   <span className="text-sm font-medium text-white">
                     {user?.full_name ? user.full_name.charAt(0).toUpperCase() : user?.email.charAt(0).toUpperCase()}
                   </span>
@@ -116,27 +130,37 @@ const Header: React.FC = () => {
 
               {/* User dropdown */}
               {showUserMenu && (
-                <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none">
-                  <div className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700">
+                <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 focus:outline-none" style={{
+                  backgroundColor: 'var(--bg-primary)',
+                  borderColor: 'var(--border-color)',
+                }}>
+                  <div className="px-4 py-2 text-sm border-b" style={{
+                    color: 'var(--text-primary)',
+                    borderColor: 'var(--border-color)',
+                  }}>
                     <div className="font-medium">{user?.full_name || 'User'}</div>
-                    <div className="text-gray-500 dark:text-gray-400">{user?.email}</div>
+                    <div style={{ color: 'var(--text-secondary)' }}>{user?.email}</div>
                   </div>
 
-                  <button
-                    onClick={() => {
-                      setShowProfileModal(true);
-                      setShowUserMenu(false);
-                    }}
-                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  <Link
+                    to="/profile"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center px-4 py-2 text-sm transition-colors"
+                    style={{ color: 'var(--text-primary)' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
                     <User className="w-4 h-4 mr-3" />
                     {t('nav.profile')}
-                  </button>
+                  </Link>
 
                   <Link
                     to="/settings"
                     onClick={() => setShowUserMenu(false)}
-                    className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    className="flex items-center px-4 py-2 text-sm transition-colors"
+                    style={{ color: 'var(--text-primary)' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
                     <Settings className="w-4 h-4 mr-3" />
                     {t('nav.settings')}
@@ -144,7 +168,10 @@ const Header: React.FC = () => {
 
                   <button
                     onClick={handleLogout}
-                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    className="flex items-center w-full px-4 py-2 text-sm transition-colors"
+                    style={{ color: 'var(--text-primary)' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
                     <LogOut className="w-4 h-4 mr-3" />
                     {t('nav.signOut')}

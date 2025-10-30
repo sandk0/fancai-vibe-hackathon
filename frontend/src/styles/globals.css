@@ -5,6 +5,62 @@
 /* Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400;1,600&family=Fira+Code:wght@300;400;500&display=swap');
 
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
 /* Base styles */
 * {
   box-sizing: border-box;
@@ -23,29 +79,41 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Reading themes */
-.light {
+/* Global Application Themes */
+:root.light {
   --bg-primary: #ffffff;
   --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
   --text-primary: #1f2937;
   --text-secondary: #6b7280;
+  --text-tertiary: #9ca3af;
   --border-color: #e5e7eb;
+  --accent-color: #3b82f6;
+  --accent-hover: #2563eb;
 }
 
-.dark {
+:root.dark {
   --bg-primary: #1f2937;
   --bg-secondary: #111827;
+  --bg-tertiary: #0f172a;
   --text-primary: #f9fafb;
   --text-secondary: #d1d5db;
+  --text-tertiary: #9ca3af;
   --border-color: #374151;
+  --accent-color: #60a5fa;
+  --accent-hover: #3b82f6;
 }
 
-.sepia {
+:root.sepia {
   --bg-primary: #f7f3e9;
   --bg-secondary: #f0e6d2;
+  --bg-tertiary: #e8dcc0;
   --text-primary: #5d4037;
   --text-secondary: #8d6e63;
+  --text-tertiary: #a1887f;
   --border-color: #d7ccc8;
+  --accent-color: #d97706;
+  --accent-hover: #b45309;
 }
 
 /* Reader container */
@@ -95,7 +163,7 @@ body {
 
 /* Focus styles */
 .focus-ring {
-  @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+  @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
 }
 
 /* Custom animations */

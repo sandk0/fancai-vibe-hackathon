@@ -8,7 +8,8 @@ import {
   BarChart3,
   BookOpen,
   Sparkles,
-  Shield
+  Shield,
+  User
 } from 'lucide-react';
 import { useUIStore } from '@/stores/ui';
 import { useAuthStore } from '@/stores/auth';
@@ -41,6 +42,11 @@ const Sidebar: React.FC = () => {
       name: t('nav.readingStats'),
       href: '/stats',
       icon: BarChart3,
+    },
+    {
+      name: t('nav.profile'),
+      href: '/profile',
+      icon: User,
     },
     {
       name: t('nav.settings'),
@@ -104,21 +110,25 @@ const Sidebar: React.FC = () => {
               })}
             </nav>
 
-            {/* Bottom section */}
-            <div className="flex-shrink-0 px-4 py-4 border-t border-gray-200 dark:border-gray-700">
+            {/* User info section */}
+            <div className="flex-shrink-0 px-4 py-4 border-t" style={{
+              borderColor: 'var(--border-color)',
+            }}>
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <div className="w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{
+                    backgroundColor: 'var(--accent-color)',
+                  }}>
                     <span className="text-sm font-medium text-white">
                       {user?.full_name ? user.full_name.charAt(0).toUpperCase() : user?.email.charAt(0).toUpperCase()}
                     </span>
                   </div>
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                     {user?.full_name || 'User'}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                  <p className="text-xs flex items-center" style={{ color: 'var(--text-secondary)' }}>
                     <Sparkles className="w-3 h-3 mr-1" />
                     Free Plan
                   </p>
@@ -176,20 +186,24 @@ const Sidebar: React.FC = () => {
           </nav>
 
           {/* Bottom section */}
-          <div className="flex-shrink-0 px-4 py-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex-shrink-0 px-4 py-4 border-t" style={{
+            borderColor: 'var(--border-color)',
+          }}>
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{
+                  backgroundColor: 'var(--accent-color)',
+                }}>
                   <span className="text-sm font-medium text-white">
                     {user?.full_name ? user.full_name.charAt(0).toUpperCase() : user?.email.charAt(0).toUpperCase()}
                   </span>
                 </div>
               </div>
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                   {user?.full_name || t('nav.user')}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                <p className="text-xs flex items-center" style={{ color: 'var(--text-secondary)' }}>
                   <Sparkles className="w-3 h-3 mr-1" />
                   {t('nav.freePlan')}
                 </p>

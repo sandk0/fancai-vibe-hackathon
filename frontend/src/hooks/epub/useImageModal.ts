@@ -57,15 +57,26 @@ export const useImageModal = (): UseImageModalReturn => {
 
       const newImage: GeneratedImage = {
         id: result.image_id,
-        description_id: result.description_id,
         image_url: result.image_url,
-        generation_time: result.generation_time,
+        service_used: 'pollinations',
+        status: 'completed',
+        generation_time_seconds: result.generation_time,
         created_at: result.created_at,
+        is_moderated: false,
+        view_count: 0,
+        download_count: 0,
         description: {
           id: description.id,
           type: description.type,
+          text: description.content,  // Full text
           content: description.content,
+          confidence_score: description.confidence_score || 0,
           priority_score: description.priority_score,
+        },
+        chapter: {
+          id: '',
+          number: 0,
+          title: '',
         },
       };
 

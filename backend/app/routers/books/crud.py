@@ -23,6 +23,7 @@ from uuid import uuid4, UUID
 from ...core.database import get_database_session
 from ...core.auth import get_current_active_user
 from ...core.dependencies import get_user_book, get_any_book
+from ...core.cache import cache_manager, cache_key, CACHE_TTL
 from ...core.exceptions import (
     InvalidFileFormatException,
     FileTooLargeException,
@@ -173,8 +174,22 @@ async def get_user_books(
 
     Returns:
         Список книг пользователя с пагинацией
+
+    Cache:
+        TTL: 5 minutes (frequent updates)
+        Key: user:{user_id}:books:skip:{skip}:limit:{limit}
     """
     print(f"[BOOKS ENDPOINT] Starting books request for user {current_user.id}")
+
+    # Try to get from cache
+    cache_key_str = cache_key("user", current_user.id, "books", f"skip:{skip}", f"limit:{limit}")
+    cached_result = await cache_manager.get(cache_key_str)
+    if cached_result is not None:
+        print(f"[BOOKS ENDPOINT] Cache HIT for user {current_user.id}")
+        return cached_result
+
+    print(f"[BOOKS ENDPOINT] Cache MISS for user {current_user.id} - querying database")
+
     try:
         # ОПТИМИЗАЦИЯ: Получаем книги пользователя с предрасчитанным прогрессом
         # Использует eager loading, чтобы избежать N+1 queries
@@ -231,7 +246,12 @@ async def get_user_books(
             f"[BOOKS ENDPOINT] Successfully returning {len(books_data)} books (total: {total_books})"
         )
 
-        return {"books": books_data, "total": total_books, "skip": skip, "limit": limit}
+        response = {"books": books_data, "total": total_books, "skip": skip, "limit": limit}
+
+        # Cache the result (5 minutes TTL for book lists)
+        await cache_manager.set(cache_key_str, response, ttl=CACHE_TTL["book_list"])
+
+        return response
 
     except Exception as e:
         print(f"[BOOKS ENDPOINT] Error: {e}")
@@ -258,7 +278,20 @@ async def get_book(
     Raises:
         BookNotFoundException: Если книга не найдена
         BookAccessDeniedException: Если доступ запрещен
+
+    Cache:
+        TTL: 1 hour (rarely changes)
+        Key: book:{book_id}:metadata
     """
+    # Try to get from cache
+    cache_key_str = cache_key("book", book.id, "metadata")
+    cached_result = await cache_manager.get(cache_key_str)
+    if cached_result is not None:
+        print(f"[BOOK ENDPOINT] Cache HIT for book {book.id}")
+        return cached_result
+
+    print(f"[BOOK ENDPOINT] Cache MISS for book {book.id} - building response")
+
     try:
 
         # Прогресс чтения - используем унифицированный метод из модели
@@ -291,7 +324,7 @@ async def get_book(
                 }
             )
 
-        return {
+        response = {
             "id": str(book.id),
             "title": book.title,
             "author": book.author,
@@ -318,6 +351,11 @@ async def get_book(
             if book.last_accessed
             else None,
         }
+
+        # Cache the result (1 hour TTL for book metadata)
+        await cache_manager.set(cache_key_str, response, ttl=CACHE_TTL["book_metadata"])
+
+        return response
 
     except HTTPException:
         raise

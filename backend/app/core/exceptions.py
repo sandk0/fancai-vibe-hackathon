@@ -79,6 +79,16 @@ class CoverImageNotFoundException(HTTPException):
         )
 
 
+class ReadingSessionNotFoundException(HTTPException):
+    """Исключение, когда сессия чтения не найдена."""
+
+    def __init__(self, session_id: UUID):
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Reading session {session_id} not found",
+        )
+
+
 # ============================================================================
 # Access Denied Exceptions (403)
 # ============================================================================
@@ -121,6 +131,16 @@ class ImageAccessDeniedException(HTTPException):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Image not found or access denied",
+        )
+
+
+class ReadingSessionAccessDeniedException(HTTPException):
+    """Исключение, когда доступ к сессии чтения запрещен."""
+
+    def __init__(self, session_id: UUID):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Access denied to reading session {session_id}",
         )
 
 
@@ -178,6 +198,26 @@ class EmptyTextException(HTTPException):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Text cannot be empty",
+        )
+
+
+class ReadingSessionAlreadyEndedException(HTTPException):
+    """Исключение, когда пытаемся завершить уже завершенную сессию."""
+
+    def __init__(self, session_id: UUID):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Reading session {session_id} is already ended",
+        )
+
+
+class ReadingSessionInactiveException(HTTPException):
+    """Исключение, когда пытаемся обновить неактивную сессию."""
+
+    def __init__(self, session_id: UUID):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Reading session {session_id} is inactive",
         )
 
 

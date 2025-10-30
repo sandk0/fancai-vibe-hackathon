@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
@@ -6,26 +6,52 @@ import { Toaster } from 'react-hot-toast';
 // Store initialization
 import { initializeStores } from '@/stores';
 
-// Layout components
+// Layout components (always loaded)
 import Layout from '@/components/Layout/Layout';
 import AuthGuard from '@/components/Auth/AuthGuard';
 
-// Pages
+// Core pages (eagerly loaded - small and frequently accessed)
 import HomePage from '@/pages/HomePage';
 import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
 import LibraryPage from '@/pages/LibraryPage';
-import BookPage from '@/pages/BookPage';
-import BookImagesPage from '@/pages/BookImagesPage';
-import BookReaderPage from '@/pages/BookReaderPage';
-import ChapterPage from '@/pages/ChapterPage';
-import ProfilePage from '@/pages/ProfilePage';
-import SettingsPage from '@/pages/SettingsPage';
-import AdminDashboard from '@/pages/AdminDashboardEnhanced';
 import NotFoundPage from '@/pages/NotFoundPage';
 
-// Global styles
+// Lazy-loaded pages (heavy or less frequently accessed)
+// These will be code-split into separate chunks
+const BookPage = lazy(() => import('@/pages/BookPage'));
+const BookImagesPage = lazy(() => import('@/pages/BookImagesPage'));
+const ImagesGalleryPage = lazy(() => import('@/pages/ImagesGalleryPage'));
+const StatsPage = lazy(() => import('@/pages/StatsPage'));
+const ChapterPage = lazy(() => import('@/pages/ChapterPage'));
+const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
+const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
+
+// Heavy pages with large dependencies (CRITICAL for bundle size)
+// BookReaderPage includes EpubReader which loads epub.js (~300KB)
+const BookReaderPage = lazy(() => import('@/pages/BookReaderPage'));
+
+// Admin dashboard (large component, admin-only)
+const AdminDashboard = lazy(() => import('@/pages/AdminDashboardEnhanced'));
+
+// Global styles with theme support
 import '@/styles/globals.css';
+
+/**
+ * Loading fallback component
+ * Shown while lazy-loaded chunks are being fetched
+ */
+const PageLoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-screen" style={{
+    backgroundColor: 'var(--bg-primary)',
+    color: 'var(--text-primary)',
+  }}>
+    <div className="text-center">
+      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+      <p className="text-gray-400">Загрузка...</p>
+    </div>
+  </div>
+);
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -53,7 +79,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
-        <div className="App min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="App min-h-screen transition-colors" style={{
+          backgroundColor: 'var(--bg-primary)',
+          color: 'var(--text-primary)',
+        }}>
           <Routes>
             {/* Public routes */}
             <Route path="/login" element={<LoginPage />} />
@@ -64,7 +93,9 @@ function App() {
               path="/book/:bookId/read"
               element={
                 <AuthGuard>
-                  <BookReaderPage />
+                  <Suspense fallback={<PageLoadingFallback />}>
+                    <BookReaderPage />
+                  </Suspense>
                 </AuthGuard>
               }
             />
@@ -75,20 +106,24 @@ function App() {
               element={
                 <AuthGuard>
                   <Layout>
-                    <Routes>
-                      <Route path="/" element={<HomePage />} />
-                      <Route path="/library" element={<LibraryPage />} />
-                      <Route path="/book/:bookId" element={<BookPage />} />
-                      <Route path="/book/:bookId/images" element={<BookImagesPage />} />
-                      <Route
-                        path="/book/:bookId/chapter/:chapterNumber"
-                        element={<ChapterPage />}
-                      />
-                      <Route path="/profile" element={<ProfilePage />} />
-                      <Route path="/settings" element={<SettingsPage />} />
-                      <Route path="/admin" element={<AdminDashboard />} />
-                      <Route path="*" element={<NotFoundPage />} />
-                    </Routes>
+                    <Suspense fallback={<PageLoadingFallback />}>
+                      <Routes>
+                        <Route path="/" element={<HomePage />} />
+                        <Route path="/library" element={<LibraryPage />} />
+                        <Route path="/book/:bookId" element={<BookPage />} />
+                        <Route path="/book/:bookId/images" element={<BookImagesPage />} />
+                        <Route path="/images" element={<ImagesGalleryPage />} />
+                        <Route path="/stats" element={<StatsPage />} />
+                        <Route
+                          path="/book/:bookId/chapter/:chapterNumber"
+                          element={<ChapterPage />}
+                        />
+                        <Route path="/profile" element={<ProfilePage />} />
+                        <Route path="/settings" element={<SettingsPage />} />
+                        <Route path="/admin" element={<AdminDashboard />} />
+                        <Route path="*" element={<NotFoundPage />} />
+                      </Routes>
+                    </Suspense>
                   </Layout>
                 </AuthGuard>
               }

@@ -4,6 +4,7 @@ Celery configuration for BookReader AI.
 """
 
 from celery import Celery
+from celery.schedules import crontab
 import os
 from app.core.config import settings
 
@@ -12,7 +13,7 @@ celery_app = Celery(
     "bookreader",
     broker=settings.REDIS_URL,
     backend=settings.REDIS_URL,
-    include=["app.core.tasks"],
+    include=["app.core.tasks", "app.tasks.reading_sessions_tasks"],
 )
 
 # Basic Celery configuration (compatible with existing code)
@@ -47,6 +48,17 @@ celery_app.conf.update(
     },
     # Default queue
     task_default_queue="normal",
+    # Beat schedule для периодических задач
+    beat_schedule={
+        "close-abandoned-reading-sessions": {
+            "task": "app.tasks.close_abandoned_sessions",
+            "schedule": 1800.0,  # Каждые 30 минут (30 * 60 = 1800 секунд)
+            "options": {
+                "queue": "light",
+                "priority": 2,
+            },
+        },
+    },
 )
 
 # Auto-discover tasks

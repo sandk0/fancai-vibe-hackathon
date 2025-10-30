@@ -19,7 +19,13 @@ from datetime import datetime
 
 from ..models.description import DescriptionType
 from .nlp.utils.text_cleaner import clean_text
-from .nlp.utils.quality_scorer import calculate_quality_score
+from .nlp.utils.quality_scorer import (
+    calculate_quality_score,
+    calculate_descriptive_score,
+    calculate_ner_confidence,
+)
+from .nlp.utils.type_mapper import map_entity_to_description_type
+from .nlp.utils.description_filter import filter_and_prioritize_descriptions
 
 logger = logging.getLogger(__name__)
 
@@ -525,7 +531,7 @@ class EnhancedSpacyProcessor(EnhancedNLPProcessor):
         return descriptions
 
     def _calculate_general_descriptive_score(self, sentence) -> float:
-        """Вычисляет общую описательность предложения."""
+        """Вычисляет общую описательность предложения используя shared utility."""
         total_tokens = len(sentence)
         if total_tokens == 0:
             return 0.0
@@ -533,47 +539,32 @@ class EnhancedSpacyProcessor(EnhancedNLPProcessor):
         # Подсчитываем описательные части речи
         adj_count = sum(1 for token in sentence if token.pos_ == "ADJ")
         adv_count = sum(1 for token in sentence if token.pos_ == "ADV")
-        noun_count = sum(1 for token in sentence if token.pos_ == "NOUN")
+        verb_count = sum(1 for token in sentence if token.pos_ == "VERB")
 
-        # Высокое соотношение прилагательных к существительным
-        descriptive_ratio = (adj_count + adv_count * 0.5) / max(1, total_tokens)
-
-        # Бонус за наличие существительных (нужна база для описания)
-        noun_bonus = min(0.3, noun_count * 0.1)
-
-        # Проверяем на ключевые русские описательные слова
-        text_lower = sentence.text.lower()
-        russian_descriptive_words = [
-            "красивый",
-            "большой",
-            "старый",
-            "молодой",
-            "высокий",
-            "низкий",
-            "тёмный",
-            "светлый",
-            "величественный",
-            "древний",
-        ]
-        keyword_bonus = sum(
-            0.1 for word in russian_descriptive_words if word in text_lower
+        # Используем shared utility для вычисления описательности
+        return calculate_descriptive_score(
+            text=sentence.text,
+            adj_count=adj_count,
+            adv_count=adv_count,
+            verb_count=verb_count,
+            total_tokens=total_tokens,
         )
-
-        total_score = descriptive_ratio + noun_bonus + keyword_bonus
-        return min(1.0, total_score)
 
     def _map_entity_to_description_type(
         self, entity_label: str
     ) -> Tuple[Optional[str], float]:
-        """Сопоставляет тип сущности с типом описания."""
-        mapping = {
-            "PERSON": (DescriptionType.CHARACTER.value, 0.8),
-            "LOC": (DescriptionType.LOCATION.value, 0.7),
-            "GPE": (DescriptionType.LOCATION.value, 0.6),
-            "FAC": (DescriptionType.LOCATION.value, 0.7),
-            "ORG": (DescriptionType.OBJECT.value, 0.5),
+        """Сопоставляет тип сущности с типом описания используя shared utility."""
+        desc_type = map_entity_to_description_type(entity_label, processor="spacy")
+
+        # Confidence scores по типу
+        confidence_scores = {
+            DescriptionType.CHARACTER.value: 0.8,
+            DescriptionType.LOCATION.value: 0.7,
+            DescriptionType.OBJECT.value: 0.5,
         }
-        return mapping.get(entity_label, (None, 0.0))
+
+        confidence = confidence_scores.get(desc_type, 0.0) if desc_type else 0.0
+        return (desc_type, confidence)
 
     def _map_pattern_to_description_type(self, pattern_label: str) -> Optional[str]:
         """Сопоставляет метку паттерна с типом описания."""
@@ -597,25 +588,23 @@ class EnhancedSpacyProcessor(EnhancedNLPProcessor):
     def _calculate_entity_confidence(
         self, entity, sentence, base_confidence: float
     ) -> float:
-        """Вычисляет уверенность для сущности на основе контекста."""
-        confidence = base_confidence
-
-        # Бонус за длину сущности
-        if len(entity.text) > 3:
-            confidence += 0.1
-
-        # Бонус за позицию в предложении (начало/конец часто важнее)
+        """Вычисляет уверенность для сущности используя shared utility."""
+        # Вычисляем относительную позицию
         rel_pos = (entity.start - sentence.start) / max(1, len(sentence))
-        if rel_pos < 0.3 or rel_pos > 0.7:
-            confidence += 0.05
 
-        # Бонус за наличие прилагательных рядом
-        for token in sentence:
-            if abs(token.i - entity.start) <= 2 and token.pos_ == "ADJ":
-                confidence += 0.1
-                break
+        # Подсчитываем описательные слова рядом
+        descriptive_words_nearby = sum(
+            1 for token in sentence
+            if abs(token.i - entity.start) <= 2 and token.pos_ in ["ADJ", "ADV"]
+        )
 
-        return min(1.0, confidence)
+        # Используем shared utility
+        return calculate_ner_confidence(
+            entity_text=entity.text,
+            sentence_text=sentence.text,
+            entity_position=rel_pos,
+            context_descriptive_words=descriptive_words_nearby,
+        )
 
     def _adjust_confidence_by_context(self, base_confidence: float, sentence) -> float:
         """Корректирует уверенность на основе контекста предложения."""

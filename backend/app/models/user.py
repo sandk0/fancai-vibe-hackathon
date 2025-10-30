@@ -87,6 +87,9 @@ class User(Base):
     reading_progress = relationship(
         "ReadingProgress", back_populates="user", cascade="all, delete-orphan"
     )
+    reading_sessions = relationship(
+        "ReadingSession", back_populates="user", cascade="all, delete-orphan"
+    )
     subscription = relationship(
         "Subscription",
         back_populates="user",

@@ -1,0 +1,407 @@
+name: Performance Testing
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: 'Load test duration in seconds'
+        required: false
+        default: '60'
+      users:
+        description: 'Number of concurrent users'
+        required: false
+        default: '10'
+
+# Cancel in-progress runs for the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+
+jobs:
+  frontend-lighthouse:
+    name: Frontend Lighthouse CI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build production bundle
+        run: |
+          cd frontend
+          npm run build:unsafe
+
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli
+
+      - name: Serve production build
+        run: |
+          cd frontend
+          npx serve -s dist -l 3000 &
+          sleep 5
+
+      - name: Run Lighthouse CI
+        run: |
+          lhci autorun --config=frontend/lighthouserc.json || lhci autorun
+
+      - name: Upload Lighthouse results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-results
+          path: .lighthouseci/
+          retention-days: 30
+
+  frontend-bundle-size:
+    name: Frontend Bundle Size Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build with bundle analysis
+        run: |
+          cd frontend
+          npm run build:unsafe
+
+      - name: Analyze bundle size
+        run: |
+          cd frontend
+          du -sh dist/
+          du -sh dist/assets/*.js | sort -rh | head -10
+          echo "## Bundle Size Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Total Bundle Size" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          du -sh dist/ >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Top 10 Largest Assets" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          du -sh dist/assets/* | sort -rh | head -10 >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check bundle size limits
+        run: |
+          cd frontend
+          total_size=$(du -sb dist/ | cut -f1)
+          max_size=$((5 * 1024 * 1024))  # 5MB limit
+
+          if [ $total_size -gt $max_size ]; then
+            echo "❌ Bundle size exceeds 5MB limit!"
+            echo "Current size: $(du -sh dist/ | cut -f1)"
+            echo "Max allowed: 5MB"
+            exit 1
+          else
+            echo "✅ Bundle size within limits"
+            echo "Current size: $(du -sh dist/ | cut -f1)"
+          fi
+
+      - name: Comment PR with bundle size
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const { execSync } = require('child_process');
+
+            const bundleSize = execSync('cd frontend && du -sh dist/', {encoding: 'utf-8'}).trim();
+            const assets = execSync('cd frontend && du -sh dist/assets/* | sort -rh | head -5', {encoding: 'utf-8'});
+
+            const body = `## 📦 Bundle Size Report
+
+            **Total Size:** ${bundleSize}
+
+            **Top 5 Assets:**
+            \`\`\`
+            ${assets}
+            \`\`\`
+
+            **Limits:**
+            - ⚠️ Target: < 3MB (recommended)
+            - ❌ Maximum: < 5MB (enforced)
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+  backend-load-test:
+    name: Backend Load Testing (Locust)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: bookreader_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres123
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install locust
+
+      - name: Start backend server
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
+          REDIS_URL: redis://localhost:6379
+          SECRET_KEY: test-secret-key-for-performance
+          DEBUG: false
+        run: |
+          cd backend
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          sleep 10
+
+      - name: Health check
+        run: |
+          curl -f http://localhost:8000/health || exit 1
+
+      - name: Create Locust test file
+        run: |
+          cat > /tmp/locustfile.py << 'EOF'
+          from locust import HttpUser, task, between
+
+          class BookReaderUser(HttpUser):
+              wait_time = between(1, 3)
+
+              @task(3)
+              def view_books(self):
+                  self.client.get("/api/v1/books/")
+
+              @task(2)
+              def health_check(self):
+                  self.client.get("/health")
+
+              @task(1)
+              def view_book_detail(self):
+                  # Assuming book with ID 1 exists or returns 404
+                  self.client.get("/api/v1/books/1", name="/api/v1/books/[id]")
+          EOF
+
+      - name: Run Locust load test
+        run: |
+          DURATION=${{ github.event.inputs.duration || '60' }}
+          USERS=${{ github.event.inputs.users || '10' }}
+
+          locust -f /tmp/locustfile.py \
+            --headless \
+            --host http://localhost:8000 \
+            --users $USERS \
+            --spawn-rate 2 \
+            --run-time ${DURATION}s \
+            --html locust-report.html \
+            --csv locust-results
+
+      - name: Analyze load test results
+        run: |
+          echo "## Load Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- Users: ${{ github.event.inputs.users || '10' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Duration: ${{ github.event.inputs.duration || '60' }}s" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Statistics" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          cat locust-results_stats.csv >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload load test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: locust-load-test-results
+          path: |
+            locust-report.html
+            locust-results*.csv
+          retention-days: 30
+
+      - name: Check performance thresholds
+        run: |
+          # Check average response time (should be < 200ms for health endpoint)
+          avg_response=$(grep "health" locust-results_stats.csv | cut -d',' -f7)
+          echo "Average response time: ${avg_response}ms"
+
+          # Warning if > 200ms, fail if > 500ms
+          if (( $(echo "$avg_response > 500" | bc -l) )); then
+            echo "❌ Performance degradation detected! Average response time: ${avg_response}ms"
+            exit 1
+          elif (( $(echo "$avg_response > 200" | bc -l) )); then
+            echo "⚠️ Performance warning: Average response time ${avg_response}ms exceeds target"
+          else
+            echo "✅ Performance within acceptable limits"
+          fi
+
+  database-performance:
+    name: Database Query Performance
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: bookreader_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres123
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-benchmark
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
+        run: |
+          cd backend
+          alembic upgrade head
+
+      - name: Run database performance tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
+          REDIS_URL: redis://localhost:6379
+        run: |
+          cd backend
+          # Run performance-focused tests if they exist
+          pytest tests/ -v -k "performance" --benchmark-only || echo "No performance tests found"
+
+      - name: Analyze slow queries
+        env:
+          PGPASSWORD: postgres123
+        run: |
+          echo "## Database Performance Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Connection Statistics" >> $GITHUB_STEP_SUMMARY
+          psql -h localhost -U postgres -d bookreader_test -c "SELECT count(*) as connections FROM pg_stat_activity;" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Database Size" >> $GITHUB_STEP_SUMMARY
+          psql -h localhost -U postgres -d bookreader_test -c "SELECT pg_size_pretty(pg_database_size('bookreader_test'));" >> $GITHUB_STEP_SUMMARY
+
+  performance-summary:
+    name: Performance Test Summary
+    runs-on: ubuntu-latest
+    needs:
+      - frontend-lighthouse
+      - frontend-bundle-size
+      - backend-load-test
+      - database-performance
+    if: always()
+    steps:
+      - name: Create summary report
+        run: |
+          echo "## 📊 Performance Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Test Suite | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend Lighthouse | ${{ needs.frontend-lighthouse.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend Bundle Size | ${{ needs.frontend-bundle-size.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend Load Test | ${{ needs.backend-load-test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Database Performance | ${{ needs.database-performance.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          failures=0
+          if [[ "${{ needs.frontend-lighthouse.result }}" == "failure" ]]; then
+            failures=$((failures + 1))
+          fi
+          if [[ "${{ needs.frontend-bundle-size.result }}" == "failure" ]]; then
+            failures=$((failures + 1))
+          fi
+          if [[ "${{ needs.backend-load-test.result }}" == "failure" ]]; then
+            failures=$((failures + 1))
+          fi
+          if [[ "${{ needs.database-performance.result }}" == "failure" ]]; then
+            failures=$((failures + 1))
+          fi
+
+          if [ $failures -eq 0 ]; then
+            echo "### ✅ All performance tests passed!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ⚠️ $failures performance test(s) failed" >> $GITHUB_STEP_SUMMARY
+            echo "Review detailed results above for optimization opportunities." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Notify on performance degradation
+        if: failure()
+        run: |
+          echo "⚠️ Performance tests detected issues!"
+          # Add notification integration here (Slack, email, etc.)

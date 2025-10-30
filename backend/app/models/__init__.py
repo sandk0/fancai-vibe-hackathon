@@ -9,6 +9,7 @@ from .book import Book, ReadingProgress
 from .chapter import Chapter
 from .description import Description
 from .image import GeneratedImage
+from .reading_session import ReadingSession
 
 __all__ = [
     "User",
@@ -18,4 +19,5 @@ __all__ = [
     "Chapter",
     "Description",
     "GeneratedImage",
+    "ReadingSession",
 ]

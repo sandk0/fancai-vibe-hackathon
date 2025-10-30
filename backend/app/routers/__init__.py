@@ -9,6 +9,8 @@ from .auth import router as auth_router
 from .admin import router as admin_router
 from .nlp import router as nlp_router
 from .images import router as images_router
+from .reading_sessions import router as reading_sessions_router
+from .health import router as health_router
 
 __all__ = [
     "books_router",
@@ -20,4 +22,6 @@ __all__ = [
     "admin_router",
     "nlp_router",
     "images_router",
+    "reading_sessions_router",
+    "health_router",
 ]

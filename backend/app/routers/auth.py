@@ -4,7 +4,7 @@ API роуты для аутентификации в BookReader AI.
 Содержит endpoints для регистрации, входа, обновления токенов и управления профилем.
 """
 
-from fastapi import APIRouter, HTTPException, Depends, status, Response
+from fastapi import APIRouter, HTTPException, Depends, status, Response, Request
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, EmailStr
@@ -14,6 +14,7 @@ from ..core.database import get_database_session
 from ..core.auth import get_current_active_user, security
 from ..services.auth_service import auth_service
 from ..models.user import User
+from ..middleware.rate_limit import rate_limit, RATE_LIMIT_PRESETS
 
 
 router = APIRouter()
@@ -63,14 +64,18 @@ class UserResponse(BaseModel):
 
 
 @router.post("/auth/register", status_code=status.HTTP_201_CREATED)
+@rate_limit(**RATE_LIMIT_PRESETS["auth"])
 async def register_user(
-    request: UserRegistrationRequest, db: AsyncSession = Depends(get_database_session)
+    user_request: UserRegistrationRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_database_session),
 ) -> Dict[str, Any]:
     """
     Регистрация нового пользователя.
 
     Args:
-        request: Данные для регистрации
+        user_request: Данные для регистрации
+        request: HTTP request object (для rate limiting)
         db: Сессия базы данных
 
     Returns:
@@ -80,7 +85,7 @@ async def register_user(
         HTTPException: Если email уже используется или другие ошибки
     """
     # Базовая валидация пароля
-    if len(request.password) < 6:
+    if len(user_request.password) < 6:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password must be at least 6 characters long",
@@ -90,9 +95,9 @@ async def register_user(
         # Создаем пользователя
         user = await auth_service.create_user(
             db=db,
-            email=request.email,
-            password=request.password,
-            full_name=request.full_name,
+            email=user_request.email,
+            password=user_request.password,
+            full_name=user_request.full_name,
         )
 
         # Создаем токены для нового пользователя
@@ -122,14 +127,18 @@ async def login_options():
 
 
 @router.post("/auth/login")
+@rate_limit(**RATE_LIMIT_PRESETS["auth"])
 async def login_user(
-    request: UserLoginRequest, db: AsyncSession = Depends(get_database_session)
+    user_request: UserLoginRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_database_session),
 ) -> Dict[str, Any]:
     """
     Вход пользователя в систему.
 
     Args:
-        request: Данные для входа
+        user_request: Данные для входа
+        request: HTTP request object (для rate limiting)
         db: Сессия базы данных
 
     Returns:
@@ -139,7 +148,7 @@ async def login_user(
         HTTPException: Если неверные учетные данные
     """
     user = await auth_service.authenticate_user(
-        db=db, email=request.email, password=request.password
+        db=db, email=user_request.email, password=user_request.password
     )
 
     if not user:

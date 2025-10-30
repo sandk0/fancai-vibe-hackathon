@@ -13,10 +13,9 @@ from sqlalchemy import (
     Text,
     ForeignKey,
     Float,
-    JSON,
     select,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -95,7 +94,7 @@ class Book(Base):
     # Контент
     cover_image = Column(String(1000), nullable=True)
     description = Column(Text, nullable=True)
-    book_metadata = Column(JSON, nullable=True)  # метаданные из файла
+    book_metadata = Column(JSONB, nullable=True)  # метаданные из файла (JSONB для быстрого поиска)
 
     # Статистика
     total_pages = Column(Integer, default=0, nullable=False)
@@ -125,6 +124,9 @@ class Book(Base):
     )
     reading_progress = relationship(
         "ReadingProgress", back_populates="book", cascade="all, delete-orphan"
+    )
+    reading_sessions = relationship(
+        "ReadingSession", back_populates="book", cascade="all, delete-orphan"
     )
 
     def __repr__(self):

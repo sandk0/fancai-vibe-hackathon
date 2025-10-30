@@ -1,0 +1,9 @@
+# Ignore test fixture files (can be large)
+fixtures/files/*.epub
+fixtures/files/*.fb2
+fixtures/files/*.txt
+
+# Playwright test results
+test-results/
+playwright-report/
+playwright/.cache/
