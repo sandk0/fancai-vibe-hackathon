@@ -57,7 +57,7 @@ aiosqlite==0.19.0
 
 # Форматирование и линтинг
 black==23.11.0
-ruff==0.1.6
+ruff==0.14.2
 mypy==1.7.1
 
 # Type stubs для mypy
