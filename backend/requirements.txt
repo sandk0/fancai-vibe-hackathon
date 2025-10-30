@@ -7,7 +7,7 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 
 # База данных
-sqlalchemy==2.0.23
+sqlalchemy==2.0.44
 alembic==1.12.1
 asyncpg==0.30.0
 
