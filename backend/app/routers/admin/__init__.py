@@ -8,6 +8,8 @@ This module provides a modular structure for admin functionality:
 - images: Image generation settings
 - system: System-wide settings
 - users: User management
+- reading_sessions: Reading sessions monitoring and cleanup
+- cache: Redis cache monitoring and management
 
 Each sub-module is focused on a single responsibility for better
 maintainability and code organization.
@@ -15,7 +17,7 @@ maintainability and code organization.
 
 from fastapi import APIRouter
 
-from . import stats, nlp_settings, parsing, images, system, users
+from . import stats, nlp_settings, parsing, images, system, users, reading_sessions, cache
 
 # Create main admin router
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -27,6 +29,8 @@ router.include_router(parsing.router)
 router.include_router(images.router)
 router.include_router(system.router)
 router.include_router(users.router)
+router.include_router(reading_sessions.router)
+router.include_router(cache.router)
 
 # Export both names for compatibility
 admin_router = router

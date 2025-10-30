@@ -1,52 +1,113 @@
+# Prometheus configuration для мониторинга BookReader AI Reading Sessions
+#
+# Scrape targets:
+# - backend: FastAPI приложение с /metrics endpoint
+# - celery-exporter: Celery tasks metrics (опционально)
+# - postgres-exporter: PostgreSQL database metrics (опционально)
+# - redis-exporter: Redis cache metrics (опционально)
+# - node-exporter: System metrics (CPU, memory, disk)
+
 global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
+  scrape_interval: 15s       # Частота сбора метрик
+  evaluation_interval: 15s   # Частота оценки правил
+  external_labels:
+    cluster: 'bookreader'
+    environment: 'production'
 
+# Load alert rules
 rule_files:
-  - "alert_rules.yml"
+  - "/etc/prometheus/alerts/*.yml"
 
+# Alertmanager configuration (опционально)
 alerting:
   alertmanagers:
     - static_configs:
         - targets: []
+        # - targets: ['alertmanager:9093']
 
 scrape_configs:
-  # Prometheus self-monitoring
-  - job_name: 'prometheus'
-    static_configs:
-      - targets: ['localhost:9090']
-
-  # Node Exporter for system metrics
-  - job_name: 'node-exporter'
-    static_configs:
-      - targets: ['node-exporter:9100']
-
-  # cAdvisor for container metrics
-  - job_name: 'cadvisor'
-    static_configs:
-      - targets: ['cadvisor:8080']
-
-  # Backend application metrics
+  # ============================================================================
+  # Backend API (FastAPI) - READING SESSIONS METRICS
+  # ============================================================================
   - job_name: 'bookreader-backend'
     static_configs:
       - targets: ['backend:8000']
-    metrics_path: '/metrics'
-    scrape_interval: 30s
+    metrics_path: '/api/v1/metrics'  # Health router metrics endpoint
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    honor_labels: true
+    # Relabel для добавления метаданных
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'backend-api'
 
-  # PostgreSQL metrics (if pg_exporter is added)
-  - job_name: 'postgres'
+  # ============================================================================
+  # Node Exporter (system metrics)
+  # ============================================================================
+  - job_name: 'node-exporter'
     static_configs:
-      - targets: ['postgres:5432']
-    scrape_interval: 30s
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'host-system'
 
-  # Redis metrics (if redis_exporter is added)
-  - job_name: 'redis'
+  # ============================================================================
+  # cAdvisor (container metrics)
+  # ============================================================================
+  - job_name: 'cadvisor'
     static_configs:
-      - targets: ['redis:6379']
-    scrape_interval: 30s
+      - targets: ['cadvisor:8080']
+    scrape_interval: 15s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'containers'
 
-  # Nginx metrics (if nginx_exporter is added)
-  - job_name: 'nginx'
+  # ============================================================================
+  # PostgreSQL Database (postgres-exporter) - ОПЦИОНАЛЬНО
+  # ============================================================================
+  # - job_name: 'postgres'
+  #   static_configs:
+  #     - targets: ['postgres-exporter:9187']
+  #   scrape_interval: 30s
+  #   relabel_configs:
+  #     - source_labels: [__address__]
+  #       target_label: service
+  #       replacement: 'postgresql'
+
+  # ============================================================================
+  # Redis Cache (redis-exporter) - ОПЦИОНАЛЬНО
+  # ============================================================================
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']
+  #   scrape_interval: 15s
+  #   relabel_configs:
+  #     - source_labels: [__address__]
+  #       target_label: service
+  #       replacement: 'redis-cache'
+
+  # ============================================================================
+  # Nginx (nginx-prometheus-exporter) - ОПЦИОНАЛЬНО
+  # ============================================================================
+  # - job_name: 'nginx'
+  #   static_configs:
+  #     - targets: ['nginx-exporter:9113']
+  #   scrape_interval: 15s
+  #   relabel_configs:
+  #     - source_labels: [__address__]
+  #       target_label: service
+  #       replacement: 'nginx-proxy'
+
+  # ============================================================================
+  # Prometheus Self-monitoring
+  # ============================================================================
+  - job_name: 'prometheus'
     static_configs:
-      - targets: ['nginx:80']
+      - targets: ['localhost:9090']
     scrape_interval: 30s

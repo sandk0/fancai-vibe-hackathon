@@ -4,13 +4,14 @@ import { useAutoWebSocket } from '@/services/websocket';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import NotificationContainer from '@/components/UI/NotificationContainer';
+import { BookUploadModal } from '@/components/Books/BookUploadModal';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { sidebarOpen, mobileMenuOpen, setSidebarOpen, setMobileMenuOpen } = useUIStore();
+  const { sidebarOpen, mobileMenuOpen, showUploadModal, setSidebarOpen, setMobileMenuOpen, setShowUploadModal } = useUIStore();
   
   // Auto-connect WebSocket for real-time updates
   useAutoWebSocket();
@@ -26,7 +27,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen transition-colors" style={{
+      backgroundColor: 'var(--bg-primary)',
+      color: 'var(--text-primary)',
+    }}>
       {/* Header */}
       <Header />
 
@@ -44,7 +48,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         )}
 
         {/* Main Content */}
-        <main className="flex-1 min-h-screen pt-16">
+        <main className="flex-1 min-h-screen pt-16" style={{
+          backgroundColor: 'var(--bg-secondary)',
+        }}>
           <div className="container mx-auto px-4 py-6">
             {children}
           </div>
@@ -53,6 +59,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       {/* Global Notifications */}
       <NotificationContainer />
+
+      {/* Upload Modal */}
+      <BookUploadModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+      />
     </div>
   );
 };

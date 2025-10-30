@@ -4,6 +4,7 @@ export { apiClient as default } from './client';
 export { authAPI } from './auth';
 export { booksAPI } from './books';
 export { imagesAPI } from './images';
+export { readingSessionsAPI } from './readingSessions';
 
 // Re-export client for direct usage
 export { apiClient } from './client';

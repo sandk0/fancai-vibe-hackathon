@@ -1,0 +1,387 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run weekly security scans on Mondays at 9 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+# Cancel in-progress runs for the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+
+jobs:
+  dependency-scan-backend:
+    name: Backend Dependency Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run pip-audit (dependency vulnerability scanner)
+        run: |
+          pip install pip-audit
+          cd backend
+          pip-audit --requirement requirements.txt --format json --output pip-audit-report.json || true
+          pip-audit --requirement requirements.txt
+
+      - name: Run Safety (Python dependency checker)
+        run: |
+          pip install safety
+          cd backend
+          safety check --json --output safety-report.json || true
+          safety check --continue-on-error
+
+      - name: Upload dependency scan results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dependency-scan
+          path: |
+            backend/pip-audit-report.json
+            backend/safety-report.json
+          retention-days: 30
+
+  dependency-scan-frontend:
+    name: Frontend Dependency Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Run npm audit
+        run: |
+          cd frontend
+          npm audit --json > npm-audit-report.json || true
+          npm audit --audit-level=high
+
+      - name: Check for outdated packages
+        run: |
+          cd frontend
+          npm outdated --json > npm-outdated-report.json || true
+          npm outdated
+
+      - name: Upload dependency scan results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dependency-scan
+          path: |
+            frontend/npm-audit-report.json
+            frontend/npm-outdated-report.json
+          retention-days: 30
+
+  sast-backend:
+    name: Backend SAST (Bandit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Bandit
+        run: pip install bandit[toml]
+
+      - name: Run Bandit security scanner
+        run: |
+          cd backend
+          bandit -r app/ -f json -o bandit-report.json || true
+          bandit -r app/ -ll -f screen
+
+      - name: Upload Bandit results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-sast-results
+          path: backend/bandit-report.json
+          retention-days: 30
+
+  sast-frontend:
+    name: Frontend SAST (ESLint Security)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+          npm install --save-dev eslint-plugin-security
+
+      - name: Run ESLint with security plugin
+        run: |
+          cd frontend
+          npx eslint . --ext ts,tsx --plugin security --format json --output-file eslint-security-report.json || true
+          npx eslint . --ext ts,tsx
+
+      - name: Upload ESLint security results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eslint-security-results
+          path: frontend/eslint-security-report.json
+          retention-days: 30
+
+  codeql-analysis:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['python', 'javascript']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: +security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  docker-security-backend:
+    name: Docker Security Scan (Backend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: |
+          cd backend
+          docker build -t bookreader-backend:test -f Dockerfile .
+
+      - name: Run Trivy vulnerability scanner (backend)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: bookreader-backend:test
+          format: 'sarif'
+          output: 'trivy-backend-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results (backend)
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-backend-results.sarif'
+          category: 'docker-backend'
+
+      - name: Run Trivy in table format
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: bookreader-backend:test
+          format: 'table'
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+
+  docker-security-frontend:
+    name: Docker Security Scan (Frontend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build frontend image
+        run: |
+          cd frontend
+          docker build -t bookreader-frontend:test -f Dockerfile .
+
+      - name: Run Trivy vulnerability scanner (frontend)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: bookreader-frontend:test
+          format: 'sarif'
+          output: 'trivy-frontend-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results (frontend)
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-frontend-results.sarif'
+          category: 'docker-frontend'
+
+      - name: Run Trivy in table format
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: bookreader-frontend:test
+          format: 'table'
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+
+  secrets-detection:
+    name: Secrets Detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better detection
+
+      - name: Run TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified --json --fail
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  license-compliance:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Check Python licenses
+        run: |
+          pip install pip-licenses
+          cd backend
+          pip install -r requirements.txt
+          pip-licenses --format=json --output-file=licenses-report.json
+          pip-licenses --format=markdown --output-file=licenses-report.md
+          echo "## Backend Licenses" >> $GITHUB_STEP_SUMMARY
+          cat licenses-report.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Check JavaScript licenses
+        run: |
+          cd frontend
+          npm ci
+          npx license-checker --json --out licenses-report.json
+          npx license-checker --markdown --out licenses-report.md
+          echo "## Frontend Licenses" >> $GITHUB_STEP_SUMMARY
+          cat licenses-report.md >> $GITHUB_STEP_SUMMARY || echo "License report generation failed" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload license reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-compliance-reports
+          path: |
+            backend/licenses-report.*
+            frontend/licenses-report.*
+          retention-days: 90
+
+  security-summary:
+    name: Security Scan Summary
+    runs-on: ubuntu-latest
+    needs:
+      - dependency-scan-backend
+      - dependency-scan-frontend
+      - sast-backend
+      - sast-frontend
+      - codeql-analysis
+      - docker-security-backend
+      - docker-security-frontend
+      - secrets-detection
+      - license-compliance
+    if: always()
+    steps:
+      - name: Check all security scans status
+        run: |
+          echo "## Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend Dependency Scan | ${{ needs.dependency-scan-backend.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend Dependency Scan | ${{ needs.dependency-scan-frontend.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend SAST | ${{ needs.sast-backend.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend SAST | ${{ needs.sast-frontend.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| CodeQL Analysis | ${{ needs.codeql-analysis.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker Security (Backend) | ${{ needs.docker-security-backend.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker Security (Frontend) | ${{ needs.docker-security-frontend.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Secrets Detection | ${{ needs.secrets-detection.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| License Compliance | ${{ needs.license-compliance.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.secrets-detection.result }}" != "success" ]]; then
+            echo "### ❌ CRITICAL: Secrets detected in codebase!" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          critical_failures=0
+          if [[ "${{ needs.dependency-scan-backend.result }}" == "failure" ]]; then
+            critical_failures=$((critical_failures + 1))
+          fi
+          if [[ "${{ needs.dependency-scan-frontend.result }}" == "failure" ]]; then
+            critical_failures=$((critical_failures + 1))
+          fi
+          if [[ "${{ needs.docker-security-backend.result }}" == "failure" ]]; then
+            critical_failures=$((critical_failures + 1))
+          fi
+          if [[ "${{ needs.docker-security-frontend.result }}" == "failure" ]]; then
+            critical_failures=$((critical_failures + 1))
+          fi
+
+          if [ $critical_failures -gt 0 ]; then
+            echo "### ⚠️ WARNING: $critical_failures critical security checks failed" >> $GITHUB_STEP_SUMMARY
+            echo "Review the detailed scan results above." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ✅ All critical security checks passed!" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Notify on critical failures
+        if: failure()
+        run: |
+          echo "❌ Security scan detected critical issues!"
+          # Add notification integration here (Slack, email, etc.)

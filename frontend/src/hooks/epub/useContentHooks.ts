@@ -4,6 +4,8 @@
  * Uses epub.js hooks system to inject custom styles and manipulate content
  * before rendering. More reliable than manual DOM manipulation.
  *
+ * Updated: Reduced internal padding from 1.5em to 0.75em for compact layout
+ *
  * @param rendition - epub.js Rendition instance
  * @param theme - Current theme
  *
@@ -26,7 +28,7 @@ export const useContentHooks = (
      * Content hook - runs when section content is loaded
      * Perfect for injecting custom styles, manipulating images, etc.
      */
-    const contentHook = (contents: any, view: any) => {
+    const contentHook = (contents: any, _view: any) => {
       console.log('🪝 [useContentHooks] Content hook triggered');
 
       const doc = contents.document;
@@ -118,10 +120,10 @@ export const useContentHooks = (
           opacity: 0.3 !important;
         }
 
-        /* Remove default margins on body */
+        /* Minimal padding on body for compact layout */
         body {
           margin: 0 !important;
-          padding: 1.5em !important;
+          padding: 0.75em !important;
         }
 
         /* Smooth scrolling */

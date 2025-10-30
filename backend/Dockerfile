@@ -37,9 +37,12 @@ COPY . .
 # Create necessary directories
 RUN mkdir -p /app/uploads /app/logs /app/storage
 
-# Create non-root user for development (but allow flexibility)
+# Create non-root user for development
 RUN groupadd -r appuser && useradd -r -g appuser appuser && \
     chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
 
 # Expose port
 EXPOSE 8000
@@ -48,5 +51,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD curl -f http://localhost:8000/health || exit 1
 
-# Default command (non-root user optional in dev for flexibility)
+# Default command (runs as appuser)
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

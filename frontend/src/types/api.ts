@@ -163,23 +163,57 @@ export interface NLPAnalysis {
 }
 
 // Image Generation Types
+export interface ImageDescription {
+  id: string;
+  type: DescriptionType;
+  text: string;  // Полный текст описания
+  content: string;  // Сокращенный текст
+  confidence_score: number;
+  priority_score: number;
+  entities_mentioned?: string[];
+}
+
+export interface ImageChapter {
+  id: string;
+  number: number;
+  title: string;
+}
+
 export interface GeneratedImage {
   id: string;
-  description_id: string;
+
+  // Генерация
+  service_used: string;
+  status: 'pending' | 'generating' | 'completed' | 'failed' | 'moderated';
+  prompt_used?: string;
+  generation_time_seconds?: number;
+
+  // Результат
   image_url: string;
-  generation_time: number;
+  local_path?: string;
+
+  // Файл
+  file_size?: number;
+  image_width?: number;
+  image_height?: number;
+  file_format?: string;
+
+  // Качество
+  quality_score?: number;
+  is_moderated: boolean;
+
+  // Статистика
+  view_count: number;
+  download_count: number;
+
+  // Timestamps
   created_at: string;
-  description?: {
-    id: string;
-    type: DescriptionType;
-    content: string;
-    priority_score: number;
-  };
-  chapter?: {
-    id: string;
-    number: number;
-    title: string;
-  };
+  updated_at?: string;
+  generated_at?: string;
+
+  // Relationships
+  description: ImageDescription;
+  chapter: ImageChapter;
 }
 
 export interface ImageGenerationParams {
@@ -281,4 +315,67 @@ export interface ReadingProgress {
   scroll_offset_percent?: number;  // Точный % скролла внутри страницы (0-100)
   progress_percent: number;
   last_read_at: string;
+}
+
+// User Reading Statistics Types
+export interface WeeklyActivityDay {
+  date: string;          // "2025-10-26"
+  day: string;           // "Вс"
+  minutes: number;       // 45
+  sessions: number;      // 2
+  progress: number;      // 12 (% прогресса за день)
+}
+
+export interface FavoriteGenre {
+  genre: string;
+  count: number;
+}
+
+export interface UserReadingStatistics {
+  total_books: number;
+  books_in_progress: number;
+  books_completed: number;
+  total_reading_time_minutes: number;
+  reading_streak_days: number;
+  average_reading_speed_wpm: number;
+  favorite_genres: FavoriteGenre[];
+  weekly_activity: WeeklyActivityDay[];
+  total_pages_read: number;
+  total_chapters_read: number;
+}
+
+// Reading Session Types
+export interface ReadingSession {
+  id: string;
+  book_id: string;
+  user_id: string;
+  started_at: string;
+  ended_at?: string;
+  duration_minutes: number;
+  start_position: number;
+  end_position: number;
+  pages_read: number;
+  device_type?: string;
+  is_active: boolean;
+}
+
+export interface StartSessionRequest {
+  book_id: string;
+  start_position: number;
+  device_type?: string;
+}
+
+export interface UpdateSessionRequest {
+  current_position: number;
+}
+
+export interface EndSessionRequest {
+  end_position: number;
+}
+
+export interface ReadingSessionHistory {
+  sessions: ReadingSession[];
+  total: number;
+  skip: number;
+  limit: number;
 }

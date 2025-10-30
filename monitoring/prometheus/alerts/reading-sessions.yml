@@ -1,0 +1,249 @@
+# Alert rules для Reading Sessions системы в BookReader AI
+#
+# Категории алертов:
+# 1. Critical - требуют немедленного реагирования (PagerDuty)
+# 2. Warning - требуют внимания в течение часа (Slack)
+# 3. Info - информационные уведомления (Email)
+
+groups:
+  # ==========================================================================
+  # Reading Sessions Alerts
+  # ==========================================================================
+  - name: reading_sessions_alerts
+    interval: 30s
+    rules:
+      # ----------------------------------------------------------------------
+      # CRITICAL: Too many active sessions (capacity issue)
+      # ----------------------------------------------------------------------
+      - alert: TooManyActiveSessions
+        expr: reading_sessions_active_count > 1000
+        for: 5m
+        labels:
+          severity: critical
+          component: reading_sessions
+          team: backend
+        annotations:
+          summary: "Too many active reading sessions"
+          description: |
+            Active sessions count is {{ $value }}, which exceeds the threshold of 1000.
+            This may indicate a capacity issue or sessions not being closed properly.
+            Current value: {{ $value }}
+            Threshold: 1000
+          runbook_url: "https://wiki.bookreader.ai/runbooks/reading-sessions/too-many-active"
+
+      # ----------------------------------------------------------------------
+      # CRITICAL: High error rate in reading sessions API
+      # ----------------------------------------------------------------------
+      - alert: HighReadingSessionErrorRate
+        expr: |
+          rate(reading_sessions_errors_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          component: reading_sessions
+          team: backend
+        annotations:
+          summary: "High error rate in reading sessions operations"
+          description: |
+            Error rate is {{ $value | humanizePercentage }} errors/sec over the last 5 minutes.
+            This indicates serious issues with the reading sessions API.
+            Check logs for specific error types.
+          runbook_url: "https://wiki.bookreader.ai/runbooks/reading-sessions/high-error-rate"
+
+      # ----------------------------------------------------------------------
+      # WARNING: Abandoned sessions accumulating
+      # ----------------------------------------------------------------------
+      - alert: TooManyAbandonedSessions
+        expr: reading_sessions_abandoned_count > 100
+        for: 10m
+        labels:
+          severity: warning
+          component: reading_sessions
+          team: backend
+        annotations:
+          summary: "Too many abandoned reading sessions"
+          description: |
+            {{ $value }} sessions have been active for more than 24 hours.
+            This may indicate the cleanup Celery task is not running.
+            Check Celery worker status and task queue.
+          runbook_url: "https://wiki.bookreader.ai/runbooks/reading-sessions/abandoned-sessions"
+
+      # ----------------------------------------------------------------------
+      # WARNING: Cleanup task failed
+      # ----------------------------------------------------------------------
+      - alert: SessionCleanupTaskFailed
+        expr: |
+          celery_task_failed{task="close_abandoned_sessions"} > 0
+        for: 1m
+        labels:
+          severity: warning
+          component: celery
+          team: backend
+        annotations:
+          summary: "Reading sessions cleanup task failed"
+          description: |
+            The Celery task 'close_abandoned_sessions' has failed {{ $value }} times.
+            Abandoned sessions may accumulate in the database.
+            Check Celery worker logs for errors.
+          runbook_url: "https://wiki.bookreader.ai/runbooks/celery/task-failures"
+
+      # ----------------------------------------------------------------------
+      # WARNING: High API latency
+      # ----------------------------------------------------------------------
+      - alert: HighReadingSessionAPILatency
+        expr: |
+          histogram_quantile(0.95,
+            rate(reading_session_api_latency_seconds_bucket[5m])
+          ) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+          component: reading_sessions
+          team: backend
+        annotations:
+          summary: "High latency in reading sessions API"
+          description: |
+            95th percentile latency is {{ $value }}s, exceeding 1 second threshold.
+            This may impact user experience during reading.
+            Check database performance and API endpoint logs.
+          runbook_url: "https://wiki.bookreader.ai/runbooks/reading-sessions/high-latency"
+
+      # ----------------------------------------------------------------------
+      # WARNING: Session duration anomaly (too short)
+      # ----------------------------------------------------------------------
+      - alert: SessionDurationAnomalyShort
+        expr: |
+          rate(reading_session_duration_seconds_sum[10m]) /
+          rate(reading_session_duration_seconds_count[10m]) < 60
+        for: 15m
+        labels:
+          severity: info
+          component: reading_sessions
+          team: product
+        annotations:
+          summary: "Average session duration is unusually short"
+          description: |
+            Average session duration is {{ $value }}s (< 1 minute).
+            This may indicate users are experiencing issues or poor UX.
+            Investigate user feedback and error logs.
+          runbook_url: "https://wiki.bookreader.ai/runbooks/reading-sessions/duration-anomaly"
+
+      # ----------------------------------------------------------------------
+      # INFO: No active sessions (off-hours is OK)
+      # ----------------------------------------------------------------------
+      - alert: NoActiveSessions
+        expr: reading_sessions_active_count == 0
+        for: 1h
+        labels:
+          severity: info
+          component: reading_sessions
+          team: backend
+        annotations:
+          summary: "No active reading sessions for 1 hour"
+          description: |
+            There have been no active reading sessions for the past hour.
+            This is normal during off-peak hours (late night/early morning).
+            If this occurs during peak hours, investigate.
+
+  # ==========================================================================
+  # Database and Infrastructure Alerts
+  # ==========================================================================
+  - name: infrastructure_alerts
+    interval: 60s
+    rules:
+      # ----------------------------------------------------------------------
+      # CRITICAL: Database connection failures
+      # ----------------------------------------------------------------------
+      - alert: DatabaseConnectionFailed
+        expr: |
+          up{job="bookreader-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+          team: infra
+        annotations:
+          summary: "Backend cannot connect to database"
+          description: |
+            The backend application has lost connection to PostgreSQL.
+            All reading sessions functionality is unavailable.
+            Check database server status immediately.
+          runbook_url: "https://wiki.bookreader.ai/runbooks/database/connection-failure"
+
+      # ----------------------------------------------------------------------
+      # CRITICAL: High memory usage
+      # ----------------------------------------------------------------------
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+          component: infrastructure
+          team: infra
+        annotations:
+          summary: "High memory usage on server"
+          description: |
+            Memory usage is {{ $value | humanizePercentage }}%.
+            This may cause OOM kills and service disruptions.
+            Check for memory leaks in application or increase server capacity.
+
+      # ----------------------------------------------------------------------
+      # WARNING: Disk space low
+      # ----------------------------------------------------------------------
+      - alert: DiskSpaceLow
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"} /
+           node_filesystem_size_bytes{mountpoint="/"}) * 100 < 15
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+          team: infra
+        annotations:
+          summary: "Low disk space on server"
+          description: |
+            Only {{ $value | humanizePercentage }}% disk space available.
+            Clean up old logs or increase disk capacity.
+
+  # ==========================================================================
+  # Performance and User Experience Alerts
+  # ==========================================================================
+  - name: performance_alerts
+    interval: 30s
+    rules:
+      # ----------------------------------------------------------------------
+      # WARNING: Low concurrent users (business metric)
+      # ----------------------------------------------------------------------
+      - alert: LowConcurrentUsers
+        expr: reading_sessions_concurrent_users < 5
+        for: 2h
+        labels:
+          severity: info
+          component: business
+          team: product
+        annotations:
+          summary: "Low number of concurrent reading users"
+          description: |
+            Only {{ $value }} users are reading concurrently.
+            This is normal during off-peak hours but may indicate issues during peak times.
+            Check marketing campaigns and user acquisition metrics.
+
+      # ----------------------------------------------------------------------
+      # INFO: High pages read rate (positive signal)
+      # ----------------------------------------------------------------------
+      - alert: HighReadingEngagement
+        expr: |
+          rate(reading_session_pages_read_sum[1h]) /
+          rate(reading_session_pages_read_count[1h]) > 100
+        for: 30m
+        labels:
+          severity: info
+          component: business
+          team: product
+        annotations:
+          summary: "High reading engagement detected"
+          description: |
+            Users are reading an average of {{ $value }} pages per session.
+            This is a positive signal for user engagement!
+            Consider tracking which books are driving this engagement.

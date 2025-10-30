@@ -25,3 +25,7 @@ export { useImageModal } from './useImageModal';
 export { useEpubThemes, type ThemeName } from './useEpubThemes';
 export { useTouchNavigation } from './useTouchNavigation';
 export { useContentHooks } from './useContentHooks';
+export { useResizeHandler } from './useResizeHandler';
+export { useBookMetadata, type BookMetadata } from './useBookMetadata';
+export { useTextSelection, type Selection } from './useTextSelection';
+export { useToc, type UseTocReturn } from './useToc';

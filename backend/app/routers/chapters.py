@@ -16,6 +16,7 @@ from uuid import UUID
 from ..core.database import get_database_session
 from ..core.auth import get_current_active_user
 from ..core.dependencies import get_user_book, get_chapter_by_number, validate_chapter_number_in_book
+from ..core.cache import cache_manager, cache_key, CACHE_TTL
 from ..core.exceptions import ChapterFetchException
 from ..services.book import book_service
 from ..models.user import User
@@ -48,7 +49,17 @@ async def list_chapters(
     Raises:
         BookNotFoundException: Если книга не найдена
         BookAccessDeniedException: Если доступ запрещен
+
+    Cache:
+        TTL: 1 hour (rarely changes)
+        Key: book:{book_id}:chapters:list
     """
+    # Try to get from cache
+    cache_key_str = cache_key("book", book.id, "chapters", "list")
+    cached_result = await cache_manager.get(cache_key_str)
+    if cached_result is not None:
+        return cached_result
+
     try:
         book_id = book.id
 
@@ -72,11 +83,16 @@ async def list_chapters(
                 }
             )
 
-        return {
+        response = {
             "book_id": str(book_id),
             "total_chapters": len(chapters_data),
             "chapters": chapters_data,
         }
+
+        # Cache the result (1 hour TTL)
+        await cache_manager.set(cache_key_str, response, ttl=CACHE_TTL["book_chapters"])
+
+        return response
 
     except HTTPException:
         raise
@@ -103,7 +119,17 @@ async def get_chapter(
         BookNotFoundException: Если книга не найдена
         BookAccessDeniedException: Если доступ к книге запрещен
         ChapterNotFoundException: Если глава не найдена
+
+    Cache:
+        TTL: 1 hour (content rarely changes)
+        Key: book:{book_id}:chapter:{chapter_number}
     """
+    # Try to get from cache
+    cache_key_str = cache_key("book", chapter.book_id, "chapter", chapter.chapter_number)
+    cached_result = await cache_manager.get(cache_key_str)
+    if cached_result is not None:
+        return cached_result
+
     try:
         # Загружаем книгу для навигационной информации
         book_result = await db.execute(
@@ -150,7 +176,7 @@ async def get_chapter(
         previous_chapter = chapter.chapter_number - 1 if has_previous else None
         next_chapter = chapter.chapter_number + 1 if has_next else None
 
-        return {
+        response = {
             "chapter": {
                 "id": str(chapter.id),
                 "number": chapter.chapter_number,
@@ -174,6 +200,11 @@ async def get_chapter(
                 "total_chapters": len(book.chapters),
             },
         }
+
+        # Cache the result (1 hour TTL for chapter content)
+        await cache_manager.set(cache_key_str, response, ttl=CACHE_TTL["chapter_content"])
+
+        return response
 
     except HTTPException:
         raise

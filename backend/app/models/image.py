@@ -13,9 +13,8 @@ from sqlalchemy import (
     Text,
     ForeignKey,
     Float,
-    JSON,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import uuid
@@ -90,8 +89,8 @@ class GeneratedImage(Base):
 
     # Параметры генерации
     generation_parameters = Column(
-        JSON, nullable=True
-    )  # {"width": 512, "height": 512, "style": "fantasy"}
+        JSONB, nullable=True
+    )  # {"width": 512, "height": 512, "style": "fantasy"} - JSONB для быстрого поиска
     generation_time_seconds = Column(Float, nullable=True)
 
     # Информация о файле
@@ -103,7 +102,7 @@ class GeneratedImage(Base):
     # Качество и модерация
     quality_score = Column(Float, nullable=True)  # 0.0-1.0
     is_moderated = Column(Boolean, default=False, nullable=False)
-    moderation_result = Column(JSON, nullable=True)  # Результат проверки на NSFW, etc.
+    moderation_result = Column(JSONB, nullable=True)  # Результат проверки на NSFW, etc. - JSONB для индексации
     moderation_notes = Column(Text, nullable=True)
 
     # Статистика использования

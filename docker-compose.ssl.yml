@@ -1,5 +1,5 @@
 # SSL/HTTPS setup with Let's Encrypt
-version: '3.8'
+# Note: version field removed (obsolete in Compose V2)
 
 services:
   # Certbot для получения SSL сертификатов

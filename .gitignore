@@ -139,3 +139,5 @@ test_book.txt
 create_presentation.py
 # Backups directory (created by backup.sh)
 /backups/
+.env.production
+docker/secrets/

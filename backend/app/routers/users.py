@@ -12,6 +12,7 @@ from ..core.auth import get_current_active_user, get_current_admin_user
 from ..models.user import User, Subscription
 from ..models.book import Book
 from ..models.description import Description
+from ..services.user_statistics_service import UserStatisticsService
 
 
 router = APIRouter()
@@ -336,4 +337,107 @@ async def get_admin_statistics(
                 total_descriptions_count / max(total_books_count, 1), 2
             ),
         },
+    }
+
+
+@router.get("/users/reading-statistics")
+async def get_reading_statistics(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_database_session),
+) -> Dict[str, Any]:
+    """
+    Получает детальную статистику чтения пользователя.
+
+    Включает:
+    - Общее количество книг и статус чтения
+    - Время чтения и скорость
+    - Reading streak (непрерывные дни чтения)
+    - Любимые жанры
+    - Weekly activity (активность по дням)
+
+    Args:
+        current_user: Текущий аутентифицированный пользователь
+        db: Сессия базы данных
+
+    Returns:
+        Детальная статистика чтения:
+        {
+            "statistics": {
+                "total_books": 15,
+                "books_in_progress": 3,
+                "books_completed": 12,
+                "total_reading_time_minutes": 2400,
+                "reading_streak_days": 7,
+                "average_reading_speed_wpm": 250.5,
+                "total_pages_read": 3500,
+                "total_chapters_read": 120,
+                "favorite_genres": [
+                    {"genre": "fantasy", "count": 6},
+                    {"genre": "sci-fi", "count": 4}
+                ],
+                "weekly_activity": [
+                    {
+                        "date": "2025-10-26",
+                        "day": "Вс",
+                        "minutes": 45,
+                        "sessions": 2,
+                        "progress": 12
+                    }
+                ]
+            }
+        }
+
+    Example:
+        ```bash
+        curl -X GET http://localhost:8000/api/v1/reading-statistics \\
+             -H "Authorization: Bearer <token>"
+        ```
+    """
+    # Получаем статистику по книгам (total, in_progress, completed)
+    books_stats = await UserStatisticsService.get_books_count_by_status(
+        db, current_user.id
+    )
+
+    # Общее время чтения в минутах
+    total_reading_time = await UserStatisticsService.get_total_reading_time(
+        db, current_user.id
+    )
+
+    # Reading streak (дни подряд чтения)
+    reading_streak = await UserStatisticsService.get_reading_streak(db, current_user.id)
+
+    # Средняя скорость чтения (WPM)
+    avg_reading_speed = await UserStatisticsService.get_average_reading_speed(
+        db, current_user.id
+    )
+
+    # Любимые жанры (топ-5)
+    favorite_genres = await UserStatisticsService.get_favorite_genres(
+        db, current_user.id, limit=5
+    )
+
+    # Weekly activity (последние 7 дней)
+    weekly_activity = await UserStatisticsService.get_weekly_activity(
+        db, current_user.id, days=7
+    )
+
+    # Получаем total_pages_read и total_chapters_read
+    total_pages = await UserStatisticsService.get_total_pages_read(db, current_user.id)
+    total_chapters = await UserStatisticsService.get_total_chapters_read(
+        db, current_user.id
+    )
+
+    return {
+        "statistics": {
+            "total_books": books_stats["total"],
+            "books_in_progress": books_stats["in_progress"],
+            "books_completed": books_stats["completed"],
+            "total_reading_time_minutes": total_reading_time,
+            "reading_streak_days": reading_streak,
+            "average_reading_speed_wpm": avg_reading_speed,
+            "favorite_genres": favorite_genres,
+            "weekly_activity": weekly_activity,
+            "total_pages_read": total_pages,
+            "total_chapters_read": total_chapters,
+        }
     }

@@ -1,0 +1,255 @@
+name: Reading Sessions Tests
+
+on:
+  push:
+    branches: ["main", "develop", "feature/**"]
+    paths:
+      - "backend/app/routers/reading_sessions.py"
+      - "backend/app/tasks/reading_sessions_tasks.py"
+      - "backend/app/models/reading_session.py"
+      - "backend/tests/routers/test_reading_sessions.py"
+      - "backend/tests/tasks/test_reading_sessions_tasks.py"
+      - "backend/tests/integration/test_reading_sessions_flow.py"
+      - ".github/workflows/tests-reading-sessions.yml"
+  pull_request:
+    branches: ["main", "develop"]
+    paths:
+      - "backend/app/routers/**"
+      - "backend/app/tasks/**"
+      - "backend/app/models/**"
+      - "backend/tests/**"
+
+jobs:
+  test-reading-sessions:
+    name: Test Reading Sessions
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres123
+          POSTGRES_DB: bookreader_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpq-dev
+
+      - name: Install Python dependencies
+        run: |
+          cd backend
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov httpx
+
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
+        run: |
+          cd backend
+          alembic upgrade head
+
+      - name: Run Unit Tests (Routers)
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
+          REDIS_URL: redis://localhost:6379
+          SECRET_KEY: test-secret-key-for-ci
+        run: |
+          cd backend
+          pytest tests/routers/test_reading_sessions.py \
+            -v \
+            --tb=short \
+            --cov=app/routers/reading_sessions \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage-routers.xml \
+            --junit-xml=test-results-routers.xml
+
+      - name: Run Unit Tests (Tasks)
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
+          REDIS_URL: redis://localhost:6379
+          SECRET_KEY: test-secret-key-for-ci
+        run: |
+          cd backend
+          pytest tests/tasks/test_reading_sessions_tasks.py \
+            -v \
+            --tb=short \
+            --cov=app/tasks/reading_sessions_tasks \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage-tasks.xml \
+            --junit-xml=test-results-tasks.xml
+
+      - name: Run Integration Tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
+          REDIS_URL: redis://localhost:6379
+          SECRET_KEY: test-secret-key-for-ci
+        run: |
+          cd backend
+          pytest tests/integration/test_reading_sessions_flow.py \
+            -v \
+            --tb=short \
+            --cov=app/routers/reading_sessions \
+            --cov=app/tasks/reading_sessions_tasks \
+            --cov=app/models/reading_session \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage-integration.xml \
+            --junit-xml=test-results-integration.xml
+
+      - name: Generate Combined Coverage Report
+        if: always()
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
+          REDIS_URL: redis://localhost:6379
+          SECRET_KEY: test-secret-key-for-ci
+        run: |
+          cd backend
+          pytest \
+            tests/routers/test_reading_sessions.py \
+            tests/tasks/test_reading_sessions_tasks.py \
+            tests/integration/test_reading_sessions_flow.py \
+            --cov=app/routers/reading_sessions \
+            --cov=app/tasks/reading_sessions_tasks \
+            --cov=app/models/reading_session \
+            --cov-report=term \
+            --cov-report=html:htmlcov \
+            --cov-report=xml:coverage-combined.xml
+
+      - name: Upload Coverage Reports
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          files: ./backend/coverage-combined.xml
+          flags: reading-sessions
+          name: reading-sessions-coverage
+          fail_ci_if_error: false
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results
+          path: |
+            backend/test-results-*.xml
+            backend/htmlcov/
+
+      - name: Check Coverage Threshold
+        run: |
+          cd backend
+          coverage report --fail-under=90
+
+      - name: Comment PR with Coverage
+        if: github.event_name == 'pull_request'
+        uses: py-cov-action/python-coverage-comment-action@v3
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          MINIMUM_GREEN: 95
+          MINIMUM_ORANGE: 90
+
+  lint-reading-sessions:
+    name: Lint Reading Sessions Code
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install linting tools
+        run: |
+          pip install ruff black mypy
+
+      - name: Run Ruff
+        run: |
+          cd backend
+          ruff check app/routers/reading_sessions.py \
+            app/tasks/reading_sessions_tasks.py \
+            app/models/reading_session.py
+
+      - name: Run Black
+        run: |
+          cd backend
+          black --check app/routers/reading_sessions.py \
+            app/tasks/reading_sessions_tasks.py \
+            app/models/reading_session.py
+
+      - name: Run MyPy
+        run: |
+          cd backend
+          mypy app/routers/reading_sessions.py \
+            app/tasks/reading_sessions_tasks.py \
+            app/models/reading_session.py \
+            --ignore-missing-imports
+
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    needs: [test-reading-sessions, lint-reading-sessions]
+    if: always()
+
+    steps:
+      - name: Check test results
+        run: |
+          if [ "${{ needs.test-reading-sessions.result }}" != "success" ]; then
+            echo "❌ Tests failed"
+            exit 1
+          fi
+
+          if [ "${{ needs.lint-reading-sessions.result }}" != "success" ]; then
+            echo "❌ Linting failed"
+            exit 1
+          fi
+
+          echo "✅ All quality checks passed!"
+
+      - name: Post status to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ **Reading Sessions Quality Gate: PASSED**\n\n- Tests: ✅\n- Linting: ✅\n- Coverage: >90%'
+            })

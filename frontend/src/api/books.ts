@@ -10,6 +10,7 @@ import type {
   ReadingProgress,
   NLPAnalysis,
   Description,
+  UserReadingStatistics,
 } from '@/types/api';
 
 export const booksAPI = {
@@ -145,6 +146,12 @@ export const booksAPI = {
     };
   }> {
     return apiClient.get('/books/statistics');
+  },
+
+  // Detailed reading statistics with weekly activity
+  async getUserReadingStatistics(): Promise<UserReadingStatistics> {
+    const response = await apiClient.get('/users/reading-statistics');
+    return response.statistics;
   },
 
   // Book file validation and preview

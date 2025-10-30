@@ -27,6 +27,8 @@ class Settings(BaseSettings):
 
     # Redis
     REDIS_URL: str = "redis://:redis123@redis:6379"
+    REDIS_CACHE_ENABLED: bool = True  # Enable/disable Redis caching
+    REDIS_CACHE_DEFAULT_TTL: int = 3600  # Default TTL in seconds (1 hour)
 
     # Безопасность
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 720  # 12 hours

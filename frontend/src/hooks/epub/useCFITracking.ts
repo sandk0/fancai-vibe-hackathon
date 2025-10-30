@@ -5,25 +5,38 @@
  * This hook manages:
  * - Current reading position (CFI)
  * - Progress percentage (0-100)
+ * - Current page number and total pages (from epub.js locations)
  * - Position restoration from saved CFI
  * - Hybrid CFI + scroll offset for pixel-perfect restoration
  *
  * Fixes the CFI jump issue where epub.js rounds to nearest paragraph.
  *
+ * Page Numbers:
+ * - Uses epub.js locations.locationFromCfi() to convert CFI → page number
+ * - Page numbers are 1-based (first page = 1, not 0)
+ * - Total pages comes from locations.total
+ * - Both return null until locations are generated
+ *
  * @param rendition - epub.js Rendition instance
  * @param locations - Generated locations for progress calculation
  * @param book - epub.js Book instance
- * @returns Current CFI, progress, and navigation functions
+ * @returns Current CFI, progress, page numbers, and navigation functions
  *
  * @example
- * const { currentCFI, progress, goToCFI, skipNextRelocated } = useCFITracking(
- *   rendition,
- *   locations,
- *   book
- * );
+ * const {
+ *   currentCFI,
+ *   progress,
+ *   currentPage,
+ *   totalPages,
+ *   goToCFI,
+ *   skipNextRelocated
+ * } = useCFITracking(rendition, locations, book);
+ *
+ * // Display: "Стр. 42/500 (8%)"
+ * console.log(`Стр. ${currentPage}/${totalPages} (${progress}%)`);
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Rendition, Book } from 'epubjs';
 
 interface UseCFITrackingOptions {
@@ -37,6 +50,8 @@ interface UseCFITrackingReturn {
   currentCFI: string;
   progress: number;
   scrollOffsetPercent: number;
+  currentPage: number | null;
+  totalPages: number | null;
   goToCFI: (cfi: string, scrollOffset?: number) => Promise<void>;
   skipNextRelocated: () => void;
 }
@@ -218,10 +233,64 @@ export const useCFITracking = ({
     };
   }, [rendition, locations, book, onLocationChange, calculateScrollOffset]);
 
+  /**
+   * Calculate current page number from CFI
+   *
+   * epub.js provides locationFromCfi() to get the page number.
+   * This converts a CFI (Canonical Fragment Identifier) to a numeric page number.
+   *
+   * @returns Page number (1-based) or null if locations not ready
+   *
+   * @example
+   * // If current CFI is "epubcfi(/6/4!/4/2)" and locations are generated:
+   * // currentPage might be 42 (out of 500 total pages)
+   */
+  const currentPage = useMemo(() => {
+    if (!locations || !currentCFI || !(locations as any).total) return null;
+
+    try {
+      // locationFromCfi returns the page number (1-based index)
+      const pageNumber = locations.locationFromCfi(currentCFI);
+      const validPage = pageNumber !== -1 ? pageNumber : null;
+
+      if (validPage !== null) {
+        console.log('📄 [useCFITracking] Current page:', validPage, '/', (locations as any).total);
+      }
+
+      return validPage;
+    } catch (err) {
+      console.warn('⚠️ [useCFITracking] Could not get page from CFI:', err);
+      return null;
+    }
+  }, [locations, currentCFI]);
+
+  /**
+   * Get total pages from locations
+   *
+   * epub.js generates "locations" which divides the book into fixed-size pages.
+   * This provides a consistent page numbering system across different screen sizes.
+   *
+   * @returns Total number of pages in the book, or null if locations not generated yet
+   *
+   * @example
+   * // After locations are generated for "War and Peace":
+   * // totalPages might be 1523
+   */
+  const totalPages = useMemo(() => {
+    if (!locations || !(locations as any).total) return null;
+
+    const total = (locations as any).total;
+    console.log('📚 [useCFITracking] Total pages available:', total);
+
+    return total;
+  }, [locations]);
+
   return {
     currentCFI,
     progress,
     scrollOffsetPercent,
+    currentPage,
+    totalPages,
     goToCFI,
     skipNextRelocated,
   };

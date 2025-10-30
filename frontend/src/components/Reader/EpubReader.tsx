@@ -50,10 +50,23 @@ import {
   useEpubThemes,
   useTouchNavigation,
   useContentHooks,
+  useResizeHandler,
+  useBookMetadata,
+  useTextSelection,
+  useToc,
 } from '@/hooks/epub';
 
+// Import reading session hook
+import { useReadingSession } from '@/hooks/useReadingSession';
+
 // Import components
-import { ProgressIndicator } from './ProgressIndicator';
+import { BookInfo } from './BookInfo';
+import { SelectionMenu } from './SelectionMenu';
+import { TocSidebar } from './TocSidebar';
+import { ReaderControls } from './ReaderControls';
+import { ReaderHeader } from './ReaderHeader';
+import { notify } from '@/stores/ui';
+import { useNavigate } from 'react-router-dom';
 
 interface EpubReaderProps {
   book: BookDetail;
@@ -63,6 +76,10 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   const viewerRef = useRef<HTMLDivElement>(null);
   const [renditionReady, setRenditionReady] = useState(false);
   const hasRestoredPosition = useRef(false);
+  const navigate = useNavigate();
+
+  // State for settings dropdown
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Get auth token
   const authToken = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
@@ -82,8 +99,8 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   // Hook 2: Generate or load cached locations
   const { locations, isGenerating } = useLocationGeneration(epubBook, book.id);
 
-  // Hook 3: Track CFI position and progress
-  const { currentCFI, progress, scrollOffsetPercent, goToCFI, skipNextRelocated } = useCFITracking({
+  // Hook 3: Track CFI position and progress (including page numbers)
+  const { currentCFI, progress, scrollOffsetPercent, currentPage, totalPages, goToCFI, skipNextRelocated } = useCFITracking({
     rendition,
     locations,
     book: epubBook,
@@ -124,7 +141,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   useKeyboardNavigation(nextPage, prevPage, renditionReady && !isModalOpen);
 
   // Hook 9: Theme management
-  const { theme, fontSize, setTheme, setFontSize, increaseFontSize, decreaseFontSize } = useEpubThemes(rendition);
+  const { theme, fontSize, setTheme, increaseFontSize, decreaseFontSize } = useEpubThemes(rendition);
 
   // Hook 10: Touch/swipe navigation
   useTouchNavigation({
@@ -148,13 +165,120 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     enabled: renditionReady && descriptions.length > 0,
   });
 
+  // Hook 13: Resize handler for position preservation
+  useResizeHandler({
+    rendition,
+    enabled: renditionReady,
+    onResized: (dimensions) => {
+      console.log('📐 [EpubReader] Viewport resized:', dimensions);
+      // Position is automatically preserved by the hook
+    },
+  });
+
+  // Hook 14: Book metadata
+  const { metadata } = useBookMetadata(epubBook);
+
+  // Hook 15: Text selection (disabled when modal is open)
+  const { selection, clearSelection } = useTextSelection(
+    rendition,
+    renditionReady && !isModalOpen
+  );
+
+  // Hook 16: Table of Contents
+  const { toc, currentHref, setCurrentHref } = useToc(epubBook);
+
+  // Hook 17: Reading session tracking
+  // FIXED: Infinite loop bug caused by useEffect dependencies
+  useReadingSession({
+    bookId: book.id,
+    currentPosition: progress,
+    enabled: renditionReady && !isGenerating,
+    onSessionStart: (session) => {
+      console.log('📖 [EpubReader] Reading session started:', {
+        id: session.id,
+        book: book.title,
+        position: session.start_position.toFixed(2) + '%',
+      });
+    },
+    onSessionEnd: (session) => {
+      console.log('📖 [EpubReader] Reading session ended:', {
+        id: session.id,
+        duration: session.duration_minutes + ' min',
+        pages_read: session.pages_read,
+      });
+      notify.success(
+        'Сессия завершена',
+        `Вы читали ${session.duration_minutes} мин и прочитали ${session.pages_read} стр.`
+      );
+    },
+    onError: (error) => {
+      console.error('❌ [EpubReader] Reading session error:', error);
+      // Don't show error notification - sessions are non-critical
+    },
+  });
+
+  // State for BookInfo modal
+  const [isBookInfoOpen, setIsBookInfoOpen] = useState(false);
+
+  // State for TOC sidebar
+  const [isTocOpen, setIsTocOpen] = useState(() => {
+    // Load TOC state from localStorage
+    const saved = localStorage.getItem(`${STORAGE_KEYS.READER_SETTINGS}_toc_open`);
+    return saved === 'true';
+  });
+
+  // Save TOC state to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEYS.READER_SETTINGS}_toc_open`, String(isTocOpen));
+  }, [isTocOpen]);
+
+  // Clear selection menu when page changes
+  useEffect(() => {
+    if (currentCFI && selection) {
+      console.log('📖 [EpubReader] Page changed, closing selection menu');
+      clearSelection();
+    }
+  }, [currentCFI]); // Only depend on currentCFI, not selection/clearSelection to avoid loops
+
+  // Handle TOC chapter navigation
+  const handleTocChapterClick = useCallback(async (href: string) => {
+    if (!rendition) return;
+
+    try {
+      console.log('📚 [EpubReader] Navigating to chapter:', href);
+      await rendition.display(href);
+      setCurrentHref(href);
+    } catch (err) {
+      console.error('❌ [EpubReader] Error navigating to chapter:', err);
+    }
+  }, [rendition, setCurrentHref]);
+
+  /**
+   * Handle copy to clipboard
+   */
+  const handleCopy = useCallback(async () => {
+    if (!selection?.text) return;
+
+    try {
+      await navigator.clipboard.writeText(selection.text);
+      console.log('📋 [EpubReader] Text copied to clipboard:',
+        selection.text.substring(0, 50) + (selection.text.length > 50 ? '...' : '')
+      );
+      notify.success('Скопировано', 'Текст скопирован в буфер обмена');
+
+      // Close selection menu after copy
+      clearSelection();
+    } catch (err) {
+      console.error('❌ [EpubReader] Failed to copy text:', err);
+      notify.error('Ошибка', 'Не удалось скопировать текст');
+    }
+  }, [selection, clearSelection]);
+
   /**
    * Initial display - show first page immediately when rendition is ready
    */
   useEffect(() => {
     if (!rendition || !renditionReady) return;
-
-    let isMounted = true;
 
     const displayInitial = async () => {
       try {
@@ -167,10 +291,6 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     };
 
     displayInitial();
-
-    return () => {
-      isMounted = false;
-    };
   }, [rendition, renditionReady]);
 
   /**
@@ -241,8 +361,17 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   // Main render - viewerRef MUST stay in same DOM location to prevent rendition destruction
   return (
     <div className={`relative h-full w-full transition-colors ${getBackgroundColor()}`}>
-      {/* EPUB Viewer - Always rendered in same location */}
-      <div ref={viewerRef} className="h-full w-full" />
+      {/* EPUB Viewer - Maximum reading space, only top padding for header */}
+      <div
+        ref={viewerRef}
+        className={`h-full w-full ${getBackgroundColor()}`}
+        style={{
+          paddingTop: '70px',      // Space for ReaderHeader only
+          paddingLeft: '0',        // No external padding
+          paddingRight: '0',       // No external padding
+          paddingBottom: '0',      // No external padding
+        }}
+      />
 
       {/* Loading Overlay */}
       {(isLoading || isGenerating) && (
@@ -266,95 +395,36 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
         </div>
       )}
 
-      {/* Reader Controls Toolbar */}
-      {renditionReady && !isLoading && !isGenerating && (
-        <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-gray-800/90 backdrop-blur-sm rounded-lg p-2 shadow-lg">
-          {/* Theme Switcher */}
-          <div className="flex items-center gap-1 border-r border-gray-600 pr-2">
-            <button
-              onClick={() => setTheme('light')}
-              className={`px-3 py-1.5 rounded text-sm transition-colors ${
-                theme === 'light'
-                  ? 'bg-white text-gray-900'
-                  : 'text-gray-300 hover:bg-gray-700'
-              }`}
-              title="Светлая тема"
-            >
-              ☀️
-            </button>
-            <button
-              onClick={() => setTheme('dark')}
-              className={`px-3 py-1.5 rounded text-sm transition-colors ${
-                theme === 'dark'
-                  ? 'bg-gray-900 text-gray-100'
-                  : 'text-gray-300 hover:bg-gray-700'
-              }`}
-              title="Тёмная тема"
-            >
-              🌙
-            </button>
-            <button
-              onClick={() => setTheme('sepia')}
-              className={`px-3 py-1.5 rounded text-sm transition-colors ${
-                theme === 'sepia'
-                  ? 'bg-amber-100 text-amber-900'
-                  : 'text-gray-300 hover:bg-gray-700'
-              }`}
-              title="Сепия"
-            >
-              📜
-            </button>
-          </div>
-
-          {/* Font Size Controls */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={decreaseFontSize}
-              className="px-2 py-1.5 rounded text-sm text-gray-300 hover:bg-gray-700 transition-colors"
-              title="Уменьшить шрифт"
-              disabled={fontSize <= 75}
-            >
-              A-
-            </button>
-            <span className="text-xs text-gray-400 min-w-[3rem] text-center">
-              {fontSize}%
-            </span>
-            <button
-              onClick={increaseFontSize}
-              className="px-2 py-1.5 rounded text-sm text-gray-300 hover:bg-gray-700 transition-colors"
-              title="Увеличить шрифт"
-              disabled={fontSize >= 200}
-            >
-              A+
-            </button>
-          </div>
-        </div>
+      {/* Modern Reader Header - Theme-aware with all controls and progress */}
+      {renditionReady && !isLoading && !isGenerating && metadata && (
+        <ReaderHeader
+          title={metadata.title}
+          author={metadata.creator}
+          theme={theme}
+          progress={progress}
+          currentPage={currentPage ?? undefined}
+          totalPages={totalPages ?? undefined}
+          onBack={() => navigate(`/book/${book.id}`)}
+          onTocToggle={() => setIsTocOpen(!isTocOpen)}
+          onInfoOpen={() => setIsBookInfoOpen(true)}
+          onSettingsOpen={() => setIsSettingsOpen(true)}
+        />
       )}
 
-      {/* Navigation Arrows */}
-      <button
-        onClick={prevPage}
-        className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-gray-800/80 hover:bg-gray-700 text-white rounded-full flex items-center justify-center transition-colors z-10"
-        aria-label="Previous page"
-      >
-        ←
-      </button>
-
-      <button
-        onClick={nextPage}
-        className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-gray-800/80 hover:bg-gray-700 text-white rounded-full flex items-center justify-center transition-colors z-10"
-        aria-label="Next page"
-      >
-        →
-      </button>
-
-      {/* Progress Indicator */}
-      <ProgressIndicator
-        progress={progress}
-        currentChapter={currentChapter}
-        theme={theme}
-        isVisible={renditionReady && !isLoading && !isGenerating}
-      />
+      {/* Settings Dropdown (hidden, triggered by header button) */}
+      {renditionReady && !isLoading && !isGenerating && (
+        <div className="fixed top-16 right-4 z-50">
+          <ReaderControls
+            theme={theme}
+            fontSize={fontSize}
+            onThemeChange={setTheme}
+            onFontSizeIncrease={increaseFontSize}
+            onFontSizeDecrease={decreaseFontSize}
+            isOpen={isSettingsOpen}
+            onOpenChange={setIsSettingsOpen}
+          />
+        </div>
+      )}
 
       {/* Image Modal */}
       {isModalOpen && selectedImage && (
@@ -376,6 +446,36 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
           onImageRegenerated={handleImageRegenerated}
         />
       )}
+
+
+      {/* Book Info Modal */}
+      {isBookInfoOpen && metadata && (
+        <BookInfo
+          metadata={metadata}
+          isOpen={isBookInfoOpen}
+          onClose={() => setIsBookInfoOpen(false)}
+          theme={theme}
+        />
+      )}
+
+      {/* Selection Menu */}
+      <SelectionMenu
+        selection={selection}
+        onCopy={handleCopy}
+        onClose={clearSelection}
+        theme={theme}
+      />
+
+      {/* TOC Sidebar */}
+      <TocSidebar
+        toc={toc}
+        currentHref={currentHref}
+        onChapterClick={handleTocChapterClick}
+        isOpen={isTocOpen}
+        onClose={() => setIsTocOpen(false)}
+        theme={theme}
+      />
+
     </div>
   );
 };

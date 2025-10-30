@@ -1,24 +1,44 @@
+/**
+ * RegisterPage - Modern redesign with split-screen layout
+ *
+ * Features:
+ * - Split layout: form left, gradient right
+ * - Full name + email + password fields
+ * - Form validation
+ * - Password strength indicator
+ * - Theme-aware design
+ */
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, BookOpen, User, Mail, Lock } from 'lucide-react';
+import {
+  Eye,
+  EyeOff,
+  BookOpen,
+  Mail,
+  Lock,
+  User,
+  CheckCircle2,
+  Sparkles,
+} from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
 import { notify } from '@/stores/ui';
-import LoadingSpinner from '@/components/UI/LoadingSpinner';
-import { cn } from '@/utils/cn';
-import { useTranslation } from '@/hooks/useTranslation';
+import { cn } from '@/lib/utils';
 
-const registerSchema = z.object({
-  full_name: z.string().min(2, 'Имя должно содержать минимум 2 символа').optional(),
-  email: z.string().email('Неправильный email адрес'),
-  password: z.string().min(6, 'Пароль должен содержать минимум 6 символов'),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Пароли не совпадают",
-  path: ["confirmPassword"],
-});
+const registerSchema = z
+  .object({
+    fullName: z.string().min(2, 'Имя должно содержать минимум 2 символа'),
+    email: z.string().email('Неправильный email адрес'),
+    password: z.string().min(6, 'Пароль должен содержать минимум 6 символов'),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Пароли не совпадают',
+    path: ['confirmPassword'],
+  });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 
@@ -27,77 +47,115 @@ const RegisterPage: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { register: registerUser, isLoading } = useAuthStore();
   const navigate = useNavigate();
-  const { t } = useTranslation();
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
   });
 
+  const password = watch('password');
+
+  const getPasswordStrength = (pwd: string) => {
+    if (!pwd) return 0;
+    let strength = 0;
+    if (pwd.length >= 6) strength++;
+    if (pwd.length >= 10) strength++;
+    if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) strength++;
+    if (/\d/.test(pwd)) strength++;
+    if (/[^a-zA-Z0-9]/.test(pwd)) strength++;
+    return Math.min(strength, 4);
+  };
+
+  const passwordStrength = getPasswordStrength(password);
+  const strengthLabels = ['Очень слабый', 'Слабый', 'Средний', 'Хороший', 'Отличный'];
+  const strengthColors = ['#ef4444', '#f59e0b', '#eab308', '#84cc16', '#22c55e'];
+
   const onSubmit = async (data: RegisterFormData) => {
     try {
-      await registerUser(data.email, data.password, data.full_name);
-      notify.success(t('auth.accountCreated'), t('auth.accountCreatedMessage'));
+      await registerUser(data.email, data.password, data.fullName);
+      notify.success('Регистрация успешна!', 'Добро пожаловать в BookReader AI');
       navigate('/library', { replace: true });
     } catch (error: any) {
-      notify.error(
-        t('auth.registrationFailed'),
-        error.message || t('auth.checkCredentials')
-      );
+      notify.error('Ошибка регистрации', error.message || 'Попробуйте снова');
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-secondary-100 flex items-center justify-center p-4">
-      <div className="max-w-md w-full space-y-8">
-        {/* Logo and Title */}
-        <div className="text-center">
-          <div className="flex justify-center mb-6">
-            <div className="p-3 bg-primary-600 rounded-full">
-              <BookOpen className="w-8 h-8 text-white" />
-            </div>
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            {t('auth.registerTitle')}
-          </h2>
-          <p className="text-gray-600">
-            {t('auth.registerSubtitle')}
-          </p>
-        </div>
+  const benefits = [
+    'Бесплатная регистрация',
+    'Неограниченная загрузка книг',
+    'AI генерация изображений',
+    'Синхронизация между устройствами',
+  ];
 
-        {/* Register Form */}
-        <div className="bg-white rounded-lg shadow-xl p-8">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+  return (
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
+      {/* Left Side - Register Form */}
+      <div
+        className="flex items-center justify-center p-8 lg:p-12 overflow-y-auto"
+        style={{ backgroundColor: 'var(--bg-primary)' }}
+      >
+        <div className="max-w-md w-full">
+          {/* Logo and Title */}
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div
+                className="p-3 rounded-xl"
+                style={{ backgroundColor: 'var(--accent-color)' }}
+              >
+                <BookOpen className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                  BookReader AI
+                </h1>
+              </div>
+            </div>
+            <h2 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+              Создать аккаунт 🚀
+            </h2>
+            <p style={{ color: 'var(--text-secondary)' }}>
+              Начните свое путешествие в мир AI-визуализации
+            </p>
+          </div>
+
+          {/* Register Form */}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             {/* Full Name Field */}
             <div>
               <label
-                htmlFor="full_name"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                htmlFor="fullName"
+                className="block text-sm font-medium mb-2"
+                style={{ color: 'var(--text-primary)' }}
               >
-                {t('auth.fullNameOptional')}
+                Полное имя
               </label>
               <div className="relative">
-                <input
-                  {...register('full_name')}
-                  type="text"
-                  autoComplete="name"
-                  disabled={isLoading}
-                  className={cn(
-                    'w-full px-4 py-3 pl-12 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors',
-                    errors.full_name ? 'border-error-500' : 'border-gray-300',
-                    isLoading && 'opacity-50 cursor-not-allowed'
-                  )}
-                  placeholder={t('auth.fullNamePlaceholder')}
+                <User
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5"
+                  style={{ color: 'var(--text-tertiary)' }}
                 />
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  {...register('fullName')}
+                  type="text"
+                  id="fullName"
+                  placeholder="Иван Иванов"
+                  className={cn(
+                    'w-full pl-11 pr-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2',
+                    errors.fullName && 'border-red-500'
+                  )}
+                  style={{
+                    backgroundColor: 'var(--bg-secondary)',
+                    borderColor: errors.fullName ? '#ef4444' : 'var(--border-color)',
+                    color: 'var(--text-primary)',
+                  }}
+                />
               </div>
-              {errors.full_name && (
-                <p className="mt-1 text-sm text-error-600">
-                  {errors.full_name.message}
-                </p>
+              {errors.fullName && (
+                <p className="mt-1 text-sm text-red-500">{errors.fullName.message}</p>
               )}
             </div>
 
@@ -105,29 +163,34 @@ const RegisterPage: React.FC = () => {
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className="block text-sm font-medium mb-2"
+                style={{ color: 'var(--text-primary)' }}
               >
-                {t('auth.email')}
+                Email
               </label>
               <div className="relative">
+                <Mail
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5"
+                  style={{ color: 'var(--text-tertiary)' }}
+                />
                 <input
                   {...register('email')}
                   type="email"
-                  autoComplete="email"
-                  disabled={isLoading}
+                  id="email"
+                  placeholder="your@email.com"
                   className={cn(
-                    'w-full px-4 py-3 pl-12 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors',
-                    errors.email ? 'border-error-500' : 'border-gray-300',
-                    isLoading && 'opacity-50 cursor-not-allowed'
+                    'w-full pl-11 pr-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2',
+                    errors.email && 'border-red-500'
                   )}
-                  placeholder={t('auth.emailPlaceholder')}
+                  style={{
+                    backgroundColor: 'var(--bg-secondary)',
+                    borderColor: errors.email ? '#ef4444' : 'var(--border-color)',
+                    color: 'var(--text-primary)',
+                  }}
                 />
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               </div>
               {errors.email && (
-                <p className="mt-1 text-sm text-error-600">
-                  {errors.email.message}
-                </p>
+                <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>
               )}
             </div>
 
@@ -135,41 +198,61 @@ const RegisterPage: React.FC = () => {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className="block text-sm font-medium mb-2"
+                style={{ color: 'var(--text-primary)' }}
               >
-                {t('auth.password')}
+                Пароль
               </label>
               <div className="relative">
+                <Lock
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5"
+                  style={{ color: 'var(--text-tertiary)' }}
+                />
                 <input
                   {...register('password')}
                   type={showPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  disabled={isLoading}
+                  id="password"
+                  placeholder="••••••••"
                   className={cn(
-                    'w-full px-4 py-3 pl-12 pr-12 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors',
-                    errors.password ? 'border-error-500' : 'border-gray-300',
-                    isLoading && 'opacity-50 cursor-not-allowed'
+                    'w-full pl-11 pr-11 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2',
+                    errors.password && 'border-red-500'
                   )}
-                  placeholder={t('auth.createPassword')}
+                  style={{
+                    backgroundColor: 'var(--bg-secondary)',
+                    borderColor: errors.password ? '#ef4444' : 'var(--border-color)',
+                    color: 'var(--text-primary)',
+                  }}
                 />
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  disabled={isLoading}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                  style={{ color: 'var(--text-tertiary)' }}
                 >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
-                  )}
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+              {password && (
+                <div className="mt-2">
+                  <div className="flex gap-1 mb-1">
+                    {[...Array(4)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-1 flex-1 rounded-full transition-all"
+                        style={{
+                          backgroundColor:
+                            i < passwordStrength ? strengthColors[passwordStrength] : '#e5e7eb',
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs" style={{ color: strengthColors[passwordStrength] }}>
+                    {strengthLabels[passwordStrength]}
+                  </p>
+                </div>
+              )}
               {errors.password && (
-                <p className="mt-1 text-sm text-error-600">
-                  {errors.password.message}
-                </p>
+                <p className="mt-1 text-sm text-red-500">{errors.password.message}</p>
               )}
             </div>
 
@@ -177,29 +260,36 @@ const RegisterPage: React.FC = () => {
             <div>
               <label
                 htmlFor="confirmPassword"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className="block text-sm font-medium mb-2"
+                style={{ color: 'var(--text-primary)' }}
               >
-                {t('auth.confirmPassword')}
+                Подтвердите пароль
               </label>
               <div className="relative">
+                <Lock
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5"
+                  style={{ color: 'var(--text-tertiary)' }}
+                />
                 <input
                   {...register('confirmPassword')}
                   type={showConfirmPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  disabled={isLoading}
+                  id="confirmPassword"
+                  placeholder="••••••••"
                   className={cn(
-                    'w-full px-4 py-3 pl-12 pr-12 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors',
-                    errors.confirmPassword ? 'border-error-500' : 'border-gray-300',
-                    isLoading && 'opacity-50 cursor-not-allowed'
+                    'w-full pl-11 pr-11 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2',
+                    errors.confirmPassword && 'border-red-500'
                   )}
-                  placeholder={t('auth.confirmPasswordPlaceholder')}
+                  style={{
+                    backgroundColor: 'var(--bg-secondary)',
+                    borderColor: errors.confirmPassword ? '#ef4444' : 'var(--border-color)',
+                    color: 'var(--text-primary)',
+                  }}
                 />
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  disabled={isLoading}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                  style={{ color: 'var(--text-tertiary)' }}
                 >
                   {showConfirmPassword ? (
                     <EyeOff className="w-5 h-5" />
@@ -209,9 +299,7 @@ const RegisterPage: React.FC = () => {
                 </button>
               </div>
               {errors.confirmPassword && (
-                <p className="mt-1 text-sm text-error-600">
-                  {errors.confirmPassword.message}
-                </p>
+                <p className="mt-1 text-sm text-red-500">{errors.confirmPassword.message}</p>
               )}
             </div>
 
@@ -220,49 +308,69 @@ const RegisterPage: React.FC = () => {
               type="submit"
               disabled={isLoading}
               className={cn(
-                'w-full bg-primary-600 text-white py-3 px-4 rounded-lg font-medium transition-colors',
-                'hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-                isLoading && 'opacity-50 cursor-not-allowed'
+                'w-full py-3 px-4 rounded-xl font-semibold text-white transition-all mt-6',
+                isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 shadow-lg'
               )}
+              style={{
+                backgroundColor: 'var(--accent-color)',
+              }}
             >
               {isLoading ? (
-                <div className="flex items-center justify-center">
-                  <LoadingSpinner size="small" color="white" className="mr-2" />
-                  {t('auth.creatingAccount')}
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Регистрация...</span>
                 </div>
               ) : (
-                t('auth.createAccount')
+                'Создать аккаунт'
               )}
             </button>
           </form>
 
           {/* Login Link */}
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              {t('auth.alreadyHaveAccount')}{' '}
+            <p style={{ color: 'var(--text-secondary)' }}>
+              Уже есть аккаунт?{' '}
               <Link
                 to="/login"
-                className="font-medium text-primary-600 hover:text-primary-500 transition-colors"
+                className="font-semibold hover:underline"
+                style={{ color: 'var(--accent-color)' }}
               >
-                {t('auth.signInHere')}
+                Войти
               </Link>
             </p>
           </div>
         </div>
+      </div>
 
-        {/* Terms */}
-        <div className="text-center">
-          <p className="text-xs text-gray-500">
-            {t('auth.termsAgreement')}{' '}
-            <a href="#" className="text-primary-600 hover:text-primary-500">
-              {t('auth.termsOfService')}
-            </a>{' '}
-            {t('auth.and')}{' '}
-            <a href="#" className="text-primary-600 hover:text-primary-500">
-              {t('auth.privacyPolicy')}
-            </a>
-          </p>
+      {/* Right Side - Gradient Benefits */}
+      <div
+        className="hidden lg:flex items-center justify-center p-12 relative overflow-hidden"
+        style={{
+          background: `linear-gradient(135deg, var(--accent-color) 0%, rgba(147, 51, 234, 0.9) 100%)`,
+        }}
+      >
+        <div className="relative z-10 max-w-md text-white">
+          <div className="mb-8">
+            <Sparkles className="w-16 h-16 mb-6" />
+            <h2 className="text-4xl font-bold mb-4">Присоединяйтесь к читателям</h2>
+            <p className="text-lg opacity-90">
+              Откройте новый способ чтения с AI-визуализацией каждого описания
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {benefits.map((benefit, index) => (
+              <div key={index} className="flex items-start gap-3">
+                <CheckCircle2 className="w-6 h-6 flex-shrink-0 mt-0.5" />
+                <p className="text-lg">{benefit}</p>
+              </div>
+            ))}
+          </div>
         </div>
+
+        {/* Decorative Elements */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-white opacity-5 rounded-full blur-3xl" />
       </div>
     </div>
   );

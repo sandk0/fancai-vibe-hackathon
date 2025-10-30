@@ -15,6 +15,7 @@ from uuid import UUID
 
 from ..core.database import get_database_session
 from ..core.auth import get_current_active_user
+from ..core.cache import cache_manager, cache_key, CACHE_TTL
 from ..services.book import book_service, book_progress_service
 from ..models.user import User
 from ..models.book import ReadingProgress
@@ -42,7 +43,17 @@ async def get_reading_progress(
 
     Raises:
         HTTPException: 404 если книга не найдена
+
+    Cache:
+        TTL: 5 minutes (frequently updated)
+        Key: user:{user_id}:progress:{book_id}
     """
+    # Try to get from cache
+    cache_key_str = cache_key("user", current_user.id, "progress", book_id)
+    cached_result = await cache_manager.get(cache_key_str)
+    if cached_result is not None:
+        return cached_result
+
     try:
         # Проверяем, что книга принадлежит пользователю
         book = await book_service.get_book_by_id(
@@ -62,7 +73,7 @@ async def get_reading_progress(
         progress_result = await db.execute(progress_query)
         progress = progress_result.scalar_one_or_none()
 
-        return {
+        response = {
             "progress": {
                 "id": str(progress.id) if progress else None,
                 "current_chapter": progress.current_chapter if progress else 1,
@@ -88,6 +99,11 @@ async def get_reading_progress(
             if progress
             else None
         }
+
+        # Cache the result (5 minutes TTL for progress data)
+        await cache_manager.set(cache_key_str, response, ttl=CACHE_TTL["user_progress"])
+
+        return response
 
     except HTTPException:
         raise
@@ -161,6 +177,13 @@ async def update_reading_progress(
             reading_location_cfi=reading_location_cfi,
             scroll_offset_percent=scroll_offset_percent,
         )
+
+        # Invalidate cache for this user's progress
+        cache_key_str = cache_key("user", current_user.id, "progress", book_id)
+        await cache_manager.delete(cache_key_str)
+
+        # Also invalidate user's book list cache (progress affects book list)
+        await cache_manager.delete_pattern(f"user:{current_user.id}:books:*")
 
         return {
             "progress": {
