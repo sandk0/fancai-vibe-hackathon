@@ -21,7 +21,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from '@/components/UI/dropdown-menu';
 import { cn } from '@/lib/utils';
 import type { ThemeName } from '@/hooks/epub/useEpubThemes';
 

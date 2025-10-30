@@ -42,17 +42,37 @@ export const useImagesStore = create<ImagesState>((set, get) => ({
       const response = await imagesAPI.generateImageForDescription(descriptionId, params);
       
       // Add the new image to the current list
-      const newImage = {
+      const newImage: any = {
         id: response.image_id,
         description_id: response.description_id,
         image_url: response.image_url,
-        generation_time: response.generation_time,
+        service_used: 'pollinations',
+        status: (response.status === 'pending' || response.status === 'generating' ||
+                 response.status === 'completed' || response.status === 'failed' ||
+                 response.status === 'moderated') ? response.status : 'completed',
+        is_moderated: false,
+        view_count: 0,
+        download_count: 0,
+        generation_time_seconds: response.generation_time,
         created_at: response.created_at,
+        description: {
+          id: response.description_id,
+          type: 'location' as const,
+          text: '',
+          content: '',
+          confidence_score: 0,
+          priority_score: 0,
+        },
+        chapter: {
+          id: '',
+          number: 0,
+          title: '',
+        },
       };
 
-      set({ 
+      set({
         images: [newImage, ...get().images],
-        isGenerating: false 
+        isGenerating: false
       });
 
       return response;
@@ -72,23 +92,35 @@ export const useImagesStore = create<ImagesState>((set, get) => ({
       const response = await imagesAPI.generateImagesForChapter(chapterId, params);
       
       // Convert response images to our format
-      const newImages = response.images.map(img => ({
+      const newImages: any[] = response.images.map(img => ({
         id: `generated-${Date.now()}-${Math.random()}`, // Temporary ID
         description_id: img.description_id,
         image_url: img.image_url,
-        generation_time: img.generation_time,
+        service_used: 'pollinations',
+        status: 'completed' as const,
+        is_moderated: false,
+        view_count: 0,
+        download_count: 0,
+        generation_time_seconds: img.generation_time,
         created_at: new Date().toISOString(),
         description: {
           id: img.description_id,
           type: img.description_type,
+          text: '',
           content: '',
+          confidence_score: 0,
           priority_score: 0,
+        },
+        chapter: {
+          id: '',
+          number: 0,
+          title: '',
         }
       }));
 
-      set({ 
+      set({
         images: [...newImages, ...get().images],
-        isGenerating: false 
+        isGenerating: false
       });
 
       return response;

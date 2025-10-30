@@ -1,15 +1,14 @@
 // Service Worker Registration and Management
 import { useUIStore } from '@/stores/ui';
 
-// Reserved for future localhost-specific logic
-// @ts-expect-error - Prepared for future feature, intentionally unused
-const _isLocalhost = Boolean(
-  window.location.hostname === 'localhost' ||
-  window.location.hostname === '[::1]' ||
-  window.location.hostname.match(
-    /^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/
-  )
-);
+// Reserved for future localhost-specific logic (currently unused)
+// const _isLocalhost = Boolean(
+//   window.location.hostname === 'localhost' ||
+//   window.location.hostname === '[::1]' ||
+//   window.location.hostname.match(
+//     /^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/
+//   )
+// );
 
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {

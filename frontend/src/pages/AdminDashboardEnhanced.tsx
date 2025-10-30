@@ -649,31 +649,29 @@ const AdminDashboard: React.FC = () => {
     }
   });
 
-  // Reserved for future image settings functionality
-  // @ts-expect-error - Prepared for future feature, intentionally unused
-  const _saveImageSettings = useMutation({
-    mutationFn: (settings: ImageGenerationSettings) => adminAPI.updateImageGenerationSettings(settings),
-    onSuccess: () => {
-      notify.success(t('admin.settingsSaved'), t('admin.imageUpdated'));
-      queryClient.invalidateQueries({ queryKey: ['admin'] });
-    },
-    onError: (error: Error) => {
-      notify.error(t('admin.saveFailed'), error.message);
-    }
-  });
+  // Reserved for future image settings functionality (currently unused)
+  // const _saveImageSettings = useMutation({
+  //   mutationFn: (settings: ImageGenerationSettings) => adminAPI.updateImageGenerationSettings(settings),
+  //   onSuccess: () => {
+  //     notify.success(t('admin.settingsSaved'), t('admin.imageUpdated'));
+  //     queryClient.invalidateQueries({ queryKey: ['admin'] });
+  //   },
+  //   onError: (error: Error) => {
+  //     notify.error(t('admin.saveFailed'), error.message);
+  //   }
+  // });
 
-  // Reserved for future system settings functionality
-  // @ts-expect-error - Prepared for future feature, intentionally unused
-  const _saveSystemSettings = useMutation({
-    mutationFn: (settings: SystemSettings) => adminAPI.updateSystemSettings(settings),
-    onSuccess: () => {
-      notify.success(t('admin.settingsSaved'), t('admin.systemUpdated'));
-      queryClient.invalidateQueries({ queryKey: ['admin'] });
-    },
-    onError: (error: Error) => {
-      notify.error(t('admin.saveFailed'), error.message);
-    }
-  });
+  // Reserved for future system settings functionality (currently unused)
+  // const _saveSystemSettings = useMutation({
+  //   mutationFn: (settings: SystemSettings) => adminAPI.updateSystemSettings(settings),
+  //   onSuccess: () => {
+  //     notify.success(t('admin.settingsSaved'), t('admin.systemUpdated'));
+  //     queryClient.invalidateQueries({ queryKey: ['admin'] });
+  //   },
+  //   onError: (error: Error) => {
+  //     notify.error(t('admin.saveFailed'), error.message);
+  //   }
+  // });
 
   if (isLoading) {
     return (
