@@ -28,7 +28,7 @@ ENV GENERATE_SOURCEMAP=false
 RUN npm run build:unsafe
 
 # Production stage
-FROM nginx:1.25-alpine AS production
+FROM nginx:1.29-alpine AS production
 
 # Install security updates and required tools
 RUN apk update && apk upgrade && \
