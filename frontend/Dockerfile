@@ -24,12 +24,12 @@ RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001 && \
     chown -R nextjs:nodejs /app
 
-# Expose port
-EXPOSE 3000
+# Expose Vite dev server port
+EXPOSE 5173
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:5173 || exit 1
 
-# Default development command
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+# Default development command (Vite dev server on port 5173)
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]

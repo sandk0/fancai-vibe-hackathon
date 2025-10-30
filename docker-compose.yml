@@ -57,7 +57,7 @@ services:
       - SECRET_KEY=${SECRET_KEY:?SECRET_KEY is required}
       - DEBUG=${DEBUG:-true}
       - POLLINATIONS_ENABLED=${POLLINATIONS_ENABLED:-true}
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000}
     volumes:
       - ./backend:/app
       - uploaded_books:/app/uploads
@@ -143,33 +143,36 @@ services:
     restart: unless-stopped
     command: celery -A app.core.celery_app beat --loglevel=info
 
-  # React Frontend
+  # React + Vite Frontend
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: bookreader_frontend
     environment:
-      - REACT_APP_API_URL=http://localhost:8000
-      - REACT_APP_WS_URL=ws://localhost:8000
+      # Vite environment variables (VITE_ prefix required)
+      - VITE_API_BASE_URL=http://localhost:8000
+      - VITE_WS_URL=ws://localhost:8000
+      - VITE_DEBUG=true
+      - VITE_ENVIRONMENT=development
     volumes:
       - ./frontend:/app
       - /app/node_modules
     ports:
-      - "3000:3000"
+      - "5173:5173"
     depends_on:
       backend:
         condition: service_healthy
     networks:
       - bookreader_network
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5173"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
     restart: unless-stopped
-    command: npm run dev -- --host 0.0.0.0
+    command: npm run dev -- --host 0.0.0.0 --port 5173
 
 volumes:
   postgres_data:
