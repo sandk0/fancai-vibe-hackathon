@@ -16,7 +16,7 @@ import { ThemeSwitcher } from '@/components/UI/ThemeSwitcher';
 
 const Header: React.FC = () => {
   const { user, logout } = useAuthStore();
-  const { sidebarOpen, setSidebarOpen, setShowUploadModal, setShowProfileModal } = useUIStore();
+  const { sidebarOpen, setSidebarOpen, setShowUploadModal } = useUIStore();
   const { t } = useTranslation();
   const [showUserMenu, setShowUserMenu] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);

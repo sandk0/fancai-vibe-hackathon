@@ -14,7 +14,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/auth';
-import { useTranslation } from '@/hooks/useTranslation';
 import {
   User,
   Mail,
@@ -49,7 +48,6 @@ function calculateAchievements(totalBooks: number, streak: number) {
 
 const ProfilePage: React.FC = () => {
   const { user } = useAuthStore();
-  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(user?.full_name || '');
