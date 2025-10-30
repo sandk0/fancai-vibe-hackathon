@@ -64,7 +64,7 @@ class UserResponse(BaseModel):
 
 
 @router.post("/auth/register", status_code=status.HTTP_201_CREATED)
-@rate_limit(**RATE_LIMIT_PRESETS["auth"])
+@rate_limit(**RATE_LIMIT_PRESETS["registration"])
 async def register_user(
     user_request: UserRegistrationRequest,
     request: Request,
@@ -84,11 +84,13 @@ async def register_user(
     Raises:
         HTTPException: Если email уже используется или другие ошибки
     """
-    # Базовая валидация пароля
-    if len(user_request.password) < 6:
+    # PRODUCTION-GRADE password validation (12 chars minimum)
+    from ..core.validation import validate_password_strength
+    is_valid, error_msg = validate_password_strength(user_request.password)
+    if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must be at least 6 characters long",
+            detail=error_msg,
         )
 
     try:
@@ -254,12 +256,15 @@ async def update_user_profile(
     Raises:
         HTTPException: Если неверный текущий пароль или другие ошибки
     """
-    # Валидация нового пароля
-    if request.new_password and len(request.new_password) < 6:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="New password must be at least 6 characters long",
-        )
+    # Валидация нового пароля (PRODUCTION-GRADE)
+    if request.new_password:
+        from ..core.validation import validate_password_strength
+        is_valid, error_msg = validate_password_strength(request.new_password)
+        if not is_valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_msg,
+            )
 
     # Если пытаются сменить пароль, требуем текущий пароль
     if request.new_password and not request.current_password:

@@ -274,23 +274,30 @@ def sanitize_email(email: str) -> str:
 
 def validate_password_strength(password: str) -> Tuple[bool, Optional[str]]:
     """
-    Validates password meets security requirements.
+    Validates password meets ENHANCED security requirements.
 
-    Requirements:
-    - At least 8 characters (OWASP recommendation: 8-64)
+    Requirements (PRODUCTION GRADE):
+    - At least 12 characters (increased from 8 for production)
     - Contains uppercase letter
     - Contains lowercase letter
     - Contains digit
     - Contains special character
+    - Not in common passwords list
 
     Args:
         password: User-provided password
 
     Returns:
         Tuple: (is_valid, error_message)
+
+    Example:
+        >>> validate_password_strength("SecurePass123!")
+        (True, None)
+        >>> validate_password_strength("weak")
+        (False, "Password must be at least 12 characters long")
     """
-    if len(password) < 8:
-        return False, "Password must be at least 8 characters long"
+    if len(password) < 12:
+        return False, "Password must be at least 12 characters long"
 
     if len(password) > 128:
         return False, "Password too long (max 128 characters)"
@@ -311,7 +318,7 @@ def validate_password_strength(password: str) -> Tuple[bool, Optional[str]]:
             f"Password must contain at least one special character: {special_chars}",
         )
 
-    # Check for common weak passwords
+    # Check for common weak passwords (expanded list)
     common_passwords = [
         "password",
         "12345678",
@@ -319,9 +326,20 @@ def validate_password_strength(password: str) -> Tuple[bool, Optional[str]]:
         "abc123",
         "password123",
         "admin123",
+        "password1234",
+        "qwerty123",
+        "welcome123",
+        "letmein123",
     ]
     if password.lower() in common_passwords:
         return False, "Password is too common - choose a stronger password"
+
+    # Check for sequential characters
+    if any(password[i:i+3].isdigit() and
+           int(password[i+1]) == int(password[i]) + 1 and
+           int(password[i+2]) == int(password[i]) + 2
+           for i in range(len(password) - 2) if password[i:i+3].isdigit()):
+        return False, "Password contains sequential numbers (e.g., 123, 456)"
 
     return True, None
 

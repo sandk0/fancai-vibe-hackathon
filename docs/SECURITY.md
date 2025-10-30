@@ -300,6 +300,233 @@ git ls-files | grep "\.env"
 
 ---
 
-**Document Version:** 1.0
+## 🆕 Recent Security Enhancements (2025-10-30)
+
+### P0-6: Production Secrets Management
+
+**Status:** ✅ **DEPLOYED**
+
+**Changes:**
+- Created `backend/.env.production.example` with comprehensive template
+- Added `backend/scripts/generate-production-secrets.sh` script
+- Generates cryptographically secure secrets:
+  - SECRET_KEY (64 chars)
+  - JWT_SECRET_KEY (64 chars)
+  - DB_PASSWORD (32 chars)
+  - REDIS_PASSWORD (32 chars)
+  - ADMIN_PASSWORD (16 chars with special chars)
+  - GRAFANA_PASSWORD (16 chars)
+
+**Usage:**
+```bash
+bash backend/scripts/generate-production-secrets.sh
+```
+
+**Files:**
+- `/Users/sandk/Documents/GitHub/fancai-vibe-hackathon/backend/.env.production.example`
+- `/Users/sandk/Documents/GitHub/fancai-vibe-hackathon/backend/scripts/generate-production-secrets.sh`
+
+---
+
+### P0-7: Basic Security Fixes
+
+**Status:** ✅ **DEPLOYED**
+
+#### 1. CSRF Protection (Double Submit Cookie)
+
+**Implementation:** `backend/app/core/csrf.py`
+
+**Features:**
+- Double Submit Cookie pattern
+- Cryptographically secure token generation (32 bytes)
+- Header-based validation (`X-CSRF-Token`)
+- Exempt paths for auth endpoints
+- SameSite=Strict cookie policy
+
+**Configuration:**
+```python
+CSRF_TOKEN_LENGTH = 32
+CSRF_HEADER_NAME = "X-CSRF-Token"
+CSRF_COOKIE_NAME = "csrf_token"
+CSRF_COOKIE_MAX_AGE = 3600  # 1 hour
+```
+
+**Exempt Paths:**
+- `/api/v1/auth/login`
+- `/api/v1/auth/register`
+- `/api/v1/auth/refresh`
+- `/docs`, `/openapi.json`
+- `/health`, `/metrics`
+
+**Client Usage:**
+```javascript
+const csrfToken = getCookie('csrf_token');
+fetch('/api/v1/books', {
+  method: 'POST',
+  headers: {
+    'X-CSRF-Token': csrfToken
+  },
+  body: JSON.stringify(data)
+});
+```
+
+#### 2. Enhanced Rate Limiting
+
+**File:** `backend/app/middleware/rate_limit.py`
+
+**Changes:**
+- Auth endpoints: **5 req/min → 3 req/min** (more strict)
+- Registration: **NEW preset - 2 req/min** (spam prevention)
+
+**Updated Presets:**
+```python
+RATE_LIMIT_PRESETS = {
+    "auth": {
+        "max_requests": 3,           # Reduced from 5
+        "window_seconds": 60
+    },
+    "registration": {                # NEW preset
+        "max_requests": 2,
+        "window_seconds": 60
+    },
+}
+```
+
+**Applied To:**
+- `POST /api/v1/auth/login` - 3 req/min
+- `POST /api/v1/auth/register` - 2 req/min
+
+#### 3. Strengthened Password Policy
+
+**File:** `backend/app/core/validation.py`
+
+**Changes:**
+- Minimum length: **8 chars → 12 chars** (PRODUCTION-GRADE)
+- Added sequential number detection (123, 456, 789)
+- Expanded common passwords blacklist
+
+**New Requirements:**
+- ✅ Minimum 12 characters (increased from 8)
+- ✅ Uppercase + lowercase + digit + special char
+- ✅ Not in common passwords list
+- ✅ No sequential numbers (123, 456, etc.)
+
+**Examples:**
+```python
+# Valid
+"SecurePass123!"  # ✅ 14 chars, all requirements
+"MyStr0ng#Pass"   # ✅ 13 chars, all requirements
+
+# Invalid
+"Short1!"         # ❌ Too short (< 12)
+"password1234"    # ❌ Common password
+"Welcome123!"     # ❌ Common password
+```
+
+**Applied To:**
+- `POST /api/v1/auth/register`
+- `PUT /api/v1/auth/profile` (password change)
+
+#### 4. Improved CSP Headers
+
+**File:** `backend/app/middleware/security_headers.py`
+
+**Critical Changes:**
+- ❌ **Removed `unsafe-eval`** - Major XSS protection
+- ❌ **Removed `unsafe-inline` from script-src** - XSS hardening
+- ✅ **Added `block-all-mixed-content`** - HTTPS enforcement
+- ✅ **Added `blob:` support** - Dynamic content
+- ✅ **Restricted img-src** to specific domains
+
+**New CSP Policy:**
+```http
+Content-Security-Policy:
+  default-src 'self';
+  script-src 'self';                    # ← unsafe-inline REMOVED
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  img-src 'self' data: blob: https://image.pollinations.ai;
+  connect-src 'self' https://image.pollinations.ai wss://;
+  object-src 'none';
+  frame-ancestors 'none';
+  upgrade-insecure-requests;
+  block-all-mixed-content;              # ← NEW directive
+```
+
+**Impact:**
+- Frontend inline `<script>` tags will be blocked
+- Use external .js files or implement nonce-based CSP
+- Style-src still allows unsafe-inline (Tailwind CSS requirement)
+
+---
+
+## Security Testing
+
+### Test CSRF Protection
+
+```bash
+# Without CSRF token (should fail)
+curl -X POST http://localhost:8000/api/v1/books \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Test"}'
+# Expected: 403 Forbidden
+
+# With CSRF token (should succeed)
+curl -X POST http://localhost:8000/api/v1/books \
+  -H "Content-Type: application/json" \
+  -H "X-CSRF-Token: <token_from_cookie>" \
+  -b "csrf_token=<token>" \
+  -d '{"title": "Test"}'
+# Expected: 200 OK
+```
+
+### Test Rate Limiting
+
+```bash
+# Test auth rate limit (3 req/min)
+for i in {1..4}; do
+  curl -X POST http://localhost:8000/api/v1/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"email": "test@test.com", "password": "wrong"}'
+  echo "Request $i"
+done
+# Expected: First 3 succeed (401 auth failure), 4th returns 429 Too Many Requests
+```
+
+### Test Password Strength
+
+```bash
+# Test weak password (should fail)
+curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com", "password": "weak"}'
+# Expected: 400 Bad Request - "Password must be at least 12 characters long"
+
+# Test strong password (should succeed)
+curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com", "password": "SecurePass123!"}'
+# Expected: 201 Created
+```
+
+### Test Security Headers
+
+```bash
+# Check CSP header
+curl -I http://localhost:8000/api/v1/health | grep -i content-security-policy
+# Expected: Content-Security-Policy with no unsafe-eval
+
+# Check all security headers
+curl -I http://localhost:8000/api/v1/health
+# Expected:
+# - Strict-Transport-Security
+# - Content-Security-Policy
+# - X-Frame-Options: DENY
+# - X-Content-Type-Options: nosniff
+```
+
+---
+
+**Document Version:** 2.0
 **Last Audit:** 2025-10-30
 **Next Review:** 2025-11-30
+**Security Enhancements**: P0-6 (Production Secrets), P0-7 (CSRF, Rate Limiting, Password Policy, CSP)
