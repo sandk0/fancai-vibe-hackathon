@@ -23,7 +23,7 @@ spacy==3.7.2
 nltk==3.8.1
 stanza==1.7.0
 natasha==1.6.0
-pymorphy3==1.2.1
+pymorphy3==2.0.6
 
 # Парсинг книг
 ebooklib==0.19
