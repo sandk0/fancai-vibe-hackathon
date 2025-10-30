@@ -130,15 +130,36 @@ export const useDescriptionManagement = ({
                 id: result.image_id,
                 description_id: descriptionId,
                 image_url: result.image_url,
+                service_used: 'pollinations',
+                status: (result.status === 'pending' || result.status === 'generating' ||
+                         result.status === 'completed' || result.status === 'failed' ||
+                         result.status === 'moderated') ? result.status : 'completed' as const,
+                is_moderated: false,
+                view_count: 0,
+                download_count: 0,
+                generation_time_seconds: result.generation_time,
                 created_at: result.created_at,
-                generation_time: result.generation_time
-              }
+                description: {
+                  id: descriptionId,
+                  type: d.type,
+                  text: d.content,
+                  content: d.content,
+                  confidence_score: d.confidence_score,
+                  priority_score: d.priority_score,
+                  entities_mentioned: d.entities_mentioned,
+                },
+                chapter: {
+                  id: '',
+                  number: 0,
+                  title: '',
+                }
+              } as any
             };
           }
           return d;
         });
 
-        setHighlightedDescriptions(updatedDescriptions);
+        setHighlightedDescriptions(updatedDescriptions as any);
         onImageGenerated?.(description, result.image_url, result.image_id);
 
         notify.success(

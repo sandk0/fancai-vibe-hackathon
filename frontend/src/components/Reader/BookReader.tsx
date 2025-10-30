@@ -294,13 +294,16 @@ export const BookReader: React.FC<BookReaderProps> = ({
       <div className="bg-white dark:bg-gray-900 min-h-screen">
         {/* Header */}
         <ReaderHeader
-          book={book}
-          currentChapter={currentChapter}
-          chapterTitle={chapter.chapter?.title || ''}
+          title={book.title}
+          author={book.author}
+          theme={theme}
+          progress={book.reading_progress?.progress_percent || 0}
           currentPage={currentPage}
           totalPages={pages.length}
-          showSettings={showSettings}
-          onToggleSettings={() => setShowSettings(!showSettings)}
+          onBack={() => window.history.back()}
+          onTocToggle={() => {}}
+          onInfoOpen={() => {}}
+          onSettingsOpen={() => setShowSettings(!showSettings)}
         />
 
         {/* Settings Panel */}
