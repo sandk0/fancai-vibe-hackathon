@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ErrorBoundary UI Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background-color: #1a1a1a;
+            color: #e5e5e5;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 2.5rem;
+            color: #3b82f6;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .error-boundary-container {
+            background-color: #1a1a1a;
+            color: #e5e5e5;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            border: 2px solid #333;
+            border-radius: 12px;
+        }
+
+        .error-boundary-content {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .icon {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .error-title {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            color: #e5e5e5;
+        }
+
+        .error-message {
+            font-size: 1rem;
+            margin-bottom: 2rem;
+            color: #999;
+            line-height: 1.6;
+        }
+
+        .error-details {
+            margin-bottom: 2rem;
+            text-align: left;
+            background-color: #2a2a2a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1rem;
+            overflow: auto;
+        }
+
+        .error-details summary {
+            cursor: pointer;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #ef4444;
+        }
+
+        .error-details pre {
+            background-color: #1a1a1a;
+            padding: 0.75rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            overflow: auto;
+            border: 1px solid #333;
+            margin-top: 0.5rem;
+            color: #e5e5e5;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            border: none;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background-color: #3b82f6;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background-color: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background-color: #374151;
+            color: #e5e5e5;
+            border: 1px solid #333;
+        }
+
+        .btn-secondary:hover {
+            background-color: #4b5563;
+            transform: translateY(-1px);
+        }
+
+        .help-text {
+            margin-top: 2rem;
+            font-size: 0.875rem;
+            color: #666;
+        }
+
+        .label {
+            background-color: #2a2a2a;
+            color: #3b82f6;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: inline-block;
+        }
+
+        .features {
+            background-color: #2a2a2a;
+            padding: 2rem;
+            border-radius: 12px;
+            border: 2px solid #333;
+            margin-top: 2rem;
+        }
+
+        .features h2 {
+            color: #3b82f6;
+            margin-bottom: 1rem;
+        }
+
+        .features ul {
+            list-style: none;
+        }
+
+        .features li {
+            padding: 0.5rem 0;
+            color: #999;
+        }
+
+        .features li::before {
+            content: "✅ ";
+            color: #22c55e;
+            margin-right: 0.5rem;
+        }
+
+        .code-block {
+            background-color: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+        }
+
+        .code-block code {
+            color: #e5e5e5;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+        }
+
+        .keyword { color: #c678dd; }
+        .string { color: #98c379; }
+        .comment { color: #5c6370; }
+        .function { color: #61afef; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ ErrorBoundary Component - UI Visualization</h1>
+
+        <div class="grid">
+            <!-- App-Level ErrorBoundary -->
+            <div>
+                <div class="label">App-Level ErrorBoundary</div>
+                <div class="error-boundary-container">
+                    <div class="error-boundary-content">
+                        <div class="icon">💥</div>
+                        <h1 class="error-title">Упс! Что-то пошло не так</h1>
+                        <p class="error-message">
+                            Приносим извинения за неудобства. Пожалуйста, попробуйте обновить страницу или вернуться на главную.
+                        </p>
+
+                        <details class="error-details">
+                            <summary>🔍 Детали ошибки (dev mode)</summary>
+                            <div style="margin-top: 1rem;">
+                                <p style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.875rem;">Error:</p>
+                                <pre>Error: Failed to load EPUB file
+    at EpubReader.tsx:245
+    at processEpubContent (book_parser.ts:123)</pre>
+                            </div>
+                        </details>
+
+                        <div class="button-group">
+                            <button class="btn btn-primary">🔄 Перезагрузить страницу</button>
+                            <button class="btn btn-secondary">🏠 На главную</button>
+                        </div>
+
+                        <p class="help-text">
+                            Если проблема повторяется, пожалуйста, обратитесь в поддержку
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page-Level ErrorBoundary -->
+            <div>
+                <div class="label">Page-Level ErrorBoundary</div>
+                <div class="error-boundary-container">
+                    <div class="error-boundary-content">
+                        <div class="icon" style="font-size: 3rem;">⚠️</div>
+                        <h1 class="error-title" style="font-size: 1.5rem;">Ошибка загрузки страницы</h1>
+                        <p class="error-message">
+                            Не удалось загрузить содержимое страницы. Попробуйте обновить или вернуться назад.
+                        </p>
+
+                        <div class="button-group">
+                            <button class="btn btn-primary">🔄 Попробовать снова</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Component-Level ErrorBoundary -->
+            <div>
+                <div class="label">Component-Level ErrorBoundary</div>
+                <div class="error-boundary-container" style="min-height: 300px;">
+                    <div class="error-boundary-content">
+                        <div class="icon" style="font-size: 3rem;">⚠️</div>
+                        <h1 class="error-title" style="font-size: 1.5rem;">Ошибка компонента</h1>
+                        <p class="error-message">
+                            Возникла ошибка при отображении этого компонента.
+                        </p>
+
+                        <div class="button-group">
+                            <button class="btn btn-primary">🔄 Попробовать снова</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Custom Fallback -->
+            <div>
+                <div class="label">Custom Fallback UI</div>
+                <div class="error-boundary-container" style="min-height: 300px;">
+                    <div class="error-boundary-content">
+                        <div style="padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px;">
+                            <div style="font-size: 3rem; margin-bottom: 1rem;">📖</div>
+                            <h2 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem;">
+                                Ошибка загрузки читалки
+                            </h2>
+                            <p style="color: rgba(255,255,255,0.9); margin-bottom: 1.5rem;">
+                                Не удалось открыть книгу. Попробуйте вернуться в библиотеку и открыть книгу снова.
+                            </p>
+                            <button class="btn btn-primary">Вернуться в библиотеку</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features -->
+        <div class="features">
+            <h2>✨ Возможности ErrorBoundary</h2>
+            <ul>
+                <li>Отлов ошибок в дочерних компонентах без краша всего приложения</li>
+                <li>Три уровня границ: App, Page, Component</li>
+                <li>Красивый UI для error state с поддержкой темной темы</li>
+                <li>Кнопка "Попробовать снова" для reset state</li>
+                <li>Логирование ошибок в консоль (готово для интеграции с Sentry/LogRocket)</li>
+                <li>Детали ошибки (stacktrace) показываются только в dev mode</li>
+                <li>Поддержка кастомного fallback UI</li>
+                <li>onError callback для дополнительной обработки ошибок</li>
+                <li>Автоматическое определение темы из localStorage</li>
+                <li>Responsive дизайн для mobile/desktop</li>
+            </ul>
+        </div>
+
+        <!-- Usage Example -->
+        <div class="features">
+            <h2>📝 Использование</h2>
+
+            <h3 style="color: #999; margin: 1rem 0 0.5rem 0;">1. App-Level (main.tsx)</h3>
+            <div class="code-block">
+<code><span class="keyword">import</span> ErrorBoundary <span class="keyword">from</span> <span class="string">'./components/ErrorBoundary'</span>
+
+<span class="function">ReactDOM</span>.<span class="function">createRoot</span>(document.<span class="function">getElementById</span>(<span class="string">'root'</span>)).<span class="function">render</span>(
+  &lt;<span class="keyword">ErrorBoundary</span> level=<span class="string">"app"</span>&gt;
+    &lt;<span class="keyword">App</span> /&gt;
+  &lt;/<span class="keyword">ErrorBoundary</span>&gt;
+)</code>
+            </div>
+
+            <h3 style="color: #999; margin: 1rem 0 0.5rem 0;">2. Page-Level (BookReaderPage.tsx)</h3>
+            <div class="code-block">
+<code>&lt;<span class="keyword">ErrorBoundary</span>
+  level=<span class="string">"page"</span>
+  fallback={&lt;<span class="keyword">div</span>&gt;Ошибка загрузки читалки&lt;/<span class="keyword">div</span>&gt;}
+&gt;
+  &lt;<span class="keyword">EpubReader</span> book={bookData} /&gt;
+&lt;/<span class="keyword">ErrorBoundary</span>&gt;</code>
+            </div>
+
+            <h3 style="color: #999; margin: 1rem 0 0.5rem 0;">3. Component-Level (любой компонент)</h3>
+            <div class="code-block">
+<code>&lt;<span class="keyword">ErrorBoundary</span>
+  level=<span class="string">"component"</span>
+  onError={(error, info) =&gt; <span class="function">logErrorToService</span>(error, info)}
+&gt;
+  &lt;<span class="keyword">CriticalComponent</span> /&gt;
+&lt;/<span class="keyword">ErrorBoundary</span>&gt;</code>
+            </div>
+        </div>
+
+        <!-- Implementation Details -->
+        <div class="features">
+            <h2>🔧 Технические детали</h2>
+            <ul>
+                <li><strong>Файл:</strong> frontend/src/components/ErrorBoundary.tsx (450 строк)</li>
+                <li><strong>Тип:</strong> React Class Component (Error Boundaries не работают с hooks)</li>
+                <li><strong>TypeScript:</strong> Полная типизация Props и State</li>
+                <li><strong>Стили:</strong> Inline styles с поддержкой темной/светлой темы</li>
+                <li><strong>Тесты:</strong> frontend/src/components/__tests__/ErrorBoundary.test.tsx</li>
+                <li><strong>Coverage:</strong> 12 тестов покрывающих все основные сценарии</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
