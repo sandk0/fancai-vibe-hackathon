@@ -205,3 +205,22 @@ class AuthMiddleware:
 
 # Глобальный экземпляр middleware
 auth_middleware = AuthMiddleware()
+
+
+# Helper function for tests
+def create_access_token(data: dict) -> str:
+    """
+    Создает JWT access токен (helper для тестов).
+
+    Args:
+        data: Данные для включения в токен (обычно {"sub": user_id})
+
+    Returns:
+        JWT токен строка
+
+    Example:
+        >>> token = create_access_token({"sub": str(user.id)})
+        >>> headers = {"Authorization": f"Bearer {token}"}
+    """
+    from ..services.auth_service import auth_service
+    return auth_service.create_access_token(data)

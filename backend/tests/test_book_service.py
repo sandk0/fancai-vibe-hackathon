@@ -199,7 +199,7 @@ class TestBookRetrieval:
                 user_id=test_user.id,
                 title=f"Book {i}",
                 author="Author",
-                genre=BookGenre.FICTION.value,  # Use .value for string field
+                genre=BookGenre.FANTASY.value,  # Use .value for string field
                 language="ru",
                 file_path=f"/tmp/book{i}.epub",
                 file_format="epub",
@@ -230,11 +230,11 @@ class TestBookRetrieval:
         # Создаем книги разных жанров
         book1 = Book(
             user_id=test_user.id,
-            title="Fiction Book",
+            title="Detective Book",
             author="Author",
-            genre=BookGenre.FICTION.value,  # Use .value for string field
+            genre=BookGenre.DETECTIVE.value,  # Use .value for string field
             language="ru",
-            file_path="/tmp/fiction.epub",
+            file_path="/tmp/detective.epub",
             file_format="epub",
             file_size=1024,
             is_parsed=True
@@ -262,7 +262,7 @@ class TestBookRetrieval:
         assert len(result) >= 2
         # Проверяем что книги разных жанров присутствуют
         genres = {book.genre for book in result}
-        assert BookGenre.FICTION.value in genres or BookGenre.FANTASY.value in genres
+        assert BookGenre.DETECTIVE.value in genres or BookGenre.FANTASY.value in genres
 
 
 class TestBookUpdate:
