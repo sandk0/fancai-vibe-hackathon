@@ -20,13 +20,47 @@ import logging
 from uuid import uuid4
 from typing import Optional
 
+import pytest
+
 try:
     from locust import HttpUser, task, between, events
     from locust.env import Environment
+    LOCUST_AVAILABLE = True
 except ImportError:
-    print("⚠️  Locust не установлен. Установите: pip install locust")
-    print("Для запуска тестов производительности нужен Locust.")
-    exit(1)
+    LOCUST_AVAILABLE = False
+    # Если locust не установлен, пропускаем все тесты в этом модуле
+    pytestmark = pytest.mark.skip(reason="Locust не установлен. Установите: pip install locust")
+
+    # Заглушки для классов Locust, чтобы избежать NameError при импорте модуля
+    class HttpUser:
+        """Заглушка для Locust HttpUser."""
+        pass
+
+    def task(weight=1):
+        """Заглушка для Locust task decorator."""
+        def decorator(func):
+            return func
+        return decorator
+
+    def between(min_wait, max_wait):
+        """Заглушка для Locust between."""
+        return None
+
+    class events:
+        """Заглушка для Locust events."""
+        class test_start:
+            @staticmethod
+            def add_listener(func):
+                pass
+
+        class test_stop:
+            @staticmethod
+            def add_listener(func):
+                pass
+
+    class Environment:
+        """Заглушка для Locust Environment."""
+        pass
 
 logger = logging.getLogger(__name__)
 
