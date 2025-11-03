@@ -14,7 +14,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies (clean install for proper platform)
-RUN npm ci || (rm -rf node_modules package-lock.json && npm install)
+# Using --legacy-peer-deps to handle vitest version conflicts
+RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .

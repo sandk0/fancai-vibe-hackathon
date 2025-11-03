@@ -27,9 +27,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # Download NLP models (combine RUN commands to reduce layers)
-RUN python -m spacy download ru_core_news_lg && \
+# Using ru_core_news_sm for faster Docker builds (can upgrade to lg in production)
+RUN python -m spacy download ru_core_news_sm && \
     python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords'); nltk.download('wordnet'); nltk.download('averaged_perceptron_tagger')" && \
-    python -c "import stanza; stanza.download('ru')"
+    python -c "import stanza; stanza.download('ru')" || echo "Warning: Stanza download failed, will download on first use"
 
 # Copy source code
 COPY . .
