@@ -5,7 +5,6 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:15.7-alpine
-    container_name: bookreader_postgres
     environment:
       POSTGRES_DB: ${DB_NAME:-bookreader_dev}
       POSTGRES_USER: ${DB_USER:-postgres}
@@ -27,7 +26,6 @@ services:
   # Redis Cache & Queue
   redis:
     image: redis:7.4-alpine
-    container_name: bookreader_redis
     command: >
       redis-server
       --appendonly yes
@@ -50,17 +48,25 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: bookreader_backend
+      # Enable BuildKit for cache mounts
+      args:
+        BUILDKIT_INLINE_CACHE: 1
     environment:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-bookreader_dev}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
       - SECRET_KEY=${SECRET_KEY:?SECRET_KEY is required}
       - DEBUG=${DEBUG:-true}
       - POLLINATIONS_ENABLED=${POLLINATIONS_ENABLED:-true}
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000}
+      - "CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000}"
+      # NLP model directories
+      - NLTK_DATA=/root/nltk_data
+      - STANZA_RESOURCES_DIR=/root/stanza_resources
     volumes:
       - ./backend:/app
       - uploaded_books:/app/uploads
+      # Persistent NLP model storage - survives rebuilds!
+      - nlp_nltk_data:/root/nltk_data
+      - nlp_stanza_models:/root/stanza_resources
     ports:
       - "8000:8000"
     depends_on:
@@ -84,7 +90,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: bookreader_celery
+      args:
+        BUILDKIT_INLINE_CACHE: 1
     environment:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-bookreader_dev}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
@@ -93,9 +100,15 @@ services:
       - CELERY_CONCURRENCY=${CELERY_CONCURRENCY:-2}
       - CELERY_MAX_TASKS_PER_CHILD=10
       - CELERY_WORKER_MAX_MEMORY_PER_CHILD=5000000
+      # NLP model directories
+      - NLTK_DATA=/root/nltk_data
+      - STANZA_RESOURCES_DIR=/root/stanza_resources
     volumes:
       - ./backend:/app
       - uploaded_books:/app/uploads
+      # Share NLP models with backend
+      - nlp_nltk_data:/root/nltk_data
+      - nlp_stanza_models:/root/stanza_resources
     depends_on:
       postgres:
         condition: service_healthy
@@ -120,7 +133,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: bookreader_beat
     environment:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-bookreader_dev}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
@@ -148,16 +160,16 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: bookreader_frontend
     environment:
       # Vite environment variables (VITE_ prefix required)
+      - VITE_API_URL=http://localhost:8000/api/v1
       - VITE_API_BASE_URL=http://localhost:8000
       - VITE_WS_URL=ws://localhost:8000
       - VITE_DEBUG=true
       - VITE_ENVIRONMENT=development
     volumes:
       - ./frontend:/app
-      - /app/node_modules
+      - frontend_node_modules:/app/node_modules
     ports:
       - "5173:5173"
     depends_on:
@@ -178,7 +190,14 @@ volumes:
   postgres_data:
   redis_data:
   uploaded_books:
+  frontend_node_modules:
+  # NLP model storage - persists across container rebuilds
+  nlp_nltk_data:
+    name: bookreader_nlp_nltk_data
+  nlp_stanza_models:
+    name: bookreader_nlp_stanza_models
 
 networks:
   bookreader_network:
+    name: bookreader_shared_network
     driver: bridge
