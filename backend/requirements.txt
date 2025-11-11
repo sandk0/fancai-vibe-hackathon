@@ -24,6 +24,8 @@ nltk==3.8.1
 stanza==1.7.0
 natasha==1.6.0
 pymorphy3==1.2.1
+deeppavlov==1.4.0
+langextract==0.1.0
 
 # Парсинг книг
 ebooklib==0.19

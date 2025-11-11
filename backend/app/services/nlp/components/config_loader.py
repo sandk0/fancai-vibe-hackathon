@@ -42,13 +42,18 @@ class ConfigLoader:
             stanza_settings = await self._get_processor_settings("stanza")
             stanza_config = self._build_stanza_config(stanza_settings)
 
+            # DeepPavlov configuration (NEW from Perplexity!)
+            deeppavlov_settings = await self._get_processor_settings("deeppavlov")
+            deeppavlov_config = self._build_deeppavlov_config(deeppavlov_settings)
+
             configs = {
                 "spacy": spacy_config,
                 "natasha": natasha_config,
                 "stanza": stanza_config,
+                "deeppavlov": deeppavlov_config,  # NEW!
             }
 
-            logger.info("✅ Loaded configurations for all processors")
+            logger.info("✅ Loaded configurations for all processors (including DeepPavlov)")
             return configs
 
         except Exception as e:
@@ -135,6 +140,25 @@ class ConfigLoader:
             custom_settings={"stanza": stanza_specific},
         )
 
+    def _build_deeppavlov_config(self, settings: Dict[str, Any]) -> ProcessorConfig:
+        """Build DeepPavlov processor configuration."""
+        deeppavlov_specific = {
+            "model_name": settings.get("model_name", "ner_ontonotes_bert_mult"),
+            "use_gpu": settings.get("use_gpu", False),
+            "lazy_init": True,
+        }
+        deeppavlov_specific.update(settings.get("deeppavlov_specific", {}))
+
+        return ProcessorConfig(
+            enabled=settings.get("enabled", True),
+            weight=settings.get("weight", 1.5),  # Highest weight due to F1 0.94-0.97
+            confidence_threshold=settings.get("confidence_threshold", 0.3),
+            min_description_length=settings.get("min_description_length", 50),
+            max_description_length=settings.get("max_description_length", 1000),
+            min_word_count=settings.get("min_word_count", 10),
+            custom_settings={"deeppavlov": deeppavlov_specific},
+        )
+
     def _get_default_configs(self) -> Dict[str, ProcessorConfig]:
         """Get default configurations for all processors."""
         logger.info("Using default processor configurations")
@@ -175,6 +199,17 @@ class ConfigLoader:
             ),
             "stanza": ProcessorConfig(
                 enabled=False, weight=0.8, custom_settings={"stanza": {}}
+            ),
+            "deeppavlov": ProcessorConfig(
+                enabled=True,
+                weight=1.5,  # Highest weight due to F1 0.94-0.97
+                custom_settings={
+                    "deeppavlov": {
+                        "model_name": "ner_ontonotes_bert_mult",
+                        "use_gpu": False,
+                        "lazy_init": True,
+                    }
+                },
             ),
         }
 
