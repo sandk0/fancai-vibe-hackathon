@@ -64,6 +64,7 @@ class ProcessorRegistry:
         from ...enhanced_nlp_system import EnhancedSpacyProcessor
         from ...natasha_processor import EnhancedNatashaProcessor
         from ...stanza_processor import EnhancedStanzaProcessor
+        from ...deeppavlov_processor import DeepPavlovProcessor
 
         for processor_name, config in self.processor_configs.items():
             if not config.enabled:
@@ -91,6 +92,15 @@ class ProcessorRegistry:
                     if processor.is_available():
                         self.processors["stanza"] = processor
                         logger.info("✅ Stanza processor initialized")
+
+                elif processor_name == "deeppavlov":
+                    # NEW: DeepPavlov processor - F1 0.94-0.97!
+                    processor = DeepPavlovProcessor(use_gpu=False)
+                    if processor.is_available():
+                        self.processors["deeppavlov"] = processor
+                        logger.info("✅ DeepPavlov processor initialized (F1 0.94-0.97)")
+                    else:
+                        logger.warning("DeepPavlov not available - install with: pip install deeppavlov")
 
             except Exception as e:
                 logger.error(f"Failed to initialize {processor_name} processor: {e}")

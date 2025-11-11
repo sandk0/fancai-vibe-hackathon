@@ -147,3 +147,29 @@ create_presentation.py
 /backups/
 .env.production
 docker/secrets/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Prometheus monitoring data
+monitoring/prometheus/data/
+/monitoring/prometheus/data/**
+
+# Documentation reports (keep only in backend/)
+/*.md
+!README.md
+!CONTRIBUTING.md
+!LICENSE.md
+!CHANGELOG.md
+
+# Test files (keep organized in tests/)
+/backend/test_*.py
+!/backend/tests/
+
+# Development scripts
+start-dev.sh
+
+# Build logs
+/tmp/
+*.log
