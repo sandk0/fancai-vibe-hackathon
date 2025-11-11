@@ -71,7 +71,7 @@
     "jsdom": "^23.0.1",
     "postcss": "^8.4.32",
     "rollup-plugin-visualizer": "^6.0.5",
-    "tailwindcss": "^3.3.6",
+    "tailwindcss": "^4.1.17",
     "typescript": "^5.2.2",
     "vite": "^4.5.0",
     "vitest": "^0.34.6"
