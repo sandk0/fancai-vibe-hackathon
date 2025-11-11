@@ -1,6 +1,6 @@
 # Development Dockerfile for Backend
 # syntax=docker/dockerfile:1.4
-FROM python:3.11-slim
+FROM python:3.14-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \

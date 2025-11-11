@@ -1,5 +1,5 @@
 # Multi-stage Production Dockerfile for Backend
-FROM python:3.11-slim as dependencies
+FROM python:3.14-slim as dependencies
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -28,7 +28,7 @@ RUN python -m spacy download ru_core_news_lg && \
     python -c "import stanza; stanza.download('ru')"
 
 # Production stage
-FROM python:3.11-slim as production
+FROM python:3.14-slim as production
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
