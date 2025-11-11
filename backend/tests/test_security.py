@@ -36,7 +36,11 @@ from app.middleware.security_headers import validate_security_headers
 # Test Client Setup
 # ============================================================================
 
-client = TestClient(app)
+@pytest.fixture
+def client():
+    """Test client fixture for security tests."""
+    with TestClient(app) as c:
+        yield c
 
 
 # ============================================================================
