@@ -8,7 +8,6 @@ Custom exception classes для BookReader AI.
 
 from fastapi import HTTPException, status
 from uuid import UUID
-from typing import Optional
 
 
 # ============================================================================

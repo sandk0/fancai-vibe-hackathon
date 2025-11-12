@@ -20,10 +20,10 @@ import uuid
 import enum
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from .book import Book
-
 from ..core.database import Base
+
+if TYPE_CHECKING:
+    pass
 
 
 class SubscriptionPlan(enum.Enum):

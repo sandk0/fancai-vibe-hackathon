@@ -18,7 +18,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Book, NavItem } from 'epubjs';
+import type { Book, NavItem } from '@/types/epub';
 
 export interface UseTocReturn {
   toc: NavItem[];

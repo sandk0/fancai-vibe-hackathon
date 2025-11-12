@@ -42,6 +42,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const images = imagesResponse?.images || [];
 
   // Filter images based on search and filter criteria

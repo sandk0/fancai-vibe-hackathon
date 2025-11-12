@@ -11,11 +11,10 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Dict, Any
-from uuid import UUID
 
 from ..core.database import get_database_session
 from ..core.auth import get_current_active_user
-from ..core.dependencies import get_user_book, get_chapter_by_number, validate_chapter_number_in_book
+from ..core.dependencies import get_user_book, get_chapter_by_number
 from ..core.cache import cache_manager, cache_key, CACHE_TTL
 from ..core.exceptions import ChapterFetchException
 from ..services.book import book_service

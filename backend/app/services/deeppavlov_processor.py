@@ -17,7 +17,7 @@ DeepPavlov Processor - 4-й процессор в Multi-NLP системе.
 Используется как 4-й процессор с весом 1.5 (самый высокий) в Multi-NLP Manager.
 """
 
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional
 import logging
 from dataclasses import dataclass
 from enum import Enum

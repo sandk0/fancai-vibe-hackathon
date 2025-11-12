@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
@@ -22,7 +23,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
     
     // Always call loadUserFromStorage on mount to ensure we check localStorage
     loadUserFromStorage();
-  }, [loadUserFromStorage]);
+  }, [loadUserFromStorage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Show loading spinner while checking authentication
   if (isLoading) {

@@ -59,9 +59,10 @@ export const useAuthStore = create<AuthState>()(
           });
           const { user, tokens } = response;
 
-          // Store tokens in localStorage
+          // Store tokens and user data in localStorage
           localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, tokens.access_token);
           localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refresh_token);
+          localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
 
           set({
             user,

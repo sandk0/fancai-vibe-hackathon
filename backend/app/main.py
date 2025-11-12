@@ -50,11 +50,23 @@ app = FastAPI(
 # Middleware Configuration
 # ============================================================================
 
-# Security Headers Middleware (FIRST - apply to all responses)
+# Middleware добавляются в обратном порядке выполнения!
+# Последний добавленный = первый выполняется
+
+# 1. GZip Compression Middleware (добавляется первым, выполняется последним)
+# Сжимает ответы > 1KB для снижения bandwidth и latency
+app.add_middleware(
+    GZipMiddleware,
+    minimum_size=1000,  # Сжимать только ответы > 1KB
+    compresslevel=6,  # Баланс скорость/размер (1=fastest, 9=best compression)
+)
+
+# 2. Security Headers Middleware (добавляется вторым, выполняется предпоследним)
 # Защита от XSS, clickjacking, MIME sniffing, etc.
 app.add_middleware(SecurityHeadersMiddleware)
 
-# CORS настройки (SECOND - before other middleware)
+# 3. CORS Middleware (добавляется последним, выполняется ПЕРВЫМ)
+# КРИТИЧЕСКИ ВАЖНО: должен быть последним чтобы обрабатывать preflight запросы до всех остальных middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -62,19 +74,6 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
     max_age=600,  # Cache preflight requests for 10 minutes
-)
-
-# GZip Compression Middleware (LAST - compress final responses)
-# Сжимает ответы > 1KB для снижения bandwidth и latency
-# Performance impact:
-# - Response size: -60% to -80% (для JSON)
-# - Bandwidth: -70% average
-# - Latency: +5-10ms compression overhead, -50ms network transfer (net benefit)
-# - CPU usage: +5-10% (компромисс за network savings)
-app.add_middleware(
-    GZipMiddleware,
-    minimum_size=1000,  # Сжимать только ответы > 1KB
-    compresslevel=6,  # Баланс скорость/размер (1=fastest, 9=best compression)
 )
 
 # Подключение роутеров
@@ -101,6 +100,12 @@ app.include_router(health_router, prefix="/api/v1", tags=["health"])
 async def startup_event():
     """Инициализация при запуске приложения."""
     print("🚀 Starting BookReader AI...")
+
+    # ========================================================================
+    # DEBUG: Print CORS configuration
+    # ========================================================================
+    print(f"🔧 CORS Origins configured: {settings.CORS_ORIGINS}")
+    print(f"🔧 CORS Origins list: {settings.cors_origins_list}")
 
     # ========================================================================
     # SECURITY: Validate secrets before starting

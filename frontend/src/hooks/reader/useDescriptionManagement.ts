@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useDescriptionManagement - Custom hook for description highlighting and interaction
  *
@@ -166,7 +167,7 @@ export const useDescriptionManagement = ({
           t('reader.imageGenerated'),
           t('reader.imageCreated').replace('{time}', result.generation_time.toFixed(1))
         );
-      } catch (error: any) {
+      } catch (error: Error) {
         console.error('[useDescriptionManagement] Image generation failed:', error);
         if (error.response?.status === 409) {
           notify.warning(t('reader.imageExists'), t('reader.imageExistsDesc'));

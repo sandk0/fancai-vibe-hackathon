@@ -15,6 +15,14 @@ export const imagesAPI = {
     return apiClient.get('/images/generation/status');
   },
 
+  // User statistics
+  async getUserStats(): Promise<{
+    total_images_generated: number;
+    total_descriptions_found: number;
+  }> {
+    return apiClient.get('/images/user/stats');
+  },
+
   // Image generation
   async generateImageForDescription(
     descriptionId: string,
@@ -36,10 +44,13 @@ export const imagesAPI = {
     try {
       await this.generateImageForDescription(descriptionId, {});
       return true;
-    } catch (error: any) {
+    } catch (error) {
       // If error is 409 (conflict), it means image already exists
-      if (error.response?.status === 409) {
-        return false;
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { status?: number } };
+        if (axiosError.response?.status === 409) {
+          return false;
+        }
       }
       // For other errors, assume we can try to generate
       return true;

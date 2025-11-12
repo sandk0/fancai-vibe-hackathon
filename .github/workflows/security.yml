@@ -189,6 +189,9 @@ jobs:
   docker-security-backend:
     name: Docker Security Scan (Backend)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v4
 
@@ -223,6 +226,9 @@ jobs:
   docker-security-frontend:
     name: Docker Security Scan (Frontend)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v4
 

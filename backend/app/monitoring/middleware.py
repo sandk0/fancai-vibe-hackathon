@@ -12,16 +12,25 @@ Usage:
     app.add_middleware(ReadingSessionsMetricsMiddleware)
 """
 
-from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.types import ASGIApp
+import asyncio
 import time
+from datetime import datetime, timedelta, timezone
 from typing import Callable
 
+from fastapi import Request, Response
+from sqlalchemy import select, func
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp
+
+from ..models.reading_session import ReadingSession
 from .metrics import (
     session_api_latency_seconds,
     session_errors_total,
     sessions_updated_total,
+    update_active_sessions_gauge,
+    update_abandoned_sessions_gauge,
+    update_concurrent_users_gauge,
+    active_sessions_count,
 )
 
 
@@ -144,19 +153,6 @@ class ReadingSessionsMetricsMiddleware(BaseHTTPMiddleware):
 # Background Task для периодического обновления Gauges
 # ============================================================================
 
-import asyncio
-from datetime import datetime, timedelta, timezone
-from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from ..core.database import get_database_session
-from ..models.reading_session import ReadingSession
-from .metrics import (
-    update_active_sessions_gauge,
-    update_abandoned_sessions_gauge,
-    update_concurrent_users_gauge,
-)
-
 
 async def update_gauges_periodically(db_session_factory, interval_seconds: int = 30):
     """
@@ -185,7 +181,7 @@ async def update_gauges_periodically(db_session_factory, interval_seconds: int =
             async for db in db_session_factory():
                 # Активные сессии (всего)
                 total_active_query = select(func.count(ReadingSession.id)).where(
-                    ReadingSession.is_active == True  # noqa: E712
+                    ReadingSession.is_active.is_(True)
                 )
                 total_active_result = await db.execute(total_active_query)
                 total_active = total_active_result.scalar() or 0
@@ -195,7 +191,7 @@ async def update_gauges_periodically(db_session_factory, interval_seconds: int =
                     ReadingSession.device_type,
                     func.count(ReadingSession.id).label('count')
                 ).where(
-                    ReadingSession.is_active == True  # noqa: E712
+                    ReadingSession.is_active.is_(True)
                 ).group_by(ReadingSession.device_type)
 
                 device_result = await db.execute(device_query)
@@ -204,7 +200,7 @@ async def update_gauges_periodically(db_session_factory, interval_seconds: int =
                 # Заброшенные сессии (активные > 24 часа)
                 threshold = datetime.now(timezone.utc) - timedelta(hours=24)
                 abandoned_query = select(func.count(ReadingSession.id)).where(
-                    ReadingSession.is_active == True,  # noqa: E712
+                    ReadingSession.is_active.is_(True),
                     ReadingSession.started_at < threshold
                 )
                 abandoned_result = await db.execute(abandoned_query)
@@ -212,7 +208,7 @@ async def update_gauges_periodically(db_session_factory, interval_seconds: int =
 
                 # Одновременные пользователи
                 users_query = select(func.count(func.distinct(ReadingSession.user_id))).where(
-                    ReadingSession.is_active == True  # noqa: E712
+                    ReadingSession.is_active.is_(True)
                 )
                 users_result = await db.execute(users_query)
                 concurrent_users = users_result.scalar() or 0
@@ -223,7 +219,6 @@ async def update_gauges_periodically(db_session_factory, interval_seconds: int =
                 update_concurrent_users_gauge(concurrent_users)
 
                 # Обновляем по device_type
-                from .metrics import active_sessions_count
                 for device_type, count in device_stats.items():
                     active_sessions_count.labels(device_type=device_type).set(count)
 

@@ -128,9 +128,17 @@ export const adminAPI = {
   // Queue management
   async getQueueStatus(): Promise<{
     is_parsing_active: boolean;
-    current_parsing: any;
+    current_parsing: {
+      book_id: string;
+      book_title: string;
+      started_at: string;
+    } | null;
     queue_size: number;
-    queue_items: any[];
+    queue_items: Array<{
+      book_id: string;
+      book_title: string;
+      priority: number;
+    }>;
     error?: string;
   }> {
     return apiClient.get('/admin/queue-status');

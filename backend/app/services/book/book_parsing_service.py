@@ -12,7 +12,7 @@ Single Responsibility Principle:
 Не занимается CRUD операциями книг или статистикой.
 """
 
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from uuid import UUID
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +22,9 @@ from ...models.book import Book
 from ...models.chapter import Chapter
 from ...models.description import Description, DescriptionType
 from ...services.multi_nlp_manager import multi_nlp_manager
+
+if TYPE_CHECKING:
+    from .book_service import BookService
 
 
 class BookParsingService:
@@ -223,7 +226,7 @@ class BookParsingService:
         parsed_chapters_result = await db.execute(
             select(func.count(Chapter.id))
             .where(Chapter.book_id == book_id)
-            .where(Chapter.is_description_parsed == True)
+            .where(Chapter.is_description_parsed.is_(True))
         )
         parsed_chapters = parsed_chapters_result.scalar() or 0
 

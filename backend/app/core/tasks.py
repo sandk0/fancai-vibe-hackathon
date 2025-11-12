@@ -248,6 +248,20 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
         book.parsing_progress = 100
         await db.commit()
 
+        # КРИТИЧЕСКИ ВАЖНО: Инвалидируем кэш списка книг пользователя
+        # чтобы frontend получил актуальный is_processing=False
+        try:
+            from app.core.cache import cache_manager
+            print(f"[CACHE] Invalidating book list cache for user {book.user_id}")
+            # Используем pattern-based deletion для удаления ВСЕХ вариантов пагинации
+            # Это намного эффективнее чем цикл с 30 итерациями
+            pattern = f"user:{book.user_id}:books:*"
+            deleted_count = await cache_manager.delete_pattern(pattern)
+            print(f"[CACHE] Book list cache invalidated successfully after parsing completion ({deleted_count} keys deleted)")
+        except Exception as e:
+            print(f"[CACHE ERROR] Failed to invalidate cache: {str(e)}")
+            # Не критичная ошибка, продолжаем
+
         result = {
             "book_id": str(book_id),
             "status": "completed",

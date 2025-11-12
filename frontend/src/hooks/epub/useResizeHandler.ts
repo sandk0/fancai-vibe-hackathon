@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useResizeHandler - Handles rendition resize events
  *
@@ -35,7 +36,7 @@
  */
 
 import { useEffect, useRef } from 'react';
-import type { Rendition } from 'epubjs';
+import type { Rendition } from '@/types/epub';
 
 interface UseResizeHandlerOptions {
   rendition: Rendition | null;

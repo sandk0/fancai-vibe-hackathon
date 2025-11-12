@@ -8,6 +8,7 @@
  * - Debounced updates (configurable delay)
  * - Automatic save on page close/unmount
  * - Error handling with retry logic
+ * - Invalidates React Query cache on unmount (FIX #3)
  *
  * @param bookId - Book identifier
  * @param currentCFI - Current CFI position
@@ -27,6 +28,7 @@
  */
 
 import { useEffect, useRef, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface UseProgressSyncOptions {
   bookId: string;
@@ -49,6 +51,7 @@ export const useProgressSync = ({
   debounceMs = 5000,
   enabled = true,
 }: UseProgressSyncOptions): void => {
+  const queryClient = useQueryClient();
   const timeoutRef = useRef<NodeJS.Timeout>();
   const lastSavedRef = useRef<{
     cfi: string;
@@ -179,7 +182,22 @@ export const useProgressSync = ({
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
-      saveImmediate();
+
+      // FIX: Save progress asynchronously and invalidate cache AFTER save completes
+      // This prevents race condition where BookPage fetches old data before save completes
+      saveImmediate().then(() => {
+        // Small delay to ensure backend has processed the save
+        setTimeout(() => {
+          console.log('🔄 [useProgressSync] Invalidating book query for fresh progress data');
+          queryClient.invalidateQueries({ queryKey: ['book', bookId] });
+        }, 200);
+      }).catch(err => {
+        console.error('❌ [useProgressSync] Error saving progress on unmount:', err);
+        // Still invalidate to prevent stale data
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ['book', bookId] });
+        }, 200);
+      });
     };
-  }, [enabled, currentCFI, progress, scrollOffset, currentChapter, bookId, saveImmediate]);
+  }, [enabled, currentCFI, progress, scrollOffset, currentChapter, bookId, saveImmediate, queryClient]);
 };

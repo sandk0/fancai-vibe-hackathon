@@ -1,3 +1,6 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable react-refresh/only-export-components */
+ 
 import React from 'react';
 import { useAuthStore } from '@/stores/auth';
 import { useUIStore } from '@/stores/ui';
@@ -16,7 +19,7 @@ export type WebSocketEventType =
 
 export interface WebSocketMessage {
   type: WebSocketEventType;
-  data: any;
+  data: unknown;
   timestamp: string;
   user_id?: string;
 }
@@ -181,7 +184,7 @@ class WebSocketService {
     }
   }
 
-  send(message: any): void {
+  send(message: unknown): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
     } else {
@@ -237,7 +240,7 @@ export const useWebSocket = () => {
   return {
     connect: (token: string) => websocketService.connect(token),
     disconnect: () => websocketService.disconnect(),
-    send: (message: any) => websocketService.send(message),
+    send: (message: unknown) => websocketService.send(message),
     isConnected: websocketService.isWebSocketConnected(),
     connectionState,
   };
@@ -259,7 +262,7 @@ export const useAutoWebSocket = () => {
       if (webSocket.isConnected) {
         webSocket.disconnect();
       }
-    };
+    };  
   }, [user, tokens?.access_token]);
   
   return webSocket;

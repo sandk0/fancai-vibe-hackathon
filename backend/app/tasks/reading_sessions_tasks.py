@@ -7,9 +7,8 @@ Celery задачи для управления reading sessions в BookReader A
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from typing import List
 from sqlalchemy import select, and_, func
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.celery_app import celery_app
 from app.core.database import AsyncSessionLocal
@@ -116,7 +115,7 @@ async def _close_abandoned_sessions_impl(deadline: datetime) -> int:
             # Находим все активные сессии старше deadline
             query = select(ReadingSession).where(
                 and_(
-                    ReadingSession.is_active == True,
+                    ReadingSession.is_active.is_(True),
                     ReadingSession.started_at < deadline,
                     ReadingSession.ended_at.is_(None),
                 )
@@ -222,7 +221,7 @@ async def _get_cleanup_statistics_impl(hours: int) -> dict:
             # Количество закрытых сессий за период
             closed_query = select(func.count(ReadingSession.id)).where(
                 and_(
-                    ReadingSession.is_active == False,
+                    ReadingSession.is_active.is_(False),
                     ReadingSession.ended_at >= time_threshold,
                     ReadingSession.ended_at.is_not(None),
                 )
@@ -231,7 +230,7 @@ async def _get_cleanup_statistics_impl(hours: int) -> dict:
 
             # Количество активных сессий
             active_query = select(func.count(ReadingSession.id)).where(
-                ReadingSession.is_active == True
+                ReadingSession.is_active.is_(True)
             )
             total_active = await db.scalar(active_query) or 0
 
@@ -240,7 +239,7 @@ async def _get_cleanup_statistics_impl(hours: int) -> dict:
                 func.avg(ReadingSession.duration_minutes)
             ).where(
                 and_(
-                    ReadingSession.is_active == False,
+                    ReadingSession.is_active.is_(False),
                     ReadingSession.ended_at >= time_threshold,
                     ReadingSession.ended_at.is_not(None),
                 )
@@ -250,7 +249,7 @@ async def _get_cleanup_statistics_impl(hours: int) -> dict:
             # Количество сессий без прогресса (end_position == start_position)
             no_progress_query = select(func.count(ReadingSession.id)).where(
                 and_(
-                    ReadingSession.is_active == False,
+                    ReadingSession.is_active.is_(False),
                     ReadingSession.ended_at >= time_threshold,
                     ReadingSession.end_position == ReadingSession.start_position,
                 )

@@ -10,13 +10,11 @@ Processing & status endpoints для работы с книгами.
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any
-from uuid import UUID
 
 from ...core.database import get_database_session
 from ...core.auth import get_current_active_user
 from ...core.dependencies import get_user_book
 from ...core.exceptions import ParsingStartException, ParsingStatusException
-from ...services.book import book_service
 from ...models.user import User
 from ...models.book import Book
 from ...core.tasks import process_book_task

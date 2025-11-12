@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -39,7 +40,7 @@ const LoginPage: React.FC = () => {
       await login(data.email, data.password);
       notify.success(t('auth.welcomeBack'), t('auth.loginSuccess'));
       navigate(from, { replace: true });
-    } catch (error: any) {
+    } catch (error: Error | { response?: { data?: { detail?: string } } }) {
       notify.error(
         t('auth.loginFailed'),
         error.message || t('auth.checkCredentials')

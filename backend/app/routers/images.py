@@ -72,6 +72,53 @@ async def get_generation_status(
     }
 
 
+@router.get("/images/user/stats")
+async def get_user_images_stats(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_database_session),
+) -> Dict[str, Any]:
+    """
+    Получение статистики изображений и описаний пользователя.
+
+    Подсчитывает:
+    - Реальное количество сгенерированных изображений
+    - Общее количество найденных описаний
+
+    Args:
+        current_user: Текущий пользователь
+        db: Сессия базы данных
+
+    Returns:
+        {
+            "total_images_generated": 42,
+            "total_descriptions_found": 156
+        }
+    """
+    # Подсчитываем реальное количество сгенерированных изображений
+    images_count_query = await db.execute(
+        select(func.count(GeneratedImage.id))
+        .join(Description, GeneratedImage.description_id == Description.id)
+        .join(Chapter, Description.chapter_id == Chapter.id)
+        .join(Book, Chapter.book_id == Book.id)
+        .where(Book.user_id == current_user.id)
+    )
+    total_images = images_count_query.scalar() or 0
+
+    # Подсчитываем общее количество найденных описаний
+    descriptions_count_query = await db.execute(
+        select(func.count(Description.id))
+        .join(Chapter, Description.chapter_id == Chapter.id)
+        .join(Book, Chapter.book_id == Book.id)
+        .where(Book.user_id == current_user.id)
+    )
+    total_descriptions = descriptions_count_query.scalar() or 0
+
+    return {
+        "total_images_generated": total_images,
+        "total_descriptions_found": total_descriptions,
+    }
+
+
 @router.post("/images/generate/description/{description_id}")
 async def generate_image_for_description(
     description_id: UUID,

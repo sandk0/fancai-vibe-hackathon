@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useAutoParser - Custom hook for automatic description parsing
  *
@@ -34,7 +35,7 @@ const POLL_INTERVAL_MS = 10000; // 10 seconds
 
 export const useAutoParser = (
   bookId: string | undefined,
-  chapter: any,
+  chapter: unknown,
   refetch: () => Promise<any>
 ): UseAutoParserReturn => {
   const [isAutoParsing, setIsAutoParsing] = useState(false);

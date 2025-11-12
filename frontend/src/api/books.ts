@@ -6,6 +6,7 @@ import type {
   BookDetail,
   BookUploadResponse,
   Chapter,
+  ChapterInfo,
   PaginationParams,
   ReadingProgress,
   NLPAnalysis,
@@ -25,7 +26,7 @@ export const booksAPI = {
   },
 
   // Book management
-  async getBooks(params?: PaginationParams): Promise<{
+  async getBooks(params?: PaginationParams & { sort_by?: string }): Promise<{
     books: Book[];
     total: number;
     skip: number;
@@ -34,7 +35,8 @@ export const booksAPI = {
     const searchParams = new URLSearchParams();
     if (params?.skip) searchParams.append('skip', params.skip.toString());
     if (params?.limit) searchParams.append('limit', params.limit.toString());
-    
+    if (params?.sort_by) searchParams.append('sort_by', params.sort_by);
+
     const url = `/books${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
     return apiClient.get(url);
   },
@@ -45,17 +47,25 @@ export const booksAPI = {
 
   async uploadBook(
     formData: FormData,
-    config?: { onUploadProgress?: (progressEvent: any) => void }
+    config?: { onUploadProgress?: (progressEvent: { loaded: number; total?: number }) => void }
   ): Promise<BookUploadResponse> {
-    // Не устанавливаем Content-Type вручную - позволяем браузеру установить с boundary
-    const response = await apiClient.client.post('/books/upload', formData, {
-      ...config,
-      headers: {
-        // Удаляем Content-Type чтобы браузер сам установил multipart/form-data с boundary
-        'Content-Type': undefined,
-      },
-    });
-    return response.data;
+    console.log('📡 [API] uploadBook called');
+    console.log('📡 [API] FormData has entries:', Array.from(formData.entries()).length);
+    console.log('📡 [API] Config:', config);
+
+    // ВАЖНО: НЕ устанавливаем Content-Type вообще!
+    // Когда axios видит FormData, он автоматически удаляет Content-Type
+    // и позволяет браузеру установить правильный multipart/form-data с boundary
+    try {
+      console.log('📡 [API] Making POST request to /books/upload...');
+      const response = await apiClient.client.post('/books/upload', formData, config);
+      console.log('📡 [API] Response received:', response.status, response.statusText);
+      console.log('📡 [API] Response data:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('📡 [API] Upload request failed:', error);
+      throw error;
+    }
   },
 
   async deleteBook(bookId: string): Promise<{ message: string }> {
@@ -81,7 +91,7 @@ export const booksAPI = {
     chapterNumber: number,
     extractNew: boolean = false
   ): Promise<{
-    chapter_info: any;
+    chapter_info: ChapterInfo;
     nlp_analysis: NLPAnalysis;
     message: string;
   }> {

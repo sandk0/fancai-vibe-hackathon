@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useCFITracking - Custom hook for tracking EPUB CFI positions and progress
  *
@@ -37,11 +38,18 @@
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import type { Rendition, Book } from 'epubjs';
+import type { Rendition, Book, EpubLocationEvent } from '@/types/epub';
+
+interface EpubLocations {
+  locationFromCfi(cfi: string): number;
+  cfiFromLocation(location: number): string;
+  total: number;
+  currentLocation(target: string): number;
+}
 
 interface UseCFITrackingOptions {
   rendition: Rendition | null;
-  locations: any | null; // epub.js doesn't export Locations type
+  locations: EpubLocations | null;
   book: Book | null;
   onLocationChange?: (cfi: string, progress: number, scrollOffset: number) => void;
 }
@@ -54,6 +62,7 @@ interface UseCFITrackingReturn {
   totalPages: number | null;
   goToCFI: (cfi: string, scrollOffset?: number) => Promise<void>;
   skipNextRelocated: () => void;
+  setInitialProgress: (cfi: string, progressPercent: number) => void;
 }
 
 export const useCFITracking = ({
@@ -67,6 +76,18 @@ export const useCFITracking = ({
   const [scrollOffsetPercent, setScrollOffsetPercent] = useState<number>(0);
 
   const restoredCfiRef = useRef<string | null>(null);
+
+  /**
+   * Set initial progress manually (used during position restoration)
+   */
+  const setInitialProgress = useCallback((cfi: string, progressPercent: number) => {
+    console.log('🎯 [useCFITracking] Setting initial progress:', {
+      cfi: cfi.substring(0, 50) + '...',
+      progress: progressPercent + '%',
+    });
+    setCurrentCFI(cfi);
+    setProgress(progressPercent);
+  }, []);
 
   /**
    * Skip the next relocated event (used during restoration)
@@ -100,7 +121,7 @@ export const useCFITracking = ({
 
         await new Promise(resolve => setTimeout(resolve, 200));
 
-        const contents = rendition.getContents() as any;
+        const contents = rendition.getContents();
         if (contents && contents.length > 0) {
           const iframe = contents[0];
           const doc = iframe.document;
@@ -139,7 +160,7 @@ export const useCFITracking = ({
     if (!rendition) return 0;
 
     try {
-      const contents = rendition.getContents() as any;
+      const contents = rendition.getContents();
       if (!contents || contents.length === 0) return 0;
 
       const iframe = contents[0];
@@ -167,7 +188,7 @@ export const useCFITracking = ({
   useEffect(() => {
     if (!rendition || !locations || !book) return;
 
-    const handleRelocated = (location: any) => {
+    const handleRelocated = (location: EpubLocationEvent) => {
       const cfi = location.start.cfi;
 
       // Skip if this is the CFI we just restored
@@ -177,7 +198,7 @@ export const useCFITracking = ({
       }
 
       // Check if within 3% threshold (epub.js rounding)
-      if (restoredCfiRef.current && (locations as any).total > 0) {
+      if (restoredCfiRef.current && locations.total > 0) {
         const restoredPercent = Math.round((locations.percentageFromCfi(restoredCfiRef.current) || 0) * 100);
         const currentPercent = Math.round((locations.percentageFromCfi(cfi) || 0) * 100);
 
@@ -200,7 +221,7 @@ export const useCFITracking = ({
         progressPercent = Math.round((currentLocation || 0) * 100);
       } else {
         // Fallback to currentLocation()
-        const current = rendition.currentLocation() as any;
+        const current = rendition.currentLocation();
         if (current && current.start && current.start.percentage !== undefined) {
           progressPercent = Math.round(current.start.percentage * 100);
         }
@@ -246,7 +267,7 @@ export const useCFITracking = ({
    * // currentPage might be 42 (out of 500 total pages)
    */
   const currentPage = useMemo(() => {
-    if (!locations || !currentCFI || !(locations as any).total) return null;
+    if (!locations || !currentCFI || !locations.total) return null;
 
     try {
       // locationFromCfi returns the page number (1-based index)
@@ -254,7 +275,7 @@ export const useCFITracking = ({
       const validPage = pageNumber !== -1 ? pageNumber : null;
 
       if (validPage !== null) {
-        console.log('📄 [useCFITracking] Current page:', validPage, '/', (locations as any).total);
+        console.log('📄 [useCFITracking] Current page:', validPage, '/', locations.total);
       }
 
       return validPage;
@@ -277,9 +298,9 @@ export const useCFITracking = ({
    * // totalPages might be 1523
    */
   const totalPages = useMemo(() => {
-    if (!locations || !(locations as any).total) return null;
+    if (!locations || !locations.total) return null;
 
-    const total = (locations as any).total;
+    const total = locations.total;
     console.log('📚 [useCFITracking] Total pages available:', total);
 
     return total;
@@ -293,5 +314,6 @@ export const useCFITracking = ({
     totalPages,
     goToCFI,
     skipNextRelocated,
+    setInitialProgress,
   };
 };

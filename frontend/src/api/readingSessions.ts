@@ -221,7 +221,13 @@ const PENDING_SESSIONS_KEY = 'bookreader_pending_sessions';
 
 interface PendingSession {
   type: 'start' | 'update' | 'end';
-  data: any;
+  data: {
+    bookId?: string;
+    startPosition?: number;
+    sessionId?: string;
+    endPosition?: number;
+    deviceType?: string;
+  };
   timestamp: string;
 }
 
@@ -267,7 +273,7 @@ function createMockSession(
 /**
  * Save pending session to localStorage
  */
-function savePendingSession(type: 'start' | 'update' | 'end', data: any): void {
+function savePendingSession(type: 'start' | 'update' | 'end', data: PendingSession['data']): void {
   try {
     const pending = getPendingSessions();
     pending.push({

@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from uuid import UUID
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -22,7 +22,6 @@ class AuthService:
 
     def __init__(self):
         """Инициализация сервиса аутентификации."""
-        self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
         self.algorithm = settings.ALGORITHM
         self.secret_key = settings.SECRET_KEY
         self.access_token_expire_minutes = settings.ACCESS_TOKEN_EXPIRE_MINUTES
@@ -39,7 +38,10 @@ class AuthService:
         Returns:
             True если пароль верный
         """
-        return self.pwd_context.verify(plain_password, hashed_password)
+        return bcrypt.checkpw(
+            plain_password.encode('utf-8'),
+            hashed_password.encode('utf-8')
+        )
 
     def get_password_hash(self, password: str) -> str:
         """
@@ -50,8 +52,24 @@ class AuthService:
 
         Returns:
             Хешированный пароль
+
+        Note:
+            Bcrypt has a 72-byte limitation. If password exceeds this when
+            encoded as UTF-8, it will be truncated to 72 bytes.
         """
-        return self.pwd_context.hash(password)
+        # Bcrypt limitation: maximum 72 bytes
+        # Truncate password to 72 bytes if needed (this should be prevented by validation)
+        password_bytes = password.encode('utf-8')
+        if len(password_bytes) > 72:
+            # Truncate to 72 bytes, but ensure we don't cut in the middle of a multi-byte character
+            password_bytes = password_bytes[:72]
+
+        # Generate salt and hash password
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password_bytes, salt)
+
+        # Return as string (bcrypt returns bytes)
+        return hashed.decode('utf-8')
 
     def create_access_token(self, data: Dict[str, Any]) -> str:
         """

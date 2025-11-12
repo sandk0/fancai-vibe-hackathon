@@ -1,6 +1,6 @@
 // API Types for BookReader AI Frontend
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data?: T;
   message?: string;
   error?: string;
@@ -292,11 +292,18 @@ export interface UserSubscriptionInfo {
   };
 }
 
+export interface DatabaseTestResponse {
+  status: string;
+  message: string;
+  connection_info?: Record<string, unknown>;
+  error?: string;
+}
+
 // Error Types
 export interface ApiError {
   error: string;
   message: string;
-  details?: any;
+  details?: Record<string, unknown>;
   timestamp?: string;
 }
 

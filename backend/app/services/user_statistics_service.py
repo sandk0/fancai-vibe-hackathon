@@ -10,9 +10,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, cast, Date
 from datetime import datetime, timedelta, timezone
-from typing import List, Dict, Optional
+from typing import List, Dict
 from uuid import UUID
-import calendar
 
 from ..models.reading_session import ReadingSession
 from ..models.book import Book, ReadingProgress

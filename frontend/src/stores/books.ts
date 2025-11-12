@@ -1,3 +1,4 @@
+ 
 // Books Store
 
 import { create } from 'zustand';
@@ -13,35 +14,67 @@ export const useBooksStore = create<BooksState>((set, get) => ({
   error: null,
   totalBooks: 0,
   currentPage: 1,
-  booksPerPage: 12,
+  booksPerPage: 10, // PAGINATION: 10 books per page
   hasMore: true,
+  sortBy: 'created_desc', // DEFAULT SORT: newest first
 
   // Actions
   refreshBooks: async () => {
-    return get().fetchBooks(get().currentPage, get().booksPerPage);
+    return get().fetchBooks(get().currentPage, get().booksPerPage, get().sortBy);
   },
-  fetchBooks: async (page = 1, limit = 12) => {
+  fetchBooks: async (page = 1, limit = 10, sortBy = 'created_desc') => {
     set({ isLoading: true, error: null });
 
     try {
       const skip = (page - 1) * limit;
-      const response = await booksAPI.getBooks({ skip, limit });
+      const response = await booksAPI.getBooks({ skip, limit, sort_by: sortBy });
+
+      // Simple pagination: always replace books with current page data
+      const hasMore = skip + response.books.length < response.total;
 
       set({
-        books: page === 1 ? response.books : [...get().books, ...response.books],
+        books: response.books,
         totalBooks: response.total,
         currentPage: page,
         booksPerPage: limit,
-        hasMore: response.books.length === limit,
+        sortBy,
+        hasMore,
         isLoading: false,
       });
-    } catch (error: any) {
-      set({ 
-        isLoading: false, 
-        error: error.message || 'Failed to fetch books' 
+    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
+      set({
+        isLoading: false,
+        error: error.message || 'Failed to fetch books'
       });
       throw error;
     }
+  },
+
+  // Pagination helper methods
+  goToPage: async (page: number) => {
+    const { booksPerPage, sortBy } = get();
+    await get().fetchBooks(page, booksPerPage, sortBy);
+  },
+
+  nextPage: async () => {
+    const { currentPage, hasMore } = get();
+    if (hasMore) {
+      await get().goToPage(currentPage + 1);
+    }
+  },
+
+  prevPage: async () => {
+    const { currentPage } = get();
+    if (currentPage > 1) {
+      await get().goToPage(currentPage - 1);
+    }
+  },
+
+  // Sort method
+  setSortBy: async (sortBy: string) => {
+    const { booksPerPage } = get();
+    // When changing sort, go back to page 1
+    await get().fetchBooks(1, booksPerPage, sortBy);
   },
 
   fetchBook: async (bookId: string) => {
@@ -53,7 +86,7 @@ export const useBooksStore = create<BooksState>((set, get) => ({
         currentBook: book,
         isLoading: false 
       });
-    } catch (error: any) {
+    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
       set({ 
         isLoading: false, 
         error: error.message || 'Failed to fetch book' 
@@ -72,7 +105,7 @@ export const useBooksStore = create<BooksState>((set, get) => ({
         isLoading: false 
       });
       return response;
-    } catch (error: any) {
+    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
       set({ 
         isLoading: false, 
         error: error.message || 'Failed to fetch chapter' 
@@ -97,15 +130,16 @@ export const useBooksStore = create<BooksState>((set, get) => ({
         }
       });
 
-      // Refresh books list
+      // Reload first page to show newly uploaded book
+      console.log('[BOOKS STORE] Reloading book list after upload...');
       await get().fetchBooks(1, get().booksPerPage);
 
       set({ isLoading: false });
       return response;
-    } catch (error: any) {
-      set({ 
-        isLoading: false, 
-        error: error.message || 'Failed to upload book' 
+    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
+      set({
+        isLoading: false,
+        error: error.message || 'Failed to upload book'
       });
       throw error;
     }
@@ -124,7 +158,7 @@ export const useBooksStore = create<BooksState>((set, get) => ({
         currentBook: get().currentBook?.id === bookId ? null : get().currentBook,
         isLoading: false,
       });
-    } catch (error: any) {
+    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
       set({ 
         isLoading: false, 
         error: error.message || 'Failed to delete book' 
@@ -161,7 +195,7 @@ export const useBooksStore = create<BooksState>((set, get) => ({
       });
 
       return response;
-    } catch (error: any) {
+    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
       console.error('Failed to update reading progress:', error);
       throw error;
     }

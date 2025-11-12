@@ -4,7 +4,6 @@ Celery configuration for BookReader AI.
 """
 
 from celery import Celery
-from celery.schedules import crontab
 import os
 from app.core.config import settings
 

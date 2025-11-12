@@ -13,7 +13,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Rendition } from 'epubjs';
+import type { Rendition } from '@/types/epub';
 
 export type ThemeName = 'light' | 'dark' | 'sepia';
 
