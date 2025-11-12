@@ -26,6 +26,18 @@ def book_service():
 
 
 @pytest.fixture
+def progress_service():
+    """Fixture для BookProgressService."""
+    return BookProgressService()
+
+
+@pytest.fixture
+def statistics_service():
+    """Fixture для BookStatisticsService."""
+    return BookStatisticsService()
+
+
+@pytest.fixture
 def parsed_book_data():
     """Fixture для ParsedBook данных."""
     metadata = BookMetadata(
@@ -366,14 +378,14 @@ class TestReadingProgress:
     @pytest.mark.asyncio
     async def test_update_reading_progress(
         self,
-        book_service: BookService,
+        progress_service: BookProgressService,
         db_session: AsyncSession,
         test_user: User,
         test_book: Book
     ):
         """Тест обновления прогресса чтения."""
         # Параметр называется chapter_number, а не current_chapter
-        progress = await book_service.update_reading_progress(
+        progress = await progress_service.update_reading_progress(
             db=db_session,
             user_id=test_user.id,
             book_id=test_book.id,
@@ -391,14 +403,14 @@ class TestReadingProgress:
     @pytest.mark.asyncio
     async def test_get_reading_progress(
         self,
-        book_service: BookService,
+        progress_service: BookProgressService,
         db_session: AsyncSession,
         test_user: User,
         test_book: Book
     ):
         """Тест получения прогресса чтения через модель."""
         # Создаем прогресс
-        await book_service.update_reading_progress(
+        await progress_service.update_reading_progress(
             db=db_session,
             user_id=test_user.id,
             book_id=test_book.id,
@@ -426,13 +438,13 @@ class TestReadingProgress:
     @pytest.mark.asyncio
     async def test_reading_progress_percentage_calculation(
         self,
-        book_service: BookService,
+        progress_service: BookProgressService,
         db_session: AsyncSession,
         test_user: User,
         test_book: Book
     ):
         """Тест расчета процента прогресса чтения."""
-        progress = await book_service.update_reading_progress(
+        progress = await progress_service.update_reading_progress(
             db=db_session,
             user_id=test_user.id,
             book_id=test_book.id,
@@ -524,14 +536,14 @@ class TestStatistics:
     @pytest.mark.asyncio
     async def test_get_book_statistics(
         self,
-        book_service: BookService,
+        statistics_service: BookStatisticsService,
         db_session: AsyncSession,
         test_user: User,
         test_book: Book
     ):
         """Тест получения статистики книг."""
         # Метод называется get_book_statistics (не reading_statistics)
-        stats = await book_service.get_book_statistics(
+        stats = await statistics_service.get_book_statistics(
             db_session,
             test_user.id
         )
@@ -543,13 +555,13 @@ class TestStatistics:
     @pytest.mark.asyncio
     async def test_statistics_calculates_reading_time(
         self,
-        book_service: BookService,
+        statistics_service: BookStatisticsService,
         db_session: AsyncSession,
         test_user: User
     ):
         """Тест расчета времени чтения в статистике."""
         # Метод называется get_book_statistics
-        stats = await book_service.get_book_statistics(
+        stats = await statistics_service.get_book_statistics(
             db_session,
             test_user.id
         )
@@ -591,7 +603,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_update_progress_for_nonexistent_book(
         self,
-        book_service: BookService,
+        progress_service: BookProgressService,
         db_session: AsyncSession,
         test_user: User
     ):
@@ -600,7 +612,7 @@ class TestErrorHandling:
 
         # Должен выбросить ValueError с сообщением "Book with id ... not found"
         with pytest.raises(ValueError, match="Book with id .* not found"):
-            await book_service.update_reading_progress(
+            await progress_service.update_reading_progress(
                 db=db_session,
                 user_id=test_user.id,
                 book_id=nonexistent_book_id,

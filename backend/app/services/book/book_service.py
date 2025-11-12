@@ -127,7 +127,7 @@ class BookService:
         user_id: UUID,
         skip: int = 0,
         limit: int = 50,
-        sort_by: str = "created_desc"
+        sort_by: str = "created_desc",
     ) -> List[Book]:
         """
         Получает список книг пользователя БЕЗ прогресса чтения.
@@ -303,8 +303,11 @@ class BookService:
             print(f"Warning: Could not delete cover image {book.cover_image}: {e}")
 
         # Удаляем запись из БД (cascade удалит связанные записи)
-        db.delete(book)  # delete() не async в AsyncSession
+        await db.delete(book)
         await db.commit()
+
+        # Очищаем кэш сессии чтобы последующие запросы видели удаление
+        db.expire_all()
 
         # Invalidate all cache related to this book
         await cache_manager.delete_pattern(f"book:{book_id}:*")
