@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { Eye, EyeOff, BookOpen } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
 import { notify } from '@/stores/ui';
+import { getErrorMessage } from '@/utils/errors';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import { cn } from '@/utils/cn';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -40,10 +41,10 @@ const LoginPage: React.FC = () => {
       await login(data.email, data.password);
       notify.success(t('auth.welcomeBack'), t('auth.loginSuccess'));
       navigate(from, { replace: true });
-    } catch (error: Error | { response?: { data?: { detail?: string } } }) {
+    } catch (error) {
       notify.error(
         t('auth.loginFailed'),
-        error.message || t('auth.checkCredentials')
+        getErrorMessage(error, t('auth.checkCredentials'))
       );
     }
   };

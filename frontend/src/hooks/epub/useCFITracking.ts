@@ -38,14 +38,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import type { Rendition, Book, EpubLocationEvent } from '@/types/epub';
-
-interface EpubLocations {
-  locationFromCfi(cfi: string): number;
-  cfiFromLocation(location: number): string;
-  total: number;
-  currentLocation(target: string): number;
-}
+import type { Rendition, Book, EpubLocationEvent, EpubLocations } from '@/types/epub';
 
 interface UseCFITrackingOptions {
   rendition: Rendition | null;
@@ -247,10 +240,10 @@ export const useCFITracking = ({
       }
     };
 
-    rendition.on('relocated', handleRelocated);
+    rendition.on('relocated', handleRelocated as (...args: unknown[]) => void);
 
     return () => {
-      rendition.off('relocated', handleRelocated);
+      rendition.off('relocated', handleRelocated as (...args: unknown[]) => void);
     };
   }, [rendition, locations, book, onLocationChange, calculateScrollOffset]);
 

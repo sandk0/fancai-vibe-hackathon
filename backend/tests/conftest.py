@@ -1,7 +1,7 @@
 import asyncio
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from unittest.mock import AsyncMock
@@ -70,7 +70,9 @@ async def override_get_database(db_session):
 @pytest_asyncio.fixture(scope="function")
 async def client(override_get_database):
     """Create test HTTP client."""
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         yield ac
 
 
@@ -106,7 +108,7 @@ def sample_user_data():
     """Sample user data for testing."""
     return {
         "email": "test@example.com",
-        "password": "testpassword123",
+        "password": "SecureP@ss0w9rd!",  # Meets all requirements: 12+ chars, uppercase, lowercase, non-sequential digits, special chars
         "full_name": "Test User"
     }
 

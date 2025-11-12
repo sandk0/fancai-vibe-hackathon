@@ -253,7 +253,9 @@ def rate_limit(max_requests: int = 10, window_seconds: int = 60):
             if isinstance(response, JSONResponse):
                 response.headers["X-RateLimit-Limit"] = str(rate_info["limit"])
                 response.headers["X-RateLimit-Remaining"] = str(rate_info["remaining"])
-                response.headers["X-RateLimit-Reset"] = str(rate_info["reset_in_seconds"])
+                response.headers["X-RateLimit-Reset"] = str(
+                    rate_info["reset_in_seconds"]
+                )
 
             return response
 

@@ -215,7 +215,8 @@ class ReadingSessionService:
                 joinedload(ReadingSession.book),  # Eager load book
             )
             .where(
-                ReadingSession.user_id == user_id, ReadingSession.is_active == True  # noqa: E712
+                ReadingSession.user_id == user_id,
+                ReadingSession.is_active == True,  # noqa: E712
             )
         )
 
@@ -248,9 +249,7 @@ class ReadingSessionService:
                 joinedload(ReadingSession.book),
                 joinedload(ReadingSession.user),
             )
-            .where(
-                ReadingSession.id == session_id, ReadingSession.user_id == user_id
-            )
+            .where(ReadingSession.id == session_id, ReadingSession.user_id == user_id)
         )
 
         result = await db.execute(query)
@@ -309,7 +308,12 @@ class ReadingSessionService:
         for reading_date in reading_dates:
             if reading_date == expected_date:
                 temp_streak += 1
-                current_streak = temp_streak if expected_date == today or expected_date == today - timedelta(days=current_streak) else 0
+                current_streak = (
+                    temp_streak
+                    if expected_date == today
+                    or expected_date == today - timedelta(days=current_streak)
+                    else 0
+                )
                 longest_streak = max(longest_streak, temp_streak)
                 expected_date = expected_date - timedelta(days=1)
             elif reading_date < expected_date:
@@ -361,7 +365,9 @@ class ReadingSessionService:
 
         await db.commit()
 
-        logger.info(f"Cleaned up {count} old inactive sessions (older than {days_threshold} days)")
+        logger.info(
+            f"Cleaned up {count} old inactive sessions (older than {days_threshold} days)"
+        )
 
         return count
 

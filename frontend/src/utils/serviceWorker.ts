@@ -99,10 +99,11 @@ export function skipWaiting(): void {
 
 function handleServiceWorkerMessage(data: unknown): void {
   const { notify } = useUIStore.getState();
+  const messageData = data as Record<string, unknown>;
 
-  switch (data.type) {
+  switch (messageData.type) {
     case 'CACHE_UPDATED':
-      console.log('Cache updated:', data.cacheName);
+      console.log('Cache updated:', messageData.cacheName as string);
       break;
       
     case 'OFFLINE_FALLBACK':
@@ -125,9 +126,9 @@ function handleServiceWorkerMessage(data: unknown): void {
         'Your offline changes have been synced successfully.'
       );
       break;
-      
+
     default:
-      console.log('Unknown SW message:', data);
+      console.log('Unknown SW message:', messageData);
   }
 }
 

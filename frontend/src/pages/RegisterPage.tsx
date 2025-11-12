@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
 import { notify } from '@/stores/ui';
+import { getErrorMessage } from '@/utils/errors';
 import { cn } from '@/lib/utils';
 
 const registerSchema = z

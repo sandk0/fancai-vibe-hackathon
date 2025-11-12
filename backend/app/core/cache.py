@@ -75,7 +75,9 @@ class CacheManager:
 
         except Exception as e:
             logger.warning(f"⚠️ Redis initialization failed: {e}")
-            logger.warning("📊 Application will work without caching (fallback to database)")
+            logger.warning(
+                "📊 Application will work without caching (fallback to database)"
+            )
             self._is_available = False
 
     async def close(self):
@@ -118,10 +120,7 @@ class CacheManager:
             return None
 
     async def set(
-        self,
-        key: str,
-        value: Any,
-        ttl: Optional[Union[int, timedelta]] = None
+        self, key: str, value: Any, ttl: Optional[Union[int, timedelta]] = None
     ) -> bool:
         """
         Set value in cache with optional TTL.
@@ -236,10 +235,7 @@ class CacheManager:
             Dictionary with cache statistics
         """
         if not self._is_available or not self._redis:
-            return {
-                "available": False,
-                "error": "Redis not available"
-            }
+            return {"available": False, "error": "Redis not available"}
 
         try:
             info = await self._redis.info()
@@ -254,7 +250,9 @@ class CacheManager:
                 "available": True,
                 "keys_count": await self._redis.dbsize(),
                 "memory_used_mb": round(info.get("used_memory", 0) / 1024 / 1024, 2),
-                "memory_peak_mb": round(info.get("used_memory_peak", 0) / 1024 / 1024, 2),
+                "memory_peak_mb": round(
+                    info.get("used_memory_peak", 0) / 1024 / 1024, 2
+                ),
                 "hits": hits,
                 "misses": misses,
                 "hit_rate_percent": round(hit_rate, 2),
@@ -264,10 +262,7 @@ class CacheManager:
 
         except RedisError as e:
             logger.error(f"Redis INFO error: {e}")
-            return {
-                "available": False,
-                "error": str(e)
-            }
+            return {"available": False, "error": str(e)}
 
 
 # Global cache manager instance
@@ -313,6 +308,7 @@ def cache_result(
         async def get_book_metadata(book_id: UUID) -> dict:
             ...
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
@@ -334,6 +330,7 @@ def cache_result(
             return result
 
         return wrapper
+
     return decorator
 
 
@@ -349,6 +346,7 @@ def invalidate_cache(*patterns: str):
         async def update_book(book_id: UUID, user_id: UUID, data: dict):
             ...
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
@@ -365,6 +363,7 @@ def invalidate_cache(*patterns: str):
             return result
 
         return wrapper
+
     return decorator
 
 
@@ -375,18 +374,14 @@ CACHE_KEY_PATTERNS = {
     "book_chapters": "book:{book_id}:chapters",
     "book_list": "user:{user_id}:books:skip:{skip}:limit:{limit}",
     "book_toc": "book:{book_id}:toc",
-
     # Chapters
     "chapter_content": "book:{book_id}:chapter:{chapter_number}",
     "chapter_list": "book:{book_id}:chapters:list",
-
     # Reading Progress
     "user_progress": "user:{user_id}:progress:{book_id}",
-
     # Descriptions
     "book_descriptions": "book:{book_id}:descriptions",
     "chapter_descriptions": "book:{book_id}:chapter:{chapter_number}:descriptions",
-
     # Images
     "description_image": "description:{description_id}:image",
 }
@@ -394,11 +389,11 @@ CACHE_KEY_PATTERNS = {
 
 # Cache TTL configuration (in seconds)
 CACHE_TTL = {
-    "book_metadata": 3600,        # 1 hour
-    "book_chapters": 3600,         # 1 hour
-    "book_list": 10,               # 10 seconds (FREQUENTLY UPDATED - short TTL!)
-    "chapter_content": 3600,       # 1 hour
-    "user_progress": 300,          # 5 minutes (updated frequently)
-    "book_descriptions": 3600,     # 1 hour
-    "book_toc": 3600,              # 1 hour
+    "book_metadata": 3600,  # 1 hour
+    "book_chapters": 3600,  # 1 hour
+    "book_list": 10,  # 10 seconds (FREQUENTLY UPDATED - short TTL!)
+    "chapter_content": 3600,  # 1 hour
+    "user_progress": 300,  # 5 minutes (updated frequently)
+    "book_descriptions": 3600,  # 1 hour
+    "book_toc": 3600,  # 1 hour
 }

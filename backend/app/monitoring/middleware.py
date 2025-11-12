@@ -86,7 +86,7 @@ class ReadingSessionsMetricsMiddleware(BaseHTTPMiddleware):
             session_api_latency_seconds.labels(
                 endpoint=endpoint,
                 method=request.method,
-                status_code=str(response.status_code)
+                status_code=str(response.status_code),
             ).observe(duration)
 
             # Если это update endpoint, инкрементируем счетчик
@@ -102,17 +102,12 @@ class ReadingSessionsMetricsMiddleware(BaseHTTPMiddleware):
 
             # Записываем ошибку
             session_api_latency_seconds.labels(
-                endpoint=endpoint,
-                method=request.method,
-                status_code="500"
+                endpoint=endpoint, method=request.method, status_code="500"
             ).observe(duration)
 
             # Инкрементируем счетчик ошибок
             error_type = type(e).__name__
-            session_errors_total.labels(
-                operation=endpoint,
-                error_type=error_type
-            ).inc()
+            session_errors_total.labels(operation=endpoint, error_type=error_type).inc()
 
             raise
 
@@ -187,29 +182,33 @@ async def update_gauges_periodically(db_session_factory, interval_seconds: int =
                 total_active = total_active_result.scalar() or 0
 
                 # Активные сессии по device_type
-                device_query = select(
-                    ReadingSession.device_type,
-                    func.count(ReadingSession.id).label('count')
-                ).where(
-                    ReadingSession.is_active.is_(True)
-                ).group_by(ReadingSession.device_type)
+                device_query = (
+                    select(
+                        ReadingSession.device_type,
+                        func.count(ReadingSession.id).label("count"),
+                    )
+                    .where(ReadingSession.is_active.is_(True))
+                    .group_by(ReadingSession.device_type)
+                )
 
                 device_result = await db.execute(device_query)
-                device_stats = {row.device_type or 'unknown': row.count for row in device_result}
+                device_stats = {
+                    row.device_type or "unknown": row.count for row in device_result
+                }
 
                 # Заброшенные сессии (активные > 24 часа)
                 threshold = datetime.now(timezone.utc) - timedelta(hours=24)
                 abandoned_query = select(func.count(ReadingSession.id)).where(
                     ReadingSession.is_active.is_(True),
-                    ReadingSession.started_at < threshold
+                    ReadingSession.started_at < threshold,
                 )
                 abandoned_result = await db.execute(abandoned_query)
                 abandoned = abandoned_result.scalar() or 0
 
                 # Одновременные пользователи
-                users_query = select(func.count(func.distinct(ReadingSession.user_id))).where(
-                    ReadingSession.is_active.is_(True)
-                )
+                users_query = select(
+                    func.count(func.distinct(ReadingSession.user_id))
+                ).where(ReadingSession.is_active.is_(True))
                 users_result = await db.execute(users_query)
                 concurrent_users = users_result.scalar() or 0
 

@@ -124,7 +124,7 @@ export const useTextSelection = (
     };
 
     // Register event listeners
-    rendition.on('selected', handleSelected);
+    rendition.on('selected', handleSelected as (...args: unknown[]) => void);
     rendition.on('markClicked', handleMarkClicked);
     rendition.on('click', handleClick);
 
@@ -132,7 +132,7 @@ export const useTextSelection = (
 
     return () => {
       // Cleanup event listeners
-      rendition.off('selected', handleSelected);
+      rendition.off('selected', handleSelected as (...args: unknown[]) => void);
       rendition.off('markClicked', handleMarkClicked);
       rendition.off('click', handleClick);
       console.log('🧹 [useTextSelection] Event listeners removed');

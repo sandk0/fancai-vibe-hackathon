@@ -18,6 +18,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff, BookOpen, Mail, Lock, CheckCircle2, Sparkles } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
+import { getErrorMessage } from '@/utils/errors';
 import { notify } from '@/stores/ui';
 import { cn } from '@/lib/utils';
 

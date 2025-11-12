@@ -39,11 +39,12 @@ export const ParsingOverlay: React.FC<ParsingOverlayProps> = ({
         }
 
         // Обновляем прогресс
-        const currentProgress = status.progress || 0;
+        const statusData = status as { progress?: number; status?: string };
+        const currentProgress = statusData.progress || 0;
         console.log(`[ParsingOverlay] Updating progress: ${progress}% -> ${currentProgress}%`);
         setProgress(currentProgress);
 
-        if (status.status === 'completed' || currentProgress >= 100) {
+        if (statusData.status === 'completed' || currentProgress >= 100) {
           console.log(`[ParsingOverlay] Parsing completed! Stopping polling.`);
           setIsComplete(true);
           setProgress(100);
@@ -59,7 +60,7 @@ export const ParsingOverlay: React.FC<ParsingOverlayProps> = ({
 
           // КРИТИЧЕСКИ ВАЖНО: НЕ планируем новый setTimeout - polling останавливается!
           return;
-        } else if (status.status === 'not_started') {
+        } else if (statusData.status === 'not_started') {
           // Если еще не запущен, ждем автоматического запуска с backend
           setProgress(0);
           intervalId = setTimeout(checkProgress, 500);

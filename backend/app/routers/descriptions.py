@@ -73,6 +73,7 @@ async def get_chapter_descriptions(
 
         if not book:
             from ..core.exceptions import BookNotFoundException
+
             raise BookNotFoundException(book_id)
 
         # Ищем главу
@@ -321,7 +322,8 @@ async def get_book_descriptions(
                 desc_type_filter = DescriptionType(description_type)
             except ValueError:
                 raise HTTPException(
-                    status_code=400, detail=f"Invalid description type: {description_type}"
+                    status_code=400,
+                    detail=f"Invalid description type: {description_type}",
                 )
 
         descriptions = await book_parsing_service.get_book_descriptions(

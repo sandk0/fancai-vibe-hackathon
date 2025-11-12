@@ -102,7 +102,9 @@ class GeneratedImage(Base):
     # Качество и модерация
     quality_score = Column(Float, nullable=True)  # 0.0-1.0
     is_moderated = Column(Boolean, default=False, nullable=False)
-    moderation_result = Column(JSONB, nullable=True)  # Результат проверки на NSFW, etc. - JSONB для индексации
+    moderation_result = Column(
+        JSONB, nullable=True
+    )  # Результат проверки на NSFW, etc. - JSONB для индексации
     moderation_notes = Column(Text, nullable=True)
 
     # Статистика использования

@@ -82,7 +82,9 @@ def close_abandoned_sessions(self) -> dict:
 
     except Exception as e:
         error_message = str(e)
-        logger.error(f"Error closing abandoned sessions: {error_message}", exc_info=True)
+        logger.error(
+            f"Error closing abandoned sessions: {error_message}", exc_info=True
+        )
 
         # Retry с exponential backoff
         try:

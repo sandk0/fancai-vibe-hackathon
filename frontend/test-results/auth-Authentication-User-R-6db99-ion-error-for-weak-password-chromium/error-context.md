@@ -1,0 +1,65 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - img [ref=e10]
+        - heading "BookReader AI" [level=1] [ref=e14]
+      - heading "Создать аккаунт 🚀" [level=2] [ref=e15]
+      - paragraph [ref=e16]: Начните свое путешествие в мир AI-визуализации
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - generic [ref=e19]: Полное имя
+        - generic [ref=e20]:
+          - img [ref=e21]
+          - textbox "Полное имя" [ref=e24]:
+            - /placeholder: Иван Иванов
+      - generic [ref=e25]:
+        - generic [ref=e26]: Email
+        - generic [ref=e27]:
+          - img [ref=e28]
+          - textbox "Email" [ref=e31]:
+            - /placeholder: your@email.com
+      - generic [ref=e32]:
+        - generic [ref=e33]: Пароль
+        - paragraph [ref=e34]: Минимум 12 символов, включая заглавные, строчные буквы, цифры и спецсимволы
+        - generic [ref=e35]:
+          - img [ref=e36]
+          - textbox "Пароль" [ref=e39]:
+            - /placeholder: ••••••••
+          - button [ref=e40] [cursor=pointer]:
+            - img [ref=e41]
+      - generic [ref=e44]:
+        - generic [ref=e45]: Подтвердите пароль
+        - generic [ref=e46]:
+          - img [ref=e47]
+          - textbox "Подтвердите пароль" [ref=e50]:
+            - /placeholder: ••••••••
+          - button [ref=e51] [cursor=pointer]:
+            - img [ref=e52]
+      - button "Создать аккаунт" [ref=e55] [cursor=pointer]
+    - paragraph [ref=e57]:
+      - text: Уже есть аккаунт?
+      - link "Войти" [ref=e58] [cursor=pointer]:
+        - /url: /login
+  - generic [ref=e60]:
+    - generic [ref=e61]:
+      - img [ref=e62]
+      - heading "Присоединяйтесь к читателям" [level=2] [ref=e64]
+      - paragraph [ref=e65]: Откройте новый способ чтения с AI-визуализацией каждого описания
+    - generic [ref=e66]:
+      - generic [ref=e67]:
+        - img [ref=e68]
+        - paragraph [ref=e71]: Бесплатная регистрация
+      - generic [ref=e72]:
+        - img [ref=e73]
+        - paragraph [ref=e76]: Неограниченная загрузка книг
+      - generic [ref=e77]:
+        - img [ref=e78]
+        - paragraph [ref=e81]: AI генерация изображений
+      - generic [ref=e82]:
+        - img [ref=e83]
+        - paragraph [ref=e86]: Синхронизация между устройствами
+```

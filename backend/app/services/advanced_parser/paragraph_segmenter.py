@@ -39,6 +39,7 @@ class Paragraph:
         contains_dialog: Содержит ли диалоги
         metadata: Дополнительные метаданные
     """
+
     text: str
     type: ParagraphType
     start_line: int
@@ -50,10 +51,12 @@ class Paragraph:
     metadata: Dict = field(default_factory=dict)
 
     def __repr__(self) -> str:
-        preview = self.text[:50].replace('\n', ' ')
-        return f"Paragraph(type={self.type.value}, lines={self.start_line}-{self.end_line}, " \
-               f"chars={self.char_length}, score={self.descriptiveness_score:.2f}, " \
-               f"text='{preview}...')"
+        preview = self.text[:50].replace("\n", " ")
+        return (
+            f"Paragraph(type={self.type.value}, lines={self.start_line}-{self.end_line}, "
+            f"chars={self.char_length}, score={self.descriptiveness_score:.2f}, "
+            f"text='{preview}...')"
+        )
 
 
 class ParagraphSegmenter:
@@ -89,21 +92,20 @@ class ParagraphSegmenter:
     def _compile_patterns(self):
         """Компиляция регулярных выражений для оптимизации."""
         # Паттерны для диалогов
-        self.dialog_pattern = re.compile(
-            r'[—–]\s*[А-ЯЁ]|[«"][^»"]+[»"]',
-            re.UNICODE
-        )
+        self.dialog_pattern = re.compile(r'[—–]\s*[А-ЯЁ]|[«"][^»"]+[»"]', re.UNICODE)
 
         # Паттерны для заголовков глав
         self.chapter_pattern = re.compile(
-            r'^\s*(' + '|'.join(re.escape(m) for m in self.config.chapter_markers) + r')',
-            re.IGNORECASE | re.UNICODE
+            r"^\s*("
+            + "|".join(re.escape(m) for m in self.config.chapter_markers)
+            + r")",
+            re.IGNORECASE | re.UNICODE,
         )
 
         # Паттерны для служебного текста
         self.meta_pattern = re.compile(
-            r'^\s*(' + '|'.join(re.escape(m) for m in self.config.meta_markers) + r')',
-            re.UNICODE
+            r"^\s*(" + "|".join(re.escape(m) for m in self.config.meta_markers) + r")",
+            re.UNICODE,
         )
 
         # Паттерны для антипаттернов
@@ -122,11 +124,14 @@ class ParagraphSegmenter:
         if self._spacy_nlp is None and self._dependency_parsing_enabled:
             try:
                 import spacy
+
                 # Загрузить русскую модель ru_core_news_lg
                 self._spacy_nlp = spacy.load("ru_core_news_lg")
                 logger.info("✅ SpaCy model loaded for dependency parsing")
             except Exception as e:
-                logger.warning(f"Failed to load SpaCy model: {e}. Dependency parsing disabled.")
+                logger.warning(
+                    f"Failed to load SpaCy model: {e}. Dependency parsing disabled."
+                )
                 self._dependency_parsing_enabled = False
 
     def _extract_descriptive_phrases(self, text: str) -> Dict[str, List[str]]:
@@ -155,7 +160,9 @@ class ParagraphSegmenter:
             return {"adj_noun": [], "adj_adj_noun": [], "noun_prep_noun": []}
 
         try:
-            doc = self._spacy_nlp(text[:5000])  # Ограничить длину для производительности
+            doc = self._spacy_nlp(
+                text[:5000]
+            )  # Ограничить длину для производительности
 
             adj_noun_phrases = []
             adj_adj_noun_phrases = []
@@ -165,7 +172,11 @@ class ParagraphSegmenter:
             for token in doc:
                 if token.pos_ == "NOUN":
                     # Найти прилагательные, модифицирующие это существительное
-                    adjectives = [child for child in token.children if child.pos_ == "ADJ" and child.dep_ == "amod"]
+                    adjectives = [
+                        child
+                        for child in token.children
+                        if child.pos_ == "ADJ" and child.dep_ == "amod"
+                    ]
 
                     if len(adjectives) == 1:
                         # ADJ + NOUN
@@ -184,7 +195,9 @@ class ParagraphSegmenter:
                 if token.pos_ == "NOUN":
                     # Найти предлоги, связанные с этим существительным
                     for child in token.children:
-                        if child.dep_ == "case" and child.pos_ == "ADP":  # ADP = предлог
+                        if (
+                            child.dep_ == "case" and child.pos_ == "ADP"
+                        ):  # ADP = предлог
                             # Найти связанное существительное
                             for sibling in token.head.children:
                                 if sibling.pos_ == "NOUN" and sibling != token:
@@ -224,7 +237,7 @@ class ParagraphSegmenter:
         if not text or not text.strip():
             return []
 
-        lines = text.split('\n')
+        lines = text.split("\n")
         paragraphs = []
 
         current_paragraph_lines = []
@@ -237,9 +250,7 @@ class ParagraphSegmenter:
             if not stripped_line:
                 if current_paragraph_lines:
                     paragraph = self._create_paragraph(
-                        current_paragraph_lines,
-                        start_line,
-                        line_idx - 1
+                        current_paragraph_lines, start_line, line_idx - 1
                     )
                     if paragraph:
                         paragraphs.append(paragraph)
@@ -251,19 +262,13 @@ class ParagraphSegmenter:
                 # Сохранить текущий параграф если есть
                 if current_paragraph_lines:
                     paragraph = self._create_paragraph(
-                        current_paragraph_lines,
-                        start_line,
-                        line_idx - 1
+                        current_paragraph_lines, start_line, line_idx - 1
                     )
                     if paragraph:
                         paragraphs.append(paragraph)
 
                 # Создать параграф для заголовка
-                paragraph = self._create_paragraph(
-                    [line],
-                    line_idx,
-                    line_idx
-                )
+                paragraph = self._create_paragraph([line], line_idx, line_idx)
                 if paragraph:
                     paragraphs.append(paragraph)
 
@@ -272,14 +277,12 @@ class ParagraphSegmenter:
                 continue
 
             # Правило 3: Маркер диалога в начале строки = возможная граница
-            if stripped_line.startswith(('—', '–', '«')) and current_paragraph_lines:
+            if stripped_line.startswith(("—", "–", "«")) and current_paragraph_lines:
                 # Проверить, является ли это началом нового диалога
-                prev_text = '\n'.join(current_paragraph_lines).strip()
+                prev_text = "\n".join(current_paragraph_lines).strip()
                 if len(prev_text) > 50:  # Предыдущий параграф достаточно длинный
                     paragraph = self._create_paragraph(
-                        current_paragraph_lines,
-                        start_line,
-                        line_idx - 1
+                        current_paragraph_lines, start_line, line_idx - 1
                     )
                     if paragraph:
                         paragraphs.append(paragraph)
@@ -294,9 +297,7 @@ class ParagraphSegmenter:
         # Обработать последний параграф
         if current_paragraph_lines:
             paragraph = self._create_paragraph(
-                current_paragraph_lines,
-                start_line,
-                len(lines) - 1
+                current_paragraph_lines, start_line, len(lines) - 1
             )
             if paragraph:
                 paragraphs.append(paragraph)
@@ -304,10 +305,7 @@ class ParagraphSegmenter:
         return paragraphs
 
     def _create_paragraph(
-        self,
-        lines: List[str],
-        start_line: int,
-        end_line: int
+        self, lines: List[str], start_line: int, end_line: int
     ) -> Optional[Paragraph]:
         """
         Создать параграф из списка строк.
@@ -324,7 +322,7 @@ class ParagraphSegmenter:
             return None
 
         # Объединить строки в текст
-        text = '\n'.join(lines).strip()
+        text = "\n".join(lines).strip()
 
         if not text:
             return None
@@ -365,7 +363,7 @@ class ParagraphSegmenter:
             descriptiveness_score=descriptiveness_score,
             has_visual_words=has_visual_words,
             contains_dialog=contains_dialog,
-            metadata={"descriptive_phrases": descriptive_phrases}
+            metadata={"descriptive_phrases": descriptive_phrases},
         )
 
     def _is_antipattern(self, text: str) -> bool:
@@ -408,7 +406,9 @@ class ParagraphSegmenter:
         dialog_match = self.dialog_pattern.search(text)
         if dialog_match:
             # Если больше 30% текста - диалог, то тип DIALOG
-            dialog_chars = sum(len(m.group(0)) for m in self.dialog_pattern.finditer(text))
+            dialog_chars = sum(
+                len(m.group(0)) for m in self.dialog_pattern.finditer(text)
+            )
             if dialog_chars / len(text) > 0.3:
                 return ParagraphType.DIALOG
 
@@ -417,19 +417,41 @@ class ParagraphSegmenter:
 
         # Маркеры описательных текстов
         descriptive_markers = [
-            'был', 'была', 'было', 'были',
-            'выглядел', 'выглядела', 'выглядело', 'выглядели',
-            'казался', 'казалась', 'казалось', 'казались',
-            'напоминал', 'напоминала', 'напоминало', 'напоминали',
+            "был",
+            "была",
+            "было",
+            "были",
+            "выглядел",
+            "выглядела",
+            "выглядело",
+            "выглядели",
+            "казался",
+            "казалась",
+            "казалось",
+            "казались",
+            "напоминал",
+            "напоминала",
+            "напоминало",
+            "напоминали",
         ]
 
         # Маркеры повествовательных текстов
         narrative_markers = [
-            'пошел', 'пошла', 'пошли',
-            'сделал', 'сделала', 'сделали',
-            'сказал', 'сказала', 'сказали',
-            'подумал', 'подумала', 'подумали',
-            'решил', 'решила', 'решили',
+            "пошел",
+            "пошла",
+            "пошли",
+            "сделал",
+            "сделала",
+            "сделали",
+            "сказал",
+            "сказала",
+            "сказали",
+            "подумал",
+            "подумала",
+            "подумали",
+            "решил",
+            "решила",
+            "решили",
         ]
 
         descriptive_count = sum(1 for word in words if word in descriptive_markers)
@@ -476,7 +498,16 @@ class ParagraphSegmenter:
         score += 0.4 * visual_ratio
 
         # Фактор 2: Описательные маркеры (30%)
-        descriptive_markers = ['был', 'была', 'было', 'были', 'выглядел', 'выглядела', 'казался', 'казалась']
+        descriptive_markers = [
+            "был",
+            "была",
+            "было",
+            "были",
+            "выглядел",
+            "выглядела",
+            "казался",
+            "казалась",
+        ]
         descriptive_count = sum(1 for word in words if word in descriptive_markers)
         descriptive_ratio = min(descriptive_count / 5.0, 1.0)
         score += 0.3 * descriptive_ratio
@@ -487,8 +518,10 @@ class ParagraphSegmenter:
             score += 0.2
 
         # Фактор 4: Средняя длина предложений (10%)
-        sentences = re.split(r'[.!?]+', text)
-        avg_sentence_length = sum(len(s.split()) for s in sentences) / max(len(sentences), 1)
+        sentences = re.split(r"[.!?]+", text)
+        avg_sentence_length = sum(len(s.split()) for s in sentences) / max(
+            len(sentences), 1
+        )
         # Длинные предложения (>15 слов) типичны для описаний
         length_score = min(avg_sentence_length / 15.0, 1.0)
         score += 0.1 * length_score
@@ -509,9 +542,7 @@ class ParagraphSegmenter:
         return any(word in self.visual_words for word in words)
 
     def filter_by_type(
-        self,
-        paragraphs: List[Paragraph],
-        types: List[ParagraphType]
+        self, paragraphs: List[Paragraph], types: List[ParagraphType]
     ) -> List[Paragraph]:
         """
         Фильтровать параграфы по типам.
@@ -526,9 +557,7 @@ class ParagraphSegmenter:
         return [p for p in paragraphs if p.type in types]
 
     def filter_by_descriptiveness(
-        self,
-        paragraphs: List[Paragraph],
-        min_score: float = 0.5
+        self, paragraphs: List[Paragraph], min_score: float = 0.5
     ) -> List[Paragraph]:
         """
         Фильтровать параграфы по минимальному уровню описательности.
@@ -571,7 +600,8 @@ class ParagraphSegmenter:
             "total": len(paragraphs),
             "by_type": type_counts,
             "avg_length": sum(p.char_length for p in paragraphs) / len(paragraphs),
-            "avg_descriptiveness": sum(p.descriptiveness_score for p in paragraphs) / len(paragraphs),
+            "avg_descriptiveness": sum(p.descriptiveness_score for p in paragraphs)
+            / len(paragraphs),
             "with_visual_words": sum(1 for p in paragraphs if p.has_visual_words),
             "with_dialog": sum(1 for p in paragraphs if p.contains_dialog),
         }

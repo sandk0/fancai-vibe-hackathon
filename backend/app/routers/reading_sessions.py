@@ -46,8 +46,12 @@ class StartSessionRequest(BaseModel):
     """
 
     book_id: str = Field(..., description="UUID книги")
-    start_position: int = Field(default=0, ge=0, le=100, description="Начальная позиция в книге (0-100%)")
-    device_type: Optional[str] = Field(None, max_length=50, description="Тип устройства")
+    start_position: int = Field(
+        default=0, ge=0, le=100, description="Начальная позиция в книге (0-100%)"
+    )
+    device_type: Optional[str] = Field(
+        None, max_length=50, description="Тип устройства"
+    )
 
     @validator("device_type")
     def validate_device_type(cls, v):
@@ -55,7 +59,9 @@ class StartSessionRequest(BaseModel):
         if v is not None:
             allowed_types = ["mobile", "tablet", "desktop"]
             if v not in allowed_types:
-                raise ValueError(f"device_type must be one of: {', '.join(allowed_types)}")
+                raise ValueError(
+                    f"device_type must be one of: {', '.join(allowed_types)}"
+                )
         return v
 
 
@@ -67,7 +73,9 @@ class UpdateSessionRequest(BaseModel):
         current_position: Текущая позиция чтения (0-100%)
     """
 
-    current_position: int = Field(..., ge=0, le=100, description="Текущая позиция в книге (0-100%)")
+    current_position: int = Field(
+        ..., ge=0, le=100, description="Текущая позиция в книге (0-100%)"
+    )
 
 
 class EndSessionRequest(BaseModel):
@@ -78,7 +86,9 @@ class EndSessionRequest(BaseModel):
         end_position: Конечная позиция в книге (0-100%)
     """
 
-    end_position: int = Field(..., ge=0, le=100, description="Конечная позиция в книге (0-100%)")
+    end_position: int = Field(
+        ..., ge=0, le=100, description="Конечная позиция в книге (0-100%)"
+    )
 
 
 class BatchUpdateItem(BaseModel):
@@ -89,8 +99,11 @@ class BatchUpdateItem(BaseModel):
         session_id: UUID сессии для обновления
         current_position: Новая позиция (0-100%)
     """
+
     session_id: str = Field(..., description="UUID сессии")
-    current_position: int = Field(..., ge=0, le=100, description="Новая позиция (0-100%)")
+    current_position: int = Field(
+        ..., ge=0, le=100, description="Новая позиция (0-100%)"
+    )
 
 
 class BatchUpdateRequest(BaseModel):
@@ -100,7 +113,10 @@ class BatchUpdateRequest(BaseModel):
     Attributes:
         updates: Список обновлений для применения
     """
-    updates: List[BatchUpdateItem] = Field(..., min_items=1, max_items=50, description="Список обновлений (max 50)")
+
+    updates: List[BatchUpdateItem] = Field(
+        ..., min_items=1, max_items=50, description="Список обновлений (max 50)"
+    )
 
 
 class BatchUpdateResponse(BaseModel):
@@ -112,6 +128,7 @@ class BatchUpdateResponse(BaseModel):
         failed_count: Количество неудачных обновлений
         errors: Список ошибок для неудачных обновлений
     """
+
     success_count: int
     failed_count: int
     errors: List[str]
@@ -181,10 +198,7 @@ class ReadingSessionListResponse(BaseModel):
 
 
 def _log_session_completion(
-    user_id: UUID,
-    session_id: UUID,
-    duration_minutes: int,
-    progress_delta: int
+    user_id: UUID, session_id: UUID, duration_minutes: int, progress_delta: int
 ) -> None:
     """
     Background task для логирования завершения сессии.
@@ -196,6 +210,7 @@ def _log_session_completion(
         progress_delta: Прогресс за сессию (%)
     """
     import logging
+
     logger = logging.getLogger(__name__)
 
     logger.info(
@@ -281,8 +296,7 @@ async def start_reading_session(
 
         # Проверяем существование книги и доступ пользователя
         book_query = select(Book).where(
-            Book.id == book_uuid,
-            Book.user_id == current_user.id
+            Book.id == book_uuid, Book.user_id == current_user.id
         )
         book_result = await db.execute(book_query)
         book = book_result.scalar_one_or_none()
@@ -293,7 +307,7 @@ async def start_reading_session(
         # Завершаем предыдущую активную сессию (если есть)
         active_session_query = select(ReadingSession).where(
             ReadingSession.user_id == current_user.id,
-            ReadingSession.is_active == True  # noqa: E712
+            ReadingSession.is_active == True,  # noqa: E712
         )
         active_session_result = await db.execute(active_session_query)
         active_session = active_session_result.scalar_one_or_none()
@@ -302,7 +316,7 @@ async def start_reading_session(
             # Автоматически завершаем с текущей позицией
             active_session.end_session(
                 end_position=active_session.start_position,  # Не было прогресса
-                ended_at=datetime.now(timezone.utc)
+                ended_at=datetime.now(timezone.utc),
             )
             await db.commit()
 
@@ -326,13 +340,13 @@ async def start_reading_session(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid book_id format: {str(e)}"
+            detail=f"Invalid book_id format: {str(e)}",
         )
     except Exception as e:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error starting reading session: {str(e)}"
+            detail=f"Error starting reading session: {str(e)}",
         )
 
 
@@ -372,8 +386,7 @@ async def update_reading_session(
     try:
         # Ищем сессию пользователя
         query = select(ReadingSession).where(
-            ReadingSession.id == session_id,
-            ReadingSession.user_id == current_user.id
+            ReadingSession.id == session_id, ReadingSession.user_id == current_user.id
         )
         result = await db.execute(query)
         session = result.scalar_one_or_none()
@@ -381,13 +394,13 @@ async def update_reading_session(
         if not session:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Reading session {session_id} not found"
+                detail=f"Reading session {session_id} not found",
             )
 
         if not session.is_active:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot update inactive session"
+                detail="Cannot update inactive session",
             )
 
         # Обновляем позицию
@@ -404,7 +417,7 @@ async def update_reading_session(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error updating reading session: {str(e)}"
+            detail=f"Error updating reading session: {str(e)}",
         )
 
 
@@ -456,8 +469,7 @@ async def end_reading_session(
     try:
         # Ищем сессию пользователя
         query = select(ReadingSession).where(
-            ReadingSession.id == session_id,
-            ReadingSession.user_id == current_user.id
+            ReadingSession.id == session_id, ReadingSession.user_id == current_user.id
         )
         result = await db.execute(query)
         session = result.scalar_one_or_none()
@@ -465,33 +477,28 @@ async def end_reading_session(
         if not session:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Reading session {session_id} not found"
+                detail=f"Reading session {session_id} not found",
             )
 
         if not session.is_active:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Session already ended"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Session already ended"
             )
 
         # Валидация: end_position должна быть >= start_position
         if request.end_position < session.start_position:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"end_position ({request.end_position}) must be >= start_position ({session.start_position})"
+                detail=f"end_position ({request.end_position}) must be >= start_position ({session.start_position})",
             )
 
         # Завершаем сессию используя метод модели
         try:
             session.end_session(
-                end_position=request.end_position,
-                ended_at=datetime.now(timezone.utc)
+                end_position=request.end_position, ended_at=datetime.now(timezone.utc)
             )
         except ValueError as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(e)
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
         await db.commit()
         await db.refresh(session)
@@ -502,8 +509,7 @@ async def end_reading_session(
 
         # 1. Invalidate Redis cache для активной сессии
         background_tasks.add_task(
-            reading_session_cache.invalidate_user_sessions,
-            user_id=current_user.id
+            reading_session_cache.invalidate_user_sessions, user_id=current_user.id
         )
 
         # 2. Log завершения сессии для analytics
@@ -512,7 +518,7 @@ async def end_reading_session(
             user_id=current_user.id,
             session_id=session_id,
             duration_minutes=session.duration_minutes,
-            progress_delta=session.get_progress_delta()
+            progress_delta=session.get_progress_delta(),
         )
 
         return session_to_response(session)
@@ -523,7 +529,7 @@ async def end_reading_session(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error ending reading session: {str(e)}"
+            detail=f"Error ending reading session: {str(e)}",
         )
 
 
@@ -553,7 +559,7 @@ async def get_active_session(
     try:
         query = select(ReadingSession).where(
             ReadingSession.user_id == current_user.id,
-            ReadingSession.is_active == True  # noqa: E712
+            ReadingSession.is_active == True,  # noqa: E712
         )
         result = await db.execute(query)
         session = result.scalar_one_or_none()
@@ -566,7 +572,7 @@ async def get_active_session(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error fetching active session: {str(e)}"
+            detail=f"Error fetching active session: {str(e)}",
         )
 
 
@@ -589,8 +595,12 @@ async def get_active_session(
     },
 )
 async def get_reading_sessions_history(
-    cursor: Optional[str] = Query(default=None, description="Cursor для пагинации (рекомендуется)"),
-    page: Optional[int] = Query(default=None, ge=1, description="Номер страницы (legacy, deprecated)"),
+    cursor: Optional[str] = Query(
+        default=None, description="Cursor для пагинации (рекомендуется)"
+    ),
+    page: Optional[int] = Query(
+        default=None, ge=1, description="Номер страницы (legacy, deprecated)"
+    ),
     limit: int = Query(default=20, ge=1, le=100, description="Количество сессий"),
     book_id: Optional[str] = Query(default=None, description="Фильтр по UUID книги"),
     db: AsyncSession = Depends(get_database_session),
@@ -624,13 +634,17 @@ async def get_reading_sessions_history(
             except ValueError:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid book_id format: {book_id}"
+                    detail=f"Invalid book_id format: {book_id}",
                 )
 
         # Используем cursor-based pagination если cursor указан
         if cursor or page is None:
             # CURSOR-BASED PAGINATION (recommended)
-            sessions, next_cursor, total = await reading_session_service.get_user_sessions_optimized(
+            (
+                sessions,
+                next_cursor,
+                total,
+            ) = await reading_session_service.get_user_sessions_optimized(
                 db=db,
                 user_id=current_user.id,
                 limit=limit,
@@ -700,7 +714,7 @@ async def get_reading_sessions_history(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error fetching reading sessions history: {str(e)}"
+            detail=f"Error fetching reading sessions history: {str(e)}",
         )
 
 
@@ -752,7 +766,7 @@ async def batch_update_sessions(
     if len(request.updates) > 50:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Maximum 50 updates per batch"
+            detail="Maximum 50 updates per batch",
         )
 
     success_count = 0
@@ -776,16 +790,14 @@ async def batch_update_sessions(
 
         if not session_ids:
             return BatchUpdateResponse(
-                success_count=0,
-                failed_count=len(request.updates),
-                errors=errors
+                success_count=0, failed_count=len(request.updates), errors=errors
             )
 
         # Проверяем, что все сессии принадлежат текущему пользователю
         verification_query = select(ReadingSession).where(
             ReadingSession.id.in_(session_ids),
             ReadingSession.user_id == current_user.id,
-            ReadingSession.is_active == True  # noqa: E712
+            ReadingSession.is_active == True,  # noqa: E712
         )
         verification_result = await db.execute(verification_query)
         verified_sessions = verification_result.scalars().all()
@@ -800,9 +812,7 @@ async def batch_update_sessions(
 
         if not verified_ids:
             return BatchUpdateResponse(
-                success_count=0,
-                failed_count=len(request.updates),
-                errors=errors
+                success_count=0, failed_count=len(request.updates), errors=errors
             )
 
         # Batch UPDATE используя CASE WHEN
@@ -817,6 +827,7 @@ async def batch_update_sessions(
 
         # Выполняем batch UPDATE
         from sqlalchemy import update
+
         stmt = (
             update(ReadingSession)
             .where(ReadingSession.id.in_(verified_ids))
@@ -832,14 +843,12 @@ async def batch_update_sessions(
         # Можно добавить в background task если Redis кэш используется
 
         return BatchUpdateResponse(
-            success_count=success_count,
-            failed_count=failed_count,
-            errors=errors
+            success_count=success_count, failed_count=failed_count, errors=errors
         )
 
     except Exception as e:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error in batch update: {str(e)}"
+            detail=f"Error in batch update: {str(e)}",
         )

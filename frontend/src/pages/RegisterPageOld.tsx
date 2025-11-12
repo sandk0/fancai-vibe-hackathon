@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { Eye, EyeOff, BookOpen, User, Mail, Lock } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
 import { notify } from '@/stores/ui';
+import { getErrorMessage } from '@/utils/errors';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import { cn } from '@/utils/cn';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -43,10 +44,10 @@ const RegisterPage: React.FC = () => {
       await registerUser(data.email, data.password, data.full_name);
       notify.success(t('auth.accountCreated'), t('auth.accountCreatedMessage'));
       navigate('/library', { replace: true });
-    } catch (error: Error | { response?: { data?: { detail?: string } } }) {
+    } catch (error) {
       notify.error(
         t('auth.registrationFailed'),
-        error.message || t('auth.checkCredentials')
+        getErrorMessage(error, t('auth.checkCredentials'))
       );
     }
   };

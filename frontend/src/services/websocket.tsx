@@ -118,18 +118,19 @@ class WebSocketService {
     const { refreshBooks } = useBooksStore.getState();
     const { refreshImages } = useImagesStore.getState();
 
+    const messageData = message.data as Record<string, unknown>;
     switch (message.type) {
       case 'book_processing_started':
         notify.info(
           'Book Processing Started',
-          `Processing "${message.data.book_title}" - extracting chapters and descriptions`
+          `Processing "${messageData.book_title as string}" - extracting chapters and descriptions`
         );
         break;
 
       case 'book_processing_completed':
         notify.success(
           'Book Processing Complete',
-          `"${message.data.book_title}" is ready for reading with ${message.data.chapters_count} chapters`
+          `"${messageData.book_title as string}" is ready for reading with ${messageData.chapters_count as number} chapters`
         );
         refreshBooks();
         break;
@@ -137,21 +138,21 @@ class WebSocketService {
       case 'book_processing_failed':
         notify.error(
           'Book Processing Failed',
-          `Failed to process "${message.data.book_title}": ${message.data.error}`
+          `Failed to process "${messageData.book_title as string}": ${messageData.error as string}`
         );
         break;
 
       case 'image_generation_started':
         notify.info(
           'Image Generation Started',
-          `Generating images for "${message.data.description_type}" descriptions`
+          `Generating images for "${messageData.description_type as string}" descriptions`
         );
         break;
 
       case 'image_generation_completed':
         notify.success(
           'New Images Generated',
-          `${message.data.images_count} new images generated for "${message.data.book_title}"`
+          `${messageData.images_count as number} new images generated for "${messageData.book_title as string}"`
         );
         refreshImages();
         break;
@@ -159,22 +160,22 @@ class WebSocketService {
       case 'image_generation_failed':
         notify.error(
           'Image Generation Failed',
-          `Failed to generate image: ${message.data.error}`
+          `Failed to generate image: ${messageData.error as string}`
         );
         break;
 
       case 'chapter_descriptions_extracted':
         notify.info(
           'Descriptions Found',
-          `Extracted ${message.data.descriptions_count} descriptions from Chapter ${message.data.chapter_number}`
+          `Extracted ${messageData.descriptions_count as number} descriptions from Chapter ${messageData.chapter_number as number}`
         );
         break;
 
       case 'user_notification': {
-        const level = message.data.level || 'info';
+        const level = (messageData.level as string) || 'info';
         const notifyMethod = notify[level as keyof typeof notify];
         if (typeof notifyMethod === 'function') {
-          notifyMethod(message.data.title, message.data.message);
+          notifyMethod(messageData.title as string, messageData.message as string);
         }
         break;
       }

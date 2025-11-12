@@ -122,7 +122,9 @@ class ReadingSession(Base):
             postgresql_where=(is_active.is_(True)),
         ),
         # Composite index для weekly analytics (user + started_at)
-        Index("idx_reading_sessions_weekly", "user_id", "started_at", "duration_minutes"),
+        Index(
+            "idx_reading_sessions_weekly", "user_id", "started_at", "duration_minutes"
+        ),
     )
 
     def __repr__(self) -> str:
@@ -133,7 +135,9 @@ class ReadingSession(Base):
             f"active={self.is_active})>"
         )
 
-    def end_session(self, end_position: int, ended_at: Optional[datetime] = None) -> None:
+    def end_session(
+        self, end_position: int, ended_at: Optional[datetime] = None
+    ) -> None:
         """
         Завершает активную сессию чтения.
 

@@ -62,7 +62,9 @@ class ComponentHealthResponse(BaseModel):
 
     status: str = Field(..., description="ok, warning, error")
     message: Optional[str] = Field(None, description="Дополнительное сообщение")
-    latency_ms: Optional[float] = Field(None, description="Время отклика в миллисекундах")
+    latency_ms: Optional[float] = Field(
+        None, description="Время отклика в миллисекундах"
+    )
     details: Optional[Dict[str, Any]] = Field(None, description="Дополнительные детали")
 
 
@@ -109,17 +111,15 @@ async def check_database(db: AsyncSession) -> ComponentHealthResponse:
             return ComponentHealthResponse(
                 status="ok",
                 message="Database connection successful",
-                latency_ms=round(latency, 2)
+                latency_ms=round(latency, 2),
             )
         else:
             return ComponentHealthResponse(
-                status="error",
-                message="Database query returned unexpected result"
+                status="error", message="Database query returned unexpected result"
             )
     except Exception as e:
         return ComponentHealthResponse(
-            status="error",
-            message=f"Database connection failed: {str(e)}"
+            status="error", message=f"Database connection failed: {str(e)}"
         )
 
 
@@ -134,14 +134,11 @@ async def check_redis() -> ComponentHealthResponse:
         # TODO: Добавить реальную проверку Redis через aioredis
         # Сейчас мок для примера
         return ComponentHealthResponse(
-            status="ok",
-            message="Redis connection successful",
-            latency_ms=5.2
+            status="ok", message="Redis connection successful", latency_ms=5.2
         )
     except Exception as e:
         return ComponentHealthResponse(
-            status="error",
-            message=f"Redis connection failed: {str(e)}"
+            status="error", message=f"Redis connection failed: {str(e)}"
         )
 
 
@@ -158,15 +155,11 @@ async def check_celery() -> ComponentHealthResponse:
         return ComponentHealthResponse(
             status="ok",
             message="Celery workers active",
-            details={
-                "active_workers": 2,
-                "queued_tasks": 5
-            }
+            details={"active_workers": 2, "queued_tasks": 5},
         )
     except Exception as e:
         return ComponentHealthResponse(
-            status="error",
-            message=f"Celery check failed: {str(e)}"
+            status="error", message=f"Celery check failed: {str(e)}"
         )
 
 
@@ -189,15 +182,18 @@ async def get_active_sessions_stats(db: AsyncSession) -> Dict[str, int]:
         total_active = total_result.scalar() or 0
 
         # По типам устройств
-        device_query = select(
-            ReadingSession.device_type,
-            func.count(ReadingSession.id).label('count')
-        ).where(
-            ReadingSession.is_active == True  # noqa: E712
-        ).group_by(ReadingSession.device_type)
+        device_query = (
+            select(
+                ReadingSession.device_type, func.count(ReadingSession.id).label("count")
+            )
+            .where(ReadingSession.is_active == True)  # noqa: E712
+            .group_by(ReadingSession.device_type)
+        )
 
         device_result = await db.execute(device_query)
-        device_stats = {row.device_type or 'unknown': row.count for row in device_result}
+        device_stats = {
+            row.device_type or "unknown": row.count for row in device_result
+        }
 
         # Уникальные пользователи с активными сессиями
         users_query = select(func.count(func.distinct(ReadingSession.user_id))).where(
@@ -207,16 +203,12 @@ async def get_active_sessions_stats(db: AsyncSession) -> Dict[str, int]:
         concurrent_users = users_result.scalar() or 0
 
         return {
-            'total_active': total_active,
-            'by_device': device_stats,
-            'concurrent_users': concurrent_users
+            "total_active": total_active,
+            "by_device": device_stats,
+            "concurrent_users": concurrent_users,
         }
     except Exception:
-        return {
-            'total_active': 0,
-            'by_device': {},
-            'concurrent_users': 0
-        }
+        return {"total_active": 0, "by_device": {}, "concurrent_users": 0}
 
 
 async def get_abandoned_sessions_count(db: AsyncSession) -> int:
@@ -233,7 +225,7 @@ async def get_abandoned_sessions_count(db: AsyncSession) -> int:
         threshold = datetime.now(timezone.utc) - timedelta(hours=24)
         query = select(func.count(ReadingSession.id)).where(
             ReadingSession.is_active == True,  # noqa: E712
-            ReadingSession.started_at < threshold
+            ReadingSession.started_at < threshold,
         )
         result = await db.execute(query)
         return result.scalar() or 0
@@ -265,10 +257,7 @@ async def basic_health_check() -> HealthCheckResponse:
     """
     uptime = time.time() - APP_START_TIME
 
-    return HealthCheckResponse(
-        status="healthy",
-        uptime_seconds=round(uptime, 2)
-    )
+    return HealthCheckResponse(status="healthy", uptime_seconds=round(uptime, 2))
 
 
 @router.get(
@@ -282,7 +271,7 @@ async def basic_health_check() -> HealthCheckResponse:
     },
 )
 async def reading_sessions_health_check(
-    db: AsyncSession = Depends(get_database_session)
+    db: AsyncSession = Depends(get_database_session),
 ) -> ReadingSessionsHealthResponse:
     """
     Детальный health check для reading sessions системы.
@@ -307,19 +296,19 @@ async def reading_sessions_health_check(
         check_celery(),
         get_active_sessions_stats(db),
         get_abandoned_sessions_count(db),
-        return_exceptions=True
+        return_exceptions=True,
     )
 
     # Обработка исключений
     if isinstance(stats, Exception):
-        stats = {'total_active': 0, 'by_device': {}, 'concurrent_users': 0}
+        stats = {"total_active": 0, "by_device": {}, "concurrent_users": 0}
     if isinstance(abandoned, Exception):
         abandoned = 0
 
     # Обновляем Prometheus gauges
-    update_active_sessions_gauge(stats['total_active'])
+    update_active_sessions_gauge(stats["total_active"])
     update_abandoned_sessions_gauge(abandoned)
-    update_concurrent_users_gauge(stats['concurrent_users'])
+    update_concurrent_users_gauge(stats["concurrent_users"])
 
     # Определяем общий статус
     checks_status = [db_check.status, redis_check.status, celery_check.status]
@@ -339,11 +328,11 @@ async def reading_sessions_health_check(
             "celery": celery_check,
         },
         metrics={
-            "active_sessions_total": stats['total_active'],
-            "active_sessions_by_device": stats['by_device'],
-            "concurrent_users": stats['concurrent_users'],
+            "active_sessions_total": stats["total_active"],
+            "active_sessions_by_device": stats["by_device"],
+            "concurrent_users": stats["concurrent_users"],
             "abandoned_sessions": abandoned,
-        }
+        },
     )
 
 
@@ -355,7 +344,7 @@ async def reading_sessions_health_check(
     status_code=http_status.HTTP_200_OK,
 )
 async def deep_health_check(
-    db: AsyncSession = Depends(get_database_session)
+    db: AsyncSession = Depends(get_database_session),
 ) -> DeepHealthCheckResponse:
     """
     Полный health check всех систем BookReader AI.
@@ -382,11 +371,11 @@ async def deep_health_check(
         check_redis(),
         check_celery(),
         get_active_sessions_stats(db),
-        return_exceptions=True
+        return_exceptions=True,
     )
 
     if isinstance(stats, Exception):
-        stats = {'total_active': 0, 'by_device': {}, 'concurrent_users': 0}
+        stats = {"total_active": 0, "by_device": {}, "concurrent_users": 0}
 
     # TODO: Добавить проверки NLP и Image Generation services
     components = {
@@ -396,9 +385,9 @@ async def deep_health_check(
         "reading_sessions": ComponentHealthResponse(
             status="ok",
             details={
-                "active_sessions": stats['total_active'],
-                "concurrent_users": stats['concurrent_users']
-            }
+                "active_sessions": stats["total_active"],
+                "concurrent_users": stats["concurrent_users"],
+            },
         ),
     }
 
@@ -416,7 +405,7 @@ async def deep_health_check(
         timestamp=datetime.now(timezone.utc),
         version="2.0.0",
         uptime_seconds=round(uptime, 2),
-        components=components
+        components=components,
     )
 
 
@@ -444,12 +433,12 @@ async def metrics_endpoint(db: AsyncSession = Depends(get_database_session)):
         stats = await get_active_sessions_stats(db)
         abandoned = await get_abandoned_sessions_count(db)
 
-        update_active_sessions_gauge(stats['total_active'])
+        update_active_sessions_gauge(stats["total_active"])
         update_abandoned_sessions_gauge(abandoned)
-        update_concurrent_users_gauge(stats['concurrent_users'])
+        update_concurrent_users_gauge(stats["concurrent_users"])
 
         # Обновляем gauges по device_type
-        for device_type, count in stats['by_device'].items():
+        for device_type, count in stats["by_device"].items():
             active_sessions_count.labels(device_type=device_type).set(count)
 
     except Exception:
@@ -459,7 +448,4 @@ async def metrics_endpoint(db: AsyncSession = Depends(get_database_session)):
     # Генерируем метрики в Prometheus формате
     metrics_output = generate_latest()
 
-    return Response(
-        content=metrics_output,
-        media_type=CONTENT_TYPE_LATEST
-    )
+    return Response(content=metrics_output, media_type=CONTENT_TYPE_LATEST)

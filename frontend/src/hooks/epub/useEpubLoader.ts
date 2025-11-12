@@ -87,7 +87,7 @@ export const useEpubLoader = ({
         if (!isMounted) return;
 
         // Initialize epub.js with ArrayBuffer
-        const epubBook = ePub(arrayBuffer);
+        const epubBook = ePub(arrayBuffer) as unknown as Book;
         bookRef.current = epubBook;
         setBook(epubBook);
 
@@ -98,12 +98,12 @@ export const useEpubLoader = ({
 
         if (!isMounted || !viewerRef.current) return;
 
-        // Create rendition
-        const newRendition = epubBook.renderTo(viewerRef.current, {
+        // Create rendition using renderTo (this is the epubjs API method)
+        const newRendition = (epubBook as any).renderTo(viewerRef.current, {
           width: '100%',
           height: '100%',
           spread: 'none',
-        });
+        }) as Rendition;
         renditionRef.current = newRendition;
         setRendition(newRendition);
 

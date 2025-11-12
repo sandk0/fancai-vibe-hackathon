@@ -163,9 +163,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             # Force HTTPS for all future requests
             # includeSubDomains: применять к всем субдоменам
             # preload: разрешить включение в браузерные HSTS preload списки
-            response.headers["Strict-Transport-Security"] = (
-                f"max-age={self.hsts_max_age}; includeSubDomains; preload"
-            )
+            response.headers[
+                "Strict-Transport-Security"
+            ] = f"max-age={self.hsts_max_age}; includeSubDomains; preload"
 
         # ========================================================================
         # 2. Content-Security-Policy (CSP)

@@ -31,17 +31,14 @@ __all__ = [
     # Main API
     "AdvancedDescriptionExtractor",
     "ExtractionResult",
-
     # Components
     "ParagraphSegmenter",
     "DescriptionBoundaryDetector",
     "MultiFactorConfidenceScorer",
-
     # Data classes
     "Paragraph",
     "CompleteDescription",
     "ConfidenceScoreBreakdown",
-
     # Configuration
     "AdvancedParserConfig",
     "DescriptionType",

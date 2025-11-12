@@ -65,7 +65,9 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # CORS - загружается из .env (docker-compose передает полный список)
-    CORS_ORIGINS: str = "http://localhost:3000"  # Minimal fallback, should be overridden by .env
+    CORS_ORIGINS: str = (
+        "http://localhost:3000"  # Minimal fallback, should be overridden by .env
+    )
 
     @model_validator(mode="after")
     def validate_production_settings(self):

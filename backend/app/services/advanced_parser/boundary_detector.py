@@ -37,6 +37,7 @@ class CompleteDescription:
         boundary_confidence: Уверенность в корректности границ (0.0-1.0)
         metadata: Дополнительные метаданные
     """
+
     paragraphs: List[Paragraph]
     text: str
     start_paragraph_idx: int
@@ -48,10 +49,12 @@ class CompleteDescription:
     metadata: Dict = field(default_factory=dict)
 
     def __repr__(self) -> str:
-        preview = self.text[:80].replace('\n', ' ')
-        return f"CompleteDescription(paras={self.paragraph_count}, " \
-               f"chars={self.char_length}, coherence={self.coherence_score:.2f}, " \
-               f"text='{preview}...')"
+        preview = self.text[:80].replace("\n", " ")
+        return (
+            f"CompleteDescription(paras={self.paragraph_count}, "
+            f"chars={self.char_length}, coherence={self.coherence_score:.2f}, "
+            f"text='{preview}...')"
+        )
 
 
 class DescriptionBoundaryDetector:
@@ -87,20 +90,22 @@ class DescriptionBoundaryDetector:
         """Компиляция регулярных выражений для оптимизации."""
         # Паттерны для сигналов продолжения
         self.continuation_pattern = re.compile(
-            r'^\s*(' + '|'.join(re.escape(s) for s in self.config.continuation_signals) + r')\b',
-            re.IGNORECASE | re.UNICODE
+            r"^\s*("
+            + "|".join(re.escape(s) for s in self.config.continuation_signals)
+            + r")\b",
+            re.IGNORECASE | re.UNICODE,
         )
 
         # Паттерны для сигналов остановки
         self.stop_pattern = re.compile(
-            r'\b(' + '|'.join(re.escape(s) for s in self.config.stop_signals) + r')\b',
-            re.IGNORECASE | re.UNICODE
+            r"\b(" + "|".join(re.escape(s) for s in self.config.stop_signals) + r")\b",
+            re.IGNORECASE | re.UNICODE,
         )
 
         # Паттерн для местоименных ссылок
         self.pronoun_pattern = re.compile(
-            r'\b(он|она|оно|они|его|её|их|этот|эта|это|эти|тот|та|то|те)\b',
-            re.IGNORECASE | re.UNICODE
+            r"\b(он|она|оно|они|его|её|их|этот|эта|это|эти|тот|та|то|те)\b",
+            re.IGNORECASE | re.UNICODE,
         )
 
     def detect(self, paragraphs: List[Paragraph]) -> List[CompleteDescription]:
@@ -146,15 +151,16 @@ class DescriptionBoundaryDetector:
 
             # Попытка извлечь полное описание начиная с этого параграфа
             complete_desc = self._extract_complete_description(
-                paragraphs,
-                idx,
-                used_indices
+                paragraphs, idx, used_indices
             )
 
             if complete_desc and self._validate_description(complete_desc):
                 descriptions.append(complete_desc)
                 # Отметить использованные параграфы
-                for i in range(complete_desc.start_paragraph_idx, complete_desc.end_paragraph_idx + 1):
+                for i in range(
+                    complete_desc.start_paragraph_idx,
+                    complete_desc.end_paragraph_idx + 1,
+                ):
                     used_indices.add(i)
 
         # Сортировать по длине (приоритет длинным описаниям)
@@ -163,10 +169,7 @@ class DescriptionBoundaryDetector:
         return descriptions
 
     def _extract_complete_description(
-        self,
-        paragraphs: List[Paragraph],
-        start_idx: int,
-        used_indices: set
+        self, paragraphs: List[Paragraph], start_idx: int, used_indices: set
     ) -> Optional[CompleteDescription]:
         """
         Извлечь полное описание начиная с заданного параграфа.
@@ -184,7 +187,9 @@ class DescriptionBoundaryDetector:
         current_text = paragraphs[start_idx].text
 
         # Lookahead window: до 20 параграфов вперед
-        max_look_idx = min(start_idx + self.config.lookahead_window_paragraphs, len(paragraphs))
+        max_look_idx = min(
+            start_idx + self.config.lookahead_window_paragraphs, len(paragraphs)
+        )
 
         for i in range(start_idx + 1, max_look_idx):
             # Пропустить уже использованные параграфы
@@ -210,10 +215,7 @@ class DescriptionBoundaryDetector:
 
             # Проверка 4: Вычислить coherence score с текущим описанием
             coherence = self._calculate_coherence(
-                current_text,
-                next_para.text,
-                current_paragraphs,
-                next_para
+                current_text, next_para.text, current_paragraphs, next_para
             )
 
             if coherence < self.config.min_coherence_score:
@@ -235,9 +237,7 @@ class DescriptionBoundaryDetector:
 
         # Вычислить boundary confidence
         boundary_confidence = self._calculate_boundary_confidence(
-            paragraphs,
-            start_idx,
-            start_idx + len(current_paragraphs) - 1
+            paragraphs, start_idx, start_idx + len(current_paragraphs) - 1
         )
 
         # Вычислить общий coherence score
@@ -253,8 +253,11 @@ class DescriptionBoundaryDetector:
             coherence_score=overall_coherence,
             boundary_confidence=boundary_confidence,
             metadata={
-                "avg_descriptiveness": sum(p.descriptiveness_score for p in current_paragraphs) / len(current_paragraphs),
-            }
+                "avg_descriptiveness": sum(
+                    p.descriptiveness_score for p in current_paragraphs
+                )
+                / len(current_paragraphs),
+            },
         )
 
     def _has_stop_signal(self, text: str) -> bool:
@@ -272,7 +275,7 @@ class DescriptionBoundaryDetector:
             return True
 
         # Проверить начало диалога
-        if text.strip().startswith(('—', '–', '«')):
+        if text.strip().startswith(("—", "–", "«")):
             return True
 
         return False
@@ -282,7 +285,7 @@ class DescriptionBoundaryDetector:
         current_text: str,
         next_text: str,
         current_paragraphs: List[Paragraph],
-        next_paragraph: Paragraph
+        next_paragraph: Paragraph,
     ) -> float:
         """
         Вычислить coherence score между текущим описанием и следующим параграфом.
@@ -312,16 +315,26 @@ class DescriptionBoundaryDetector:
         last_para = current_paragraphs[-1]
         if last_para.type == next_paragraph.type:
             score += 0.2
-        elif last_para.type == ParagraphType.DESCRIPTION and next_paragraph.type == ParagraphType.MIXED:
+        elif (
+            last_para.type == ParagraphType.DESCRIPTION
+            and next_paragraph.type == ParagraphType.MIXED
+        ):
             score += 0.15
-        elif last_para.type == ParagraphType.MIXED and next_paragraph.type == ParagraphType.DESCRIPTION:
+        elif (
+            last_para.type == ParagraphType.MIXED
+            and next_paragraph.type == ParagraphType.DESCRIPTION
+        ):
             score += 0.15
 
         # Фактор 3: Общие визуальные слова (20%)
         current_words = set(current_text.lower().split())
         next_words = set(next_text.lower().split())
-        visual_words_current = current_words & self.config.visual_keywords.get('colors', set())
-        visual_words_next = next_words & self.config.visual_keywords.get('colors', set())
+        visual_words_current = current_words & self.config.visual_keywords.get(
+            "colors", set()
+        )
+        visual_words_next = next_words & self.config.visual_keywords.get(
+            "colors", set()
+        )
         if visual_words_current and visual_words_next:
             overlap = len(visual_words_current & visual_words_next)
             if overlap > 0:
@@ -348,23 +361,17 @@ class DescriptionBoundaryDetector:
 
         coherence_scores = []
         for i in range(len(paragraphs) - 1):
-            current_text = '\n\n'.join(p.text for p in paragraphs[:i+1])
+            current_text = "\n\n".join(p.text for p in paragraphs[: i + 1])
             next_para = paragraphs[i + 1]
             coherence = self._calculate_coherence(
-                current_text,
-                next_para.text,
-                paragraphs[:i+1],
-                next_para
+                current_text, next_para.text, paragraphs[: i + 1], next_para
             )
             coherence_scores.append(coherence)
 
         return sum(coherence_scores) / len(coherence_scores)
 
     def _calculate_boundary_confidence(
-        self,
-        all_paragraphs: List[Paragraph],
-        start_idx: int,
-        end_idx: int
+        self, all_paragraphs: List[Paragraph], start_idx: int, end_idx: int
     ) -> float:
         """
         Вычислить уверенность в корректности границ описания.
@@ -392,7 +399,10 @@ class DescriptionBoundaryDetector:
         # Фактор 2: Stop signal после конечного параграфа (30%)
         if end_idx + 1 < len(all_paragraphs):
             next_para = all_paragraphs[end_idx + 1]
-            if self._has_stop_signal(next_para.text) or next_para.type == ParagraphType.DIALOG:
+            if (
+                self._has_stop_signal(next_para.text)
+                or next_para.type == ParagraphType.DIALOG
+            ):
                 score += 0.3
         else:
             # Конец текста = хорошая граница
@@ -408,13 +418,15 @@ class DescriptionBoundaryDetector:
             score += 0.1
 
         # Конец должен быть с точкой
-        if end_text.endswith(('.', '!', '?')):
+        if end_text.endswith((".", "!", "?")):
             score += 0.1
 
         # Фактор 4: Отсутствие внутренних разрывов (20%)
         # Проверить, что нет параграфов с очень низкой описательностью внутри
-        internal_paras = all_paragraphs[start_idx:end_idx+1]
-        min_internal_descriptiveness = min(p.descriptiveness_score for p in internal_paras)
+        internal_paras = all_paragraphs[start_idx : end_idx + 1]
+        min_internal_descriptiveness = min(
+            p.descriptiveness_score for p in internal_paras
+        )
         if min_internal_descriptiveness >= 0.3:
             score += 0.2
         elif min_internal_descriptiveness >= 0.2:
@@ -452,8 +464,7 @@ class DescriptionBoundaryDetector:
 
         # Проверка 4: Хотя бы один параграф с высокой описательностью
         has_high_descriptiveness = any(
-            p.descriptiveness_score > 0.6
-            for p in description.paragraphs
+            p.descriptiveness_score > 0.6 for p in description.paragraphs
         )
         if not has_high_descriptiveness:
             return False
@@ -500,8 +511,11 @@ class DescriptionBoundaryDetector:
         return {
             "total": len(descriptions),
             "avg_length": sum(d.char_length for d in descriptions) / len(descriptions),
-            "avg_paragraphs": sum(d.paragraph_count for d in descriptions) / len(descriptions),
-            "avg_coherence": sum(d.coherence_score for d in descriptions) / len(descriptions),
-            "avg_boundary_confidence": sum(d.boundary_confidence for d in descriptions) / len(descriptions),
+            "avg_paragraphs": sum(d.paragraph_count for d in descriptions)
+            / len(descriptions),
+            "avg_coherence": sum(d.coherence_score for d in descriptions)
+            / len(descriptions),
+            "avg_boundary_confidence": sum(d.boundary_confidence for d in descriptions)
+            / len(descriptions),
             "length_distribution": length_distribution,
         }

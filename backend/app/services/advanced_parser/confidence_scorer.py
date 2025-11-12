@@ -52,6 +52,7 @@ class ConfidenceScoreBreakdown:
         passes_threshold: Проходит ли минимальный порог
         metadata: Дополнительные метаданные
     """
+
     overall_score: float
     linguistic_quality: float
     visual_richness: float
@@ -64,14 +65,16 @@ class ConfidenceScoreBreakdown:
     metadata: Dict = field(default_factory=dict)
 
     def __repr__(self) -> str:
-        return f"ConfidenceScore(overall={self.overall_score:.3f}, " \
-               f"type={self.description_type.value}, " \
-               f"ling={self.linguistic_quality:.2f}, " \
-               f"vis={self.visual_richness:.2f}, " \
-               f"struct={self.structural_completeness:.2f}, " \
-               f"type_spec={self.type_specificity:.2f}, " \
-               f"len={self.length_appropriateness:.2f}, " \
-               f"passes={self.passes_threshold})"
+        return (
+            f"ConfidenceScore(overall={self.overall_score:.3f}, "
+            f"type={self.description_type.value}, "
+            f"ling={self.linguistic_quality:.2f}, "
+            f"vis={self.visual_richness:.2f}, "
+            f"struct={self.structural_completeness:.2f}, "
+            f"type_spec={self.type_specificity:.2f}, "
+            f"len={self.length_appropriateness:.2f}, "
+            f"passes={self.passes_threshold})"
+        )
 
 
 class MultiFactorConfidenceScorer:
@@ -123,22 +126,51 @@ class MultiFactorConfidenceScorer:
         # Индикаторы типов описаний
         self.type_indicators_sets = {}
         for desc_type, indicators in self.config.type_indicators.items():
-            self.type_indicators_sets[desc_type] = set(ind.lower() for ind in indicators)
+            self.type_indicators_sets[desc_type] = set(
+                ind.lower() for ind in indicators
+            )
 
         # Русские прилагательные (частые суффиксы)
         self.adjective_suffixes = [
-            'ый', 'ий', 'ой', 'ая', 'яя', 'ое', 'ее', 'ые', 'ие',
-            'ого', 'его', 'ому', 'ему', 'ым', 'им', 'ом', 'ем',
+            "ый",
+            "ий",
+            "ой",
+            "ая",
+            "яя",
+            "ое",
+            "ее",
+            "ые",
+            "ие",
+            "ого",
+            "его",
+            "ому",
+            "ему",
+            "ым",
+            "им",
+            "ом",
+            "ем",
         ]
 
         # Русские существительные (частые окончания)
         self.noun_endings = [
-            'а', 'я', 'о', 'е', 'и', 'ы', 'у', 'ю',
-            'ость', 'есть', 'ание', 'ение', 'ство', 'тель',
+            "а",
+            "я",
+            "о",
+            "е",
+            "и",
+            "ы",
+            "у",
+            "ю",
+            "ость",
+            "есть",
+            "ание",
+            "ение",
+            "ство",
+            "тель",
         ]
 
         # Паттерн для предложений
-        self.sentence_pattern = re.compile(r'[.!?]+\s+', re.UNICODE)
+        self.sentence_pattern = re.compile(r"[.!?]+\s+", re.UNICODE)
 
     def score(self, description: CompleteDescription) -> ConfidenceScoreBreakdown:
         """
@@ -174,11 +206,11 @@ class MultiFactorConfidenceScorer:
         # Вычислить итоговую оценку (взвешенная сумма)
         weights = self.config.confidence_weights
         overall_score = (
-            weights["linguistic_quality"] * linguistic_quality +
-            weights["visual_richness"] * visual_richness +
-            weights["structural_completeness"] * structural_completeness +
-            weights["type_specificity"] * type_specificity +
-            weights["length_appropriateness"] * length_appropriateness
+            weights["linguistic_quality"] * linguistic_quality
+            + weights["visual_richness"] * visual_richness
+            + weights["structural_completeness"] * structural_completeness
+            + weights["type_specificity"] * type_specificity
+            + weights["length_appropriateness"] * length_appropriateness
         )
 
         # Получить вес приоритета для этой длины
@@ -193,11 +225,11 @@ class MultiFactorConfidenceScorer:
         # Проверить минимальные пороги для каждого фактора
         min_thresholds = self.config.min_factor_scores
         passes_min_thresholds = (
-            linguistic_quality >= min_thresholds["linguistic_quality"] and
-            visual_richness >= min_thresholds["visual_richness"] and
-            structural_completeness >= min_thresholds["structural_completeness"] and
-            type_specificity >= min_thresholds["type_specificity"] and
-            length_appropriateness >= min_thresholds["length_appropriateness"]
+            linguistic_quality >= min_thresholds["linguistic_quality"]
+            and visual_richness >= min_thresholds["visual_richness"]
+            and structural_completeness >= min_thresholds["structural_completeness"]
+            and type_specificity >= min_thresholds["type_specificity"]
+            and length_appropriateness >= min_thresholds["length_appropriateness"]
         )
 
         passes_threshold = passes_threshold and passes_min_thresholds
@@ -217,7 +249,7 @@ class MultiFactorConfidenceScorer:
                 "paragraph_count": description.paragraph_count,
                 "coherence_score": description.coherence_score,
                 "adaptive_threshold": adaptive_threshold,
-            }
+            },
         )
 
     def _calculate_linguistic_quality(self, text: str) -> float:
@@ -243,11 +275,13 @@ class MultiFactorConfidenceScorer:
 
         # Подфактор 1.1: Баланс прилагательных/существительных (40%)
         adjective_count = sum(
-            1 for word in words
+            1
+            for word in words
             if any(word.endswith(suffix) for suffix in self.adjective_suffixes)
         )
         noun_count = sum(
-            1 for word in words
+            1
+            for word in words
             if any(word.endswith(ending) for ending in self.noun_endings)
         )
 
@@ -272,7 +306,9 @@ class MultiFactorConfidenceScorer:
         sentences = [s.strip() for s in sentences if s.strip()]
 
         if sentences:
-            avg_sentence_length = sum(len(s.split()) for s in sentences) / len(sentences)
+            avg_sentence_length = sum(len(s.split()) for s in sentences) / len(
+                sentences
+            )
             # Оптимальная длина: 12-25 слов (описательные предложения длиннее)
             if 12 <= avg_sentence_length <= 25:
                 complexity_score = 1.0
@@ -383,9 +419,7 @@ class MultiFactorConfidenceScorer:
         return min(score, 1.0)
 
     def _calculate_structural_completeness(
-        self,
-        text: str,
-        description: CompleteDescription
+        self, text: str, description: CompleteDescription
     ) -> float:
         """
         Фактор 3: Структурная полнота (20%).
@@ -406,12 +440,12 @@ class MultiFactorConfidenceScorer:
         score = 0.0
 
         # Подфактор 3.1: Правильное начало (30%)
-        first_char = text.strip()[0] if text.strip() else ''
+        first_char = text.strip()[0] if text.strip() else ""
         starts_properly = first_char.isupper() and first_char.isalpha()
 
         # Проверить, что не начинается с местоимения
-        first_word = text.strip().split()[0].lower() if text.strip().split() else ''
-        pronouns = {'он', 'она', 'оно', 'они', 'его', 'её', 'их'}
+        first_word = text.strip().split()[0].lower() if text.strip().split() else ""
+        pronouns = {"он", "она", "оно", "они", "его", "её", "их"}
         starts_with_pronoun = first_word in pronouns
 
         if starts_properly and not starts_with_pronoun:
@@ -424,8 +458,8 @@ class MultiFactorConfidenceScorer:
         score += 0.3 * start_score
 
         # Подфактор 3.2: Правильное окончание (30%)
-        last_char = text.strip()[-1] if text.strip() else ''
-        ends_properly = last_char in '.!?'
+        last_char = text.strip()[-1] if text.strip() else ""
+        ends_properly = last_char in ".!?"
 
         if ends_properly:
             end_score = 1.0
@@ -534,7 +568,7 @@ class MultiFactorConfidenceScorer:
 
     def filter_by_threshold(
         self,
-        scored_descriptions: List[Tuple[CompleteDescription, ConfidenceScoreBreakdown]]
+        scored_descriptions: List[Tuple[CompleteDescription, ConfidenceScoreBreakdown]],
     ) -> List[Tuple[CompleteDescription, ConfidenceScoreBreakdown]]:
         """
         Фильтровать описания по минимальному порогу confidence.
@@ -553,7 +587,7 @@ class MultiFactorConfidenceScorer:
 
     def rank_by_priority(
         self,
-        scored_descriptions: List[Tuple[CompleteDescription, ConfidenceScoreBreakdown]]
+        scored_descriptions: List[Tuple[CompleteDescription, ConfidenceScoreBreakdown]],
     ) -> List[Tuple[CompleteDescription, ConfidenceScoreBreakdown]]:
         """
         Ранжировать описания по приоритету.
@@ -568,6 +602,7 @@ class MultiFactorConfidenceScorer:
         Returns:
             Отсортированный список (от наивысшего приоритета)
         """
+
         def priority_key(item):
             desc, score = item
             return score.overall_score * score.priority_weight
@@ -576,7 +611,7 @@ class MultiFactorConfidenceScorer:
 
     def get_statistics(
         self,
-        scored_descriptions: List[Tuple[CompleteDescription, ConfidenceScoreBreakdown]]
+        scored_descriptions: List[Tuple[CompleteDescription, ConfidenceScoreBreakdown]],
     ) -> Dict:
         """
         Получить статистику по оценкам.
@@ -607,14 +642,19 @@ class MultiFactorConfidenceScorer:
             "pass_rate": len(passed) / len(scores) if scores else 0.0,
             "avg_overall_score": sum(s.overall_score for s in scores) / len(scores),
             "avg_by_factor": {
-                "linguistic_quality": sum(s.linguistic_quality for s in scores) / len(scores),
+                "linguistic_quality": sum(s.linguistic_quality for s in scores)
+                / len(scores),
                 "visual_richness": sum(s.visual_richness for s in scores) / len(scores),
-                "structural_completeness": sum(s.structural_completeness for s in scores) / len(scores),
-                "type_specificity": sum(s.type_specificity for s in scores) / len(scores),
-                "length_appropriateness": sum(s.length_appropriateness for s in scores) / len(scores),
+                "structural_completeness": sum(
+                    s.structural_completeness for s in scores
+                )
+                / len(scores),
+                "type_specificity": sum(s.type_specificity for s in scores)
+                / len(scores),
+                "length_appropriateness": sum(s.length_appropriateness for s in scores)
+                / len(scores),
             },
             "by_type": {
-                desc_type.value: count
-                for desc_type, count in type_distribution.items()
+                desc_type.value: count for desc_type, count in type_distribution.items()
             },
         }

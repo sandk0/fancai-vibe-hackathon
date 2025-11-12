@@ -20,14 +20,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import type { Book } from '@/types/epub';
-
-interface EpubLocations {
-  locationFromCfi(cfi: string): number;
-  cfiFromLocation(location: number): string;
-  percentageFromCfi(cfi: string): number;
-  total: number;
-}
+import type { Book, EpubLocations } from '@/types/epub';
 
 interface UseLocationGenerationReturn {
   locations: EpubLocations | null;

@@ -24,9 +24,7 @@ class CleanupStatsResponse(BaseModel):
     avg_duration_minutes: float = Field(
         ..., description="Средняя длительность сессий в минутах"
     )
-    no_progress_count: int = Field(
-        ..., description="Количество сессий без прогресса"
-    )
+    no_progress_count: int = Field(..., description="Количество сессий без прогресса")
     period_hours: int = Field(..., description="Период анализа в часах")
     timestamp: str = Field(..., description="Время генерации статистики")
 

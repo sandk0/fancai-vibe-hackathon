@@ -223,4 +223,5 @@ def create_access_token(data: dict) -> str:
         >>> headers = {"Authorization": f"Bearer {token}"}
     """
     from ..services.auth_service import auth_service
+
     return auth_service.create_access_token(data)

@@ -68,7 +68,8 @@ export interface Rendition {
   };
   hooks: {
     content: {
-      register(callback: (contents: Contents) => void): void;
+      register(callback: (contents: Contents, view?: unknown) => void): void;
+      deregister(callback: (contents: Contents, view?: unknown) => void): void;
     };
   };
   on(event: string, callback: (...args: unknown[]) => void): void;
@@ -113,6 +114,7 @@ export interface EpubLocations {
   cfiFromLocation(location: number): string;
   locationFromCfi(cfi: string): number;
   percentageFromCfi(cfi: string): number;
+  percentageFromLocation(location: number): number;
   total: number;
   length(): number;
 }

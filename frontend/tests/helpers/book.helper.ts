@@ -3,7 +3,6 @@
  */
 
 import { Page } from '@playwright/test';
-import path from 'path';
 
 /**
  * Upload a book file

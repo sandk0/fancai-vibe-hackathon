@@ -43,10 +43,12 @@ export const usePagination = (
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
-    if (!chapter?.chapter?.content) return;
+    const chapterData = chapter as Record<string, unknown> | null;
+    const nestedChapter = chapterData?.chapter as Record<string, unknown> | undefined;
+    if (!nestedChapter?.content) return;
 
     const paginateContent = () => {
-      const content = chapter.chapter.html_content || chapter.chapter.content;
+      const content = (nestedChapter.html_content as string) || (nestedChapter.content as string);
       if (!content) {
         setPages(['']);
         return;
@@ -121,7 +123,7 @@ export const usePagination = (
     // Debounce pagination
     const timeoutId = setTimeout(paginateContent, 200);
     return () => clearTimeout(timeoutId);
-  }, [chapter?.chapter, fontSize, lineHeight, containerRef]);
+  }, [chapter, fontSize, lineHeight, containerRef]);
 
   const goToPage = (page: number) => {
     if (page >= 1 && page <= pages.length) {
