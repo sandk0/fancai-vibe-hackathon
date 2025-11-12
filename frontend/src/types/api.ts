@@ -88,6 +88,7 @@ export interface Book {
   reading_progress_percent: number;
   has_cover: boolean;
   is_parsed: boolean;
+  is_processing?: boolean;
   created_at: string;
   last_accessed?: string;
 }
@@ -150,6 +151,7 @@ export interface Description {
   id: string;
   type: DescriptionType;
   content: string;
+  text?: string;  // Full text of description (same as content in most cases)
   confidence_score: number;
   priority_score: number;
   entities_mentioned: string[];
@@ -212,6 +214,7 @@ export interface GeneratedImage {
   generated_at?: string;
 
   // Relationships
+  description_id?: string;  // ID of the description (alternative to full object)
   description: ImageDescription;
   chapter: ImageChapter;
 }

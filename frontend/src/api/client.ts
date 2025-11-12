@@ -127,14 +127,15 @@ class ApiClient {
     localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
     localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
     localStorage.removeItem(STORAGE_KEYS.USER_DATA);
-    
-    // Also clear Zustand store
-    try {
-      const { useAuthStore } = await import('@/stores/auth');
-      useAuthStore.getState().logout();
-    } catch (error) {
-      console.warn('Failed to clear auth store:', error);
-    }
+
+    // Also clear Zustand store (async import)
+    import('@/stores/auth')
+      .then(({ useAuthStore }) => {
+        useAuthStore.getState().logout();
+      })
+      .catch((error) => {
+        console.warn('Failed to clear auth store:', error);
+      });
   }
 
   private handleError(error: unknown): ApiError {

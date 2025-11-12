@@ -184,23 +184,29 @@ export const readingSessionsAPI = {
       try {
         switch (item.type) {
           case 'start':
-            await this.startSession(
-              item.data.book_id,
-              item.data.start_position,
-              item.data.device_type
-            );
+            if (item.data.book_id && item.data.start_position !== undefined) {
+              await this.startSession(
+                item.data.book_id,
+                item.data.start_position,
+                item.data.device_type
+              );
+            }
             break;
           case 'update':
-            await this.updateSession(
-              item.data.session_id,
-              item.data.current_position
-            );
+            if (item.data.session_id && item.data.current_position !== undefined) {
+              await this.updateSession(
+                item.data.session_id,
+                item.data.current_position
+              );
+            }
             break;
           case 'end':
-            await this.endSession(
-              item.data.session_id,
-              item.data.end_position
-            );
+            if (item.data.session_id && item.data.end_position !== undefined) {
+              await this.endSession(
+                item.data.session_id,
+                item.data.end_position
+              );
+            }
             break;
         }
       } catch (error) {
@@ -222,11 +228,12 @@ const PENDING_SESSIONS_KEY = 'bookreader_pending_sessions';
 interface PendingSession {
   type: 'start' | 'update' | 'end';
   data: {
-    bookId?: string;
-    startPosition?: number;
-    sessionId?: string;
-    endPosition?: number;
-    deviceType?: string;
+    book_id?: string;
+    start_position?: number;
+    session_id?: string;
+    end_position?: number;
+    current_position?: number;
+    device_type?: string;
   };
   timestamp: string;
 }

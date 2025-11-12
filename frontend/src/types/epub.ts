@@ -61,10 +61,15 @@ export interface Rendition {
   next(): Promise<void>;
   destroy(): void;
   themes: {
-    default(styles: Record<string, string | number>): void;
+    default(styles: Record<string, string | number> | { [key: string]: Record<string, string | number> | string | number }): void;
     register(name: string, styles: Record<string, string | number>): void;
     select(name: string): void;
     fontSize(size: string): void;
+  };
+  hooks: {
+    content: {
+      register(callback: (contents: Contents) => void): void;
+    };
   };
   on(event: string, callback: (...args: unknown[]) => void): void;
   off(event: string, callback?: (...args: unknown[]) => void): void;
@@ -100,6 +105,18 @@ export interface Contents {
   off(event: string, callback?: (...args: unknown[]) => void): void;
 }
 
+export interface EpubLocations {
+  generate(chars?: number): Promise<void>;
+  save(): string;
+  load(locations: string): void;
+  currentLocation(target: string): number;
+  cfiFromLocation(location: number): string;
+  locationFromCfi(cfi: string): number;
+  percentageFromCfi(cfi: string): number;
+  total: number;
+  length(): number;
+}
+
 export interface Book {
   ready: Promise<void>;
   spine: {
@@ -113,16 +130,7 @@ export interface Book {
     landmarks: NavItem[];
     get(target: string): NavItem | undefined;
   };
-  locations: {
-    generate(chars?: number): Promise<void>;
-    save(): string;
-    load(locations: string): void;
-    currentLocation(target: string): number;
-    cfiFromLocation(location: number): string;
-    locationFromCfi(cfi: string): number;
-    total: number;
-    length(): number;
-  };
+  locations: EpubLocations;
   rendition(options?: RenditionOptions): Rendition;
   coverUrl(): Promise<string | null>;
   loaded: {
@@ -139,6 +147,7 @@ export interface Book {
       publisher: string;
       pubdate: string;
       direction: string;
+      rights?: string;
     };
   };
   destroy(): void;
@@ -222,3 +231,9 @@ export function isLocation(obj: unknown): obj is Location {
     'atEnd' in obj
   );
 }
+
+// Export all types and functions
+export * from './epub';
+
+// Note: TypeScript types cannot be exported as default object values
+// Import named exports instead: import { Book, Rendition, etc } from '@/types/epub'

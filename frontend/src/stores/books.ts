@@ -4,6 +4,7 @@
 import { create } from 'zustand';
 import { booksAPI } from '@/api/books';
 import type { BooksState } from '@/types/state';
+import { getErrorMessage } from '@/utils/errors';
 
 export const useBooksStore = create<BooksState>((set, get) => ({
   // Initial state
@@ -41,10 +42,10 @@ export const useBooksStore = create<BooksState>((set, get) => ({
         hasMore,
         isLoading: false,
       });
-    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
+    } catch (error) {
       set({
         isLoading: false,
-        error: error.message || 'Failed to fetch books'
+        error: getErrorMessage(error, 'Failed to fetch books')
       });
       throw error;
     }
@@ -86,10 +87,10 @@ export const useBooksStore = create<BooksState>((set, get) => ({
         currentBook: book,
         isLoading: false 
       });
-    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
-      set({ 
-        isLoading: false, 
-        error: error.message || 'Failed to fetch book' 
+    } catch (error) {
+      set({
+        isLoading: false,
+        error: getErrorMessage(error, 'Failed to fetch book')
       });
       throw error;
     }
@@ -100,15 +101,15 @@ export const useBooksStore = create<BooksState>((set, get) => ({
 
     try {
       const response = await booksAPI.getChapter(bookId, chapterNumber);
-      set({ 
+      set({
         currentChapter: response.chapter,
-        isLoading: false 
+        isLoading: false
       });
-      return response;
-    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
-      set({ 
-        isLoading: false, 
-        error: error.message || 'Failed to fetch chapter' 
+      return response.chapter;
+    } catch (error) {
+      set({
+        isLoading: false,
+        error: getErrorMessage(error, 'Failed to fetch chapter')
       });
       throw error;
     }
@@ -124,7 +125,7 @@ export const useBooksStore = create<BooksState>((set, get) => ({
       const response = await booksAPI.uploadBook(formData, {
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
+            (progressEvent.loaded * 100) / (progressEvent.total || 1)
           );
           console.log(`Upload progress: ${percentCompleted}%`);
         }
@@ -135,11 +136,25 @@ export const useBooksStore = create<BooksState>((set, get) => ({
       await get().fetchBooks(1, get().booksPerPage);
 
       set({ isLoading: false });
-      return response;
-    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
+
+      // Convert BookUploadResponse to Book format
+      return {
+        id: response.book_id,
+        title: response.title,
+        author: response.author,
+        chapters_count: response.chapters_count,
+        total_pages: response.total_pages,
+        estimated_reading_time_hours: response.estimated_reading_time_hours,
+        has_cover: response.has_cover,
+        created_at: response.created_at,
+        reading_progress_percent: 0,
+        is_parsed: false,
+        is_processing: response.is_processing,
+      };
+    } catch (error) {
       set({
         isLoading: false,
-        error: error.message || 'Failed to upload book'
+        error: getErrorMessage(error, 'Failed to upload book')
       });
       throw error;
     }
@@ -158,10 +173,10 @@ export const useBooksStore = create<BooksState>((set, get) => ({
         currentBook: get().currentBook?.id === bookId ? null : get().currentBook,
         isLoading: false,
       });
-    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
-      set({ 
-        isLoading: false, 
-        error: error.message || 'Failed to delete book' 
+    } catch (error) {
+      set({
+        isLoading: false,
+        error: getErrorMessage(error, 'Failed to delete book')
       });
       throw error;
     }
@@ -180,7 +195,7 @@ export const useBooksStore = create<BooksState>((set, get) => ({
         if (book.id === bookId) {
           return {
             ...book,
-            reading_progress_percent: response.progress ? 
+            reading_progress_percent: response.progress ?
               (response.progress.current_page / book.total_pages) * 100 : 0
           };
         }
@@ -189,13 +204,11 @@ export const useBooksStore = create<BooksState>((set, get) => ({
 
       set({
         books: updatedBooks,
-        currentBook: currentBook?.id === bookId ? 
-          updatedBooks.find(book => book.id === bookId) || currentBook : 
+        currentBook: currentBook?.id === bookId ?
+          updatedBooks.find(book => book.id === bookId) || currentBook :
           currentBook
       });
-
-      return response;
-    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
+    } catch (error) {
       console.error('Failed to update reading progress:', error);
       throw error;
     }

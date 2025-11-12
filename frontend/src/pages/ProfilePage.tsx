@@ -49,7 +49,7 @@ function calculateAchievements(totalBooks: number, streak: number) {
 
 const ProfilePage: React.FC = () => {
   const { user } = useAuthStore();
-  const queryClient = useQueryClient();
+  const _queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(user?.full_name || '');
 
@@ -68,7 +68,7 @@ const ProfilePage: React.FC = () => {
       setIsEditing(false);
     },
     onError: (error: Error | { response?: { data?: { detail?: string } } }) => {
-      toast.error(error.message || 'Ошибка при обновлении профиля');
+      toast.error(getErrorMessage(error, 'Ошибка при обновлении профиля'));
     },
   });
 
