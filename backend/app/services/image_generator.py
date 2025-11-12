@@ -8,6 +8,7 @@
 import asyncio
 import aiohttp
 import hashlib
+import tempfile
 from typing import Dict, Any, Optional, List
 from pathlib import Path
 from datetime import datetime
@@ -269,7 +270,7 @@ class PollinationsImageGenerator:
             Путь к сохраненному файлу
         """
         # Создаем директорию для изображений если её нет
-        images_dir = Path("/tmp/generated_images")
+        images_dir = Path(tempfile.gettempdir()) / "generated_images"
         images_dir.mkdir(exist_ok=True)
 
         # Создаем уникальное имя файла на основе хеша промпта

@@ -240,7 +240,8 @@ class ParsingRateLimiter:
             if memory.available < 2 * 1024 * 1024 * 1024:  # Less than 2GB available
                 return (
                     False,
-                    f"Insufficient memory: {memory.available / 1024 / 1024 / 1024:.1f}GB available",
+                    "Insufficient memory: "
+                    f"{memory.available / 1024 / 1024 / 1024:.1f}GB available",
                 )
 
             # Check CPU

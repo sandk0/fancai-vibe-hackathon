@@ -5,7 +5,7 @@ gunicorn==21.2.0
 python-multipart==0.0.6
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-starlette>=0.47.2
+# starlette managed by fastapi (0.40.0-0.42.0)
 
 # База данных
 sqlalchemy==2.0.23

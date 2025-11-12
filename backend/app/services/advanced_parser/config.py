@@ -14,6 +14,8 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 from enum import Enum
+import tempfile
+from pathlib import Path
 
 
 class ParagraphType(Enum):
@@ -518,7 +520,7 @@ class AdvancedParserConfig:
     save_intermediate_results: bool = False
 
     # Путь для сохранения отладочной информации
-    debug_output_path: str = "/tmp/advanced_parser_debug"
+    debug_output_path: str = str(Path(tempfile.gettempdir()) / "advanced_parser_debug")
 
     def get_priority_weight(self, char_length: int) -> float:
         """
