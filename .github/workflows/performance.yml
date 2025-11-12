@@ -67,7 +67,7 @@ jobs:
 
       - name: Upload Lighthouse results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: lighthouse-results
           path: .lighthouseci/
@@ -284,7 +284,7 @@ jobs:
 
       - name: Upload load test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: locust-load-test-results
           path: |

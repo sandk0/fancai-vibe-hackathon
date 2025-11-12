@@ -58,7 +58,7 @@ jobs:
 
       - name: Upload dependency scan results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: backend-dependency-scan
           path: |
@@ -93,7 +93,7 @@ jobs:
 
       - name: Upload dependency scan results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: frontend-dependency-scan
           path: |
@@ -123,7 +123,7 @@ jobs:
 
       - name: Upload Bandit results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: bandit-sast-results
           path: backend/bandit-report.json
@@ -156,7 +156,7 @@ jobs:
 
       - name: Upload ESLint security results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: eslint-security-results
           path: frontend/eslint-security-report.json
@@ -372,7 +372,7 @@ jobs:
 
       - name: Upload license reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: license-compliance-reports
           path: |
