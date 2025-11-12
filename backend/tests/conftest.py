@@ -254,3 +254,104 @@ def authenticated_headers(client, sample_user_data):
 def override_settings():
     """Override settings for testing (disabled - Pydantic settings are immutable)."""
     yield settings
+
+
+@pytest.fixture
+async def test_book_with_descriptions(test_user, db_session):
+    """Create a book with chapters and descriptions for testing."""
+    from app.models.book import Book
+    from app.models.chapter import Chapter
+    from app.models.description import Description
+
+    # Create book
+    book = Book(
+        title="Test Book with Descriptions",
+        author="Test Author",
+        user_id=test_user.id,
+        file_format="epub",
+        language="ru"
+    )
+    db_session.add(book)
+    await db_session.flush()
+
+    # Create chapter
+    chapter = Chapter(
+        book_id=book.id,
+        chapter_number=1,
+        title="Chapter 1",
+        content="A beautiful forest with tall trees. The mysterious castle on the hill.",
+        word_count=100
+    )
+    db_session.add(chapter)
+    await db_session.flush()
+
+    # Create descriptions
+    descriptions_data = [
+        {"text": "beautiful forest with tall trees", "description_type": "location", "confidence_score": 0.9},
+        {"text": "mysterious castle on the hill", "description_type": "location", "confidence_score": 0.85},
+    ]
+
+    for desc_data in descriptions_data:
+        description = Description(
+            book_id=book.id,
+            chapter_id=chapter.id,
+            text=desc_data["text"],
+            description_type=desc_data["description_type"],
+            confidence_score=desc_data["confidence_score"],
+            priority_score=0.8,
+            chapter_position=50
+        )
+        db_session.add(description)
+
+    await db_session.commit()
+    await db_session.refresh(book)
+    return str(book.id)
+
+
+@pytest.fixture
+async def test_book_with_progress(test_user, db_session):
+    """Create a book with reading progress for testing."""
+    from app.models.book import Book
+    from app.models.chapter import Chapter
+    from app.models.reading_progress import ReadingProgress
+
+    # Create book
+    book = Book(
+        title="Test Book with Progress",
+        author="Test Author",
+        user_id=test_user.id,
+        file_format="epub",
+        language="ru"
+    )
+    db_session.add(book)
+    await db_session.flush()
+
+    # Create chapters
+    for i in range(3):
+        chapter = Chapter(
+            book_id=book.id,
+            chapter_number=i + 1,
+            title=f"Chapter {i + 1}",
+            content=f"Content of chapter {i + 1}",
+            word_count=100
+        )
+        db_session.add(chapter)
+
+    await db_session.flush()
+
+    # Create reading progress
+    progress = ReadingProgress(
+        user_id=test_user.id,
+        book_id=book.id,
+        current_chapter=2,
+        current_page=10,
+        current_position=50,
+        current_position_percent=25.0,
+        reading_location_cfi="/2/4/2/10",
+        scroll_offset_percent=30.5
+    )
+    db_session.add(progress)
+
+    await db_session.commit()
+    await db_session.refresh(book)
+    return str(book.id)

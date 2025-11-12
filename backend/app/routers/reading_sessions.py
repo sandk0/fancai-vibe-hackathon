@@ -337,6 +337,9 @@ async def start_reading_session(
 
         return session_to_response(new_session)
 
+    except HTTPException:
+        # Re-raise HTTPExceptions (including BookNotFoundException) to let FastAPI handle them
+        raise
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -601,7 +604,7 @@ async def get_reading_sessions_history(
     page: Optional[int] = Query(
         default=None, ge=1, description="Номер страницы (legacy, deprecated)"
     ),
-    limit: int = Query(default=20, ge=1, le=100, description="Количество сессий"),
+    page_size: int = Query(default=20, ge=1, le=100, description="Количество сессий"),
     book_id: Optional[str] = Query(default=None, description="Фильтр по UUID книги"),
     db: AsyncSession = Depends(get_database_session),
     current_user: User = Depends(get_current_active_user),
@@ -614,7 +617,7 @@ async def get_reading_sessions_history(
     Args:
         cursor: Cursor для следующей страницы (рекомендуется)
         page: Номер страницы для legacy offset pagination (deprecated)
-        limit: Максимум сессий для возврата
+        page_size: Максимум сессий для возврата
         book_id: Опциональный UUID книги для фильтрации
         db: Сессия базы данных
         current_user: Текущий пользователь
@@ -647,7 +650,7 @@ async def get_reading_sessions_history(
             ) = await reading_session_service.get_user_sessions_optimized(
                 db=db,
                 user_id=current_user.id,
-                limit=limit,
+                limit=page_size,
                 cursor=cursor,
                 book_id=book_uuid,
             )
@@ -659,7 +662,7 @@ async def get_reading_sessions_history(
                 sessions=session_responses,
                 total=total,
                 page=None,  # Not applicable для cursor pagination
-                page_size=limit,
+                page_size=page_size,
                 has_next=next_cursor is not None,
                 next_cursor=next_cursor,
             )
@@ -687,8 +690,8 @@ async def get_reading_sessions_history(
             total = len(count_result.all())
 
             # Пагинация
-            offset = (page - 1) * limit
-            query = query.limit(limit).offset(offset)
+            offset = (page - 1) * page_size
+            query = query.limit(page_size).offset(offset)
 
             # Выполняем запрос
             result = await db.execute(query)
@@ -698,13 +701,13 @@ async def get_reading_sessions_history(
             session_responses = [session_to_response(session) for session in sessions]
 
             # Проверяем наличие следующей страницы
-            has_next = (offset + limit) < total
+            has_next = (offset + page_size) < total
 
             return ReadingSessionListResponse(
                 sessions=session_responses,
                 total=total,
                 page=page,
-                page_size=limit,
+                page_size=page_size,
                 has_next=has_next,
                 next_cursor=None,  # Not used в offset pagination
             )
