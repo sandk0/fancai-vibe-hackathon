@@ -16,6 +16,15 @@ export default defineConfig({
     setupFiles: './src/test/setup.ts',
     css: true,
     reporter: ['verbose'],
+    // Exclude Playwright tests from Vitest
+    exclude: [
+      'node_modules',
+      'dist',
+      '.idea',
+      '.git',
+      '.cache',
+      'tests/**',  // Playwright E2E tests
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],

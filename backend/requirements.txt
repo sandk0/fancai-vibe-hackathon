@@ -1,5 +1,5 @@
 # FastAPI и веб-фреймворк
-fastapi==0.104.1
+fastapi==0.115.5
 uvicorn[standard]==0.24.0
 gunicorn==21.2.0
 python-multipart==0.0.6
