@@ -1,6 +1,6 @@
 // State Management Types for BookReader AI
 
-import { User, Book, Chapter, GeneratedImage, UserProfile, GenerationStatus } from './api';
+import { User, Book, Chapter, GeneratedImage, UserProfile, GenerationStatus, Description } from './api';
 
 // Auth Store State
 export interface AuthState {
