@@ -24,7 +24,9 @@ nltk==3.8.1
 stanza==1.7.0
 natasha==1.6.0
 pymorphy3==1.2.1
-deeppavlov==1.4.0
+# deeppavlov==1.4.0  # BLOCKED: Requires fastapi<=0.89.1, pydantic<2 (we have 0.104.1, 2.5.0)
+                      # Week 1: Code implemented but not installable
+                      # Week 2: Will be replaced with GLiNER (no conflicts)
 langextract==0.1.0
 
 # Парсинг книг
