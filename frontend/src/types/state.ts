@@ -47,7 +47,7 @@ export interface BooksState {
   fetchBook: (bookId: string) => Promise<void>;
   fetchChapter: (bookId: string, chapterNumber: number) => Promise<{
     chapter: Chapter;
-    descriptions?: any[];
+    descriptions?: Description[];
     navigation: {
       has_previous: boolean;
       has_next: boolean;

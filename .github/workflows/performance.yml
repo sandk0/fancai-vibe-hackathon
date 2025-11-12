@@ -216,9 +216,22 @@ jobs:
           uvicorn app.main:app --host 0.0.0.0 --port 8000 &
           sleep 10
 
-      - name: Health check
+      - name: Health check with retry
         run: |
-          curl -f http://localhost:8000/health || exit 1
+          max_attempts=5
+          attempt=1
+          while [ $attempt -le $max_attempts ]; do
+            echo "Health check attempt $attempt of $max_attempts..."
+            if curl -f http://localhost:8000/health; then
+              echo "✅ Backend is healthy!"
+              exit 0
+            fi
+            echo "⚠️ Health check failed, waiting 5 seconds..."
+            sleep 5
+            attempt=$((attempt + 1))
+          done
+          echo "❌ Backend health check failed after $max_attempts attempts"
+          exit 1
 
       - name: Create Locust test file
         run: |
