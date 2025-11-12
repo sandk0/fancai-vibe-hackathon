@@ -45,7 +45,16 @@ export interface BooksState {
   // Actions
   fetchBooks: (page?: number, limit?: number, sortBy?: string) => Promise<void>;
   fetchBook: (bookId: string) => Promise<void>;
-  fetchChapter: (bookId: string, chapterNumber: number) => Promise<Chapter>;
+  fetchChapter: (bookId: string, chapterNumber: number) => Promise<{
+    chapter: Chapter;
+    descriptions?: any[];
+    navigation: {
+      has_previous: boolean;
+      has_next: boolean;
+      previous_chapter?: number;
+      next_chapter?: number;
+    };
+  }>;
   uploadBook: (file: File) => Promise<Book>;
   deleteBook: (bookId: string) => Promise<void>;
   updateReadingProgress: (bookId: string, currentPage: number, chapterNumber: number) => Promise<void>;

@@ -319,7 +319,7 @@ describe('Books Store', () => {
 
       const { result } = renderHook(() => useBooksStore());
 
-      let response: typeof mockResponse | undefined;
+      let response: any;
       await act(async () => {
         response = await result.current.fetchChapter('book-1', 5);
       });

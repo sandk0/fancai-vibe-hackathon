@@ -355,7 +355,7 @@ describe('Books API', () => {
 
       vi.mocked(apiClient.get).mockResolvedValue(mockStatus);
 
-      const result = await booksAPI.getParsingStatus('book-1');
+      const result = await booksAPI.getParsingStatus('book-1') as any;
 
       expect(apiClient.get).toHaveBeenCalledWith('/books/book-1/parsing-status');
       expect(result.progress).toBe(45);
@@ -371,7 +371,7 @@ describe('Books API', () => {
 
       vi.mocked(apiClient.post).mockResolvedValue(mockResponse);
 
-      const result = await booksAPI.processBook('book-1');
+      const result = await booksAPI.processBook('book-1') as any;
 
       expect(apiClient.post).toHaveBeenCalledWith('/books/book-1/process');
       expect(result.task_id).toBe('task-123');
