@@ -85,8 +85,8 @@ class RateLimiter:
         Returns:
             Redis key формата: "rate_limit:{endpoint_hash}:{identifier}"
         """
-        # Хэшируем endpoint для компактности
-        endpoint_hash = hashlib.md5(endpoint.encode()).hexdigest()[:8]
+        # Хэшируем endpoint для компактности (not for security, just for key shortening)
+        endpoint_hash = hashlib.md5(endpoint.encode(), usedforsecurity=False).hexdigest()[:8]
         return f"rate_limit:{endpoint_hash}:{identifier}"
 
     async def is_rate_limited(

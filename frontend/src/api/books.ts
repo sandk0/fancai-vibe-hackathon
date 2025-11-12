@@ -59,7 +59,7 @@ export const booksAPI = {
     const requestConfig = {
       ...config,
       headers: {
-        'Content-Type': undefined as any, // Let browser set multipart/form-data with boundary
+        'Content-Type': undefined, // Let browser set multipart/form-data with boundary
       },
     };
 
