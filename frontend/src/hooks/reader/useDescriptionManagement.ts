@@ -167,7 +167,7 @@ export const useDescriptionManagement = ({
           t('reader.imageGenerated'),
           t('reader.imageCreated').replace('{time}', result.generation_time.toFixed(1))
         );
-      } catch (error: Error) {
+      } catch (error) {
         console.error('[useDescriptionManagement] Image generation failed:', error);
         if (error.response?.status === 409) {
           notify.warning(t('reader.imageExists'), t('reader.imageExistsDesc'));

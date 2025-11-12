@@ -4,6 +4,8 @@
 import { create } from 'zustand';
 import { imagesAPI } from '@/api/images';
 import type { ImagesState } from '@/types/state';
+import { getErrorMessage } from '@/utils/errors';
+import type { GeneratedImage } from '@/types/api';
 
 export const useImagesStore = create<ImagesState>((set, get) => ({
   // Initial state
@@ -27,10 +29,10 @@ export const useImagesStore = create<ImagesState>((set, get) => ({
         generationStatus: status,
         isLoading: false 
       });
-    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
-      set({ 
-        isLoading: false, 
-        error: error.message || 'Failed to fetch generation status' 
+    } catch (error) {
+      set({
+        isLoading: false,
+        error: getErrorMessage(error, 'Failed to fetch generation status')
       });
       throw error;
     }
@@ -41,9 +43,9 @@ export const useImagesStore = create<ImagesState>((set, get) => ({
 
     try {
       const response = await imagesAPI.generateImageForDescription(descriptionId, params);
-      
+
       // Add the new image to the current list
-      const newImage: any = {
+      const newImage: GeneratedImage = {
         id: response.image_id,
         description_id: response.description_id,
         image_url: response.image_url,
@@ -76,11 +78,11 @@ export const useImagesStore = create<ImagesState>((set, get) => ({
         isGenerating: false
       });
 
-      return response;
-    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
-      set({ 
-        isGenerating: false, 
-        error: error.message || 'Failed to generate image' 
+      return newImage;
+    } catch (error) {
+      set({
+        isGenerating: false,
+        error: getErrorMessage(error, 'Failed to generate image')
       });
       throw error;
     }
@@ -90,10 +92,14 @@ export const useImagesStore = create<ImagesState>((set, get) => ({
     set({ isGenerating: true, error: null });
 
     try {
-      const response = await imagesAPI.generateImagesForChapter(chapterId, params);
-      
+      const response = await imagesAPI.generateImagesForChapter(chapterId, {
+        chapter_id: chapterId,
+        max_images: 10,
+        ...params as any
+      });
+
       // Convert response images to our format
-      const newImages: any[] = response.images.map(img => ({
+      const newImages: GeneratedImage[] = response.images.map(img => ({
         id: `generated-${Date.now()}-${Math.random()}`, // Temporary ID
         description_id: img.description_id,
         image_url: img.image_url,
@@ -124,11 +130,11 @@ export const useImagesStore = create<ImagesState>((set, get) => ({
         isGenerating: false
       });
 
-      return response;
-    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
-      set({ 
-        isGenerating: false, 
-        error: error.message || 'Failed to generate images for chapter' 
+      return newImages;
+    } catch (error) {
+      set({
+        isGenerating: false,
+        error: getErrorMessage(error, 'Failed to generate images for chapter')
       });
       throw error;
     }
@@ -143,10 +149,10 @@ export const useImagesStore = create<ImagesState>((set, get) => ({
         currentBookImages: response.images,
         isLoading: false 
       });
-    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
-      set({ 
-        isLoading: false, 
-        error: error.message || 'Failed to fetch book images' 
+    } catch (error) {
+      set({
+        isLoading: false,
+        error: getErrorMessage(error, 'Failed to fetch book images')
       });
       throw error;
     }
@@ -165,10 +171,10 @@ export const useImagesStore = create<ImagesState>((set, get) => ({
         currentBookImages: currentBookImages.filter(img => img.id !== imageId),
         isLoading: false,
       });
-    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
-      set({ 
-        isLoading: false, 
-        error: error.message || 'Failed to delete image' 
+    } catch (error) {
+      set({
+        isLoading: false,
+        error: getErrorMessage(error, 'Failed to delete image')
       });
       throw error;
     }

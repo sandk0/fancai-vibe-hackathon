@@ -115,7 +115,7 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
     },
     onError: (error: Error | { response?: { data?: { detail?: string } } }, file) => {
       console.error('❌ [MUTATION] onError called with error:', error);
-      notify.error(t('upload.uploadFailed'), error.message || t('upload.uploadFailedDesc'));
+      notify.error(t('upload.uploadFailed'), getErrorMessage(error, t('upload.uploadFailedDesc')));
       setUploadProgress(prev => {
         const newProgress = { ...prev };
         delete newProgress[file.name];

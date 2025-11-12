@@ -18,10 +18,8 @@ import os
 
 from ..core.database import get_database_session
 from ..core.auth import get_current_active_user
-from ..core.dependencies import get_user_book
 from ..core.exceptions import (
     ChapterDescriptionFetchException,
-    DescriptionFetchException,
     ChapterNotFoundException,
     NLPProcessorUnavailableException,
 )
@@ -29,7 +27,6 @@ from ..services.book import book_service, book_parsing_service
 from ..services.nlp_processor import nlp_processor
 from ..services.book_parser import book_parser
 from ..models.user import User
-from ..models.book import Book
 from ..models.description import Description
 
 

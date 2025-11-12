@@ -104,8 +104,8 @@ const RegisterPage: React.FC = () => {
       await registerUser(data.email, data.password, data.fullName);
       notify.success('Регистрация успешна!', 'Добро пожаловать в BookReader AI');
       navigate('/library', { replace: true });
-    } catch (error: Error | { response?: { data?: { detail?: string } } }) {
-      notify.error('Ошибка регистрации', error.message || 'Попробуйте снова');
+    } catch (error) {
+      notify.error('Ошибка регистрации', getErrorMessage(error, 'Попробуйте снова'));
     }
   };
 

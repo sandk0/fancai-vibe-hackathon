@@ -49,8 +49,8 @@ const LoginPage: React.FC = () => {
       await login(data.email, data.password);
       notify.success('Добро пожаловать!', 'Вы успешно вошли в систему');
       navigate(from, { replace: true });
-    } catch (error: Error | { response?: { data?: { detail?: string } } }) {
-      notify.error('Ошибка входа', error.message || 'Проверьте email и пароль');
+    } catch (error) {
+      notify.error('Ошибка входа', getErrorMessage(error, 'Проверьте email и пароль'));
     }
   };
 

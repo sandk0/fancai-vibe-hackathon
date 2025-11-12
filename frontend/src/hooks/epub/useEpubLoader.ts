@@ -22,7 +22,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import ePub from '@/types/epub';
+import ePub from 'epubjs';
 import type { Book, Rendition } from '@/types/epub';
 
 interface UseEpubLoaderOptions {
