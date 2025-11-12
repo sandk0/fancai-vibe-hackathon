@@ -148,7 +148,7 @@ class TestStartSession:
 
         # Assert
         assert response.status_code == 404
-        assert "not found" in response.json()["detail"].lower()
+        assert "not found" in response.json()["message"].lower()
 
     @pytest.mark.asyncio
     async def test_start_session_invalid_position(
