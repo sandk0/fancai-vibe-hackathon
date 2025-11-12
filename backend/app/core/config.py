@@ -4,6 +4,7 @@
 Настройки базы данных, Redis, AI сервисов и других компонентов.
 """
 
+import os
 from pydantic_settings import BaseSettings
 from pydantic import model_validator
 from typing import Optional
@@ -78,8 +79,15 @@ class Settings(BaseSettings):
         - SECRET_KEY (не может быть дефолтным)
         - DATABASE_URL (не может содержать тестовые пароли)
         - REDIS_URL (не может содержать тестовые пароли)
+
+        Валидация пропускается в CI/CD окружениях (GitHub Actions, GitLab CI и т.д.)
+        для возможности запуска тестов с development credentials.
         """
-        if not self.DEBUG:
+        # Проверка на CI/CD окружение
+        is_ci = os.getenv("CI") == "true" or os.getenv("GITHUB_ACTIONS") == "true"
+
+        # Валидация только для production (не DEBUG и не CI/CD)
+        if not self.DEBUG and not is_ci:
             # Проверка SECRET_KEY
             if self.SECRET_KEY == "dev-secret-key-change-in-production":
                 raise ValueError(
