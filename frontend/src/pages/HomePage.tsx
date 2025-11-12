@@ -12,7 +12,8 @@
  */
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
   BookOpen,
   Upload,
@@ -24,21 +25,77 @@ import {
   ArrowRight,
   Library,
   Clock,
-  Award,
+  FileText,
+  Wand2,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
 import { useUIStore } from '@/stores/ui';
+import { booksAPI } from '@/api/books';
+import { imagesAPI } from '@/api/images';
 import { cn } from '@/lib/utils';
 
 const HomePage: React.FC = () => {
   const { user } = useAuthStore();
   const setShowUploadModal = useUIStore(state => state.setShowUploadModal);
+  const navigate = useNavigate();
+
+  // Fetch user reading statistics
+  const { data: readingStats } = useQuery({
+    queryKey: ['userReadingStatistics'],
+    queryFn: () => booksAPI.getUserReadingStatistics(),
+    staleTime: 30000, // 30 seconds
+  });
+
+  // Fetch books for recent activity
+  const { data: booksData, isLoading: booksLoading } = useQuery({
+    queryKey: ['books', 'homepage'],
+    queryFn: () => booksAPI.getBooks({ limit: 50, sort_by: 'accessed_desc' }),
+    staleTime: 0, // Always fetch fresh data
+    refetchOnMount: 'always', // Always refetch when component mounts
+  });
+
+  // Fetch user images and descriptions stats
+  const { data: imagesStats } = useQuery({
+    queryKey: ['userImagesStats'],
+    queryFn: () => imagesAPI.getUserStats(),
+    staleTime: 30000, // 30 seconds
+  });
+
+  // Calculate stats from fetched data
+  const totalBooks = readingStats?.total_books ?? 0;
+  const totalHours = readingStats?.total_reading_time_minutes
+    ? Math.round(readingStats.total_reading_time_minutes / 60)
+    : 0;
+  const totalDescriptions = imagesStats?.total_descriptions_found ?? 0;
+  const totalImages = imagesStats?.total_images_generated ?? 0;
 
   const stats = [
-    { label: 'Книг в библиотеке', value: '0', icon: Library, color: 'text-blue-600 dark:text-blue-400' },
-    { label: 'Часов чтения', value: '0', icon: Clock, color: 'text-purple-600 dark:text-purple-400' },
-    { label: 'Изображений создано', value: '0', icon: Award, color: 'text-amber-600 dark:text-amber-400' },
+    { label: 'Книг в библиотеке', value: totalBooks.toString(), icon: Library, color: 'text-blue-600 dark:text-blue-400' },
+    { label: 'Часов чтения', value: totalHours.toString(), icon: Clock, color: 'text-purple-600 dark:text-purple-400' },
+    { label: 'Описаний найдено', value: totalDescriptions.toString(), icon: FileText, color: 'text-green-600 dark:text-green-400' },
+    { label: 'Изображений создано', value: totalImages.toString(), icon: Wand2, color: 'text-amber-600 dark:text-amber-400' },
   ];
+
+  // Get books in progress for recent activity
+  // Note: reading_progress_percent might be 0.0, 0.1, 5.0, etc.
+  const booksInProgress = booksData?.books.filter(book => {
+    const progress = book.reading_progress_percent ?? 0;
+    const hasProgress = progress >= 0.1 && progress < 100;
+
+    // Debug logging (remove in production)
+    if (progress > 0) {
+      console.log('[HomePage] Book with progress:', {
+        title: book.title,
+        progress,
+        hasProgress,
+      });
+    }
+
+    return hasProgress;
+  }) ?? [];
+
+  // Debug: log total books in progress
+  console.log('[HomePage] Books in progress:', booksInProgress.length);
 
   const features = [
     {
@@ -122,7 +179,7 @@ const HomePage: React.FC = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
         {stats.map((stat, index) => (
           <div
             key={index}
@@ -203,21 +260,72 @@ const HomePage: React.FC = () => {
             </h3>
           </div>
 
-          <div className="text-center py-12">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-              <BookOpen className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+          {booksLoading ? (
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400 mb-4"></div>
+              <p className="text-gray-500 dark:text-gray-400">Загрузка активности...</p>
             </div>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">
-              Пока нет книг в процессе чтения
-            </p>
-            <Link
-              to="/library"
-              className="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
-            >
-              Начать читать
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
+          ) : booksInProgress.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                <BookOpen className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+              </div>
+              <p className="text-gray-500 dark:text-gray-400 mb-4">
+                Пока нет книг в процессе чтения
+              </p>
+              <Link
+                to="/library"
+                className="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+              >
+                Начать читать
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {booksInProgress.slice(0, 3).map((book) => (
+                <div
+                  key={book.id}
+                  onClick={() => navigate(`/book/${book.id}`)}
+                  className={cn(
+                    "p-4 rounded-xl border-2 cursor-pointer transition-all duration-200",
+                    "bg-gray-50 dark:bg-gray-800",
+                    "border-gray-200 dark:border-gray-700",
+                    "hover:border-blue-500 dark:hover:border-blue-500",
+                    "hover:shadow-md hover:-translate-y-0.5"
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-gray-900 dark:text-white truncate">
+                        {book.title}
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                        {book.author}
+                      </p>
+                    </div>
+                    <span className="text-sm font-semibold text-blue-600 dark:text-blue-400 flex-shrink-0">
+                      {Math.round(book.reading_progress_percent)}%
+                    </span>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
+                      style={{ width: `${Math.min(book.reading_progress_percent, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+              {booksInProgress.length > 3 && (
+                <Link
+                  to="/library"
+                  className="block text-center py-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+                >
+                  Показать все ({booksInProgress.length})
+                </Link>
+              )}
+            </div>
+          )}
         </div>
 
         {/* AI Gallery */}

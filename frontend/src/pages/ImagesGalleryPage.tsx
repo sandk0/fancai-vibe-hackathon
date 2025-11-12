@@ -80,6 +80,7 @@ const ImagesGalleryPage: React.FC = () => {
     enabled: !!booksData?.books && booksData.books.length > 0,
   });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const allImages = imagesData || [];
 
   const descriptionTypes = [

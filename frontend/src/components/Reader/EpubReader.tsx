@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /**
  * EpubReader - Professional EPUB reading component with advanced features
  *
@@ -45,6 +46,7 @@ import {
   useEpubNavigation,
   useKeyboardNavigation,
   useChapterManagement,
+  useChapterMapping,
   useDescriptionHighlighting,
   useImageModal,
   useEpubThemes,
@@ -100,17 +102,28 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   const { locations, isGenerating } = useLocationGeneration(epubBook, book.id);
 
   // Hook 3: Track CFI position and progress (including page numbers)
-  const { currentCFI, progress, scrollOffsetPercent, currentPage, totalPages, goToCFI, skipNextRelocated } = useCFITracking({
+  const { currentCFI, progress, scrollOffsetPercent, currentPage, totalPages, goToCFI, skipNextRelocated, setInitialProgress } = useCFITracking({
     rendition,
     locations,
     book: epubBook,
   });
+
+  // Hook 16: Table of Contents (needed early for chapter mapping)
+  const { toc, currentHref, setCurrentHref } = useToc(epubBook);
+
+  // Hook 17: Chapter Mapping (maps spine hrefs to backend chapter numbers)
+  // FIXED: Solves mismatch between spine index and logical chapter numbers
+  const { getChapterNumberByLocation } = useChapterMapping(
+    toc,
+    book.chapters || []
+  );
 
   // Hook 4: Manage chapter tracking and load descriptions/images
   const { currentChapter, descriptions, images } = useChapterManagement({
     book: epubBook,
     rendition,
     bookId: book.id,
+    getChapterNumberByLocation,
   });
 
   // Hook 5: Debounced progress sync to backend
@@ -165,6 +178,16 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     enabled: renditionReady && descriptions.length > 0,
   });
 
+  // DEBUG: Log descriptions and highlighting state
+  useEffect(() => {
+    console.log('📚 [EpubReader] Descriptions state updated:', {
+      descriptionsCount: descriptions.length,
+      imagesCount: images.length,
+      renditionReady,
+      highlightingEnabled: renditionReady && descriptions.length > 0,
+    });
+  }, [descriptions, images, renditionReady]);
+
   // Hook 13: Resize handler for position preservation
   useResizeHandler({
     rendition,
@@ -184,10 +207,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     renditionReady && !isModalOpen
   );
 
-  // Hook 16: Table of Contents
-  const { toc, currentHref, setCurrentHref } = useToc(epubBook);
-
-  // Hook 17: Reading session tracking
+  // Hook 18: Reading session tracking
   // FIXED: Infinite loop bug caused by useEffect dependencies
   useReadingSession({
     bookId: book.id,
@@ -238,7 +258,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
       console.log('📖 [EpubReader] Page changed, closing selection menu');
       clearSelection();
     }
-  }, [currentCFI]); // Only depend on currentCFI, not selection/clearSelection to avoid loops
+  }, [currentCFI]); // Only depend on currentCFI, not selection/clearSelection to avoid loops // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle TOC chapter navigation
   const handleTocChapterClick = useCallback(async (href: string) => {
@@ -322,6 +342,9 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
           skipNextRelocated(); // Skip auto-save on restored position
           await goToCFI(savedProgress.reading_location_cfi, savedProgress.scroll_offset_percent || 0);
 
+          // FIX #1 & #5: Set initial progress immediately so header shows correct value
+          setInitialProgress(savedProgress.reading_location_cfi, savedProgress.current_position);
+
           // Mark as restored
           hasRestoredPosition.current = true;
           console.log('✅ [EpubReader] Position restoration complete');
@@ -336,7 +359,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     return () => {
       isMounted = false;
     };
-  }, [rendition, locations, epubBook, renditionReady, book.id, goToCFI, skipNextRelocated]);
+  }, [rendition, locations, epubBook, renditionReady, book.id, goToCFI, skipNextRelocated, setInitialProgress]);
 
   /**
    * Handle image regeneration

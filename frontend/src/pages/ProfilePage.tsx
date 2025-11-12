@@ -1,3 +1,4 @@
+ 
 /**
  * ProfilePage - Modern redesign with shadcn UI components
  *
@@ -66,7 +67,7 @@ const ProfilePage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['current-user'] });
       setIsEditing(false);
     },
-    onError: (error: any) => {
+    onError: (error: Error | { response?: { data?: { detail?: string } } }) => {
       toast.error(error.message || 'Ошибка при обновлении профиля');
     },
   });

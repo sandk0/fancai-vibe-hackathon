@@ -5,7 +5,6 @@
 """
 
 from sqlalchemy import (
-    Column,
     Integer,
     String,
     DateTime,
@@ -120,7 +119,7 @@ class ReadingSession(Base):
             "idx_reading_sessions_active",
             "user_id",
             "is_active",
-            postgresql_where=(is_active == True),
+            postgresql_where=(is_active.is_(True)),
         ),
         # Composite index для weekly analytics (user + started_at)
         Index("idx_reading_sessions_weekly", "user_id", "started_at", "duration_minutes"),

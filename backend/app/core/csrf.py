@@ -200,7 +200,7 @@ class CSRFProtectMiddleware(BaseHTTPMiddleware):
                 samesite="strict",  # Strict SameSite policy
             )
 
-            logger.debug(f"CSRF token generated and set in cookie")
+            logger.debug("CSRF token generated and set in cookie")
 
         return response
 

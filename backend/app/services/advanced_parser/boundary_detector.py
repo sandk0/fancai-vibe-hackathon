@@ -15,8 +15,7 @@ DescriptionBoundaryDetector - детектирование границ мног
 
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Tuple
-from collections import defaultdict
+from typing import List, Optional, Dict
 
 from .config import AdvancedParserConfig, ParagraphType, DEFAULT_CONFIG
 from .paragraph_segmenter import Paragraph

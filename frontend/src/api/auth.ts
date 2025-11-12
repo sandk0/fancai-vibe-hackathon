@@ -5,8 +5,11 @@ import type {
   LoginRequest,
   RegisterRequest,
   AuthResponse,
+  AuthTokens,
   User,
   UserProfile,
+  UserSubscriptionInfo,
+  DatabaseTestResponse,
 } from '@/types/api';
 
 export const authAPI = {
@@ -23,7 +26,7 @@ export const authAPI = {
     return apiClient.post('/auth/logout');
   },
 
-  async refreshToken(refreshToken: string): Promise<{ tokens: any }> {
+  async refreshToken(refreshToken: string): Promise<{ tokens: AuthTokens }> {
     return apiClient.post('/auth/refresh', { refresh_token: refreshToken });
   },
 
@@ -49,12 +52,12 @@ export const authAPI = {
     return apiClient.get('/users/profile');
   },
 
-  async getUserSubscription(): Promise<any> {
+  async getUserSubscription(): Promise<UserSubscriptionInfo> {
     return apiClient.get('/users/subscription');
   },
 
   // Test database connection (for debugging)
-  async testDatabaseConnection(): Promise<any> {
+  async testDatabaseConnection(): Promise<DatabaseTestResponse> {
     return apiClient.get('/users/test-db');
   },
 };

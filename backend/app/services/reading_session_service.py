@@ -14,11 +14,9 @@ import json
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func
-from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy.orm import joinedload
 
 from ..models.reading_session import ReadingSession
-from ..models.book import Book
-from ..models.user import User
 from ..core.exceptions import ReadingSessionNotFoundException
 
 logger = logging.getLogger(__name__)

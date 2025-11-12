@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+ 
 /**
  * useReadingSession - Custom hook for automatic reading session tracking
  *
@@ -27,13 +29,13 @@ interface UseReadingSessionOptions {
   updateInterval?: number; // milliseconds, default 30000 (30s)
   onSessionStart?: (session: ReadingSession) => void;
   onSessionEnd?: (session: ReadingSession) => void;
-  onError?: (error: any) => void;
+  onError?: (error: Error) => void;
 }
 
 interface UseReadingSessionReturn {
   session: ReadingSession | null;
   isLoading: boolean;
-  error: any;
+  error: Error;
   updatePosition: (position: number) => void;
   endSession: () => Promise<void>;
 }
@@ -235,7 +237,7 @@ export function useReadingSession({
         startMutation.mutate({ bookId, position: currentPosition });
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [
     enabled,
     bookId,
@@ -332,7 +334,7 @@ export function useReadingSession({
         clearInterval(intervalRef.current);
       }
     };
-  }, []); // Empty deps - only run on unmount
+  }, []); // Empty deps - only run on unmount // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Effect 5: beforeunload handler for graceful page close

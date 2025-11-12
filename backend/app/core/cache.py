@@ -17,11 +17,10 @@ Performance targets:
 
 import json
 import functools
-import hashlib
-from typing import Any, Callable, Optional, Union, List
+from typing import Any, Callable, Optional, Union
 from datetime import timedelta
 from redis.asyncio import Redis, ConnectionPool
-from redis.exceptions import RedisError, ConnectionError as RedisConnectionError
+from redis.exceptions import RedisError
 from loguru import logger
 
 from .config import settings
@@ -397,7 +396,7 @@ CACHE_KEY_PATTERNS = {
 CACHE_TTL = {
     "book_metadata": 3600,        # 1 hour
     "book_chapters": 3600,         # 1 hour
-    "book_list": 300,              # 5 minutes
+    "book_list": 10,               # 10 seconds (FREQUENTLY UPDATED - short TTL!)
     "chapter_content": 3600,       # 1 hour
     "user_progress": 300,          # 5 minutes (updated frequently)
     "book_descriptions": 3600,     # 1 hour

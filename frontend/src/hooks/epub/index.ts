@@ -20,6 +20,7 @@ export { useCFITracking } from './useCFITracking';
 export { useProgressSync } from './useProgressSync';
 export { useEpubNavigation, useKeyboardNavigation } from './useEpubNavigation';
 export { useChapterManagement } from './useChapterManagement';
+export { useChapterMapping } from './useChapterMapping';
 export { useDescriptionHighlighting } from './useDescriptionHighlighting';
 export { useImageModal } from './useImageModal';
 export { useEpubThemes, type ThemeName } from './useEpubThemes';

@@ -4,7 +4,7 @@ API роуты для аутентификации в BookReader AI.
 Содержит endpoints для регистрации, входа, обновления токенов и управления профилем.
 """
 
-from fastapi import APIRouter, HTTPException, Depends, status, Response, Request
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, EmailStr
@@ -120,12 +120,6 @@ async def register_user(
 
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
-
-@router.options("/auth/login")
-async def login_options():
-    """CORS preflight для login endpoint."""
-    return Response(status_code=200)
 
 
 @router.post("/auth/login")

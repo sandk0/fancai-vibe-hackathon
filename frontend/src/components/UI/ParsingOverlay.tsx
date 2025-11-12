@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { booksAPI } from '@/api/books';
@@ -17,27 +18,49 @@ export const ParsingOverlay: React.FC<ParsingOverlayProps> = ({
   const [isComplete, setIsComplete] = useState(false);
 
   useEffect(() => {
-    let intervalId: NodeJS.Timeout;
-    
+    let intervalId: NodeJS.Timeout | null = null;
+    let isMounted = true; // Флаг для отслеживания размонтирования компонента
+
     const checkProgress = async () => {
+      // КРИТИЧЕСКИ ВАЖНО: Прерываем polling если уже завершено
+      if (!isMounted || isComplete) {
+        console.log(`[ParsingOverlay] Stopping polling: isMounted=${isMounted}, isComplete=${isComplete}`);
+        return;
+      }
+
       try {
         const status = await booksAPI.getParsingStatus(bookId);
         console.log(`[ParsingOverlay] API response for ${bookId}:`, status);
-        
+
+        // Проверяем снова после async операции
+        if (!isMounted || isComplete) {
+          console.log(`[ParsingOverlay] Stopping polling after API call`);
+          return;
+        }
+
         // Обновляем прогресс
         const currentProgress = status.progress || 0;
         console.log(`[ParsingOverlay] Updating progress: ${progress}% -> ${currentProgress}%`);
         setProgress(currentProgress);
-        
+
         if (status.status === 'completed' || currentProgress >= 100) {
+          console.log(`[ParsingOverlay] Parsing completed! Stopping polling.`);
           setIsComplete(true);
           setProgress(100);
+
+          // Вызываем callback через 1 секунду, но НЕ планируем новый checkProgress
           if (onParsingComplete) {
-            setTimeout(onParsingComplete, 1000);
+            setTimeout(() => {
+              if (isMounted) {
+                onParsingComplete();
+              }
+            }, 1000);
           }
+
+          // КРИТИЧЕСКИ ВАЖНО: НЕ планируем новый setTimeout - polling останавливается!
+          return;
         } else if (status.status === 'not_started') {
           // Если еще не запущен, ждем автоматического запуска с backend
-          // Показываем 0% и продолжаем проверку чаще
           setProgress(0);
           intervalId = setTimeout(checkProgress, 500);
         } else {
@@ -45,19 +68,30 @@ export const ParsingOverlay: React.FC<ParsingOverlayProps> = ({
           intervalId = setTimeout(checkProgress, 300);
         }
       } catch (error) {
-        console.error('Failed to check progress:', error);
-        // Повторяем попытку через некоторое время
-        intervalId = setTimeout(checkProgress, 1000);
+        console.error('[ParsingOverlay] Failed to check progress:', error);
+
+        // Повторяем попытку только если еще не завершено
+        if (isMounted && !isComplete) {
+          intervalId = setTimeout(checkProgress, 1000);
+        }
       }
     };
 
-    // Начинаем проверку прогресса сразу
-    checkProgress();
+    // Начинаем проверку прогресса только если еще не завершено
+    if (!isComplete) {
+      console.log(`[ParsingOverlay] Starting polling for book ${bookId}`);
+      checkProgress();
+    }
 
     return () => {
-      if (intervalId) clearTimeout(intervalId);
+      console.log(`[ParsingOverlay] Cleanup: clearing timeout and marking unmounted`);
+      isMounted = false;
+      if (intervalId) {
+        clearTimeout(intervalId);
+        intervalId = null;
+      }
     };
-  }, [bookId, onParsingComplete]);
+  }, [bookId, onParsingComplete, isComplete]); // Добавили isComplete в dependencies // eslint-disable-line react-hooks/exhaustive-deps
 
   // Скрываем overlay если парсинг завершен
   if (isComplete && !forceBlock) {

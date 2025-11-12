@@ -1,6 +1,6 @@
 // API Client for BookReader AI
 
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { STORAGE_KEYS } from '@/types/state';
 import type { ApiError } from '@/types/api';
 
@@ -24,40 +24,70 @@ class ApiClient {
     // Request interceptor to add auth token
     this.client.interceptors.request.use(
       (config) => {
+        console.log(`🌐 [AXIOS] Outgoing ${config.method?.toUpperCase()} request to ${config.url}`);
+        console.log('🌐 [AXIOS] Request config:', {
+          url: config.url,
+          method: config.method,
+          headers: config.headers,
+          hasData: !!config.data,
+        });
+
+        // КРИТИЧЕСКИ ВАЖНО: Если data это FormData, удаляем Content-Type
+        // чтобы браузер сам установил multipart/form-data с boundary
+        if (config.data instanceof FormData) {
+          console.log('🌐 [AXIOS] Detected FormData, removing Content-Type header');
+          if (config.headers) {
+            delete config.headers['Content-Type'];
+          }
+        }
+
         const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
         if (token && config.headers) {
           config.headers.Authorization = `Bearer ${token}`;
+          console.log('🌐 [AXIOS] Added Authorization header');
         }
         return config;
       },
       (error) => {
+        console.error('🌐 [AXIOS] Request interceptor error:', error);
         return Promise.reject(error);
       }
     );
 
     // Response interceptor for token refresh
     this.client.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        console.log(`🌐 [AXIOS] Response received for ${response.config.url}:`, response.status);
+        return response;
+      },
       async (error) => {
+        console.error('🌐 [AXIOS] Response error:', {
+          url: error.config?.url,
+          status: error.response?.status,
+          message: error.message,
+        });
+
         const originalRequest = error.config;
 
         if (error.response?.status === 401 && !originalRequest._retry) {
+          console.log('🌐 [AXIOS] 401 error, attempting token refresh...');
           originalRequest._retry = true;
 
           try {
             const newToken = await this.refreshToken();
             originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            console.log('🌐 [AXIOS] Token refreshed, retrying request...');
             return this.client(originalRequest);
           } catch (refreshError) {
             // Refresh failed, clear auth data but don't redirect immediately
             console.warn('🔄 Token refresh failed:', refreshError);
             this.clearAuthData();
-            
+
             // Only redirect to login if not already on login page
             if (!window.location.pathname.includes('/login')) {
               window.location.href = '/login';
             }
-            
+
             return Promise.reject(refreshError);
           }
         }
@@ -100,65 +130,72 @@ class ApiClient {
     
     // Also clear Zustand store
     try {
-      const { useAuthStore } = require('@/stores/auth');
+      const { useAuthStore } = await import('@/stores/auth');
       useAuthStore.getState().logout();
     } catch (error) {
       console.warn('Failed to clear auth store:', error);
     }
   }
 
-  private handleError(error: any): ApiError {
-    if (error.response) {
-      // Server responded with error
-      return {
-        error: error.response.data?.error || 'Server Error',
-        message: error.response.data?.detail || error.response.data?.message || 'An error occurred',
-        details: error.response.data,
-        timestamp: new Date().toISOString(),
-      };
-    } else if (error.request) {
-      // Network error
-      return {
-        error: 'Network Error',
-        message: 'Unable to connect to server. Please check your internet connection.',
-        timestamp: new Date().toISOString(),
-      };
-    } else {
-      // Other error
-      return {
-        error: 'Client Error',
-        message: error.message || 'An unexpected error occurred',
-        timestamp: new Date().toISOString(),
-      };
+  private handleError(error: unknown): ApiError {
+    if (this.isAxiosError(error)) {
+      if (error.response) {
+        // Server responded with error
+        return {
+          error: error.response.data?.error || 'Server Error',
+          message: error.response.data?.detail || error.response.data?.message || 'An error occurred',
+          details: error.response.data,
+          timestamp: new Date().toISOString(),
+        };
+      } else if (error.request) {
+        // Network error
+        return {
+          error: 'Network Error',
+          message: 'Unable to connect to server. Please check your internet connection.',
+          timestamp: new Date().toISOString(),
+        };
+      }
     }
+
+    // Other error
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+    return {
+      error: 'Client Error',
+      message: errorMessage,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  private isAxiosError(error: unknown): error is AxiosError {
+    return error !== null && typeof error === 'object' && 'isAxiosError' in error;
   }
 
   // Generic request methods
-  async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  async get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response: AxiosResponse<T> = await this.client.get(url, config);
     return response.data;
   }
 
-  async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+  async post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
     const response: AxiosResponse<T> = await this.client.post(url, data, config);
     return response.data;
   }
 
-  async put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+  async put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
     const response: AxiosResponse<T> = await this.client.put(url, data, config);
     return response.data;
   }
 
-  async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  async delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response: AxiosResponse<T> = await this.client.delete(url, config);
     return response.data;
   }
 
   // Upload file with progress
-  async upload<T = any>(
+  async upload<T = unknown>(
     url: string,
     file: File,
-    onUploadProgress?: (progressEvent: any) => void
+    onUploadProgress?: (progressEvent: { loaded: number; total?: number }) => void
   ): Promise<T> {
     const formData = new FormData();
     formData.append('file', file);
@@ -201,7 +238,12 @@ class ApiClient {
   }
 
   // Get API info
-  async getApiInfo(): Promise<any> {
+  async getApiInfo(): Promise<{
+    name: string;
+    version: string;
+    description?: string;
+    environment?: string;
+  }> {
     return this.get('/info');
   }
 }

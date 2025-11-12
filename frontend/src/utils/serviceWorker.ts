@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Service Worker Registration and Management
 import { useUIStore } from '@/stores/ui';
 
@@ -96,7 +97,7 @@ export function skipWaiting(): void {
   }
 }
 
-function handleServiceWorkerMessage(data: any): void {
+function handleServiceWorkerMessage(data: unknown): void {
   const { notify } = useUIStore.getState();
 
   switch (data.type) {

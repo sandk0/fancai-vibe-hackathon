@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useContentHooks - epub.js content hooks for custom styling and manipulation
  *
@@ -14,7 +15,7 @@
  */
 
 import { useEffect } from 'react';
-import type { Rendition } from 'epubjs';
+import type { Rendition } from '@/types/epub';
 import type { ThemeName } from './useEpubThemes';
 
 export const useContentHooks = (

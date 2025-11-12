@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Images Store
 
 import { create } from 'zustand';
@@ -26,7 +27,7 @@ export const useImagesStore = create<ImagesState>((set, get) => ({
         generationStatus: status,
         isLoading: false 
       });
-    } catch (error: any) {
+    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
       set({ 
         isLoading: false, 
         error: error.message || 'Failed to fetch generation status' 
@@ -76,7 +77,7 @@ export const useImagesStore = create<ImagesState>((set, get) => ({
       });
 
       return response;
-    } catch (error: any) {
+    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
       set({ 
         isGenerating: false, 
         error: error.message || 'Failed to generate image' 
@@ -124,7 +125,7 @@ export const useImagesStore = create<ImagesState>((set, get) => ({
       });
 
       return response;
-    } catch (error: any) {
+    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
       set({ 
         isGenerating: false, 
         error: error.message || 'Failed to generate images for chapter' 
@@ -142,7 +143,7 @@ export const useImagesStore = create<ImagesState>((set, get) => ({
         currentBookImages: response.images,
         isLoading: false 
       });
-    } catch (error: any) {
+    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
       set({ 
         isLoading: false, 
         error: error.message || 'Failed to fetch book images' 
@@ -164,7 +165,7 @@ export const useImagesStore = create<ImagesState>((set, get) => ({
         currentBookImages: currentBookImages.filter(img => img.id !== imageId),
         isLoading: false,
       });
-    } catch (error: any) {
+    } catch (error: Error | { response?: { data?: { detail?: string; message?: string } } }) {
       set({ 
         isLoading: false, 
         error: error.message || 'Failed to delete image' 

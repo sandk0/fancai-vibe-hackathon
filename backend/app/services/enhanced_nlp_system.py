@@ -25,8 +25,6 @@ from .nlp.utils.quality_scorer import (
     calculate_ner_confidence,
 )
 from .nlp.utils.type_mapper import map_entity_to_description_type
-from .nlp.utils.description_filter import filter_and_prioritize_descriptions
-
 logger = logging.getLogger(__name__)
 
 

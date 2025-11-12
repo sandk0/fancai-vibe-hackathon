@@ -28,12 +28,11 @@ C(D) = Σᵢ wᵢ * fᵢ(D)
 
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Tuple, Set
+from typing import List, Optional, Dict, Tuple
 from collections import Counter
 
 from .config import AdvancedParserConfig, DescriptionType, DEFAULT_CONFIG
 from .boundary_detector import CompleteDescription
-from .paragraph_segmenter import Paragraph
 
 
 @dataclass

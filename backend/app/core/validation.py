@@ -19,7 +19,7 @@ import re
 import html
 import os
 import unicodedata
-from typing import Optional, Tuple, List, Dict, Any
+from typing import Optional, Tuple, List, Any
 from pathlib import Path
 from urllib.parse import urlparse
 import logging
@@ -301,6 +301,11 @@ def validate_password_strength(password: str) -> Tuple[bool, Optional[str]]:
 
     if len(password) > 128:
         return False, "Password too long (max 128 characters)"
+
+    # Check byte length (bcrypt limitation: 72 bytes maximum)
+    password_bytes = password.encode('utf-8')
+    if len(password_bytes) > 72:
+        return False, f"Password is too long when encoded ({len(password_bytes)} bytes, max 72 bytes). Please use shorter password or fewer special characters."
 
     if not any(c.isupper() for c in password):
         return False, "Password must contain at least one uppercase letter"

@@ -20,9 +20,9 @@ describe('ErrorBoundary', () => {
     console.error = vi.fn();
 
     // Мокируем window.location для тестирования reload и navigation
-    // @ts-ignore - необходимо для мокирования readonly свойства в тестах
+    // @ts-expect-error - необходимо для мокирования readonly свойства в тестах
     delete window.location;
-    // @ts-ignore - необходимо для мокирования readonly свойства в тестах
+    // @ts-expect-error - необходимо для мокирования readonly свойства в тестах
     window.location = { ...originalLocation, reload: vi.fn(), href: '' };
   });
 

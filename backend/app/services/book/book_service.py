@@ -18,7 +18,6 @@ import os
 from typing import List, Optional
 from pathlib import Path
 from uuid import UUID
-from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, desc
 from sqlalchemy.orm import selectinload
@@ -123,7 +122,12 @@ class BookService:
         return book
 
     async def get_user_books(
-        self, db: AsyncSession, user_id: UUID, skip: int = 0, limit: int = 50
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        skip: int = 0,
+        limit: int = 50,
+        sort_by: str = "created_desc"
     ) -> List[Book]:
         """
         Получает список книг пользователя БЕЗ прогресса чтения.
@@ -135,16 +139,34 @@ class BookService:
             user_id: ID пользователя
             skip: Количество записей для пропуска
             limit: Максимальное количество записей
+            sort_by: Тип сортировки (created_desc, created_asc, title_asc, title_desc,
+                     author_asc, author_desc, accessed_desc)
 
         Returns:
             Список книг пользователя
         """
+        # Определяем порядок сортировки
+        if sort_by == "created_asc":
+            order_clause = Book.created_at.asc()
+        elif sort_by == "title_asc":
+            order_clause = Book.title.asc()
+        elif sort_by == "title_desc":
+            order_clause = Book.title.desc()
+        elif sort_by == "author_asc":
+            order_clause = Book.author.asc()
+        elif sort_by == "author_desc":
+            order_clause = Book.author.desc()
+        elif sort_by == "accessed_desc":
+            order_clause = desc(Book.last_accessed)
+        else:  # created_desc - default
+            order_clause = desc(Book.created_at)
+
         result = await db.execute(
             select(Book)
             .where(Book.user_id == user_id)
             .options(selectinload(Book.chapters))
             .options(selectinload(Book.reading_progress))
-            .order_by(desc(Book.created_at))
+            .order_by(order_clause)
             .offset(skip)
             .limit(limit)
         )

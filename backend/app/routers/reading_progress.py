@@ -185,6 +185,10 @@ async def update_reading_progress(
         # Also invalidate user's book list cache (progress affects book list)
         await cache_manager.delete_pattern(f"user:{current_user.id}:books:*")
 
+        # FIX: Invalidate book metadata cache (BookPage displays progress from here)
+        book_cache_key = cache_key("book", book_id, "metadata")
+        await cache_manager.delete(book_cache_key)
+
         return {
             "progress": {
                 "id": str(progress.id),

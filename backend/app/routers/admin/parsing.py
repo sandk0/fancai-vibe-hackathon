@@ -10,7 +10,6 @@ import redis.asyncio as redis
 
 from ...core.auth import get_current_admin_user
 from ...models.user import User
-from ...services.settings_manager import settings_manager
 
 router = APIRouter()
 

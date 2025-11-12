@@ -18,7 +18,7 @@ import tempfile
 import os
 from pathlib import Path
 import shutil
-from uuid import uuid4, UUID
+from uuid import uuid4
 
 from ...core.database import get_database_session
 from ...core.auth import get_current_active_user
@@ -128,6 +128,19 @@ async def upload_book(
             print(f"[CELERY ERROR] Failed to start background task: {str(e)}")
             # Не прерываем процесс, если Celery недоступен
 
+        # КРИТИЧЕСКИ ВАЖНО: Инвалидируем кэш списка книг пользователя
+        # чтобы новая книга сразу появилась в библиотеке
+        try:
+            print(f"[CACHE] Invalidating book list cache for user {current_user.id}")
+            # Используем pattern-based deletion для удаления ВСЕХ вариантов пагинации
+            # Это намного эффективнее чем цикл с 30 итерациями
+            pattern = f"user:{current_user.id}:books:*"
+            deleted_count = await cache_manager.delete_pattern(pattern)
+            print(f"[CACHE] Book list cache invalidated successfully ({deleted_count} keys deleted)")
+        except Exception as e:
+            print(f"[CACHE ERROR] Failed to invalidate cache: {str(e)}")
+            # Не критичная ошибка, продолжаем
+
         return {
             "book_id": str(book.id),
             "title": book.title,
@@ -160,6 +173,7 @@ async def upload_book(
 async def get_user_books(
     skip: int = 0,
     limit: int = 50,
+    sort_by: str = "created_desc",
     db: AsyncSession = Depends(get_database_session),
     current_user: User = Depends(get_current_active_user),
 ) -> Dict[str, Any]:
@@ -169,6 +183,8 @@ async def get_user_books(
     Args:
         skip: Количество записей для пропуска
         limit: Максимальное количество записей
+        sort_by: Тип сортировки (created_desc, created_asc, title_asc, title_desc,
+                 author_asc, author_desc, accessed_desc). По умолчанию: created_desc
         db: Сессия базы данных
         current_user: Текущий пользователь
 
@@ -176,13 +192,13 @@ async def get_user_books(
         Список книг пользователя с пагинацией
 
     Cache:
-        TTL: 5 minutes (frequent updates)
-        Key: user:{user_id}:books:skip:{skip}:limit:{limit}
+        TTL: 10 seconds (frequently updated - parsing status changes)
+        Key: user:{user_id}:books:skip:{skip}:limit:{limit}:sort:{sort_by}
     """
-    print(f"[BOOKS ENDPOINT] Starting books request for user {current_user.id}")
+    print(f"[BOOKS ENDPOINT] Starting books request for user {current_user.id} (sort: {sort_by})")
 
     # Try to get from cache
-    cache_key_str = cache_key("user", current_user.id, "books", f"skip:{skip}", f"limit:{limit}")
+    cache_key_str = cache_key("user", current_user.id, "books", f"skip:{skip}", f"limit:{limit}", f"sort:{sort_by}")
     cached_result = await cache_manager.get(cache_key_str)
     if cached_result is not None:
         print(f"[BOOKS ENDPOINT] Cache HIT for user {current_user.id}")
@@ -194,7 +210,7 @@ async def get_user_books(
         # ОПТИМИЗАЦИЯ: Получаем книги пользователя с предрасчитанным прогрессом
         # Использует eager loading, чтобы избежать N+1 queries
         books_with_progress = await book_progress_service.get_books_with_progress(
-            db, current_user.id, skip, limit
+            db, current_user.id, skip, limit, sort_by
         )
         print(
             f"[BOOKS ENDPOINT] Retrieved {len(books_with_progress)} books from service"
@@ -221,10 +237,14 @@ async def get_user_books(
                         "chapters_count": len(book.chapters)
                         if hasattr(book, "chapters") and book.chapters
                         else 0,
+                        # FIX #2: Use round(..., 1) to preserve decimal precision (0.1% granularity)
                         "reading_progress_percent": round(reading_progress, 1),
                         "has_cover": bool(book.cover_image),
                         "is_parsed": book.is_parsed,
                         "parsing_progress": book.parsing_progress,
+                        # КРИТИЧЕСКИ ВАЖНО: is_processing вычисляется динамически
+                        # Книга в обработке, если парсинг не завершён
+                        "is_processing": not book.is_parsed,
                         "created_at": book.created_at.isoformat()
                         if book.created_at
                         else None,
@@ -344,6 +364,7 @@ async def get_book(
                 "current_page": current_page,
                 "current_position": current_position,
                 "reading_location_cfi": reading_location_cfi,
+                # FIX #2: Use round(..., 1) for decimal precision
                 "progress_percent": round(progress_percent, 1),
             },
             "created_at": book.created_at.isoformat(),

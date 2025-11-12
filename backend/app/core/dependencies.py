@@ -6,7 +6,7 @@ Reusable FastAPI dependencies для BookReader AI.
 """
 
 from uuid import UUID
-from typing import Optional, cast
+from typing import cast
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -174,7 +174,7 @@ async def get_chapter_by_number(
         ChapterNotFoundException: Если глава не найдена
     """
     # Сначала проверяем доступ к книге
-    book = await get_user_book(book_id, db, current_user)
+    _ = await get_user_book(book_id, db, current_user)
 
     # Ищем главу по номеру
     result = await db.execute(

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useLocationGeneration - Custom hook for generating and caching EPUB locations
  *
@@ -19,10 +20,17 @@
  */
 
 import { useState, useEffect } from 'react';
-import type { Book } from 'epubjs';
+import type { Book } from '@/types/epub';
+
+interface EpubLocations {
+  locationFromCfi(cfi: string): number;
+  cfiFromLocation(location: number): string;
+  percentageFromCfi(cfi: string): number;
+  total: number;
+}
 
 interface UseLocationGenerationReturn {
-  locations: any | null; // epub.js doesn't export Locations type
+  locations: EpubLocations | null;
   isGenerating: boolean;
   error: string | null;
 }

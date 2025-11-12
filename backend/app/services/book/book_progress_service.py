@@ -12,7 +12,7 @@ Single Responsibility Principle:
 Все остальные операции с книгами делегируются BookService.
 """
 
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, TYPE_CHECKING
 from uuid import UUID
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +20,9 @@ from sqlalchemy import select, and_
 
 from ...models.book import Book, ReadingProgress
 from ...models.chapter import Chapter
+
+if TYPE_CHECKING:
+    from .book_service import BookService
 
 
 class BookProgressService:
@@ -41,7 +44,12 @@ class BookProgressService:
             self.book_service = book_service
 
     async def get_books_with_progress(
-        self, db: AsyncSession, user_id: UUID, skip: int = 0, limit: int = 50
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        skip: int = 0,
+        limit: int = 50,
+        sort_by: str = "created_desc"
     ) -> List[Tuple[Book, float]]:
         """
         Получает список книг пользователя с предрасчитанным прогрессом чтения.
@@ -54,12 +62,13 @@ class BookProgressService:
             user_id: ID пользователя
             skip: Количество записей для пропуска
             limit: Максимальное количество записей
+            sort_by: Тип сортировки (created_desc, created_asc, title_asc, title_desc, etc.)
 
         Returns:
             Список кортежей (Book, reading_progress_percent)
         """
         # Используем BookService для получения книг с eager loading
-        books = await self.book_service.get_user_books(db, user_id, skip, limit)
+        books = await self.book_service.get_user_books(db, user_id, skip, limit, sort_by)
 
         # Вычисляем прогресс для каждой книги БЕЗ дополнительных запросов
         books_with_progress = []

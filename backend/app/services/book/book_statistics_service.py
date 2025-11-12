@@ -12,7 +12,7 @@ Single Responsibility Principle:
 Не занимается CRUD операциями или прогрессом.
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, TYPE_CHECKING
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -20,6 +20,9 @@ from sqlalchemy import select, func
 from ...models.book import Book, ReadingProgress
 from ...models.chapter import Chapter
 from ...models.description import Description
+
+if TYPE_CHECKING:
+    from .book_service import BookService
 
 
 class BookStatisticsService:

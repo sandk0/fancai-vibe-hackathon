@@ -26,12 +26,10 @@ import time
 from ..core.database import get_database_session
 from ..models.reading_session import ReadingSession
 from ..monitoring.metrics import (
-    active_sessions_count,
-    abandoned_sessions_count,
-    concurrent_users_count,
     update_active_sessions_gauge,
     update_abandoned_sessions_gauge,
     update_concurrent_users_gauge,
+    active_sessions_count,
 )
 
 # Для prometheus metrics endpoint

@@ -1,3 +1,4 @@
+ 
 /**
  * RegisterPage - Modern redesign with split-screen layout
  *
@@ -32,7 +33,22 @@ const registerSchema = z
   .object({
     fullName: z.string().min(2, 'Имя должно содержать минимум 2 символа'),
     email: z.string().email('Неправильный email адрес'),
-    password: z.string().min(6, 'Пароль должен содержать минимум 6 символов'),
+    password: z
+      .string()
+      .min(12, 'Пароль должен содержать минимум 12 символов')
+      .max(72, 'Пароль не может быть длиннее 72 символов')
+      .regex(/[a-z]/, 'Пароль должен содержать строчные буквы')
+      .regex(/[A-Z]/, 'Пароль должен содержать заглавные буквы')
+      .regex(/\d/, 'Пароль должен содержать цифры')
+      .regex(/[^a-zA-Z0-9]/, 'Пароль должен содержать специальные символы')
+      .refine(
+        (pwd) => !/(\d)\1{2,}/.test(pwd) && !/012|123|234|345|456|567|678|789/.test(pwd),
+        'Пароль не должен содержать последовательные цифры (123, 456 и т.д.)'
+      )
+      .refine(
+        (pwd) => new TextEncoder().encode(pwd).length <= 72,
+        'Пароль слишком длинный при кодировании (макс. 72 байта). Используйте меньше спецсимволов.'
+      ),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -62,11 +78,20 @@ const RegisterPage: React.FC = () => {
   const getPasswordStrength = (pwd: string) => {
     if (!pwd) return 0;
     let strength = 0;
-    if (pwd.length >= 6) strength++;
-    if (pwd.length >= 10) strength++;
+
+    // Length requirements (12+ chars required)
+    if (pwd.length >= 12) strength++;
+    if (pwd.length >= 16) strength++;
+
+    // Required complexity
     if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) strength++;
     if (/\d/.test(pwd)) strength++;
     if (/[^a-zA-Z0-9]/.test(pwd)) strength++;
+
+    // Bonus: no sequential numbers
+    const hasSequential = /(\d)\1{2,}/.test(pwd) || /012|123|234|345|456|567|678|789/.test(pwd);
+    if (!hasSequential && pwd.length >= 12) strength++;
+
     return Math.min(strength, 4);
   };
 
@@ -79,7 +104,7 @@ const RegisterPage: React.FC = () => {
       await registerUser(data.email, data.password, data.fullName);
       notify.success('Регистрация успешна!', 'Добро пожаловать в BookReader AI');
       navigate('/library', { replace: true });
-    } catch (error: any) {
+    } catch (error: Error | { response?: { data?: { detail?: string } } }) {
       notify.error('Ошибка регистрации', error.message || 'Попробуйте снова');
     }
   };
@@ -203,6 +228,9 @@ const RegisterPage: React.FC = () => {
               >
                 Пароль
               </label>
+              <p className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>
+                Минимум 12 символов, включая заглавные, строчные буквы, цифры и спецсимволы
+              </p>
               <div className="relative">
                 <Lock
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5"

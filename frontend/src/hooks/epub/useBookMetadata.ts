@@ -11,7 +11,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import type { Book } from 'epubjs';
+import type { Book } from '@/types/epub';
 
 /**
  * Book metadata interface

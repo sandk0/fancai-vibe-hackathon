@@ -26,7 +26,7 @@ export interface AuthState {
   loadUserFromStorage: () => void;
 }
 
-// Books Store State  
+// Books Store State
 export interface BooksState {
   // Books data
   books: Book[];
@@ -34,26 +34,33 @@ export interface BooksState {
   currentChapter: Chapter | null;
   isLoading: boolean;
   error: string | null;
-  
+
   // Pagination
   totalBooks: number;
   currentPage: number;
   booksPerPage: number;
   hasMore: boolean;
-  
+  sortBy: string;
+
   // Actions
-  fetchBooks: (page?: number, limit?: number) => Promise<void>;
+  fetchBooks: (page?: number, limit?: number, sortBy?: string) => Promise<void>;
   fetchBook: (bookId: string) => Promise<void>;
-  fetchChapter: (bookId: string, chapterNumber: number) => Promise<any>;
-  uploadBook: (file: File) => Promise<any>;
+  fetchChapter: (bookId: string, chapterNumber: number) => Promise<Chapter>;
+  uploadBook: (file: File) => Promise<Book>;
   deleteBook: (bookId: string) => Promise<void>;
-  updateReadingProgress: (bookId: string, currentPage: number, chapterNumber: number) => Promise<any>;
+  updateReadingProgress: (bookId: string, currentPage: number, chapterNumber: number) => Promise<void>;
   setCurrentBook: (book: Book | null) => void;
   setCurrentChapter: (chapter: Chapter | null) => void;
   clearError: () => void;
-  
-  // Additional methods for compatibility
+
+  // Pagination methods
   refreshBooks: () => Promise<void>;
+  goToPage: (page: number) => Promise<void>;
+  nextPage: () => Promise<void>;
+  prevPage: () => Promise<void>;
+
+  // Sort method
+  setSortBy: (sortBy: string) => Promise<void>;
 }
 
 // Images Store State
@@ -68,8 +75,8 @@ export interface ImagesState {
   
   // Actions
   fetchGenerationStatus: () => Promise<void>;
-  generateImageForDescription: (descriptionId: string, params?: any) => Promise<any>;
-  generateImagesForChapter: (chapterId: string, params?: any) => Promise<any>;
+  generateImageForDescription: (descriptionId: string, params?: Record<string, unknown>) => Promise<GeneratedImage>;
+  generateImagesForChapter: (chapterId: string, params?: Record<string, unknown>) => Promise<GeneratedImage[]>;
   fetchBookImages: (bookId: string) => Promise<void>;
   deleteImage: (imageId: string) => Promise<void>;
   clearError: () => void;

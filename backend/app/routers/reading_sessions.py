@@ -23,7 +23,7 @@ from ..models.user import User
 from ..models.reading_session import ReadingSession
 from ..models.book import Book
 from ..core.exceptions import BookNotFoundException
-from ..services.reading_session_cache import reading_session_cache, SessionUpdate
+from ..services.reading_session_cache import reading_session_cache
 from ..services.reading_session_service import reading_session_service
 
 

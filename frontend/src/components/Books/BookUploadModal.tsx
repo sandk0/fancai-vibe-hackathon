@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { booksAPI } from '@/api/books';
 import { useUIStore } from '@/stores/ui';
+import { useBooksStore } from '@/stores/books';
 import { useTranslation } from '@/hooks/useTranslation';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 
@@ -35,51 +36,62 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const queryClient = useQueryClient();
+  const _queryClient = useQueryClient();
   const { notify } = useUIStore();
+  const { refreshBooks } = useBooksStore();
   const { t } = useTranslation();
 
   // Upload mutation
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
       // Проверяем файл
-      console.log('Upload mutation called with file:', file);
-      
+      console.log('🔷 [MUTATION] Upload mutation called with file:', file);
+
       if (!file) {
         throw new Error('No file provided to upload mutation');
       }
-      
-      console.log('File details:', {
+
+      console.log('🔷 [MUTATION] File details:', {
         name: file.name,
         size: file.size,
         type: file.type,
         lastModified: file.lastModified
       });
-      
+
       const formData = new FormData();
       formData.append('file', file);
-      
+
       // Проверяем FormData
-      console.log('FormData entries:');
+      console.log('🔷 [MUTATION] FormData entries:');
       for (const [key, value] of formData.entries()) {
-        console.log(`${key}:`, value);
+        console.log(`  ${key}:`, value);
       }
-      
-      // Debug код временно удален для чистого тестирования
-      
-      return booksAPI.uploadBook(formData, {
-        onUploadProgress: (progressEvent) => {
-          const progress = Math.round(
-            (progressEvent.loaded * 100) / (progressEvent.total || 1)
-          );
-          setUploadProgress(prev => ({
-            ...prev,
-            [file.name]: progress,
-          }));
-        },
-      });
+
+      console.log('🔷 [MUTATION] Calling booksAPI.uploadBook...');
+
+      try {
+        const result = await booksAPI.uploadBook(formData, {
+          onUploadProgress: (progressEvent) => {
+            const progress = Math.round(
+              (progressEvent.loaded * 100) / (progressEvent.total || 1)
+            );
+            console.log(`🔷 [MUTATION] Upload progress: ${progress}%`);
+            setUploadProgress(prev => ({
+              ...prev,
+              [file.name]: progress,
+            }));
+          },
+        });
+
+        console.log('🔷 [MUTATION] Upload completed successfully! Response:', result);
+        return result;
+      } catch (error) {
+        console.error('🔴 [MUTATION] Upload failed with error:', error);
+        throw error;
+      }
     },
-    onSuccess: (data, file) => {
+    onSuccess: async (data, file) => {
+      console.log('✅ [MUTATION] onSuccess called with data:', data);
       notify.success(t('upload.uploadComplete'), t('upload.uploadSuccess').replace('{title}', data.title));
       setUploadProgress(prev => {
         const newProgress = { ...prev };
@@ -88,8 +100,8 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
       });
       setFiles(prev => prev.filter(f => f.name !== file.name));
 
-      // Invalidate books query to refresh the list
-      queryClient.invalidateQueries({ queryKey: ['books'] });
+      // Обновляем список книг через Zustand store
+      await refreshBooks();
 
       // Call the success callback if provided
       if (onUploadSuccess) {
@@ -101,7 +113,8 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
         notify.info(t('upload.processingStarted'), t('upload.analyzingContent').replace('{title}', data.title));
       }
     },
-    onError: (error: any, file) => {
+    onError: (error: Error | { response?: { data?: { detail?: string } } }, file) => {
+      console.error('❌ [MUTATION] onError called with error:', error);
       notify.error(t('upload.uploadFailed'), error.message || t('upload.uploadFailedDesc'));
       setUploadProgress(prev => {
         const newProgress = { ...prev };

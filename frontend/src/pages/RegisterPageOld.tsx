@@ -1,3 +1,4 @@
+ 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -42,7 +43,7 @@ const RegisterPage: React.FC = () => {
       await registerUser(data.email, data.password, data.full_name);
       notify.success(t('auth.accountCreated'), t('auth.accountCreatedMessage'));
       navigate('/library', { replace: true });
-    } catch (error: any) {
+    } catch (error: Error | { response?: { data?: { detail?: string } } }) {
       notify.error(
         t('auth.registrationFailed'),
         error.message || t('auth.checkCredentials')

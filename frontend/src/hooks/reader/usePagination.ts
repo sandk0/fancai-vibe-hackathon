@@ -35,7 +35,7 @@ interface UsePaginationReturn {
 }
 
 export const usePagination = (
-  chapter: any,
+  chapter: unknown,
   containerRef: React.RefObject<HTMLDivElement>,
   { fontSize, lineHeight }: PaginationOptions
 ): UsePaginationReturn => {

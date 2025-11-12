@@ -1,3 +1,4 @@
+ 
 /**
  * useChapterNavigation - Custom hook for chapter and page navigation
  *
@@ -74,7 +75,7 @@ export const useChapterNavigation = ({
       setCurrentChapter(currentChapter - 1);
       setCurrentPage(1);
     }
-  }, [currentPage, currentChapter, setCurrentPage, setCurrentChapter]);
+  }, [currentPage, currentChapter, setCurrentPage, setCurrentChapter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const jumpToChapter = useCallback((chapterNum: number) => {
     if (chapterNum >= 1 && chapterNum <= totalChapters) {

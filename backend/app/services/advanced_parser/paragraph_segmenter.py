@@ -16,8 +16,7 @@ ParagraphSegmenter - сегментация текста на параграфы
 import re
 import logging
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Tuple
-from enum import Enum
+from typing import List, Optional, Dict
 
 from .config import AdvancedParserConfig, ParagraphType, DEFAULT_CONFIG
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useTouchNavigation - Touch and swipe gestures for EPUB navigation
  *
@@ -16,7 +17,7 @@
  */
 
 import { useEffect, useCallback, useRef } from 'react';
-import type { Rendition } from 'epubjs';
+import type { Rendition } from '@/types/epub';
 
 interface UseTouchNavigationOptions {
   rendition: Rendition | null;

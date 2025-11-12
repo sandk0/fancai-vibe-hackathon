@@ -31,10 +31,14 @@ const BookPage: React.FC = () => {
   const { bookId } = useParams<{ bookId: string }>();
   const navigate = useNavigate();
 
+  // FIX: Always get fresh progress data, even after quick reader exit
   const { data: book, isLoading, error } = useQuery({
     queryKey: ['book', bookId],
     queryFn: () => booksAPI.getBook(bookId!),
     enabled: !!bookId,
+    refetchOnMount: 'always', // CRITICAL: Always refetch, even if data is fresh
+    staleTime: 0, // Data becomes stale immediately to force refetch
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
   });
 
   if (isLoading) {
@@ -156,7 +160,8 @@ const BookPage: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4" />
-                  <span>{book.total_pages} страниц</span>
+                  {/* FIX #6: Note that total_pages is estimated from parsing, not epub.js locations */}
+                  <span>~{book.total_pages} страниц</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4" />
@@ -174,7 +179,8 @@ const BookPage: React.FC = () => {
               </div>
 
               {/* Reading Progress */}
-              {book.reading_progress.progress_percent > 0 && (
+              {/* FIX #2: Change threshold from > 0 to >= 0.1 to show progress earlier */}
+              {book.reading_progress.progress_percent >= 0.1 && (
                 <div className="mb-8">
                   <div
                     className="flex items-center justify-between text-sm mb-2"
@@ -185,7 +191,7 @@ const BookPage: React.FC = () => {
                       className="font-semibold"
                       style={{ color: 'var(--accent-color)' }}
                     >
-                      {Math.round(book.reading_progress.progress_percent)}%
+                      {book.reading_progress.progress_percent.toFixed(1)}%
                     </span>
                   </div>
                   <div
@@ -214,7 +220,8 @@ const BookPage: React.FC = () => {
                   }}
                 >
                   <Play className="w-5 h-5" />
-                  {book.reading_progress.progress_percent > 0 &&
+                  {/* FIX #2: Change threshold from > 0 to >= 0.1 for "Continue Reading" button */}
+                  {book.reading_progress.progress_percent >= 0.1 &&
                   book.reading_progress.progress_percent < 100
                     ? 'Продолжить читать'
                     : 'Начать читать'}

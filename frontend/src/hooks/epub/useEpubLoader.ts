@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useEpubLoader - Custom hook for loading and initializing EPUB books
  *
@@ -21,8 +22,8 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import ePub from 'epubjs';
-import type { Book, Rendition } from 'epubjs';
+import ePub from '@/types/epub';
+import type { Book, Rendition } from '@/types/epub';
 
 interface UseEpubLoaderOptions {
   bookUrl: string;
@@ -177,7 +178,7 @@ export const useEpubLoader = ({
       setBook(null);
       setRendition(null);
     };
-  }, [bookUrl, authToken]);
+  }, [bookUrl, authToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     book,

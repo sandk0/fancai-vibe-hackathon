@@ -14,7 +14,6 @@ import json
 import logging
 from typing import Optional, List, Dict, Any
 from uuid import UUID
-from datetime import datetime, timezone
 import redis.asyncio as redis
 from pydantic import BaseModel
 

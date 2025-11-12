@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useTextSelection - Handles text selection in EPUB
  *
@@ -23,7 +24,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import type { Rendition } from 'epubjs';
+import type { Rendition } from '@/types/epub';
 
 export interface Selection {
   text: string;

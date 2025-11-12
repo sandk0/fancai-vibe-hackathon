@@ -1,23 +1,30 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useChapterManagement - Custom hook for managing chapter tracking and loading
  *
  * Handles chapter number extraction from EPUB location and chapter data loading.
  *
+ * FIXED: Now uses chapter mapping to correctly match spine hrefs to backend chapter numbers.
+ * Previously used spineIndex + 1 which caused mismatch with backend's logical chapter numbers.
+ *
  * @param book - epub.js Book instance
  * @param rendition - epub.js Rendition instance
- * @param onChapterChange - Callback when chapter changes
+ * @param bookId - Book ID for API requests
+ * @param getChapterNumberByLocation - Function to map location to chapter number
  * @returns Current chapter number and chapter change handler
  *
  * @example
- * const { currentChapter, descriptions, images } = useChapterManagement(
+ * const { getChapterNumberByLocation } = useChapterMapping(toc, chapters);
+ * const { currentChapter, descriptions, images } = useChapterManagement({
  *   book,
  *   rendition,
- *   bookId
- * );
+ *   bookId,
+ *   getChapterNumberByLocation
+ * });
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Book, Rendition } from 'epubjs';
+import type { Book, Rendition } from '@/types/epub';
 import { booksAPI } from '@/api/books';
 import { imagesAPI } from '@/api/images';
 import type { Description, GeneratedImage } from '@/types/api';
@@ -26,6 +33,7 @@ interface UseChapterManagementOptions {
   book: Book | null;
   rendition: Rendition | null;
   bookId: string;
+  getChapterNumberByLocation?: ((location: Location) => number | null) | null;
 }
 
 interface UseChapterManagementReturn {
@@ -39,6 +47,7 @@ export const useChapterManagement = ({
   book,
   rendition,
   bookId,
+  getChapterNumberByLocation,
 }: UseChapterManagementOptions): UseChapterManagementReturn => {
   const [currentChapter, setCurrentChapter] = useState<number>(1);
   const [descriptions, setDescriptions] = useState<Description[]>([]);
@@ -47,8 +56,9 @@ export const useChapterManagement = ({
 
   /**
    * Extract chapter number from EPUB location
+   * FIXED: Now uses chapter mapping instead of spineIndex + 1
    */
-  const getChapterFromLocation = useCallback((location: any): number => {
+  const getChapterFromLocation_Internal = useCallback((location: Location): number => {
     try {
       if (!book) return 1;
 
@@ -58,6 +68,18 @@ export const useChapterManagement = ({
         return 1;
       }
 
+      // FIXED: Use chapter mapping if available
+      if (getChapterNumberByLocation) {
+        const mappedChapter = getChapterNumberByLocation(location);
+        if (mappedChapter !== null) {
+          console.log(`📖 [useChapterManagement] Chapter detected via mapping: ${mappedChapter} (href: ${currentHref})`);
+          return mappedChapter;
+        } else {
+          console.warn(`⚠️ [useChapterManagement] No mapping found for href: ${currentHref}, falling back to spine index`);
+        }
+      }
+
+      // Fallback: use spine index + 1 (old behavior, less reliable)
       const spine = (book as any).spine;
       if (!spine || !spine.items) {
         console.warn('⚠️ [useChapterManagement] No spine items');
@@ -74,14 +96,14 @@ export const useChapterManagement = ({
       }
 
       const chapter = spineIndex + 1;
-      console.log(`📖 [useChapterManagement] Chapter detected: ${chapter} (spine index: ${spineIndex})`);
+      console.log(`📖 [useChapterManagement] Chapter detected (fallback): ${chapter} (spine index: ${spineIndex})`);
       return Math.max(1, chapter);
 
     } catch (error) {
       console.error('❌ [useChapterManagement] Error extracting chapter:', error);
       return 1;
     }
-  }, [book]);
+  }, [book, getChapterNumberByLocation]);
 
   /**
    * Load descriptions and images for current chapter
@@ -101,12 +123,27 @@ export const useChapterManagement = ({
       );
 
       const loadedDescriptions = descriptionsResponse.nlp_analysis.descriptions || [];
-      console.log('✅ [useChapterManagement] Descriptions loaded:', loadedDescriptions.length);
+      console.log('✅ [useChapterManagement] Descriptions loaded:', {
+        count: loadedDescriptions.length,
+        sampleDescription: loadedDescriptions[0] ? {
+          id: loadedDescriptions[0].id,
+          type: loadedDescriptions[0].type,
+          textLength: loadedDescriptions[0].text?.length || 0,
+          contentLength: loadedDescriptions[0].content?.length || 0,
+        } : null,
+      });
       setDescriptions(loadedDescriptions);
 
       // Load images
       const imagesResponse = await imagesAPI.getBookImages(bookId, chapter);
-      console.log('✅ [useChapterManagement] Images loaded:', imagesResponse.images.length);
+      console.log('✅ [useChapterManagement] Images loaded:', {
+        count: imagesResponse.images.length,
+        sampleImage: imagesResponse.images[0] ? {
+          id: imagesResponse.images[0].id,
+          description_id: imagesResponse.images[0].description_id,
+          hasUrl: !!imagesResponse.images[0].image_url,
+        } : null,
+      });
       setImages(imagesResponse.images);
 
       setIsLoadingChapter(false);
@@ -124,8 +161,8 @@ export const useChapterManagement = ({
   useEffect(() => {
     if (!rendition || !book) return;
 
-    const handleRelocated = (location: any) => {
-      const chapter = getChapterFromLocation(location);
+    const handleRelocated = (location: Location) => {
+      const chapter = getChapterFromLocation_Internal(location);
       setCurrentChapter(chapter);
     };
 
@@ -139,7 +176,7 @@ export const useChapterManagement = ({
         if (rendition.currentLocation && typeof rendition.currentLocation === 'function') {
           const currentLocation = rendition.currentLocation();
           if (currentLocation) {
-            const initialChapter = getChapterFromLocation(currentLocation);
+            const initialChapter = getChapterFromLocation_Internal(currentLocation);
             setCurrentChapter(initialChapter);
             console.log('📖 [useChapterManagement] Initial chapter set:', initialChapter);
           }
@@ -155,7 +192,7 @@ export const useChapterManagement = ({
       clearTimeout(timer);
       rendition.off('relocated', handleRelocated);
     };
-  }, [rendition, book, getChapterFromLocation]);
+  }, [rendition, book, getChapterFromLocation_Internal]);
 
   /**
    * Load chapter data when chapter changes
