@@ -5,6 +5,7 @@ Optimizes memory usage by sharing models between processes
 
 import gc
 import logging
+import tempfile
 import time
 from pathlib import Path
 from typing import Optional, Dict, Any
@@ -35,7 +36,7 @@ class NLPModelCache:
         if not hasattr(self, "initialized"):
             self.models: Dict[str, Language] = {}
             self.model_stats: Dict[str, Dict[str, Any]] = {}
-            self.cache_dir = Path("/tmp/nlp_cache")
+            self.cache_dir = Path(tempfile.gettempdir()) / "nlp_cache"
             self.cache_dir.mkdir(exist_ok=True)
             self.max_models = 3  # Max models in memory
             self.model_ttl = 3600  # 1 hour TTL
