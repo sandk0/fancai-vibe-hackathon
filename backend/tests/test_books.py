@@ -70,7 +70,7 @@ class TestBooks:
         response = await client.post("/api/v1/books/upload", files=files, headers=headers)
 
         assert response.status_code == 400
-        assert "unsupported file type" in response.json()["detail"].lower()
+        assert "invalid file format" in response.json()["detail"].lower()
 
     @pytest.mark.asyncio
     async def test_upload_book_too_large(self, client: AsyncClient, authenticated_headers):

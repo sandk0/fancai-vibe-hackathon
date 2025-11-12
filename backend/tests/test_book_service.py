@@ -467,20 +467,20 @@ class TestChapterManagement:
         self,
         book_service: BookService,
         db_session: AsyncSession,
-        test_book: Book,
-        test_chapter: Chapter
+        test_book: Book
     ):
         """Тест получения главы по номеру."""
-        # Метод называется get_chapter_by_number
+        # test_book fixture already creates 3 chapters (chapter_numbers 1, 2, 3)
+        # Using test_chapter fixture would create duplicate chapter 1
         chapter = await book_service.get_chapter_by_number(
             db_session,
             test_book.id,
-            test_chapter.chapter_number
+            chapter_number=1
         )
 
         assert chapter is not None
-        assert chapter.id == test_chapter.id
-        assert chapter.chapter_number == test_chapter.chapter_number
+        assert chapter.chapter_number == 1
+        assert chapter.title == "Chapter 1"
 
     @pytest.mark.asyncio
     async def test_get_nonexistent_chapter(
