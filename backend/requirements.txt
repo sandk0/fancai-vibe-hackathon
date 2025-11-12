@@ -9,7 +9,7 @@ starlette>=0.47.2
 
 # База данных
 sqlalchemy==2.0.23
-alembic==1.12.1
+alembic==1.17.1
 asyncpg==0.30.0
 
 # Redis и кэширование
