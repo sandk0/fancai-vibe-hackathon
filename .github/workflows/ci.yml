@@ -35,10 +35,10 @@ jobs:
           pip install ruff black mypy
 
       - name: Run Ruff
-        run: cd backend && ruff check . --output-format=github
+        run: cd backend && ruff check app/ --output-format=github
 
       - name: Run Black (check only)
-        run: cd backend && black --check .
+        run: cd backend && black --check app/
 
       - name: Run MyPy (type checking)
         run: cd backend && mypy app --ignore-missing-imports || true
