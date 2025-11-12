@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 class DeepPavlovEntityType(Enum):
     """Типы сущностей DeepPavlov."""
+
     PERSON = "PER"
     LOCATION = "LOC"
     ORGANIZATION = "ORG"
@@ -36,6 +37,7 @@ class DeepPavlovEntityType(Enum):
 @dataclass
 class DeepPavlovEntity:
     """Сущность, извлеченная DeepPavlov."""
+
     text: str
     type: DeepPavlovEntityType
     start: int
@@ -75,6 +77,7 @@ class DeepPavlovProcessor:
         # Попытка импорта DeepPavlov
         try:
             from deeppavlov import build_model
+
             self._build_model_func = build_model
             self._available = True
         except ImportError:
@@ -94,7 +97,7 @@ class DeepPavlovProcessor:
 
             # Используем multilingual BERT модель для русского
             # Альтернативы: 'ner_rus', 'ner_rus_bert'
-            self.model = self._build_model_func('ner_ontonotes_bert_mult')
+            self.model = self._build_model_func("ner_ontonotes_bert_mult")
 
             self._initialized = True
             logger.info("✅ DeepPavlov initialized successfully")
@@ -136,7 +139,7 @@ class DeepPavlovProcessor:
                 return []
 
             tokens = result[0][0]  # Список токенов
-            tags = result[1][0]    # Список BIO тагов
+            tags = result[1][0]  # Список BIO тагов
 
             # Конвертировать BIO теги в сущности
             entities = self._bio_to_entities(tokens, tags, text)
@@ -148,10 +151,7 @@ class DeepPavlovProcessor:
             return []
 
     def _bio_to_entities(
-        self,
-        tokens: List[str],
-        tags: List[str],
-        original_text: str
+        self, tokens: List[str], tags: List[str], original_text: str
     ) -> List[DeepPavlovEntity]:
         """
         Конвертировать BIO теги в список сущностей.
@@ -175,16 +175,13 @@ class DeepPavlovProcessor:
         current_start = 0
 
         for i, (token, tag) in enumerate(zip(tokens, tags)):
-            if tag.startswith('B-'):
+            if tag.startswith("B-"):
                 # Начало новой сущности
                 if current_entity:
                     # Сохранить предыдущую сущность
-                    entity_text = ' '.join(current_entity)
+                    entity_text = " ".join(current_entity)
                     entity = self._create_entity(
-                        entity_text,
-                        current_type,
-                        current_start,
-                        original_text
+                        entity_text, current_type, current_start, original_text
                     )
                     if entity:
                         entities.append(entity)
@@ -194,19 +191,16 @@ class DeepPavlovProcessor:
                 current_type = tag[2:]  # Убрать 'B-'
                 current_start = original_text.find(token, current_start)
 
-            elif tag.startswith('I-') and current_entity:
+            elif tag.startswith("I-") and current_entity:
                 # Продолжение текущей сущности
                 current_entity.append(token)
 
-            elif tag == 'O':
+            elif tag == "O":
                 # Не сущность - завершить текущую если есть
                 if current_entity:
-                    entity_text = ' '.join(current_entity)
+                    entity_text = " ".join(current_entity)
                     entity = self._create_entity(
-                        entity_text,
-                        current_type,
-                        current_start,
-                        original_text
+                        entity_text, current_type, current_start, original_text
                     )
                     if entity:
                         entities.append(entity)
@@ -216,12 +210,9 @@ class DeepPavlovProcessor:
 
         # Обработать последнюю сущность
         if current_entity:
-            entity_text = ' '.join(current_entity)
+            entity_text = " ".join(current_entity)
             entity = self._create_entity(
-                entity_text,
-                current_type,
-                current_start,
-                original_text
+                entity_text, current_type, current_start, original_text
             )
             if entity:
                 entities.append(entity)
@@ -229,11 +220,7 @@ class DeepPavlovProcessor:
         return entities
 
     def _create_entity(
-        self,
-        text: str,
-        entity_type: str,
-        start_pos: int,
-        original_text: str
+        self, text: str, entity_type: str, start_pos: int, original_text: str
     ) -> Optional[DeepPavlovEntity]:
         """
         Создать объект сущности.
@@ -250,18 +237,17 @@ class DeepPavlovProcessor:
         try:
             # Маппинг типов DeepPavlov на наши типы
             type_mapping = {
-                'PER': DeepPavlovEntityType.PERSON,
-                'PERSON': DeepPavlovEntityType.PERSON,
-                'LOC': DeepPavlovEntityType.LOCATION,
-                'LOCATION': DeepPavlovEntityType.LOCATION,
-                'GPE': DeepPavlovEntityType.LOCATION,  # Geo-Political Entity
-                'ORG': DeepPavlovEntityType.ORGANIZATION,
-                'ORGANIZATION': DeepPavlovEntityType.ORGANIZATION,
+                "PER": DeepPavlovEntityType.PERSON,
+                "PERSON": DeepPavlovEntityType.PERSON,
+                "LOC": DeepPavlovEntityType.LOCATION,
+                "LOCATION": DeepPavlovEntityType.LOCATION,
+                "GPE": DeepPavlovEntityType.LOCATION,  # Geo-Political Entity
+                "ORG": DeepPavlovEntityType.ORGANIZATION,
+                "ORGANIZATION": DeepPavlovEntityType.ORGANIZATION,
             }
 
             entity_enum = type_mapping.get(
-                entity_type.upper(),
-                DeepPavlovEntityType.MISC
+                entity_type.upper(), DeepPavlovEntityType.MISC
             )
 
             # Найти точную позицию в тексте
@@ -276,7 +262,7 @@ class DeepPavlovProcessor:
                 type=entity_enum,
                 start=start,
                 end=end,
-                confidence=0.95  # DeepPavlov имеет высокую точность
+                confidence=0.95,  # DeepPavlov имеет высокую точность
             )
 
         except Exception as e:
@@ -284,9 +270,7 @@ class DeepPavlovProcessor:
             return None
 
     def extract_for_description_type(
-        self,
-        text: str,
-        description_type: str
+        self, text: str, description_type: str
     ) -> List[DeepPavlovEntity]:
         """
         Извлечь сущности для определенного типа описания.
@@ -300,11 +284,11 @@ class DeepPavlovProcessor:
         """
         all_entities = self.extract_entities(text)
 
-        if description_type == 'location':
+        if description_type == "location":
             # Только локации
             return [e for e in all_entities if e.type == DeepPavlovEntityType.LOCATION]
 
-        elif description_type == 'character':
+        elif description_type == "character":
             # Только персонажи
             return [e for e in all_entities if e.type == DeepPavlovEntityType.PERSON]
 
@@ -342,9 +326,7 @@ class DeepPavlovProcessor:
         }
 
     def compare_with_other_processor(
-        self,
-        text: str,
-        other_entities: List[Dict]
+        self, text: str, other_entities: List[Dict]
     ) -> Dict:
         """
         Сравнить результаты DeepPavlov с другим процессором.
@@ -359,7 +341,7 @@ class DeepPavlovProcessor:
         dp_entities = self.extract_entities(text)
 
         dp_texts = set(e.text for e in dp_entities)
-        other_texts = set(e.get('text', '') for e in other_entities)
+        other_texts = set(e.get("text", "") for e in other_entities)
 
         common = dp_texts & other_texts
         only_dp = dp_texts - other_texts
@@ -375,7 +357,7 @@ class DeepPavlovProcessor:
             "examples": {
                 "only_deeppavlov": list(only_dp)[:5],
                 "only_other": list(only_other)[:5],
-            }
+            },
         }
 
 

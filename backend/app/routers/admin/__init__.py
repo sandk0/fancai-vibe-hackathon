@@ -17,7 +17,16 @@ maintainability and code organization.
 
 from fastapi import APIRouter
 
-from . import stats, nlp_settings, parsing, images, system, users, reading_sessions, cache
+from . import (
+    stats,
+    nlp_settings,
+    parsing,
+    images,
+    system,
+    users,
+    reading_sessions,
+    cache,
+)
 
 # Create main admin router
 router = APIRouter(prefix="/admin", tags=["admin"])

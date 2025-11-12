@@ -53,7 +53,9 @@ class ConfigLoader:
                 "deeppavlov": deeppavlov_config,  # NEW!
             }
 
-            logger.info("✅ Loaded configurations for all processors (including DeepPavlov)")
+            logger.info(
+                "✅ Loaded configurations for all processors (including DeepPavlov)"
+            )
             return configs
 
         except Exception as e:

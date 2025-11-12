@@ -42,6 +42,7 @@ class CachedSessionData(BaseModel):
         device_type: Тип устройства
         is_active: Флаг активности
     """
+
     id: str
     user_id: str
     book_id: str
@@ -86,6 +87,7 @@ class SessionUpdate(BaseModel):
         session_id: UUID сессии для обновления
         current_position: Новая позиция (0-100%)
     """
+
     session_id: str
     current_position: int
 
@@ -137,7 +139,9 @@ class ReadingSessionCache:
                 decode_responses=True,
                 max_connections=50,  # Connection pool для высокой нагрузки
             )
-            logger.info("✅ Redis connection pool established for reading sessions cache")
+            logger.info(
+                "✅ Redis connection pool established for reading sessions cache"
+            )
 
     async def close(self) -> None:
         """Закрывает connection pool."""
@@ -204,10 +208,7 @@ class ReadingSessionCache:
             return None  # Fallback при ошибке Redis
 
     async def set_active_session(
-        self,
-        user_id: UUID,
-        session: ReadingSession,
-        ttl: Optional[int] = None
+        self, user_id: UUID, session: ReadingSession, ttl: Optional[int] = None
     ) -> bool:
         """
         Кэширует активную сессию пользователя.
@@ -244,11 +245,7 @@ class ReadingSessionCache:
             logger.error(f"Redis SET error: {str(e)}")
             return False  # Non-blocking error
 
-    async def update_session_position(
-        self,
-        user_id: UUID,
-        new_position: int
-    ) -> bool:
+    async def update_session_position(self, user_id: UUID, new_position: int) -> bool:
         """
         Обновляет позицию в закэшированной сессии.
 
@@ -268,7 +265,9 @@ class ReadingSessionCache:
             cached_session = await self.get_active_session(user_id)
 
             if not cached_session:
-                logger.warning(f"Cannot update position: no cached session for user {user_id}")
+                logger.warning(
+                    f"Cannot update position: no cached session for user {user_id}"
+                )
                 return False
 
             # Обновляем позицию
@@ -281,7 +280,9 @@ class ReadingSessionCache:
             # Preserve original TTL
             await self._redis.setex(cache_key, self._default_ttl, session_json)
 
-            logger.debug(f"Position updated in cache: user={user_id}, position={new_position}%")
+            logger.debug(
+                f"Position updated in cache: user={user_id}, position={new_position}%"
+            )
             return True
 
         except Exception as e:
@@ -417,8 +418,7 @@ class ReadingSessionCache:
                 "keyspace_hits": info.get("keyspace_hits", 0),
                 "keyspace_misses": info.get("keyspace_misses", 0),
                 "hit_rate": self._calculate_hit_rate(
-                    info.get("keyspace_hits", 0),
-                    info.get("keyspace_misses", 0)
+                    info.get("keyspace_hits", 0), info.get("keyspace_misses", 0)
                 ),
                 "used_memory_human": info.get("used_memory_human", "N/A"),
             }

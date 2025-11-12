@@ -124,16 +124,16 @@ async def get_chapter(
         Key: book:{book_id}:chapter:{chapter_number}
     """
     # Try to get from cache
-    cache_key_str = cache_key("book", chapter.book_id, "chapter", chapter.chapter_number)
+    cache_key_str = cache_key(
+        "book", chapter.book_id, "chapter", chapter.chapter_number
+    )
     cached_result = await cache_manager.get(cache_key_str)
     if cached_result is not None:
         return cached_result
 
     try:
         # Загружаем книгу для навигационной информации
-        book_result = await db.execute(
-            select(Book).where(Book.id == chapter.book_id)
-        )
+        book_result = await db.execute(select(Book).where(Book.id == chapter.book_id))
         book = book_result.scalar_one()
 
         # Получаем описания для этой главы с изображениями (лимитируем до 50)
@@ -201,7 +201,9 @@ async def get_chapter(
         }
 
         # Cache the result (1 hour TTL for chapter content)
-        await cache_manager.set(cache_key_str, response, ttl=CACHE_TTL["chapter_content"])
+        await cache_manager.set(
+            cache_key_str, response, ttl=CACHE_TTL["chapter_content"]
+        )
 
         return response
 

@@ -86,6 +86,7 @@ async def register_user(
     """
     # PRODUCTION-GRADE password validation (12 chars minimum)
     from ..core.validation import validate_password_strength
+
     is_valid, error_msg = validate_password_strength(user_request.password)
     if not is_valid:
         raise HTTPException(
@@ -253,6 +254,7 @@ async def update_user_profile(
     # Валидация нового пароля (PRODUCTION-GRADE)
     if request.new_password:
         from ..core.validation import validate_password_strength
+
         is_valid, error_msg = validate_password_strength(request.new_password)
         if not is_valid:
             raise HTTPException(

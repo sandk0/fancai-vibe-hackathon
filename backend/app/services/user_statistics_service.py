@@ -104,9 +104,7 @@ class UserStatisticsService:
             reading_date = row.reading_date
             activity_by_date[reading_date] = {
                 "date": reading_date.isoformat(),
-                "day": UserStatisticsService.WEEKDAY_NAMES_RU[
-                    reading_date.weekday()
-                ],
+                "day": UserStatisticsService.WEEKDAY_NAMES_RU[reading_date.weekday()],
                 "minutes": int(row.total_minutes or 0),
                 "sessions": int(row.sessions_count or 0),
                 "progress": int(row.total_progress or 0),
@@ -350,10 +348,13 @@ class UserStatisticsService:
         from ..models.book import Book, ReadingProgress
 
         # JOIN книг с прогрессом и суммируем прочитанные страницы
-        query = select(
-            func.sum(Book.total_pages * ReadingProgress.current_position / 100.0)
-        ).select_from(ReadingProgress).join(Book, ReadingProgress.book_id == Book.id).where(
-            ReadingProgress.user_id == user_id
+        query = (
+            select(
+                func.sum(Book.total_pages * ReadingProgress.current_position / 100.0)
+            )
+            .select_from(ReadingProgress)
+            .join(Book, ReadingProgress.book_id == Book.id)
+            .where(ReadingProgress.user_id == user_id)
         )
 
         result = await db.execute(query)

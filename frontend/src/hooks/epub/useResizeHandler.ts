@@ -133,12 +133,12 @@ export const useResizeHandler = ({
     // Debounce to handle rapid resize events (e.g., dragging window edge)
     const debouncedHandleResized = debounce(handleResized, 100);
 
-    rendition.on('resized', debouncedHandleResized);
+    rendition.on('resized', debouncedHandleResized as (...args: unknown[]) => void);
 
     console.log('✅ [useResizeHandler] Resize handler registered');
 
     return () => {
-      rendition.off('resized', debouncedHandleResized);
+      rendition.off('resized', debouncedHandleResized as (...args: unknown[]) => void);
       console.log('🧹 [useResizeHandler] Resize handler deregistered');
     };
   }, [rendition, enabled, onResized]);

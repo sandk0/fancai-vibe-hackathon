@@ -46,11 +46,15 @@ export const useAutoParser = (
 
     // Check for descriptions in API response
     let descriptions: Description[] = [];
+    const chapterData = chapter as Record<string, unknown>;
 
-    if (chapter.descriptions && Array.isArray(chapter.descriptions)) {
-      descriptions = chapter.descriptions;
-    } else if (chapter.chapter?.descriptions && Array.isArray(chapter.chapter.descriptions)) {
-      descriptions = chapter.chapter.descriptions;
+    if (chapterData.descriptions && Array.isArray(chapterData.descriptions)) {
+      descriptions = chapterData.descriptions as Description[];
+    } else if (chapterData.chapter && typeof chapterData.chapter === 'object' && chapterData.chapter !== null) {
+      const nestedChapter = chapterData.chapter as Record<string, unknown>;
+      if (nestedChapter.descriptions && Array.isArray(nestedChapter.descriptions)) {
+        descriptions = nestedChapter.descriptions as Description[];
+      }
     } else if (Array.isArray(chapter)) {
       descriptions = chapter as unknown as Description[];
     }

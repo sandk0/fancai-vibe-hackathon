@@ -100,7 +100,9 @@ class ProcessorRegistry:
                         self.processors["deeppavlov"] = processor
                         logger.info("✅ DeepPavlov processor initialized (F1 0.94-0.97)")
                     else:
-                        logger.warning("DeepPavlov not available - install with: pip install deeppavlov")
+                        logger.warning(
+                            "DeepPavlov not available - install with: pip install deeppavlov"
+                        )
 
             except Exception as e:
                 logger.error(f"Failed to initialize {processor_name} processor: {e}")

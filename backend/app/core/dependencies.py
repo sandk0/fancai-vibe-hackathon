@@ -359,7 +359,7 @@ def validate_chapter_number_in_book(book: Book, chapter_number: int) -> Chapter 
         ChapterNotFoundException: Если глава не найдена
     """
     # Приводим к list для итерации (SQLAlchemy relationship может быть Mapped)
-    chapters_list = list(book.chapters) if hasattr(book.chapters, '__iter__') else []
+    chapters_list = list(book.chapters) if hasattr(book.chapters, "__iter__") else []
     for chapter in chapters_list:
         if chapter.chapter_number == chapter_number:
             return cast(Chapter, chapter)

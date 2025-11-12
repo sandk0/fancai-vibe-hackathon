@@ -33,24 +33,20 @@ from .text_analysis import (
 __all__ = [
     # text_cleaner
     "clean_text",
-
     # description_filter
     "filter_and_prioritize_descriptions",
     "calculate_priority_score",
     "deduplicate_descriptions",
     "filter_by_quality_threshold",
-
     # type_mapper
     "map_entity_to_description_type",
     "EntityType",
-
     # quality_scorer
     "calculate_quality_score",
     "calculate_descriptive_score",
     "calculate_ner_confidence",
     "calculate_dependency_confidence",
     "calculate_morphological_descriptiveness",
-
     # text_analysis
     "contains_person_names",
     "contains_location_names",

@@ -22,27 +22,27 @@ import time
 # ============================================================================
 
 sessions_started_total = Counter(
-    'reading_sessions_started_total',
-    'Total number of reading sessions started',
-    ['device_type', 'book_genre']
+    "reading_sessions_started_total",
+    "Total number of reading sessions started",
+    ["device_type", "book_genre"],
 )
 
 sessions_ended_total = Counter(
-    'reading_sessions_ended_total',
-    'Total number of reading sessions ended',
-    ['completion_status', 'device_type']
+    "reading_sessions_ended_total",
+    "Total number of reading sessions ended",
+    ["completion_status", "device_type"],
 )
 
 sessions_updated_total = Counter(
-    'reading_sessions_updated_total',
-    'Total number of session position updates',
-    ['device_type']
+    "reading_sessions_updated_total",
+    "Total number of session position updates",
+    ["device_type"],
 )
 
 session_errors_total = Counter(
-    'reading_sessions_errors_total',
-    'Total number of errors in reading sessions operations',
-    ['operation', 'error_type']
+    "reading_sessions_errors_total",
+    "Total number of errors in reading sessions operations",
+    ["operation", "error_type"],
 )
 
 
@@ -51,32 +51,32 @@ session_errors_total = Counter(
 # ============================================================================
 
 session_duration_seconds = Histogram(
-    'reading_session_duration_seconds',
-    'Reading session duration in seconds',
+    "reading_session_duration_seconds",
+    "Reading session duration in seconds",
     # Buckets: 1min, 5min, 10min, 30min, 1hour, 2hours, 4hours, 8hours
     buckets=[60, 300, 600, 1800, 3600, 7200, 14400, 28800],
-    labelnames=['device_type', 'completion_status']
+    labelnames=["device_type", "completion_status"],
 )
 
 session_pages_read = Histogram(
-    'reading_session_pages_read',
-    'Number of pages read during session',
+    "reading_session_pages_read",
+    "Number of pages read during session",
     buckets=[1, 5, 10, 20, 50, 100, 200, 500],
-    labelnames=['device_type']
+    labelnames=["device_type"],
 )
 
 session_progress_delta = Histogram(
-    'reading_session_progress_delta_percent',
-    'Progress delta (end - start position) in percent',
+    "reading_session_progress_delta_percent",
+    "Progress delta (end - start position) in percent",
     buckets=[1, 5, 10, 20, 30, 50, 75, 100],
-    labelnames=['device_type']
+    labelnames=["device_type"],
 )
 
 session_api_latency_seconds = Histogram(
-    'reading_session_api_latency_seconds',
-    'API endpoint latency for reading sessions operations',
+    "reading_session_api_latency_seconds",
+    "API endpoint latency for reading sessions operations",
     buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0],
-    labelnames=['endpoint', 'method', 'status_code']
+    labelnames=["endpoint", "method", "status_code"],
 )
 
 
@@ -85,19 +85,18 @@ session_api_latency_seconds = Histogram(
 # ============================================================================
 
 active_sessions_count = Gauge(
-    'reading_sessions_active_count',
-    'Current number of active reading sessions',
-    ['device_type']
+    "reading_sessions_active_count",
+    "Current number of active reading sessions",
+    ["device_type"],
 )
 
 abandoned_sessions_count = Gauge(
-    'reading_sessions_abandoned_count',
-    'Number of sessions abandoned (active > 24 hours)'
+    "reading_sessions_abandoned_count",
+    "Number of sessions abandoned (active > 24 hours)",
 )
 
 concurrent_users_count = Gauge(
-    'reading_sessions_concurrent_users',
-    'Number of unique users with active sessions'
+    "reading_sessions_concurrent_users", "Number of unique users with active sessions"
 )
 
 
@@ -106,21 +105,19 @@ concurrent_users_count = Gauge(
 # ============================================================================
 
 reading_system_info = Info(
-    'reading_sessions_system',
-    'Reading sessions system information'
+    "reading_sessions_system", "Reading sessions system information"
 )
 
 # Устанавливаем версию системы и дату последнего деплоя
-reading_system_info.info({
-    'version': '2.0.0',
-    'feature': 'reading_sessions',
-    'deployed_at': '2025-10-28'
-})
+reading_system_info.info(
+    {"version": "2.0.0", "feature": "reading_sessions", "deployed_at": "2025-10-28"}
+)
 
 
 # ============================================================================
 # Helper Functions - обертки для удобного использования
 # ============================================================================
+
 
 class MetricsCollector:
     """
@@ -165,7 +162,7 @@ class MetricsCollector:
         session_api_latency_seconds.labels(
             endpoint=self.endpoint,
             method=self.method,
-            status_code=str(self.status_code)
+            status_code=str(self.status_code),
         ).observe(duration)
 
     def set_status(self, status_code: int):
@@ -193,8 +190,7 @@ class MetricsCollector:
 
 
 def record_session_started(
-    device_type: Optional[str] = None,
-    book_genre: Optional[str] = None
+    device_type: Optional[str] = None, book_genre: Optional[str] = None
 ):
     """
     Записать метрику старта сессии.
@@ -204,8 +200,7 @@ def record_session_started(
         book_genre: Жанр книги (fiction, non-fiction, etc.)
     """
     sessions_started_total.labels(
-        device_type=device_type or 'unknown',
-        book_genre=book_genre or 'unknown'
+        device_type=device_type or "unknown", book_genre=book_genre or "unknown"
     ).inc()
 
 
@@ -214,7 +209,7 @@ def record_session_ended(
     pages_read: int,
     progress_delta: int,
     device_type: Optional[str] = None,
-    completion_status: str = 'completed'
+    completion_status: str = "completed",
 ):
     """
     Записать метрики завершения сессии.
@@ -226,27 +221,21 @@ def record_session_ended(
         device_type: Тип устройства
         completion_status: Статус завершения (completed, abandoned, auto_closed)
     """
-    device = device_type or 'unknown'
+    device = device_type or "unknown"
 
     # Counter
     sessions_ended_total.labels(
-        completion_status=completion_status,
-        device_type=device
+        completion_status=completion_status, device_type=device
     ).inc()
 
     # Histograms
     session_duration_seconds.labels(
-        device_type=device,
-        completion_status=completion_status
+        device_type=device, completion_status=completion_status
     ).observe(duration_seconds)
 
-    session_pages_read.labels(
-        device_type=device
-    ).observe(pages_read)
+    session_pages_read.labels(device_type=device).observe(pages_read)
 
-    session_progress_delta.labels(
-        device_type=device
-    ).observe(progress_delta)
+    session_progress_delta.labels(device_type=device).observe(progress_delta)
 
 
 def record_session_updated(device_type: Optional[str] = None):
@@ -256,9 +245,7 @@ def record_session_updated(device_type: Optional[str] = None):
     Args:
         device_type: Тип устройства
     """
-    sessions_updated_total.labels(
-        device_type=device_type or 'unknown'
-    ).inc()
+    sessions_updated_total.labels(device_type=device_type or "unknown").inc()
 
 
 def record_session_error(operation: str, error_type: str):
@@ -269,10 +256,7 @@ def record_session_error(operation: str, error_type: str):
         operation: Тип операции (start, update, end, get_active, get_history)
         error_type: Тип ошибки (validation, not_found, database, permission)
     """
-    session_errors_total.labels(
-        operation=operation,
-        error_type=error_type
-    ).inc()
+    session_errors_total.labels(operation=operation, error_type=error_type).inc()
 
 
 def update_active_sessions_gauge(count: int, device_type: Optional[str] = None):
@@ -287,7 +271,7 @@ def update_active_sessions_gauge(count: int, device_type: Optional[str] = None):
         active_sessions_count.labels(device_type=device_type).set(count)
     else:
         # Обновляем для всех типов устройств
-        for device in ['mobile', 'tablet', 'desktop', 'unknown']:
+        for device in ["mobile", "tablet", "desktop", "unknown"]:
             # Здесь нужен запрос к БД для получения точного count по device_type
             # Пока ставим placeholder
             pass
@@ -318,24 +302,24 @@ def update_concurrent_users_gauge(count: int):
 # ============================================================================
 
 __all__ = [
-    'sessions_started_total',
-    'sessions_ended_total',
-    'sessions_updated_total',
-    'session_errors_total',
-    'session_duration_seconds',
-    'session_pages_read',
-    'session_progress_delta',
-    'session_api_latency_seconds',
-    'active_sessions_count',
-    'abandoned_sessions_count',
-    'concurrent_users_count',
-    'reading_system_info',
-    'MetricsCollector',
-    'record_session_started',
-    'record_session_ended',
-    'record_session_updated',
-    'record_session_error',
-    'update_active_sessions_gauge',
-    'update_abandoned_sessions_gauge',
-    'update_concurrent_users_gauge',
+    "sessions_started_total",
+    "sessions_ended_total",
+    "sessions_updated_total",
+    "session_errors_total",
+    "session_duration_seconds",
+    "session_pages_read",
+    "session_progress_delta",
+    "session_api_latency_seconds",
+    "active_sessions_count",
+    "abandoned_sessions_count",
+    "concurrent_users_count",
+    "reading_system_info",
+    "MetricsCollector",
+    "record_session_started",
+    "record_session_ended",
+    "record_session_updated",
+    "record_session_error",
+    "update_active_sessions_gauge",
+    "update_abandoned_sessions_gauge",
+    "update_concurrent_users_gauge",
 ]

@@ -136,7 +136,9 @@ async def upload_book(
             # Это намного эффективнее чем цикл с 30 итерациями
             pattern = f"user:{current_user.id}:books:*"
             deleted_count = await cache_manager.delete_pattern(pattern)
-            print(f"[CACHE] Book list cache invalidated successfully ({deleted_count} keys deleted)")
+            print(
+                f"[CACHE] Book list cache invalidated successfully ({deleted_count} keys deleted)"
+            )
         except Exception as e:
             print(f"[CACHE ERROR] Failed to invalidate cache: {str(e)}")
             # Не критичная ошибка, продолжаем
@@ -195,10 +197,19 @@ async def get_user_books(
         TTL: 10 seconds (frequently updated - parsing status changes)
         Key: user:{user_id}:books:skip:{skip}:limit:{limit}:sort:{sort_by}
     """
-    print(f"[BOOKS ENDPOINT] Starting books request for user {current_user.id} (sort: {sort_by})")
+    print(
+        f"[BOOKS ENDPOINT] Starting books request for user {current_user.id} (sort: {sort_by})"
+    )
 
     # Try to get from cache
-    cache_key_str = cache_key("user", current_user.id, "books", f"skip:{skip}", f"limit:{limit}", f"sort:{sort_by}")
+    cache_key_str = cache_key(
+        "user",
+        current_user.id,
+        "books",
+        f"skip:{skip}",
+        f"limit:{limit}",
+        f"sort:{sort_by}",
+    )
     cached_result = await cache_manager.get(cache_key_str)
     if cached_result is not None:
         print(f"[BOOKS ENDPOINT] Cache HIT for user {current_user.id}")
@@ -266,7 +277,12 @@ async def get_user_books(
             f"[BOOKS ENDPOINT] Successfully returning {len(books_data)} books (total: {total_books})"
         )
 
-        response = {"books": books_data, "total": total_books, "skip": skip, "limit": limit}
+        response = {
+            "books": books_data,
+            "total": total_books,
+            "skip": skip,
+            "limit": limit,
+        }
 
         # Cache the result (5 minutes TTL for book lists)
         await cache_manager.set(cache_key_str, response, ttl=CACHE_TTL["book_list"])
@@ -313,7 +329,6 @@ async def get_book(
     print(f"[BOOK ENDPOINT] Cache MISS for book {book.id} - building response")
 
     try:
-
         # Прогресс чтения - используем унифицированный метод из модели
         progress_percent = await book.get_reading_progress_percent(db, current_user.id)
 

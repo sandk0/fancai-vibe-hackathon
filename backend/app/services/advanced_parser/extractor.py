@@ -41,6 +41,7 @@ class ExtractionResult:
         processing_time: Время обработки в секундах
         metadata: Дополнительные метаданные
     """
+
     descriptions: List[Tuple[CompleteDescription, ConfidenceScoreBreakdown]]
     total_extracted: int
     passed_threshold: int
@@ -48,7 +49,9 @@ class ExtractionResult:
     processing_time: float
     metadata: Dict = field(default_factory=dict)
 
-    def get_high_priority_descriptions(self, top_n: Optional[int] = None) -> List[Tuple[CompleteDescription, ConfidenceScoreBreakdown]]:
+    def get_high_priority_descriptions(
+        self, top_n: Optional[int] = None
+    ) -> List[Tuple[CompleteDescription, ConfidenceScoreBreakdown]]:
         """
         Получить описания с наивысшим приоритетом.
 
@@ -64,14 +67,16 @@ class ExtractionResult:
         sorted_descriptions = sorted(
             self.descriptions,
             key=lambda item: item[1].overall_score * item[1].priority_weight,
-            reverse=True
+            reverse=True,
         )
 
         if top_n:
             return sorted_descriptions[:top_n]
         return sorted_descriptions
 
-    def get_by_type(self, description_type: DescriptionType) -> List[Tuple[CompleteDescription, ConfidenceScoreBreakdown]]:
+    def get_by_type(
+        self, description_type: DescriptionType
+    ) -> List[Tuple[CompleteDescription, ConfidenceScoreBreakdown]]:
         """
         Получить описания определенного типа.
 
@@ -87,7 +92,9 @@ class ExtractionResult:
             if score.description_type == description_type
         ]
 
-    def get_long_descriptions(self, min_chars: int = 1000) -> List[Tuple[CompleteDescription, ConfidenceScoreBreakdown]]:
+    def get_long_descriptions(
+        self, min_chars: int = 1000
+    ) -> List[Tuple[CompleteDescription, ConfidenceScoreBreakdown]]:
         """
         Получить только длинные описания.
 
@@ -104,9 +111,11 @@ class ExtractionResult:
         ]
 
     def __repr__(self) -> str:
-        return f"ExtractionResult(total={self.total_extracted}, " \
-               f"passed={self.passed_threshold}, " \
-               f"time={self.processing_time:.2f}s)"
+        return (
+            f"ExtractionResult(total={self.total_extracted}, "
+            f"passed={self.passed_threshold}, "
+            f"time={self.processing_time:.2f}s)"
+        )
 
 
 class AdvancedDescriptionExtractor:
@@ -154,7 +163,7 @@ class AdvancedDescriptionExtractor:
         self,
         text: str,
         min_confidence: Optional[float] = None,
-        priority_types: Optional[List[DescriptionType]] = None
+        priority_types: Optional[List[DescriptionType]] = None,
     ) -> ExtractionResult:
         """
         Извлечь качественные описания из текста.
@@ -187,8 +196,7 @@ class AdvancedDescriptionExtractor:
 
         if not complete_descriptions:
             return self._create_empty_result(
-                time.time() - start_time,
-                metadata={"paragraphs_found": len(paragraphs)}
+                time.time() - start_time, metadata={"paragraphs_found": len(paragraphs)}
             )
 
         # Этап 3: Оценка качества каждого описания
@@ -219,10 +227,7 @@ class AdvancedDescriptionExtractor:
         # Собрать статистику
         processing_time = time.time() - start_time
         statistics = self._collect_statistics(
-            paragraphs,
-            complete_descriptions,
-            scored_descriptions,
-            ranked
+            paragraphs, complete_descriptions, scored_descriptions, ranked
         )
 
         # Обновить глобальную статистику
@@ -241,15 +246,12 @@ class AdvancedDescriptionExtractor:
                     "min_char_length": self.config.min_char_length,
                     "max_char_length": self.config.max_char_length,
                     "optimal_range": self.config.optimal_char_range,
-                }
-            }
+                },
+            },
         )
 
     def extract_from_chapter(
-        self,
-        chapter_text: str,
-        chapter_number: int,
-        book_genre: Optional[str] = None
+        self, chapter_text: str, chapter_number: int, book_genre: Optional[str] = None
     ) -> ExtractionResult:
         """
         Извлечь описания из главы книги.
@@ -267,17 +269,17 @@ class AdvancedDescriptionExtractor:
         result = self.extract(chapter_text)
 
         # Добавить метаданные главы
-        result.metadata.update({
-            "chapter_number": chapter_number,
-            "book_genre": book_genre,
-        })
+        result.metadata.update(
+            {
+                "chapter_number": chapter_number,
+                "book_genre": book_genre,
+            }
+        )
 
         return result
 
     def extract_batch(
-        self,
-        texts: List[Tuple[str, Dict]],
-        max_processing_time: Optional[int] = None
+        self, texts: List[Tuple[str, Dict]], max_processing_time: Optional[int] = None
     ) -> List[ExtractionResult]:
         """
         Пакетная обработка нескольких текстов.
@@ -306,9 +308,7 @@ class AdvancedDescriptionExtractor:
         return results
 
     def _create_empty_result(
-        self,
-        processing_time: float,
-        metadata: Optional[Dict] = None
+        self, processing_time: float, metadata: Optional[Dict] = None
     ) -> ExtractionResult:
         """Создать пустой результат."""
         return ExtractionResult(
@@ -321,13 +321,13 @@ class AdvancedDescriptionExtractor:
                 "scores": {},
             },
             processing_time=processing_time,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
 
     def _prioritize_types(
         self,
         descriptions: List[Tuple[CompleteDescription, ConfidenceScoreBreakdown]],
-        priority_types: List[DescriptionType]
+        priority_types: List[DescriptionType],
     ) -> List[Tuple[CompleteDescription, ConfidenceScoreBreakdown]]:
         """
         Приоритизировать определенные типы описаний.
@@ -361,7 +361,9 @@ class AdvancedDescriptionExtractor:
         paragraphs: List[Paragraph],
         complete_descriptions: List[CompleteDescription],
         scored_descriptions: List[Tuple[CompleteDescription, ConfidenceScoreBreakdown]],
-        filtered_descriptions: List[Tuple[CompleteDescription, ConfidenceScoreBreakdown]]
+        filtered_descriptions: List[
+            Tuple[CompleteDescription, ConfidenceScoreBreakdown]
+        ],
     ) -> Dict:
         """
         Собрать детальную статистику по извлечению.
@@ -410,10 +412,12 @@ class AdvancedDescriptionExtractor:
                 "total": len(filtered_descriptions),
                 "length_distribution": length_distribution,
                 "avg_priority_weight": sum(
-                    score.priority_weight
-                    for _, score in filtered_descriptions
-                ) / len(filtered_descriptions) if filtered_descriptions else 0,
-            }
+                    score.priority_weight for _, score in filtered_descriptions
+                )
+                / len(filtered_descriptions)
+                if filtered_descriptions
+                else 0,
+            },
         }
 
     def get_global_statistics(self) -> Dict:
@@ -428,14 +432,15 @@ class AdvancedDescriptionExtractor:
             "total_processing_time": self.total_processing_time,
             "avg_processing_time": (
                 self.total_processing_time / self.total_extractions
-                if self.total_extractions > 0 else 0
+                if self.total_extractions > 0
+                else 0
             ),
             "config": {
                 "min_char_length": self.config.min_char_length,
                 "max_char_length": self.config.max_char_length,
                 "optimal_range": self.config.optimal_char_range,
                 "min_overall_confidence": self.config.min_overall_confidence,
-            }
+            },
         }
 
     def reset_statistics(self):

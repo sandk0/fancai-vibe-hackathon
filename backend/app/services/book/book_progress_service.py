@@ -49,7 +49,7 @@ class BookProgressService:
         user_id: UUID,
         skip: int = 0,
         limit: int = 50,
-        sort_by: str = "created_desc"
+        sort_by: str = "created_desc",
     ) -> List[Tuple[Book, float]]:
         """
         Получает список книг пользователя с предрасчитанным прогрессом чтения.
@@ -68,7 +68,9 @@ class BookProgressService:
             Список кортежей (Book, reading_progress_percent)
         """
         # Используем BookService для получения книг с eager loading
-        books = await self.book_service.get_user_books(db, user_id, skip, limit, sort_by)
+        books = await self.book_service.get_user_books(
+            db, user_id, skip, limit, sort_by
+        )
 
         # Вычисляем прогресс для каждой книги БЕЗ дополнительных запросов
         books_with_progress = []

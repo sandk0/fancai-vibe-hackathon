@@ -35,7 +35,7 @@ interface UseReadingSessionOptions {
 interface UseReadingSessionReturn {
   session: ReadingSession | null;
   isLoading: boolean;
-  error: Error;
+  error: Error | null;
   updatePosition: (position: number) => void;
   endSession: () => Promise<void>;
 }

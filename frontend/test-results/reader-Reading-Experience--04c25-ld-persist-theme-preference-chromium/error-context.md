@@ -1,0 +1,52 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - img [ref=e10]
+        - heading "BookReader AI" [level=1] [ref=e14]
+      - heading "С возвращением! 👋" [level=2] [ref=e15]
+      - paragraph [ref=e16]: Войдите, чтобы продолжить читать
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - generic [ref=e19]: Email
+        - generic [ref=e20]:
+          - img [ref=e21]
+          - textbox "Email" [ref=e24]:
+            - /placeholder: your@email.com
+      - generic [ref=e25]:
+        - generic [ref=e26]: Пароль
+        - generic [ref=e27]:
+          - img [ref=e28]
+          - textbox "Пароль" [ref=e31]:
+            - /placeholder: ••••••••
+          - button [ref=e32] [cursor=pointer]:
+            - img [ref=e33]
+      - link "Забыли пароль?" [ref=e37] [cursor=pointer]:
+        - /url: /forgot-password
+      - button "Войти" [ref=e38] [cursor=pointer]
+    - paragraph [ref=e40]:
+      - text: Нет аккаунта?
+      - link "Зарегистрироваться" [ref=e41] [cursor=pointer]:
+        - /url: /register
+  - generic [ref=e43]:
+    - generic [ref=e44]:
+      - img [ref=e45]
+      - heading "Читайте с AI-визуализацией" [level=2] [ref=e47]
+      - paragraph [ref=e48]: Каждое описание превращается в уникальное изображение благодаря искусственному интеллекту
+    - generic [ref=e49]:
+      - generic [ref=e50]:
+        - img [ref=e51]
+        - paragraph [ref=e54]: Умное распознавание описаний с Multi-NLP
+      - generic [ref=e55]:
+        - img [ref=e56]
+        - paragraph [ref=e59]: Автоматическая генерация AI изображений
+      - generic [ref=e60]:
+        - img [ref=e61]
+        - paragraph [ref=e64]: Синхронизация прогресса чтения
+      - generic [ref=e65]:
+        - img [ref=e66]
+        - paragraph [ref=e69]: Персональная галерея изображений
+```

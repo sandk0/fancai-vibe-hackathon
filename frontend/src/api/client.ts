@@ -142,10 +142,11 @@ class ApiClient {
     if (this.isAxiosError(error)) {
       if (error.response) {
         // Server responded with error
+        const responseData = error.response.data as Record<string, unknown> | undefined;
         return {
-          error: error.response.data?.error || 'Server Error',
-          message: error.response.data?.detail || error.response.data?.message || 'An error occurred',
-          details: error.response.data,
+          error: (responseData?.error as string) || 'Server Error',
+          message: (responseData?.detail as string) || (responseData?.message as string) || 'An error occurred',
+          details: responseData,
           timestamp: new Date().toISOString(),
         };
       } else if (error.request) {

@@ -86,7 +86,9 @@ app.include_router(admin_router, prefix="/api/v1")
 # Books routers (refactored into modular structure)
 app.include_router(books_router, prefix="/api/v1")
 app.include_router(chapters.router, prefix="/api/v1/books", tags=["chapters"])
-app.include_router(reading_progress.router, prefix="/api/v1/books", tags=["reading_progress"])
+app.include_router(
+    reading_progress.router, prefix="/api/v1/books", tags=["reading_progress"]
+)
 app.include_router(descriptions.router, prefix="/api/v1/books", tags=["descriptions"])
 
 # Reading Sessions router

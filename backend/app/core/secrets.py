@@ -119,7 +119,9 @@ def validate_secret_exists(secret_name: str) -> bool:
     return value is not None and value.strip() != ""
 
 
-def validate_secret_strength(secret_value: str, min_length: int = 32) -> Tuple[bool, Optional[str]]:
+def validate_secret_strength(
+    secret_value: str, min_length: int = 32
+) -> Tuple[bool, Optional[str]]:
     """
     Валидирует strength секрета (например, SECRET_KEY).
 
@@ -162,7 +164,9 @@ def validate_secret_strength(secret_value: str, min_length: int = 32) -> Tuple[b
     return True, None
 
 
-def validate_secret_not_default(secret_value: str, forbidden_values: List[str]) -> Tuple[bool, Optional[str]]:
+def validate_secret_not_default(
+    secret_value: str, forbidden_values: List[str]
+) -> Tuple[bool, Optional[str]]:
     """
     Проверяет, что secret не содержит forbidden default/test значения.
 
@@ -332,7 +336,9 @@ class SecretsValidator:
 
         # Validate not default (if specified)
         if "forbidden_values" in secret_config:
-            forbidden_in_prod_only = secret_config.get("forbidden_in_production_only", False)
+            forbidden_in_prod_only = secret_config.get(
+                "forbidden_in_production_only", False
+            )
 
             is_valid, error_msg = validate_secret_not_default(
                 secret_value, secret_config["forbidden_values"]
@@ -390,9 +396,7 @@ class SecretsValidator:
                 print(f"   - {secret}")
 
         if report["missing_optional"]:
-            print(
-                f"\n💡 Missing OPTIONAL secrets ({len(report['missing_optional'])}):"
-            )
+            print(f"\n💡 Missing OPTIONAL secrets ({len(report['missing_optional'])}):")
             for secret in report["missing_optional"]:
                 print(f"   - {secret}")
 
@@ -445,9 +449,13 @@ def startup_secrets_check(is_production: bool = None) -> None:
 
     if report["warnings"]:
         if not is_production:
-            print("⚠️  Development mode: Using dev credentials (warnings are acceptable)")
+            print(
+                "⚠️  Development mode: Using dev credentials (warnings are acceptable)"
+            )
         else:
-            print("⚠️  Application started with warnings - review secrets configuration")
+            print(
+                "⚠️  Application started with warnings - review secrets configuration"
+            )
     else:
         print("✅ All secrets validated successfully")
 

@@ -25,6 +25,7 @@ from .nlp.utils.quality_scorer import (
     calculate_ner_confidence,
 )
 from .nlp.utils.type_mapper import map_entity_to_description_type
+
 logger = logging.getLogger(__name__)
 
 
@@ -592,7 +593,8 @@ class EnhancedSpacyProcessor(EnhancedNLPProcessor):
 
         # Подсчитываем описательные слова рядом
         descriptive_words_nearby = sum(
-            1 for token in sentence
+            1
+            for token in sentence
             if abs(token.i - entity.start) <= 2 and token.pos_ in ["ADJ", "ADV"]
         )
 

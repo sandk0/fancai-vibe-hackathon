@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
+import { getErrorMessage } from "@/utils/errors";
  * useDescriptionManagement - Custom hook for description highlighting and interaction
  *
  * Manages description highlighting in text content and handles click interactions.
@@ -169,7 +170,8 @@ export const useDescriptionManagement = ({
         );
       } catch (error) {
         console.error('[useDescriptionManagement] Image generation failed:', error);
-        if (error.response?.status === 409) {
+        const axiosError = error as { response?: { status?: number } };
+        if (axiosError.response?.status === 409) {
           notify.warning(t('reader.imageExists'), t('reader.imageExistsDesc'));
         } else {
           notify.error(t('reader.generationFailed'), t('reader.generationFailedDesc'));

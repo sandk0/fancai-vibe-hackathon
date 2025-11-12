@@ -54,18 +54,12 @@ async def clear_all_cache(
         Результат операции
     """
     if not cache_manager.is_available:
-        raise HTTPException(
-            status_code=503,
-            detail="Redis cache is not available"
-        )
+        raise HTTPException(status_code=503, detail="Redis cache is not available")
 
     success = await cache_manager.clear_all()
 
     if not success:
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to clear cache"
-        )
+        raise HTTPException(status_code=500, detail="Failed to clear cache")
 
     return {
         "message": "Cache cleared successfully",
@@ -94,10 +88,7 @@ async def clear_cache_pattern(
         DELETE /admin/cache/clear/user:123:* - Очистить данные пользователя
     """
     if not cache_manager.is_available:
-        raise HTTPException(
-            status_code=503,
-            detail="Redis cache is not available"
-        )
+        raise HTTPException(status_code=503, detail="Redis cache is not available")
 
     deleted_count = await cache_manager.delete_pattern(pattern)
 
@@ -123,10 +114,7 @@ async def warm_cache(
         Результат прогрева
     """
     if not cache_manager.is_available:
-        raise HTTPException(
-            status_code=503,
-            detail="Redis cache is not available"
-        )
+        raise HTTPException(status_code=503, detail="Redis cache is not available")
 
     # TODO: Implement cache warming logic if needed
     # Example: pre-cache popular books, user lists, etc.

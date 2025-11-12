@@ -114,7 +114,9 @@ def validate_file_extension(
     return True, None
 
 
-def validate_filepath_security(filepath: str, allowed_base: str) -> Tuple[bool, Optional[str]]:
+def validate_filepath_security(
+    filepath: str, allowed_base: str
+) -> Tuple[bool, Optional[str]]:
     """
     Валидирует, что filepath не выходит за пределы allowed_base (path traversal protection).
 
@@ -215,7 +217,11 @@ def strip_control_characters(text: str) -> str:
     # Allow: \n, \r, \t
     allowed_control = ["\n", "\r", "\t"]
 
-    return "".join(char for char in text if char in allowed_control or not unicodedata.category(char).startswith("C"))
+    return "".join(
+        char
+        for char in text
+        if char in allowed_control or not unicodedata.category(char).startswith("C")
+    )
 
 
 # ============================================================================
@@ -303,9 +309,12 @@ def validate_password_strength(password: str) -> Tuple[bool, Optional[str]]:
         return False, "Password too long (max 128 characters)"
 
     # Check byte length (bcrypt limitation: 72 bytes maximum)
-    password_bytes = password.encode('utf-8')
+    password_bytes = password.encode("utf-8")
     if len(password_bytes) > 72:
-        return False, f"Password is too long when encoded ({len(password_bytes)} bytes, max 72 bytes). Please use shorter password or fewer special characters."
+        return (
+            False,
+            f"Password is too long when encoded ({len(password_bytes)} bytes, max 72 bytes). Please use shorter password or fewer special characters.",
+        )
 
     if not any(c.isupper() for c in password):
         return False, "Password must contain at least one uppercase letter"
@@ -340,16 +349,21 @@ def validate_password_strength(password: str) -> Tuple[bool, Optional[str]]:
         return False, "Password is too common - choose a stronger password"
 
     # Check for sequential characters
-    if any(password[i:i+3].isdigit() and
-           int(password[i+1]) == int(password[i]) + 1 and
-           int(password[i+2]) == int(password[i]) + 2
-           for i in range(len(password) - 2) if password[i:i+3].isdigit()):
+    if any(
+        password[i : i + 3].isdigit()
+        and int(password[i + 1]) == int(password[i]) + 1
+        and int(password[i + 2]) == int(password[i]) + 2
+        for i in range(len(password) - 2)
+        if password[i : i + 3].isdigit()
+    ):
         return False, "Password contains sequential numbers (e.g., 123, 456)"
 
     return True, None
 
 
-def validate_password_match(password: str, password_confirm: str) -> Tuple[bool, Optional[str]]:
+def validate_password_match(
+    password: str, password_confirm: str
+) -> Tuple[bool, Optional[str]]:
     """
     Validates that password and confirmation match.
 
@@ -371,7 +385,9 @@ def validate_password_match(password: str, password_confirm: str) -> Tuple[bool,
 # ============================================================================
 
 
-def validate_url(url: str, allowed_schemes: List[str] = None) -> Tuple[bool, Optional[str]]:
+def validate_url(
+    url: str, allowed_schemes: List[str] = None
+) -> Tuple[bool, Optional[str]]:
     """
     Validates URL format and scheme.
 
@@ -514,7 +530,9 @@ def validate_uuid(uuid_string: str) -> Tuple[bool, Optional[str]]:
 # ============================================================================
 
 
-def validate_json_size(json_data: dict, max_size_bytes: int = 1048576) -> Tuple[bool, Optional[str]]:
+def validate_json_size(
+    json_data: dict, max_size_bytes: int = 1048576
+) -> Tuple[bool, Optional[str]]:
     """
     Validates JSON data size (prevents memory exhaustion).
 

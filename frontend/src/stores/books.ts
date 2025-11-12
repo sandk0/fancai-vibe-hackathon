@@ -21,24 +21,32 @@ export const useBooksStore = create<BooksState>((set, get) => ({
 
   // Actions
   refreshBooks: async () => {
-    return get().fetchBooks(get().currentPage, get().booksPerPage, get().sortBy);
+    // Refresh without changing sort order (don't pass sortBy to preserve current)
+    return get().fetchBooks(get().currentPage, get().booksPerPage);
   },
-  fetchBooks: async (page = 1, limit = 10, sortBy = 'created_desc') => {
+  fetchBooks: async (page = 1, limit = 10, sortBy?: string) => {
     set({ isLoading: true, error: null });
 
     try {
       const skip = (page - 1) * limit;
-      const response = await booksAPI.getBooks({ skip, limit, sort_by: sortBy });
+      // Only include sort_by if explicitly provided
+      const params: { skip: number; limit: number; sort_by?: string } = { skip, limit };
+      if (sortBy) {
+        params.sort_by = sortBy;
+      }
+      const response = await booksAPI.getBooks(params);
 
-      // Simple pagination: always replace books with current page data
+      // Pagination logic: page 1 replaces, page > 1 appends (infinite scroll)
+      const currentBooks = get().books;
+      const newBooks = page === 1 ? response.books : [...currentBooks, ...response.books];
       const hasMore = skip + response.books.length < response.total;
 
       set({
-        books: response.books,
+        books: newBooks,
         totalBooks: response.total,
         currentPage: page,
         booksPerPage: limit,
-        sortBy,
+        sortBy: sortBy || get().sortBy, // Preserve current sortBy if not provided
         hasMore,
         isLoading: false,
       });
@@ -105,7 +113,7 @@ export const useBooksStore = create<BooksState>((set, get) => ({
         currentChapter: response.chapter,
         isLoading: false
       });
-      return response.chapter;
+      return response; // Return full response including navigation
     } catch (error) {
       set({
         isLoading: false,

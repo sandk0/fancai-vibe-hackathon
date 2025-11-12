@@ -1,11 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { X, Upload, BookOpen, FileText, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { booksAPI } from '@/api/books';
 import { useUIStore } from '@/stores/ui';
 import { useBooksStore } from '@/stores/books';
 import { useTranslation } from '@/hooks/useTranslation';
+import { getErrorMessage } from '@/utils/errors';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 
 interface BookUploadModalProps {
@@ -36,7 +37,7 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const _queryClient = useQueryClient();
+  // const queryClient = useQueryClient(); // Not currently used
   const { notify } = useUIStore();
   const { refreshBooks } = useBooksStore();
   const { t } = useTranslation();

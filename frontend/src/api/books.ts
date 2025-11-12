@@ -56,9 +56,16 @@ export const booksAPI = {
     // ВАЖНО: НЕ устанавливаем Content-Type вообще!
     // Когда axios видит FormData, он автоматически удаляет Content-Type
     // и позволяет браузеру установить правильный multipart/form-data с boundary
+    const requestConfig = {
+      ...config,
+      headers: {
+        'Content-Type': undefined as any, // Let browser set multipart/form-data with boundary
+      },
+    };
+
     try {
       console.log('📡 [API] Making POST request to /books/upload...');
-      const response = await apiClient.client.post('/books/upload', formData, config);
+      const response = await apiClient.client.post('/books/upload', formData, requestConfig);
       console.log('📡 [API] Response received:', response.status, response.statusText);
       console.log('📡 [API] Response data:', response.data);
       return response.data;
@@ -160,7 +167,7 @@ export const booksAPI = {
 
   // Detailed reading statistics with weekly activity
   async getUserReadingStatistics(): Promise<UserReadingStatistics> {
-    const response = await apiClient.get('/users/reading-statistics');
+    const response = await apiClient.get('/users/reading-statistics') as { statistics: UserReadingStatistics };
     return response.statistics;
   },
 

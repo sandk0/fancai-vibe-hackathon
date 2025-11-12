@@ -22,7 +22,7 @@
  */
 
 import { useMemo } from 'react';
-import type { NavItem } from '@/types/epub';
+import type { NavItem, Location } from '@/types/epub';
 
 interface ChapterMetadata {
   id: string;

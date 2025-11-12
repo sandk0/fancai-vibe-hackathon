@@ -99,8 +99,17 @@ export const imagesAPI = {
     if (chapterNumber !== undefined) {
       params.append('chapter', chapterNumber.toString());
     }
-    
-    const response = await apiClient.get(`/images/book/${bookId}?${params.toString()}`);
+
+    const response = await apiClient.get(`/images/book/${bookId}?${params.toString()}`) as {
+      book_id: string;
+      book_title: string;
+      images: GeneratedImage[];
+      pagination: {
+        skip: number;
+        limit: number;
+        total_found: number;
+      };
+    };
     return response;
   },
 

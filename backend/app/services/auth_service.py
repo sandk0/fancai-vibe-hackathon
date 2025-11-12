@@ -39,8 +39,7 @@ class AuthService:
             True если пароль верный
         """
         return bcrypt.checkpw(
-            plain_password.encode('utf-8'),
-            hashed_password.encode('utf-8')
+            plain_password.encode("utf-8"), hashed_password.encode("utf-8")
         )
 
     def get_password_hash(self, password: str) -> str:
@@ -59,7 +58,7 @@ class AuthService:
         """
         # Bcrypt limitation: maximum 72 bytes
         # Truncate password to 72 bytes if needed (this should be prevented by validation)
-        password_bytes = password.encode('utf-8')
+        password_bytes = password.encode("utf-8")
         if len(password_bytes) > 72:
             # Truncate to 72 bytes, but ensure we don't cut in the middle of a multi-byte character
             password_bytes = password_bytes[:72]
@@ -69,7 +68,7 @@ class AuthService:
         hashed = bcrypt.hashpw(password_bytes, salt)
 
         # Return as string (bcrypt returns bytes)
-        return hashed.decode('utf-8')
+        return hashed.decode("utf-8")
 
     def create_access_token(self, data: Dict[str, Any]) -> str:
         """

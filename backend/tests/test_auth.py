@@ -47,7 +47,7 @@ class TestAuth:
         response = await client.post("/api/v1/auth/register", json=sample_user_data)
 
         assert response.status_code == 400  # Password validation in router returns 400
-        assert "at least 6 characters" in response.json()["detail"].lower()
+        assert "at least 12 characters" in response.json()["detail"].lower()
 
     @pytest.mark.asyncio
     async def test_login_success(self, client: AsyncClient, sample_user_data):

@@ -24,7 +24,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Book, Rendition } from '@/types/epub';
+import type { Book, Rendition, Location } from '@/types/epub';
 import { booksAPI } from '@/api/books';
 import { imagesAPI } from '@/api/images';
 import type { Description, GeneratedImage } from '@/types/api';
@@ -166,7 +166,7 @@ export const useChapterManagement = ({
       setCurrentChapter(chapter);
     };
 
-    rendition.on('relocated', handleRelocated);
+    rendition.on('relocated', handleRelocated as (...args: unknown[]) => void);
 
     // Get initial chapter - safely check if currentLocation exists
     // Wait a bit for rendition to be fully initialized
@@ -190,7 +190,7 @@ export const useChapterManagement = ({
 
     return () => {
       clearTimeout(timer);
-      rendition.off('relocated', handleRelocated);
+      rendition.off('relocated', handleRelocated as (...args: unknown[]) => void);
     };
   }, [rendition, book, getChapterFromLocation_Internal]);
 

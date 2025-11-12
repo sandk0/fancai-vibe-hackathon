@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 class DescriptionType(Enum):
     """Типы описаний для обогащения."""
+
     LOCATION = "location"
     CHARACTER = "character"
     ATMOSPHERE = "atmosphere"
@@ -44,6 +45,7 @@ class EnrichedDescription:
         confidence: Уверенность модели (0.0-1.0)
         source_spans: Привязка к источнику (source grounding)
     """
+
     original_text: str
     description_type: DescriptionType
     extracted_entities: List[Dict[str, Any]]
@@ -75,7 +77,7 @@ class LLMDescriptionEnricher:
         self,
         model_id: str = "gemini-2.5-flash",
         api_key: Optional[str] = None,
-        use_ollama: bool = False
+        use_ollama: bool = False,
     ):
         """
         Инициализация LLM enricher.
@@ -94,6 +96,7 @@ class LLMDescriptionEnricher:
         # Попытка импорта LangExtract
         try:
             import langextract as lx
+
             self._lx = lx
             self._available = True
             logger.info("✅ LangExtract library loaded successfully")
@@ -149,7 +152,7 @@ class LLMDescriptionEnricher:
             text=text,
             prompt=prompt,
             examples=examples,
-            description_type=DescriptionType.LOCATION
+            description_type=DescriptionType.LOCATION,
         )
 
     def enrich_character_description(self, text: str) -> Optional[EnrichedDescription]:
@@ -186,7 +189,7 @@ class LLMDescriptionEnricher:
             text=text,
             prompt=prompt,
             examples=examples,
-            description_type=DescriptionType.CHARACTER
+            description_type=DescriptionType.CHARACTER,
         )
 
     def enrich_atmosphere_description(self, text: str) -> Optional[EnrichedDescription]:
@@ -224,7 +227,7 @@ class LLMDescriptionEnricher:
             text=text,
             prompt=prompt,
             examples=examples,
-            description_type=DescriptionType.ATMOSPHERE
+            description_type=DescriptionType.ATMOSPHERE,
         )
 
     def _extract_with_langextract(
@@ -232,7 +235,7 @@ class LLMDescriptionEnricher:
         text: str,
         prompt: str,
         examples: List[Any],
-        description_type: DescriptionType
+        description_type: DescriptionType,
     ) -> Optional[EnrichedDescription]:
         """
         Общий метод для извлечения с помощью LangExtract.
@@ -256,7 +259,7 @@ class LLMDescriptionEnricher:
                 prompt_description=prompt,
                 examples=examples,
                 model_id=self.model_id,
-                api_key=self.api_key if not self.use_ollama else None
+                api_key=self.api_key if not self.use_ollama else None,
             )
 
             # Парсинг результатов
@@ -264,25 +267,25 @@ class LLMDescriptionEnricher:
             attributes = {}
             source_spans = []
 
-            if hasattr(result, 'extractions'):
+            if hasattr(result, "extractions"):
                 for extraction in result.extractions:
                     entity = {
-                        "class": getattr(extraction, 'extraction_class', 'unknown'),
-                        "text": getattr(extraction, 'extraction_text', ''),
-                        "attributes": getattr(extraction, 'attributes', {})
+                        "class": getattr(extraction, "extraction_class", "unknown"),
+                        "text": getattr(extraction, "extraction_text", ""),
+                        "attributes": getattr(extraction, "attributes", {}),
                     }
                     extracted_entities.append(entity)
 
                     # Source grounding
-                    if hasattr(extraction, 'source_span'):
+                    if hasattr(extraction, "source_span"):
                         source_spans.append(extraction.source_span)
 
                     # Собрать атрибуты
-                    if hasattr(extraction, 'attributes'):
+                    if hasattr(extraction, "attributes"):
                         attributes.update(extraction.attributes)
 
             # Вычислить confidence
-            confidence = getattr(result, 'confidence', 0.5)
+            confidence = getattr(result, "confidence", 0.5)
 
             return EnrichedDescription(
                 original_text=text,
@@ -290,7 +293,7 @@ class LLMDescriptionEnricher:
                 extracted_entities=extracted_entities,
                 attributes=attributes,
                 confidence=confidence,
-                source_spans=source_spans
+                source_spans=source_spans,
             )
 
         except Exception as e:
@@ -312,15 +315,15 @@ class LLMDescriptionEnricher:
                         attributes={
                             "size": "высокий",
                             "atmosphere": "темный",
-                            "location": "на холме"
-                        }
+                            "location": "на холме",
+                        },
                     ),
                     self._lx.data.Extraction(
                         extraction_class="natural",
                         extraction_text="холм",
-                        attributes={"slope": "крутой"}
-                    )
-                ]
+                        attributes={"slope": "крутой"},
+                    ),
+                ],
             )
         ]
         return examples
@@ -340,10 +343,10 @@ class LLMDescriptionEnricher:
                         attributes={
                             "age": "старый",
                             "hair": "длинная седая борода",
-                            "eyes": "проницательные"
-                        }
+                            "eyes": "проницательные",
+                        },
                     )
-                ]
+                ],
             )
         ]
         return examples
@@ -360,14 +363,14 @@ class LLMDescriptionEnricher:
                     self._lx.data.Extraction(
                         extraction_class="weather",
                         extraction_text="ветер",
-                        attributes={"temperature": "холодный", "movement": "пронесся"}
+                        attributes={"temperature": "холодный", "movement": "пронесся"},
                     ),
                     self._lx.data.Extraction(
                         extraction_class="smell",
                         extraction_text="запах дождя",
-                        attributes={"type": "дождь"}
-                    )
-                ]
+                        attributes={"type": "дождь"},
+                    ),
+                ],
             )
         ]
         return examples
@@ -392,8 +395,7 @@ _llm_enricher = None
 
 
 def get_llm_enricher(
-    model_id: str = "gemini-2.5-flash",
-    use_ollama: bool = False
+    model_id: str = "gemini-2.5-flash", use_ollama: bool = False
 ) -> LLMDescriptionEnricher:
     """
     Получить singleton instance LLM enricher.
@@ -407,8 +409,5 @@ def get_llm_enricher(
     """
     global _llm_enricher
     if _llm_enricher is None:
-        _llm_enricher = LLMDescriptionEnricher(
-            model_id=model_id,
-            use_ollama=use_ollama
-        )
+        _llm_enricher = LLMDescriptionEnricher(model_id=model_id, use_ollama=use_ollama)
     return _llm_enricher

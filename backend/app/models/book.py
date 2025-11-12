@@ -94,7 +94,9 @@ class Book(Base):
     # Контент
     cover_image = Column(String(1000), nullable=True)
     description = Column(Text, nullable=True)
-    book_metadata = Column(JSONB, nullable=True)  # метаданные из файла (JSONB для быстрого поиска)
+    book_metadata = Column(
+        JSONB, nullable=True
+    )  # метаданные из файла (JSONB для быстрого поиска)
 
     # Статистика
     total_pages = Column(Integer, default=0, nullable=False)
