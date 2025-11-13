@@ -198,6 +198,11 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client libpq-dev
+
       - name: Install dependencies
         run: |
           cd backend
@@ -205,9 +210,35 @@ jobs:
           pip install -r requirements.txt
           pip install locust
 
+      - name: Wait for PostgreSQL
+        run: |
+          echo "Waiting for PostgreSQL to be ready..."
+          max_attempts=30
+          attempt=1
+          while [ $attempt -le $max_attempts ]; do
+            if pg_isready -h 127.0.0.1 -p 5432 -U postgres > /dev/null 2>&1; then
+              echo "✅ PostgreSQL is ready!"
+              break
+            fi
+            echo "Attempt $attempt/$max_attempts: PostgreSQL not ready, waiting..."
+            sleep 2
+            attempt=$((attempt + 1))
+          done
+          if [ $attempt -gt $max_attempts ]; then
+            echo "❌ PostgreSQL failed to become ready"
+            exit 1
+          fi
+
+      - name: Verify database connection
+        env:
+          PGPASSWORD: postgres123
+        run: |
+          psql -h 127.0.0.1 -U postgres -d bookreader_test -c "SELECT version();"
+          echo "✅ Database connection verified"
+
       - name: Run database migrations
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@127.0.0.1:5432/bookreader_test
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           cd backend
@@ -215,8 +246,8 @@ jobs:
 
       - name: Start backend server
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
-          REDIS_URL: redis://localhost:6379
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@127.0.0.1:5432/bookreader_test
+          REDIS_URL: redis://127.0.0.1:6379
           SECRET_KEY: test-secret-key-for-performance
           DEBUG: false
           PYTHONPATH: ${{ github.workspace }}/backend
@@ -370,6 +401,11 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client libpq-dev
+
       - name: Install dependencies
         run: |
           cd backend
@@ -377,9 +413,35 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-benchmark
 
+      - name: Wait for PostgreSQL
+        run: |
+          echo "Waiting for PostgreSQL to be ready..."
+          max_attempts=30
+          attempt=1
+          while [ $attempt -le $max_attempts ]; do
+            if pg_isready -h 127.0.0.1 -p 5432 -U postgres > /dev/null 2>&1; then
+              echo "✅ PostgreSQL is ready!"
+              break
+            fi
+            echo "Attempt $attempt/$max_attempts: PostgreSQL not ready, waiting..."
+            sleep 2
+            attempt=$((attempt + 1))
+          done
+          if [ $attempt -gt $max_attempts ]; then
+            echo "❌ PostgreSQL failed to become ready"
+            exit 1
+          fi
+
+      - name: Verify database connection
+        env:
+          PGPASSWORD: postgres123
+        run: |
+          psql -h 127.0.0.1 -U postgres -d bookreader_test -c "SELECT version();"
+          echo "✅ Database connection verified"
+
       - name: Run database migrations
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@127.0.0.1:5432/bookreader_test
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           cd backend
@@ -387,8 +449,8 @@ jobs:
 
       - name: Run database performance tests
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
-          REDIS_URL: redis://localhost:6379
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@127.0.0.1:5432/bookreader_test
+          REDIS_URL: redis://127.0.0.1:6379
           SECRET_KEY: test-secret-key-for-performance
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
