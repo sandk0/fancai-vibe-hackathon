@@ -34,6 +34,7 @@ class BookService:
     def __init__(self):
         """Инициализация сервиса книг."""
         from ...core.config import settings
+
         self.upload_directory = Path(settings.UPLOAD_DIRECTORY)
         self.upload_directory.mkdir(parents=True, exist_ok=True)
 

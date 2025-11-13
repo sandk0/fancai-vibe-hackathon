@@ -174,3 +174,4 @@ start-dev.sh
 # Build logs
 /tmp/
 *.log
+.env.mcp
