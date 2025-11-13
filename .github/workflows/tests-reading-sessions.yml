@@ -81,6 +81,7 @@ jobs:
       - name: Run database migrations
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
+          PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           cd backend
           alembic upgrade head
@@ -90,9 +91,9 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
           REDIS_URL: redis://localhost:6379
           SECRET_KEY: test-secret-key-for-ci
+          PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           cd backend
-          export PYTHONPATH=$PWD
           pytest tests/routers/test_reading_sessions.py \
             -v \
             --tb=short \
@@ -106,9 +107,9 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
           REDIS_URL: redis://localhost:6379
           SECRET_KEY: test-secret-key-for-ci
+          PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           cd backend
-          export PYTHONPATH=$PWD
           pytest tests/tasks/test_reading_sessions_tasks.py \
             -v \
             --tb=short \
@@ -122,9 +123,9 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
           REDIS_URL: redis://localhost:6379
           SECRET_KEY: test-secret-key-for-ci
+          PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           cd backend
-          export PYTHONPATH=$PWD
           pytest tests/integration/test_reading_sessions_flow.py \
             -v \
             --tb=short \
@@ -141,9 +142,9 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
           REDIS_URL: redis://localhost:6379
           SECRET_KEY: test-secret-key-for-ci
+          PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           cd backend
-          export PYTHONPATH=$PWD
           pytest \
             tests/routers/test_reading_sessions.py \
             tests/tasks/test_reading_sessions_tasks.py \

@@ -205,32 +205,57 @@ jobs:
           pip install -r requirements.txt
           pip install locust
 
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
+          PYTHONPATH: ${{ github.workspace }}/backend
+        run: |
+          cd backend
+          alembic upgrade head || echo "Migration failed or no migrations to apply"
+
       - name: Start backend server
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
           REDIS_URL: redis://localhost:6379
           SECRET_KEY: test-secret-key-for-performance
           DEBUG: false
+          PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           cd backend
-          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          echo "Starting backend server..."
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 > /tmp/backend.log 2>&1 &
+          BACKEND_PID=$!
+          echo "Backend PID: $BACKEND_PID"
+          echo $BACKEND_PID > /tmp/backend.pid
           sleep 10
 
-      - name: Health check with retry
+      - name: Wait for backend to be ready
         run: |
-          max_attempts=5
+          echo "Waiting for backend to start..."
+          max_attempts=30
           attempt=1
           while [ $attempt -le $max_attempts ]; do
             echo "Health check attempt $attempt of $max_attempts..."
-            if curl -f http://localhost:8000/health; then
-              echo "✅ Backend is healthy!"
+            if curl -f http://localhost:8000/health > /dev/null 2>&1; then
+              echo "✅ Backend is ready!"
+              curl -v http://localhost:8000/health
               exit 0
             fi
-            echo "⚠️ Health check failed, waiting 5 seconds..."
-            sleep 5
+            echo "⚠️ Backend not ready yet, waiting 2 seconds..."
+            sleep 2
             attempt=$((attempt + 1))
           done
-          echo "❌ Backend health check failed after $max_attempts attempts"
+          echo "❌ Backend failed to start after $max_attempts attempts (60 seconds)"
+          echo ""
+          echo "=== Backend logs ==="
+          cat /tmp/backend.log || echo "No backend log file found"
+          echo ""
+          echo "=== Checking if process is running ==="
+          ps aux | grep uvicorn || echo "No uvicorn process found"
+          echo ""
+          echo "=== Port 8000 status ==="
+          netstat -tuln | grep 8000 || echo "Port 8000 not listening"
+          pkill -9 uvicorn || true
           exit 1
 
       - name: Create Locust test file
@@ -326,6 +351,16 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
 
@@ -345,6 +380,7 @@ jobs:
       - name: Run database migrations
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
+          PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           cd backend
           alembic upgrade head
@@ -353,6 +389,8 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
           REDIS_URL: redis://localhost:6379
+          SECRET_KEY: test-secret-key-for-performance
+          PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           cd backend
           # Run performance-focused tests if they exist
