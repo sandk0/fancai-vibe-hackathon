@@ -1,9 +1,9 @@
 # FastAPI и веб-фреймворк
 fastapi==0.115.5
 uvicorn[standard]==0.24.0
-gunicorn==21.2.0
-python-multipart==0.0.6
-python-jose[cryptography]==3.3.0
+gunicorn==22.0.0
+python-multipart==0.0.18
+python-jose[cryptography]==3.4.0
 passlib[bcrypt]==1.7.4
 # starlette managed by fastapi (0.40.0-0.42.0)
 
@@ -36,7 +36,7 @@ lxml==5.1.0
 
 # HTTP клиенты и запросы
 httpx==0.25.2
-requests==2.31.0
+requests==2.32.4
 aiofiles==23.2.0
 aiohttp==3.9.1
 
@@ -68,7 +68,7 @@ mypy==1.7.1
 
 # Type stubs для mypy
 types-redis==4.6.0.10
-types-requests==2.31.0.10
+types-requests==2.32.0.20241016
 types-aiofiles==23.2.0.0
 sqlalchemy[mypy]==2.0.23
 
