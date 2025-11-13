@@ -418,6 +418,7 @@ def startup_secrets_check(is_production: bool = None) -> None:
 
     В development mode разрешает использование dev credentials с warnings.
     В production mode требует строгого соблюдения всех правил.
+    В CI/CD mode (test, GitHub Actions) пропускает strict validation для test credentials.
 
     Args:
         is_production: True если production режим (если None - определяется по DEBUG)
@@ -428,6 +429,22 @@ def startup_secrets_check(is_production: bool = None) -> None:
     if is_production is None:
         # Определяем production режим по DEBUG environment variable
         is_production = os.getenv("DEBUG", "true").lower() not in ["true", "1", "yes"]
+
+    # Проверка на CI/CD окружение (GitHub Actions, GitLab CI, CircleCI, etc.)
+    is_ci = (
+        os.getenv("CI") == "true"
+        or os.getenv("GITHUB_ACTIONS") == "true"
+        or os.getenv("GITLAB_CI") == "true"
+        or os.getenv("CIRCLECI") == "true"
+        or os.getenv("ENVIRONMENT") in ["test", "ci"]
+    )
+
+    # Skip strict secrets validation in CI/test environments
+    if is_ci:
+        logger.info("Running in CI/test environment - skipping strict secrets validation")
+        print("🔧 CI/Test mode: Skipping strict secrets validation")
+        print("💡 Test credentials are allowed in CI/CD pipelines")
+        return
 
     mode = "PRODUCTION" if is_production else "DEVELOPMENT"
     logger.info(f"Running secrets validation ({mode} mode)...")

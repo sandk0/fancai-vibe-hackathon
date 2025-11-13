@@ -62,7 +62,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libpq-dev
+          sudo apt-get install -y postgresql-client libpq-dev
 
       - name: Install Python dependencies
         run: |
@@ -73,14 +73,33 @@ jobs:
 
       - name: Wait for PostgreSQL
         run: |
-          until pg_isready -h localhost -p 5432 -U postgres; do
-            echo "Waiting for PostgreSQL..."
+          echo "Waiting for PostgreSQL to be ready..."
+          max_attempts=30
+          attempt=1
+          while [ $attempt -le $max_attempts ]; do
+            if pg_isready -h 127.0.0.1 -p 5432 -U postgres > /dev/null 2>&1; then
+              echo "✅ PostgreSQL is ready!"
+              break
+            fi
+            echo "Attempt $attempt/$max_attempts: PostgreSQL not ready, waiting..."
             sleep 2
+            attempt=$((attempt + 1))
           done
+          if [ $attempt -gt $max_attempts ]; then
+            echo "❌ PostgreSQL failed to become ready"
+            exit 1
+          fi
+
+      - name: Verify database connection
+        env:
+          PGPASSWORD: postgres123
+        run: |
+          psql -h 127.0.0.1 -U postgres -d bookreader_test -c "SELECT version();"
+          echo "✅ Database connection verified"
 
       - name: Run database migrations
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@127.0.0.1:5432/bookreader_test
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           cd backend
@@ -88,8 +107,8 @@ jobs:
 
       - name: Run Unit Tests (Routers)
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
-          REDIS_URL: redis://localhost:6379
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@127.0.0.1:5432/bookreader_test
+          REDIS_URL: redis://127.0.0.1:6379
           SECRET_KEY: test-secret-key-for-ci
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
@@ -104,8 +123,8 @@ jobs:
 
       - name: Run Unit Tests (Tasks)
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
-          REDIS_URL: redis://localhost:6379
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@127.0.0.1:5432/bookreader_test
+          REDIS_URL: redis://127.0.0.1:6379
           SECRET_KEY: test-secret-key-for-ci
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
@@ -120,8 +139,8 @@ jobs:
 
       - name: Run Integration Tests
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
-          REDIS_URL: redis://localhost:6379
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@127.0.0.1:5432/bookreader_test
+          REDIS_URL: redis://127.0.0.1:6379
           SECRET_KEY: test-secret-key-for-ci
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
@@ -139,8 +158,8 @@ jobs:
       - name: Generate Combined Coverage Report
         if: always()
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
-          REDIS_URL: redis://localhost:6379
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@127.0.0.1:5432/bookreader_test
+          REDIS_URL: redis://127.0.0.1:6379
           SECRET_KEY: test-secret-key-for-ci
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |

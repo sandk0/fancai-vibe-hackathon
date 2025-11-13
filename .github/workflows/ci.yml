@@ -80,6 +80,11 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client libpq-dev
+
       - name: Install dependencies
         run: |
           cd backend
@@ -91,10 +96,36 @@ jobs:
         run: |
           pip install https://github.com/explosion/spacy-models/releases/download/ru_core_news_sm-3.7.0/ru_core_news_sm-3.7.0-py3-none-any.whl
 
+      - name: Wait for PostgreSQL
+        run: |
+          echo "Waiting for PostgreSQL to be ready..."
+          max_attempts=30
+          attempt=1
+          while [ $attempt -le $max_attempts ]; do
+            if pg_isready -h 127.0.0.1 -p 5432 -U postgres > /dev/null 2>&1; then
+              echo "✅ PostgreSQL is ready!"
+              break
+            fi
+            echo "Attempt $attempt/$max_attempts: PostgreSQL not ready, waiting..."
+            sleep 2
+            attempt=$((attempt + 1))
+          done
+          if [ $attempt -gt $max_attempts ]; then
+            echo "❌ PostgreSQL failed to become ready"
+            exit 1
+          fi
+
+      - name: Verify database connection
+        env:
+          PGPASSWORD: postgres123
+        run: |
+          psql -h 127.0.0.1 -U postgres -d bookreader_test -c "SELECT version();"
+          echo "✅ Database connection verified"
+
       - name: Run tests with coverage
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
-          REDIS_URL: redis://localhost:6379
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@127.0.0.1:5432/bookreader_test
+          REDIS_URL: redis://127.0.0.1:6379
           SECRET_KEY: test-secret-key-for-ci
           DEBUG: false
           POLLINATIONS_ENABLED: false
