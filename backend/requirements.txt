@@ -68,7 +68,7 @@ mypy==1.7.1
 
 # Type stubs для mypy
 types-redis==4.6.0.10
-types-requests==2.32.0.20241016
+types-requests==2.32.4.20250913
 types-aiofiles==23.2.0.0
 sqlalchemy[mypy]==2.0.23
 
