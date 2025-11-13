@@ -89,7 +89,7 @@ jobs:
 
       - name: Download NLP models
         run: |
-          python -m spacy download ru_core_news_sm || true
+          pip install https://github.com/explosion/spacy-models/releases/download/ru_core_news_sm-3.7.0/ru_core_news_sm-3.7.0-py3-none-any.whl
 
       - name: Run tests with coverage
         env:
