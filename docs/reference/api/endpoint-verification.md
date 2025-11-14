@@ -49,11 +49,17 @@
 
 ## Сводка
 
-- **Всего Endpoints До:** 18
-- **Всего Endpoints После:** 20
-- **Добавлено Новых Endpoints:** 2
-- **Удалено Endpoints:** 0
-- **Сломано Endpoints:** 0
+- **Всего Endpoints В Системе:** 76 (across 20 router files)
+- **Books Core (books/):** 10 endpoints
+- **Admin (admin/):** 21 endpoints
+- **Reading (sessions + progress):** 8 endpoints
+- **NLP Router:** 4 endpoints
+- **Auth Router:** 7 endpoints
+- **Users Router:** 6 endpoints
+- **Images Router:** 8 endpoints
+- **Chapters Router:** 2 endpoints
+- **Descriptions Router:** 3 endpoints
+- **Health Router:** 4 endpoints
 - **Обратная Совместимость:** 100%
 
 ## Детали Новых Endpoints
@@ -153,5 +159,6 @@ curl http://localhost:8000/api/v1/books/{id}/chapters/1/descriptions -H "Authori
 
 ---
 
-**Дата Верификации:** 2025-10-24
+**Дата Верификации:** 2025-11-14 (обновлено)
 **Статус:** ✅ Все endpoints доступны и обратно совместимы
+**Последнее Обновление:** v1.3.0 - добавлены Admin Cache Management (4), Admin Reading Sessions (3), Admin System (3)

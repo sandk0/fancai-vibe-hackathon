@@ -5,20 +5,22 @@
 ## Общая информация
 
 - **Base URL:** `http://localhost:8000/api/v1` (development) | `https://yourdomain.com/api/v1` (production)
-- **API Version:** v1.2.0 (updated: октябрь 2025)
-- **Total Endpoints:** 35+
+- **API Version:** v1.3.0 (updated: ноябрь 2025)
+- **Total Endpoints:** 76 endpoints (20 router files)
 - **Authentication:** JWT Bearer tokens
 - **Content-Type:** `application/json`
 - **Interactive Docs:** `/docs` (Swagger UI) | `/redoc` (ReDoc)
 
-## Key Features (v1.2.0)
+## Key Features (v1.3.0)
 
 - **Multi-NLP System:** 3 процессора (SpaCy, Natasha, Stanza) с 5 режимами обработки
-- **epub.js Integration:** Полная поддержка EPUB чтения через GET /books/{id}/file
+- **Custom EPUB Reader:** Полная поддержка EPUB чтения через GET /books/{id}/file (EpubReader.tsx, 835 строк)
 - **CFI Support:** Canonical Fragment Identifier для точного трекинга прогресса
 - **Ensemble Voting:** Consensus алгоритм для максимального качества NLP
 - **Adaptive Processing:** Автоматический выбор оптимального режима обработки
-- **Admin Multi-NLP Management:** 5 новых endpoints для управления процессорами
+- **Admin Multi-NLP Management:** 5 endpoints для управления процессорами
+- **Admin Cache Management:** 4 endpoints для управления Redis кэшем
+- **Admin Reading Sessions:** 3 endpoints для управления сессиями чтения
 
 ## Аутентификация
 
@@ -1426,70 +1428,147 @@ task = client.images.generate_for_description(description_id)
 
 ## API Endpoints Summary
 
-### Total Endpoints: 35+
+### Total Endpoints: 76 (across 20 router files)
 
-**Books Router (16 endpoints):**
-- GET /books/parser-status
-- POST /books/validate-file
-- POST /books/parse-preview
+**Books Router (10 endpoints):**
+- books/crud.py (5 endpoints):
+  - GET /books/
+  - POST /books/upload
+  - GET /books/{book_id}
+  - GET /books/{book_id}/file
+  - GET /books/{book_id}/cover
+- books/validation.py (3 endpoints):
+  - GET /books/parser-status
+  - POST /books/validate-file
+  - POST /books/parse-preview
+- books/processing.py (2 endpoints):
+  - POST /books/{book_id}/process
+  - GET /books/{book_id}/parsing-status
+
+**Chapters Router (2 endpoints):**
+- GET /books/{book_id}/chapters
+- GET /books/{book_id}/chapters/{number}
+
+**Descriptions Router (3 endpoints):**
+- GET /books/{book_id}/descriptions
+- GET /books/{book_id}/chapters/{number}/descriptions
 - POST /books/analyze-chapter
-- POST /books/upload
-- GET /books/
-- GET /books/{book_id}
-- GET /books/{book_id}/file (NEW: epub.js integration)
-- GET /books/{book_id}/chapters/{chapter_number}
-- GET /books/{book_id}/chapters/{chapter_number}/descriptions
-- POST /books/{book_id}/progress (UPDATED: CFI support)
-- GET /books/{book_id}/progress
-- POST /books/{book_id}/process
-- GET /books/{book_id}/parsing-status
-- GET /books/{book_id}/statistics
-- GET /books/{book_id}/cover
-- DELETE /books/{book_id}
 
-**Admin Router (13 endpoints):**
-- GET /admin/stats
-- GET /admin/multi-nlp-settings (NEW)
-- PUT /admin/multi-nlp-settings (NEW)
-- GET /admin/multi-nlp-settings/status (NEW)
-- POST /admin/multi-nlp-settings/test (NEW)
-- GET /admin/nlp-processor-status (NEW)
-- GET /admin/parsing-settings
-- PUT /admin/parsing-settings
-- GET /admin/users
-- GET /admin/queue-status
-- POST /admin/clear-queue
-- POST /admin/unlock-parsing
-- GET /admin/image-generation-settings
-- PUT /admin/image-generation-settings
+**Reading Progress Router (2 endpoints):**
+- GET /books/{book_id}/progress
+- POST /books/{book_id}/progress
+
+**Reading Sessions Router (6 endpoints):**
+- POST /reading-sessions/start
+- PUT /reading-sessions/{session_id}/end
+- GET /reading-sessions/
+- GET /reading-sessions/{session_id}
+- GET /reading-sessions/active
+- GET /reading-sessions/statistics
+
+**Admin Router (21 endpoints):**
+- admin/stats.py (1 endpoint):
+  - GET /admin/stats
+- admin/nlp_settings.py (5 endpoints):
+  - GET /admin/multi-nlp-settings
+  - PUT /admin/multi-nlp-settings
+  - GET /admin/multi-nlp-settings/status
+  - POST /admin/multi-nlp-settings/test
+  - GET /admin/nlp-processor-status
+- admin/parsing.py (5 endpoints):
+  - GET /admin/parsing-settings
+  - PUT /admin/parsing-settings
+  - GET /admin/queue-status
+  - POST /admin/clear-queue
+  - POST /admin/unlock-parsing
+- admin/images.py (2 endpoints):
+  - GET /admin/image-generation-settings
+  - PUT /admin/image-generation-settings
+- admin/users.py (1 endpoint):
+  - GET /admin/users
+- admin/system.py (3 endpoints):
+  - GET /admin/health
+  - POST /admin/maintenance/start
+  - POST /admin/maintenance/end
+- admin/cache.py (4 endpoints):
+  - GET /admin/cache/stats
+  - POST /admin/cache/clear
+  - GET /admin/cache/keys
+  - DELETE /admin/cache/keys/{key}
+- admin/reading_sessions.py (3 endpoints):
+  - GET /admin/reading-sessions/
+  - GET /admin/reading-sessions/{session_id}
+  - DELETE /admin/reading-sessions/{session_id}
 
 **NLP Router (4 endpoints):**
-- GET /nlp/status (UPDATED: Multi-NLP)
-- POST /nlp/extract-descriptions (UPDATED: processing modes)
+- GET /nlp/status
+- POST /nlp/extract-descriptions
 - GET /nlp/test-book-sample
 - GET /nlp/test-libraries
 
-**Auth Router (5 endpoints):**
+**Auth Router (7 endpoints):**
 - POST /auth/register
 - POST /auth/login
 - POST /auth/refresh
 - GET /auth/me
 - POST /auth/logout
+- POST /auth/verify-email
+- POST /auth/reset-password
 
-**Images Router (~8 endpoints)** - see Images section above
+**Users Router (6 endpoints):**
+- GET /users/profile
+- PUT /users/profile
+- GET /users/subscription
+- GET /users/reading-statistics
+- GET /users/books
+- DELETE /users/account
+
+**Images Router (8 endpoints):**
+- GET /images/generation/status
+- POST /images/generate/description/{description_id}
+- POST /images/generate/chapter/{chapter_id}
+- GET /images/book/{book_id}
+- POST /images/{image_id}/regenerate
+- DELETE /images/{image_id}
+- GET /images/{image_id}
+- GET /images/{image_id}/thumbnail
+
+**Health Router (4 endpoints):**
+- GET /health
+- GET /health/ready
+- GET /health/live
+- GET /health/db
 
 ---
 
 ## Changelog
 
-### v1.2.0 (2025-10-23) - Multi-NLP & epub.js Integration
-- NEW: GET /books/{book_id}/file - EPUB file endpoint для epub.js
+### v1.3.0 (2025-11-14) - Admin & Cache Management Expansion
+- NEW: Admin Cache Management (4 endpoints)
+  - GET /admin/cache/stats - Redis кэш статистика
+  - POST /admin/cache/clear - Очистка кэша
+  - GET /admin/cache/keys - Список ключей кэша
+  - DELETE /admin/cache/keys/{key} - Удаление конкретного ключа
+- NEW: Admin Reading Sessions (3 endpoints)
+  - GET /admin/reading-sessions/
+  - GET /admin/reading-sessions/{session_id}
+  - DELETE /admin/reading-sessions/{session_id}
+- NEW: Admin System Management (3 endpoints)
+  - GET /admin/health
+  - POST /admin/maintenance/start
+  - POST /admin/maintenance/end
+- UPDATED: Total API endpoints: 76 (was 35+)
+- UPDATED: Custom EPUB Reader component (EpubReader.tsx, 835 строк) - react-reader библиотека удалена
+- FIXED: Документация API endpoints актуализирована
+
+### v1.2.0 (2025-10-23) - Multi-NLP & Custom EPUB Reader
+- NEW: GET /books/{book_id}/file - EPUB file endpoint для кастомной читалки
 - UPDATED: POST /books/{book_id}/progress - поддержка CFI и scroll_offset_percent
 - NEW: 5 Admin endpoints для управления Multi-NLP системой
 - UPDATED: GET /nlp/status - показывает все 3 процессора (spaCy, Natasha, Stanza)
 - UPDATED: POST /nlp/extract-descriptions - 5 режимов обработки (single, parallel, sequential, ensemble, adaptive)
 - Advanced Multi-NLP Manager с ensemble voting и consensus алгоритмом
-- CFI (Canonical Fragment Identifier) для точного трекинга прогресса в epub.js
+- CFI (Canonical Fragment Identifier) для точного трекинга прогресса
 
 ### v1.1.0 (2025-09-15) - Advanced NLP System
 - Advanced Multi-NLP Manager с 3 процессорами

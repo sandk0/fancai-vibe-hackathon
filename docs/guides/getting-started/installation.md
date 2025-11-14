@@ -153,7 +153,6 @@ npm install
 
 # Ключевые зависимости для EPUB чтения:
 # - epubjs@0.3.93 - профессиональная библиотека для EPUB рендеринга
-# - react-reader@2.0.15 - React wrapper для epub.js
 # - react@18+ - React библиотека
 # - typescript@5+ - TypeScript для type safety
 ```
