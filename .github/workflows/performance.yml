@@ -216,7 +216,7 @@ jobs:
           max_attempts=30
           attempt=1
           while [ $attempt -le $max_attempts ]; do
-            if pg_isready -h 127.0.0.1 -p 5432 -U postgres > /dev/null 2>&1; then
+            if pg_isready -h postgres -p 5432 -U postgres > /dev/null 2>&1; then
               echo "✅ PostgreSQL is ready!"
               break
             fi
@@ -233,7 +233,7 @@ jobs:
         env:
           PGPASSWORD: postgres123
         run: |
-          psql -h 127.0.0.1 -U postgres -d bookreader_test -c "SELECT version();"
+          psql -h postgres -U postgres -d bookreader_test -c "SELECT version();"
           echo "✅ Database connection verified"
 
       - name: Test Python Database Connection
@@ -449,7 +449,7 @@ EOF
           max_attempts=30
           attempt=1
           while [ $attempt -le $max_attempts ]; do
-            if pg_isready -h 127.0.0.1 -p 5432 -U postgres > /dev/null 2>&1; then
+            if pg_isready -h postgres -p 5432 -U postgres > /dev/null 2>&1; then
               echo "✅ PostgreSQL is ready!"
               break
             fi
@@ -466,7 +466,7 @@ EOF
         env:
           PGPASSWORD: postgres123
         run: |
-          psql -h 127.0.0.1 -U postgres -d bookreader_test -c "SELECT version();"
+          psql -h postgres -U postgres -d bookreader_test -c "SELECT version();"
           echo "✅ Database connection verified"
 
       - name: Test Python Database Connection
@@ -525,10 +525,10 @@ EOF
           echo "## Database Performance Analysis" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Connection Statistics" >> $GITHUB_STEP_SUMMARY
-          psql -h localhost -U postgres -d bookreader_test -c "SELECT count(*) as connections FROM pg_stat_activity;" >> $GITHUB_STEP_SUMMARY
+          psql -h postgres -U postgres -d bookreader_test -c "SELECT count(*) as connections FROM pg_stat_activity;" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Database Size" >> $GITHUB_STEP_SUMMARY
-          psql -h localhost -U postgres -d bookreader_test -c "SELECT pg_size_pretty(pg_database_size('bookreader_test'));" >> $GITHUB_STEP_SUMMARY
+          psql -h postgres -U postgres -d bookreader_test -c "SELECT pg_size_pretty(pg_database_size('bookreader_test'));" >> $GITHUB_STEP_SUMMARY
 
   performance-summary:
     name: Performance Test Summary
