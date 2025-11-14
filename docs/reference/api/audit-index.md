@@ -1,64 +1,64 @@
-# API Audit - Complete Documentation Index
+# API Аудит - Полный Индекс Документации
 
-## Quick Links
+## Быстрые Ссылки
 
-### Start Here
-- **Quick Summary** (this file)
-- **Main Report** → `/API_AUDIT_REPORT.md` (35KB, detailed analysis)
-- **Mismatches Details** → `/API_MISMATCHES.md` (detailed type mismatches)
+### Начните Здесь
+- **Краткая Сводка** (этот файл)
+- **Основной Отчет** → `/API_AUDIT_REPORT.md` (35KB, детальный анализ)
+- **Детали Несоответствий** → `/API_MISMATCHES.md` (детальные несоответствия типов)
 
-### For Developers
-- **Quick Fix Checklist** → See bottom of this file
-- **Async Patterns Review** → Section in API_AUDIT_REPORT.md
-- **Error Handling Analysis** → Section in API_AUDIT_REPORT.md
-
----
-
-## 30-Second Summary
-
-**Status:** Functional API with excellent async patterns but weak type safety
-
-**Score:** 73/100
-
-**3 Critical Issues Found:**
-1. Missing Pydantic response schemas
-2. `is_processing` field missing in GET /books/{id}
-3. Auth token response format inconsistent (nested vs flat)
-
-**Strengths:** Async/await (95%), error handling (90%), DI patterns (95%)
-**Weaknesses:** Type validation (40%), documentation (65%), rate limiting (60%)
+### Для Разработчиков
+- **Быстрый Контрольный Список** → Смотрите внизу этого файла
+- **Обзор Async Паттернов** → Раздел в API_AUDIT_REPORT.md
+- **Анализ Обработки Ошибок** → Раздел в API_AUDIT_REPORT.md
 
 ---
 
-## Full Statistics
+## 30-Секундная Сводка
 
-- **Total Endpoints:** 76 routes
+**Статус:** Функциональное API с отличными async паттернами, но слабой типобезопасностью
+
+**Оценка:** 73/100
+
+**Найдено 3 Критических Проблемы:**
+1. Отсутствуют Pydantic схемы ответов
+2. Поле `is_processing` отсутствует в GET /books/{id}
+3. Формат ответа токена аутентификации непоследователен (вложенный vs плоский)
+
+**Сильные Стороны:** Async/await (95%), обработка ошибок (90%), DI паттерны (95%)
+**Слабые Стороны:** Валидация типов (40%), документация (65%), ограничение частоты (60%)
+
+---
+
+## Полная Статистика
+
+- **Всего Endpoints:** 76 маршрутов
 - **GET:** 42 (55%)
 - **POST:** 23 (30%)
 - **PUT:** 7 (9%)
 - **DELETE:** 4 (5%)
 
-**By Router:**
+**По Роутерам:**
 - auth.py: 7 endpoints
 - books/: 9+ endpoints
 - admin/: 15+ endpoints
 - reading_*: 8+ endpoints
-- others: 37+ endpoints
+- прочие: 37+ endpoints
 
 ---
 
-## Critical Issues Details
+## Детали Критических Проблем
 
-### Issue #1: Missing Pydantic Schemas (HIGHEST PRIORITY)
+### Проблема #1: Отсутствующие Pydantic Схемы (ВЫСШИЙ ПРИОРИТЕТ)
 
-**What:** No `backend/app/schemas/` directory exists
+**Что:** Директория `backend/app/schemas/` не существует
 
-**Impact:**
-- Response validation missing
-- Frontend types manually synced (risk of mismatches)
-- OpenAPI docs incomplete
+**Влияние:**
+- Отсутствует валидация ответов
+- Типы frontend синхронизируются вручную (риск несоответствий)
+- OpenAPI документация неполная
 
-**Fix:** Create schemas/ directory with:
+**Решение:** Создать директорию schemas/ с:
 ```
 backend/app/schemas/
 ├── auth.py          # UserResponse, TokenResponse
@@ -67,151 +67,151 @@ backend/app/schemas/
 └── __init__.py
 ```
 
-**Effort:** 4-6 hours
-**File:** API_MISMATCHES.md (detailed with code examples)
+**Усилия:** 4-6 часов
+**Файл:** API_MISMATCHES.md (детально с примерами кода)
 
 ---
 
-### Issue #2: is_processing Field Inconsistency
+### Проблема #2: Несоответствие Поля is_processing
 
-**What:** Field returned in:
+**Что:** Поле возвращается в:
 - ✓ POST /books/upload
-- ✓ GET /books/ (list)
-- ❌ GET /books/{id} (missing!)
+- ✓ GET /books/ (список)
+- ❌ GET /books/{id} (отсутствует!)
 
-**Impact:** Frontend UI may fail to show parsing status on book detail page
+**Влияние:** Frontend UI может не показывать статус парсинга на странице деталей книги
 
-**Fix:** Add 1 line to get_book() response in books/crud.py:
+**Решение:** Добавить 1 строку в ответ get_book() в books/crud.py:
 ```python
 "is_processing": not book.is_parsed,
 ```
 
-**Effort:** 5 minutes
-**File:** API_MISMATCHES.md (exact line numbers provided)
+**Усилия:** 5 минут
+**Файл:** API_MISMATCHES.md (указаны точные номера строк)
 
 ---
 
-### Issue #3: Auth Response Format Mismatch
+### Проблема #3: Несоответствие Формата Ответа Auth
 
-**What:** Code and docs disagree on token structure
+**Что:** Код и документация не согласны по структуре токена
 
-**Code Returns:**
+**Код Возвращает:**
 ```json
 {"tokens": {"access_token": "..."}}
 ```
 
-**Docs Show:**
+**Документация Показывает:**
 ```json
 {"access_token": "..."}
 ```
 
-**Also:** Register endpoint missing fields from login endpoint
+**Также:** Endpoint регистрации не хватает полей из endpoint входа
 
-**Fix:** Choose format and standardize (flat recommended)
+**Решение:** Выбрать формат и стандартизировать (рекомендуется плоский)
 
-**Effort:** 15 minutes
-**File:** API_MISMATCHES.md (both options provided)
+**Усилия:** 15 минут
+**Файл:** API_MISMATCHES.md (предоставлены оба варианта)
 
 ---
 
-## Router Status Matrix
+## Матрица Статусов Роутеров
 
-| Router | Status | Issues | Review |
+| Роутер | Статус | Проблемы | Обзор |
 |--------|--------|--------|--------|
-| auth.py | ✓ Good | 2 (response format) | Complete |
-| books/crud.py | ⚠ Needs fix | 1 (is_processing) | Complete |
-| books/processing.py | ⚠ Incomplete | Needs full review | Partial |
-| reading_progress.py | ✓ Good | 0 | Complete |
-| reading_sessions.py | ⚠ Partial | Needs review | Partial |
-| chapters.py | ✓ OK | 0 | Complete |
-| users.py | ⚠ Partial | Needs review | Partial |
-| admin/* | ⚠ Complex | 15+ endpoints | Partial |
-| nlp.py | ? | Not reviewed | NOT SEEN |
-| descriptions.py | ? | Not reviewed | NOT SEEN |
-| images.py | ? | Not reviewed | NOT SEEN |
-| health.py | ⚠ Partial | Needs review | Partial |
+| auth.py | ✓ Хорошо | 2 (формат ответа) | Завершен |
+| books/crud.py | ⚠ Требует исправления | 1 (is_processing) | Завершен |
+| books/processing.py | ⚠ Неполный | Требует полного обзора | Частичный |
+| reading_progress.py | ✓ Хорошо | 0 | Завершен |
+| reading_sessions.py | ⚠ Частичный | Требует обзора | Частичный |
+| chapters.py | ✓ OK | 0 | Завершен |
+| users.py | ⚠ Частичный | Требует обзора | Частичный |
+| admin/* | ⚠ Сложный | 15+ endpoints | Частичный |
+| nlp.py | ? | Не проверен | НЕ ПРОСМОТРЕН |
+| descriptions.py | ? | Не проверен | НЕ ПРОСМОТРЕН |
+| images.py | ? | Не проверен | НЕ ПРОСМОТРЕН |
+| health.py | ⚠ Частичный | Требует обзора | Частичный |
 
 ---
 
-## Key Findings by Category
+## Ключевые Находки по Категориям
 
-### Async/Database Patterns - EXCELLENT (95%)
-- ✓ All DB operations properly async
-- ✓ selectinload() for eager loading
-- ✓ Connection pooling via Depends()
-- ✓ No blocking I/O detected
+### Async/Database Паттерны - ОТЛИЧНО (95%)
+- ✓ Все операции БД правильно async
+- ✓ selectinload() для жадной загрузки
+- ✓ Пулинг соединений через Depends()
+- ✓ Блокирующий I/O не обнаружен
 
-**Files:** books/crud.py, reading_progress.py
+**Файлы:** books/crud.py, reading_progress.py
 
-### Error Handling - EXCELLENT (90%)
-- ✓ Custom exceptions properly mapped to HTTP status
-- ✓ Consistent exception usage
-- ✓ Helpful error messages
+### Обработка Ошибок - ОТЛИЧНО (90%)
+- ✓ Пользовательские исключения правильно сопоставлены с HTTP статусами
+- ✓ Последовательное использование исключений
+- ✓ Полезные сообщения об ошибках
 
-**File:** core/exceptions.py imported and used consistently
+**Файл:** core/exceptions.py импортирован и используется последовательно
 
-### Caching - GOOD (88%)
-- ✓ Pattern-based cache invalidation
-- ✓ Appropriate TTLs (5m, 10s, 1h)
-- ✓ Cache hit/miss logging
+### Кэширование - ХОРОШО (88%)
+- ✓ Инвалидация кэша на основе паттернов
+- ✓ Подходящие TTL (5m, 10s, 1h)
+- ✓ Логирование попаданий/промахов кэша
 
-**Example:** books/crud.py lines 137-139
+**Пример:** books/crud.py строки 137-139
 
-### Type Safety - POOR (40%)
-- ❌ No response Pydantic models
-- ❌ All responses as Dict[str, Any]
-- ❌ No response_model in decorators
-- ❌ Frontend types manually synced
+### Типобезопасность - ПЛОХО (40%)
+- ❌ Нет Pydantic моделей ответов
+- ❌ Все ответы как Dict[str, Any]
+- ❌ Нет response_model в декораторах
+- ❌ Типы frontend синхронизируются вручную
 
-**Impact:** Type mismatches likely between frontend/backend
+**Влияние:** Вероятны несоответствия типов между frontend/backend
 
-### Documentation - PARTIAL (65%)
-- ⚠ 15-20 endpoints missing from api-documentation.md
-- ⚠ Admin endpoints underdocumented
-- ✓ OpenAPI auto-generated at /docs
+### Документация - ЧАСТИЧНАЯ (65%)
+- ⚠ 15-20 endpoints отсутствуют в api-documentation.md
+- ⚠ Admin endpoints недодокументированы
+- ✓ OpenAPI автогенерируется на /docs
 
-**Gap:** Manual docs lag behind code
+**Пробел:** Ручная документация отстает от кода
 
-### Rate Limiting - INCOMPLETE (60%)
-- ✓ Applied to /auth/register
-- ✓ Applied to /auth/login
-- ❌ Missing on /books/upload (security risk)
-- ❌ Missing on /books/process
-- ❌ Missing on image generation
+### Ограничение Частоты - НЕПОЛНОЕ (60%)
+- ✓ Применено к /auth/register
+- ✓ Применено к /auth/login
+- ❌ Отсутствует на /books/upload (риск безопасности)
+- ❌ Отсутствует на /books/process
+- ❌ Отсутствует на генерации изображений
 
-**Risk:** Large file upload or rapid processing requests not throttled
+**Риск:** Загрузка больших файлов или быстрые запросы обработки не ограничиваются
 
 ---
 
-## Detailed Findings
+## Детальные Находки
 
-### Type Mismatch Examples
+### Примеры Несоответствия Типов
 
-#### Example 1: is_processing field
-**Location:** books/crud.py lines 156, 247, (missing at ~360)
+#### Пример 1: поле is_processing
+**Расположение:** books/crud.py строки 156, 247, (отсутствует ~360)
 
-**GET /books/ returns:**
+**GET /books/ возвращает:**
 ```python
-"is_processing": not book.is_parsed,  # Line 247
+"is_processing": not book.is_parsed,  # Строка 247
 ```
 
-**GET /books/{id} returns:**
+**GET /books/{id} возвращает:**
 ```python
-# MISSING is_processing field
+# ОТСУТСТВУЕТ поле is_processing
 ```
 
-**Impact:** Frontend code like:
+**Влияние:** Frontend код как:
 ```typescript
-if (book.is_processing) { /* show spinner */ }
-// Would fail on detail page if undefined
+if (book.is_processing) { /* показать спиннер */ }
+// Не сработает на странице деталей если undefined
 ```
 
 ---
 
-#### Example 2: Auth response tokens
-**Location:** auth.py lines 108-119, 160-172
+#### Пример 2: Токены ответа Auth
+**Расположение:** auth.py строки 108-119, 160-172
 
-**What backend returns:**
+**Что backend возвращает:**
 ```python
 {
   "tokens": {
@@ -221,7 +221,7 @@ if (book.is_processing) { /* show spinner */ }
 }
 ```
 
-**What docs show:**
+**Что документация показывает:**
 ```python
 {
   "access_token": "...",
@@ -230,14 +230,14 @@ if (book.is_processing) { /* show spinner */ }
 }
 ```
 
-**Frontend must guess** which is correct = fragile
+**Frontend должен угадывать** какой правильный = хрупко
 
 ---
 
-### Consistency Issues
+### Проблемы Согласованности
 
 #### Auth Register vs Login
-**Register response (line 108):**
+**Ответ Register (строка 108):**
 ```python
 "user": {
   "id": str(user.id),
@@ -246,12 +246,12 @@ if (book.is_processing) { /* show spinner */ }
   "is_active": user.is_active,
   "is_verified": user.is_verified,
   "created_at": user.created_at.isoformat(),
-  # Missing: is_admin
-  # Missing: last_login
+  # Отсутствует: is_admin
+  # Отсутствует: last_login
 }
 ```
 
-**Login response (line 160):**
+**Ответ Login (строка 160):**
 ```python
 "user": {
   "id": str(user.id),
@@ -259,166 +259,166 @@ if (book.is_processing) { /* show spinner */ }
   "full_name": user.full_name,
   "is_active": user.is_active,
   "is_verified": user.is_verified,
-  "is_admin": user.is_admin,  # ✓ Present
-  "last_login": user.last_login.isoformat() if user.last_login else None,  # ✓ Present
+  "is_admin": user.is_admin,  # ✓ Присутствует
+  "last_login": user.last_login.isoformat() if user.last_login else None,  # ✓ Присутствует
 }
 ```
 
-**Problem:** Frontend expects consistent schema
+**Проблема:** Frontend ожидает согласованную схему
 
 ---
 
-## Medium Priority Issues (8)
+## Проблемы Среднего Приоритета (8)
 
-1. Rate limiting missing on /books/upload
-2. Response models not in decorators (breaks OpenAPI validation)
-3. 15-20 endpoints not in api-documentation.md
-4. Admin endpoints partially undocumented
-5. Image generation endpoints not reviewed
-6. Reading sessions endpoints partially reviewed
-7. No response validation enabled
-8. Reading progress field naming unclear (current_position vs percent)
+1. Ограничение частоты отсутствует на /books/upload
+2. Модели ответов не в декораторах (ломает валидацию OpenAPI)
+3. 15-20 endpoints не в api-documentation.md
+4. Admin endpoints частично недодокументированы
+5. Endpoints генерации изображений не проверены
+6. Endpoints сессий чтения частично проверены
+7. Валидация ответов не включена
+8. Именование полей прогресса чтения неясно (current_position vs percent)
 
-**Estimated fixes:** 12-16 hours
-
----
-
-## Next Steps (Recommended Order)
-
-### Immediate (Today - 45 minutes)
-1. [ ] Add is_processing to GET /books/{id} (5m)
-2. [ ] Fix auth register response fields (5m)
-3. [ ] Choose auth token format (5m)
-4. [ ] Implement token format choice (15m)
-5. [ ] Run tests (10m)
-6. [ ] Commit changes (5m)
-
-### This Week (8 hours)
-7. [ ] Create backend/app/schemas/ directory
-8. [ ] Add Pydantic models for auth responses
-9. [ ] Add Pydantic models for book responses
-10. [ ] Update api-documentation.md
-
-### Next Sprint (8 hours)
-11. [ ] Add response_model= to all decorators
-12. [ ] Review remaining routers (admin, images, nlp)
-13. [ ] Add missing rate limiting
+**Оценка исправлений:** 12-16 часов
 
 ---
 
-## Testing Strategy
+## Следующие Шаги (Рекомендуемый Порядок)
 
-After each fix, run:
+### Немедленно (Сегодня - 45 минут)
+1. [ ] Добавить is_processing в GET /books/{id} (5м)
+2. [ ] Исправить поля ответа auth register (5м)
+3. [ ] Выбрать формат токена auth (5м)
+4. [ ] Реализовать выбранный формат токена (15м)
+5. [ ] Запустить тесты (10м)
+6. [ ] Закоммитить изменения (5м)
+
+### На Этой Неделе (8 часов)
+7. [ ] Создать директорию backend/app/schemas/
+8. [ ] Добавить Pydantic модели для auth ответов
+9. [ ] Добавить Pydantic модели для book ответов
+10. [ ] Обновить api-documentation.md
+
+### Следующий Спринт (8 часов)
+11. [ ] Добавить response_model= во все декораторы
+12. [ ] Проверить оставшиеся роутеры (admin, images, nlp)
+13. [ ] Добавить отсутствующее ограничение частоты
+
+---
+
+## Стратегия Тестирования
+
+После каждого исправления запускайте:
 
 ```bash
-# Unit tests
+# Unit тесты
 cd backend && pytest tests/ -v --cov=app
 
-# Integration tests
+# Integration тесты
 curl -X GET http://localhost:8000/api/v1/books/
 curl -X POST http://localhost:8000/api/v1/auth/login
 
-# OpenAPI validation
+# OpenAPI валидация
 curl http://localhost:8000/docs
 ```
 
 ---
 
-## File Reference
+## Справочник по Файлам
 
-### Report Files
-- **API_AUDIT_REPORT.md** - 35KB comprehensive analysis
-  - Full router-by-router breakdown
-  - Async patterns analysis
-  - Error handling review
-  - Caching strategy
-  - Dependency injection analysis
-  - N+1 query prevention check
-  - OpenAPI documentation status
-  - Recommendations by priority
+### Файлы Отчетов
+- **API_AUDIT_REPORT.md** - 35KB комплексный анализ
+  - Полная разбивка роутер-за-роутером
+  - Анализ async паттернов
+  - Обзор обработки ошибок
+  - Стратегия кэширования
+  - Анализ внедрения зависимостей
+  - Проверка предотвращения N+1 запросов
+  - Статус OpenAPI документации
+  - Рекомендации по приоритету
 
-- **API_MISMATCHES.md** - Detailed type mismatches
-  - is_processing field mismatch (with fix)
-  - Auth response format (with both options)
-  - Auth register vs login inconsistency
-  - Reading progress field clarification
-  - Schema comparison table
-  - Prevention strategies
+- **API_MISMATCHES.md** - Детальные несоответствия типов
+  - Несоответствие поля is_processing (с исправлением)
+  - Формат ответа Auth (с обоими вариантами)
+  - Несогласованность Auth register vs login
+  - Уточнение поля прогресса чтения
+  - Таблица сравнения схем
+  - Стратегии предотвращения
 
-- **API_AUDIT_INDEX.md** - This file
-  - Quick reference guide
-  - Quick fix checklist
+- **API_AUDIT_INDEX.md** - Этот файл
+  - Руководство быстрого справочника
+  - Контрольный список быстрых исправлений
 
-### Source Code Files Under Review
+### Файлы Исходного Кода на Обзоре
 - backend/app/routers/auth.py (7 endpoints)
 - backend/app/routers/books/crud.py (4 endpoints)
 - backend/app/routers/books/processing.py (5+ endpoints)
 - backend/app/routers/reading_progress.py (2+ endpoints)
 - backend/app/routers/reading_sessions.py (6 endpoints)
-- And 7 more routers
+- И еще 7 роутеров
 
-### Documentation Files
-- docs/architecture/api-documentation.md (needs 15-20 endpoint updates)
-
----
-
-## Prevention Checklist
-
-For future API development:
-
-- [ ] Create Pydantic response models for all endpoints
-- [ ] Use response_model= in @router decorators
-- [ ] Verify all fields returned are documented
-- [ ] Keep api-documentation.md in sync with code
-- [ ] Run pytest after each endpoint change
-- [ ] Use auto-generated OpenAPI (don't maintain manually)
-- [ ] Test response schema with jsonschema validator
-- [ ] Generate TypeScript types from OpenAPI spec
+### Файлы Документации
+- docs/architecture/api-documentation.md (требует обновления 15-20 endpoints)
 
 ---
 
-## Questions for Clarification
+## Контрольный Список Предотвращения
 
-1. **Auth Token Format:** Should tokens be flat or nested?
-   - Current code: Nested (tokens.access_token)
-   - Docs show: Flat (access_token)
-   - Recommendation: Flat (more standard)
+Для будущей разработки API:
 
-2. **Reading Progress Fields:** What do these mean?
-   - current_position: Page number or percentage?
-   - current_position_percent: Same as above? Why duplicate?
-   - scroll_offset_percent: Different metric?
-
-3. **Rate Limiting:** What rates should apply?
-   - /books/upload: Suggest 5 per hour per user
-   - /books/process: Suggest 10 per hour per user
-   - Image generation: Suggest per-subscription limits
+- [ ] Создавать Pydantic модели ответов для всех endpoints
+- [ ] Использовать response_model= в декораторах @router
+- [ ] Проверять, что все возвращаемые поля задокументированы
+- [ ] Синхронизировать api-documentation.md с кодом
+- [ ] Запускать pytest после каждого изменения endpoint
+- [ ] Использовать автогенерированный OpenAPI (не поддерживать вручную)
+- [ ] Тестировать схему ответа с валидатором jsonschema
+- [ ] Генерировать TypeScript типы из OpenAPI спецификации
 
 ---
 
-## Scoring Methodology
+## Вопросы для Уточнения
 
-Each category scored 0-100:
-- Async Patterns: Correct use of await, no blocking I/O
-- Error Handling: Custom exceptions, proper HTTP status codes
-- Dependency Injection: Clean separation of concerns, permissions
-- N+1 Prevention: Eager loading, no lazy loading queries
-- Caching: Appropriate TTLs, invalidation strategy
-- Type Safety: Pydantic models, validated responses
-- Documentation: API docs in sync with code
-- Rate Limiting: Present on sensitive endpoints
+1. **Формат Токена Auth:** Должны ли токены быть плоскими или вложенными?
+   - Текущий код: Вложенный (tokens.access_token)
+   - Документация показывает: Плоский (access_token)
+   - Рекомендация: Плоский (более стандартный)
 
-Final Score = (95 + 90 + 95 + 85 + 88 + 40 + 65 + 60) / 8 = **73/100**
+2. **Поля Прогресса Чтения:** Что они означают?
+   - current_position: Номер страницы или процент?
+   - current_position_percent: То же самое? Зачем дублировать?
+   - scroll_offset_percent: Другая метрика?
 
----
-
-## Contact
-
-For questions about this audit:
-- Report location: `/Users/sandk/Documents/GitHub/fancai-vibe-hackathon/`
-- Generated: November 3, 2025
-- By: Backend API Developer Agent v1.0
+3. **Ограничение Частоты:** Какие частоты применять?
+   - /books/upload: Предлагается 5 в час на пользователя
+   - /books/process: Предлагается 10 в час на пользователя
+   - Генерация изображений: Предлагаются лимиты по подписке
 
 ---
 
-**Last Updated:** November 3, 2025
+## Методология Оценки
+
+Каждая категория оценивается 0-100:
+- Async Паттерны: Правильное использование await, отсутствие блокирующего I/O
+- Обработка Ошибок: Пользовательские исключения, правильные HTTP коды статуса
+- Внедрение Зависимостей: Чистое разделение обязанностей, разрешения
+- Предотвращение N+1: Жадная загрузка, отсутствие ленивых запросов загрузки
+- Кэширование: Подходящие TTL, стратегия инвалидации
+- Типобезопасность: Pydantic модели, валидированные ответы
+- Документация: API документация синхронизирована с кодом
+- Ограничение Частоты: Присутствует на чувствительных endpoints
+
+Финальная Оценка = (95 + 90 + 95 + 85 + 88 + 40 + 65 + 60) / 8 = **73/100**
+
+---
+
+## Контакты
+
+Вопросы об этом аудите:
+- Расположение отчета: `/Users/sandk/Documents/GitHub/fancai-vibe-hackathon/`
+- Сгенерировано: 3 ноября 2025
+- Кем: Backend API Developer Agent v1.0
+
+---
+
+**Последнее Обновление:** 3 ноября 2025
