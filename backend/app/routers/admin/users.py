@@ -42,9 +42,9 @@ async def get_users_list(
                 "id": str(user.id),
                 "email": user.email,
                 "username": user.full_name or "Unknown",
-                "subscription_plan": user.subscription.plan.value
-                if user.subscription
-                else "free",
+                "subscription_plan": (
+                    user.subscription.plan.value if user.subscription else "free"
+                ),
                 "is_active": user.is_active,
                 "is_admin": user.is_admin,
                 "created_at": user.created_at.isoformat(),

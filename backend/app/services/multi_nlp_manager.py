@@ -53,6 +53,31 @@ class MultiNLPManager:
         self._initialized = False
         self._init_lock = asyncio.Lock()
 
+    # ========================================================================
+    # Backward Compatibility Properties (for old tests)
+    # ========================================================================
+
+    @property
+    def processors(self):
+        """Backward compatibility: access processor_registry.processors."""
+        return self.processor_registry.processors
+
+    @processors.setter
+    def processors(self, value):
+        """Backward compatibility: set processor_registry.processors."""
+        self.processor_registry.processors = value
+
+    @property
+    def processor_configs(self):
+        """Backward compatibility: access processor_registry.processor_configs."""
+        return self.processor_registry.processor_configs
+
+    @processor_configs.setter
+    def processor_configs(self, value):
+        """Backward compatibility: set processor_registry.processor_configs."""
+        self.processor_registry.processor_configs = value
+
+
     async def initialize(self):
         """
         Initialize the Multi-NLP Manager.
@@ -211,9 +236,9 @@ class MultiNLPManager:
             "ensemble_voting_threshold": self.global_config.get(
                 "ensemble_voting_threshold", 0.6
             ),
-            "ensemble_voter": self.ensemble_voter
-            if mode == ProcessingMode.ENSEMBLE
-            else None,
+            "ensemble_voter": (
+                self.ensemble_voter if mode == ProcessingMode.ENSEMBLE else None
+            ),
         }
 
     def _update_statistics(self, result: ProcessingResult):

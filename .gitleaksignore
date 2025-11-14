@@ -1,0 +1,34 @@
+# Gitleaks ignore file for fancai-vibe-hackathon
+# Suppresses false positives and known safe patterns
+
+# Test files with example credentials
+tests/**/*.py
+**/test_*.py
+**/conftest.py
+
+# Example/template environment files
+.env.example
+.env.template
+docker-compose.example.yml
+
+# Documentation with example keys
+docs/**/*.md
+README.md
+CLAUDE.md
+
+# Frontend build artifacts
+frontend/dist/**
+frontend/node_modules/**
+
+# Backend cache and temporary files
+backend/**/__pycache__/**
+backend/.pytest_cache/**
+backend/celerybeat-schedule
+
+# Known safe test values
+# These are test passwords and test data, not real credentials
+# Pattern: SecureP@ss8042, SecurePass123!, test@example.com
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+
+# GitHub Actions workflow placeholders
+.github/workflows/**/*.yml:your-gist-id-here

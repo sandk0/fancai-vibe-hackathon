@@ -224,9 +224,9 @@ async def get_current_user_info(
             "is_verified": current_user.is_verified,
             "is_admin": current_user.is_admin,
             "created_at": current_user.created_at.isoformat(),
-            "last_login": current_user.last_login.isoformat()
-            if current_user.last_login
-            else None,
+            "last_login": (
+                current_user.last_login.isoformat() if current_user.last_login else None
+            ),
         }
     }
 

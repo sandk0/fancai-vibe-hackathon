@@ -255,9 +255,9 @@ async def extract_descriptions(request: TextAnalysisRequest) -> Dict[str, Any]:
                 "total_descriptions": len(descriptions),
                 "text_length": len(request.text),
                 "by_type": type_stats,
-                "top_priority_score": descriptions[0]["priority_score"]
-                if descriptions
-                else 0,
+                "top_priority_score": (
+                    descriptions[0]["priority_score"] if descriptions else 0
+                ),
             },
             "descriptions": [
                 {
@@ -336,9 +336,11 @@ async def test_book_sample() -> Dict[str, Any]:
                 {
                     "rank": i + 1,
                     "type": desc["type"].value,
-                    "content": desc["content"][:100] + "..."
-                    if len(desc["content"]) > 100
-                    else desc["content"],
+                    "content": (
+                        desc["content"][:100] + "..."
+                        if len(desc["content"]) > 100
+                        else desc["content"]
+                    ),
                     "priority_score": round(desc["priority_score"], 2),
                 }
                 for i, desc in enumerate(descriptions[:5])  # Топ-5

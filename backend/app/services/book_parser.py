@@ -799,9 +799,9 @@ class BookParser:
 
             # Проверяем размер файла
             if file_size > self.config.max_file_size:
-                result[
-                    "error"
-                ] = f"File too large (max {self.config.max_file_size // (1024*1024)}MB)"
+                result["error"] = (
+                    f"File too large (max {self.config.max_file_size // (1024*1024)}MB)"
+                )
                 return result
 
             if file_size < self.config.min_file_size:

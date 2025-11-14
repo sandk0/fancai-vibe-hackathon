@@ -121,21 +121,23 @@ async def get_user_profile(
             "is_verified": current_user.is_verified,
             "is_admin": current_user.is_admin,
             "created_at": current_user.created_at.isoformat(),
-            "last_login": current_user.last_login.isoformat()
-            if current_user.last_login
-            else None,
+            "last_login": (
+                current_user.last_login.isoformat() if current_user.last_login else None
+            ),
         },
-        "subscription": {
-            "plan": subscription.plan.value if subscription else "free",
-            "status": subscription.status.value if subscription else "active",
-            "books_uploaded": subscription.books_uploaded if subscription else 0,
-            "images_generated_month": subscription.images_generated_month
+        "subscription": (
+            {
+                "plan": subscription.plan.value if subscription else "free",
+                "status": subscription.status.value if subscription else "active",
+                "books_uploaded": subscription.books_uploaded if subscription else 0,
+                "images_generated_month": (
+                    subscription.images_generated_month if subscription else 0
+                ),
+                "auto_renewal": subscription.auto_renewal if subscription else False,
+            }
             if subscription
-            else 0,
-            "auto_renewal": subscription.auto_renewal if subscription else False,
-        }
-        if subscription
-        else None,
+            else None
+        ),
         "statistics": {
             "total_books": total_books,
             "total_descriptions": total_descriptions,
@@ -182,9 +184,9 @@ async def get_user_subscription(
             "plan": subscription.plan.value,
             "status": subscription.status.value,
             "start_date": subscription.start_date.isoformat(),
-            "end_date": subscription.end_date.isoformat()
-            if subscription.end_date
-            else None,
+            "end_date": (
+                subscription.end_date.isoformat() if subscription.end_date else None
+            ),
             "auto_renewal": subscription.auto_renewal,
         },
         "usage": {
@@ -256,9 +258,9 @@ async def list_all_users(
                 "is_admin": user.is_admin,
                 "created_at": user.created_at.isoformat(),
                 "last_login": user.last_login.isoformat() if user.last_login else None,
-                "subscription_plan": subscription.plan.value
-                if subscription
-                else "free",
+                "subscription_plan": (
+                    subscription.plan.value if subscription else "free"
+                ),
                 "total_books": total_books,
             }
         )

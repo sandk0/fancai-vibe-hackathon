@@ -216,7 +216,7 @@ jobs:
           max_attempts=30
           attempt=1
           while [ $attempt -le $max_attempts ]; do
-            if pg_isready -h 127.0.0.1 -p 5432 -U postgres > /dev/null 2>&1; then
+            if pg_isready -h localhost -p 5432 -U postgres > /dev/null 2>&1; then
               echo "✅ PostgreSQL is ready!"
               break
             fi
@@ -233,12 +233,42 @@ jobs:
         env:
           PGPASSWORD: postgres123
         run: |
-          psql -h 127.0.0.1 -U postgres -d bookreader_test -c "SELECT version();"
+          psql -h localhost -U postgres -d bookreader_test -c "SELECT version();"
           echo "✅ Database connection verified"
+
+      - name: Test Python Database Connection
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
+        run: |
+          cd backend
+          python << 'EOF'
+          import asyncpg
+          import asyncio
+          import sys
+
+          async def test_connection():
+              try:
+                  conn = await asyncpg.connect(
+                      "postgresql://postgres:postgres123@localhost:5432/bookreader_test"
+                  )
+                  version = await conn.fetchval("SELECT version()")
+                  print(f"✅ Python asyncpg connection SUCCESS")
+                  print(f"PostgreSQL version: {version}")
+                  await conn.close()
+                  return True
+              except Exception as e:
+                  print(f"❌ Python asyncpg connection FAILED: {e}")
+                  import traceback
+                  traceback.print_exc()
+                  return False
+
+          success = asyncio.run(test_connection())
+          sys.exit(0 if success else 1)
+          EOF
 
       - name: Run database migrations
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@127.0.0.1:5432/bookreader_test
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           cd backend
@@ -246,7 +276,7 @@ jobs:
 
       - name: Start backend server
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@127.0.0.1:5432/bookreader_test
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
           REDIS_URL: redis://127.0.0.1:6379
           SECRET_KEY: test-secret-key-for-performance
           DEBUG: false
@@ -419,7 +449,7 @@ jobs:
           max_attempts=30
           attempt=1
           while [ $attempt -le $max_attempts ]; do
-            if pg_isready -h 127.0.0.1 -p 5432 -U postgres > /dev/null 2>&1; then
+            if pg_isready -h localhost -p 5432 -U postgres > /dev/null 2>&1; then
               echo "✅ PostgreSQL is ready!"
               break
             fi
@@ -436,12 +466,42 @@ jobs:
         env:
           PGPASSWORD: postgres123
         run: |
-          psql -h 127.0.0.1 -U postgres -d bookreader_test -c "SELECT version();"
+          psql -h localhost -U postgres -d bookreader_test -c "SELECT version();"
           echo "✅ Database connection verified"
+
+      - name: Test Python Database Connection
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
+        run: |
+          cd backend
+          python << 'EOF'
+          import asyncpg
+          import asyncio
+          import sys
+
+          async def test_connection():
+              try:
+                  conn = await asyncpg.connect(
+                      "postgresql://postgres:postgres123@localhost:5432/bookreader_test"
+                  )
+                  version = await conn.fetchval("SELECT version()")
+                  print(f"✅ Python asyncpg connection SUCCESS")
+                  print(f"PostgreSQL version: {version}")
+                  await conn.close()
+                  return True
+              except Exception as e:
+                  print(f"❌ Python asyncpg connection FAILED: {e}")
+                  import traceback
+                  traceback.print_exc()
+                  return False
+
+          success = asyncio.run(test_connection())
+          sys.exit(0 if success else 1)
+          EOF
 
       - name: Run database migrations
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@127.0.0.1:5432/bookreader_test
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           cd backend
@@ -449,7 +509,7 @@ jobs:
 
       - name: Run database performance tests
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@127.0.0.1:5432/bookreader_test
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test
           REDIS_URL: redis://127.0.0.1:6379
           SECRET_KEY: test-secret-key-for-performance
           PYTHONPATH: ${{ github.workspace }}/backend
