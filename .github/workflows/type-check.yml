@@ -128,6 +128,8 @@ jobs:
           echo "mypy_errors=$mypy_errors" >> $GITHUB_OUTPUT
 
       - name: Create coverage badge
+        if: ${{ secrets.GIST_SECRET != '' }}
+        continue-on-error: true
         uses: schneegans/dynamic-badges-action@v1.7.0
         with:
           auth: ${{ secrets.GIST_SECRET }}
