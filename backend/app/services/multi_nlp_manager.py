@@ -211,9 +211,9 @@ class MultiNLPManager:
             "ensemble_voting_threshold": self.global_config.get(
                 "ensemble_voting_threshold", 0.6
             ),
-            "ensemble_voter": self.ensemble_voter
-            if mode == ProcessingMode.ENSEMBLE
-            else None,
+            "ensemble_voter": (
+                self.ensemble_voter if mode == ProcessingMode.ENSEMBLE else None
+            ),
         }
 
     def _update_statistics(self, result: ProcessingResult):

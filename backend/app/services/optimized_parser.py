@@ -313,17 +313,19 @@ class OptimizedBookParser:
                         "chapter_id": chapter.id,
                         "type": desc["type"],
                         "content": desc["content"][:1000],  # Limit content size
-                        "context": desc.get("context", "")[:500]
-                        if desc.get("context")
-                        else None,
+                        "context": (
+                            desc.get("context", "")[:500]
+                            if desc.get("context")
+                            else None
+                        ),
                         "confidence_score": desc["confidence_score"],
                         "position_in_chapter": desc.get("position", 0),
                         "word_count": desc["word_count"],
                         "is_suitable_for_generation": desc["confidence_score"] > 0.3,
                         "priority_score": desc["priority_score"],
-                        "entities_mentioned": entities_str[:200]
-                        if entities_str
-                        else None,
+                        "entities_mentioned": (
+                            entities_str[:200] if entities_str else None
+                        ),
                         "created_at": datetime.utcnow(),
                         "updated_at": datetime.utcnow(),
                     }

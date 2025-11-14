@@ -86,9 +86,11 @@ async def validate_book_file(file: UploadFile = File(...)) -> Dict[str, Any]:
             "file_size_bytes": file_size,
             "file_size_mb": round(file_size / (1024 * 1024), 2),
             "validation": validation_result,
-            "message": "File validated successfully"
-            if validation_result["is_valid"]
-            else "File validation failed",
+            "message": (
+                "File validated successfully"
+                if validation_result["is_valid"]
+                else "File validation failed"
+            ),
         }
 
     finally:
@@ -162,9 +164,11 @@ async def parse_book_preview(file: UploadFile = File(...)) -> Dict[str, Any]:
                 "author": parsed_book.metadata.author,
                 "language": parsed_book.metadata.language,
                 "genre": parsed_book.metadata.genre,
-                "description": parsed_book.metadata.description[:1000] + "..."
-                if len(parsed_book.metadata.description) > 1000
-                else parsed_book.metadata.description,
+                "description": (
+                    parsed_book.metadata.description[:1000] + "..."
+                    if len(parsed_book.metadata.description) > 1000
+                    else parsed_book.metadata.description
+                ),
                 "publisher": parsed_book.metadata.publisher,
                 "publish_date": parsed_book.metadata.publish_date,
                 "has_cover": parsed_book.metadata.cover_image_data is not None,
