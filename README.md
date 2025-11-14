@@ -37,8 +37,8 @@ nano .env.production.local  # Настроить домен и пароли
 ```
 
 ### Детальная установка
-- **Development:** См. [Инструкции по настройке](docs/user-guides/installation-guide.md)  
-- **Production:** См. [DEPLOYMENT.md](DEPLOYMENT.md) - полное руководство по деплою
+- **Development:** См. [Инструкции по настройке](docs/guides/getting-started/installation.md)
+- **Production:** См. [Production Deployment Guide](docs/guides/deployment/production-deployment.md)
 
 ## ✨ Запланированные функции
 
@@ -163,7 +163,7 @@ nano .env.production.local  # Настроить домен и пароли
   - Качество >70% релевантных описаний (KPI достигнут ✅)
   - SpaCy quality: 0.78, Natasha quality: 0.82 (лучший)
 - ✅ **Admin API**: 5 comprehensive endpoints для runtime configuration
-- 📚 **Documentation**: [Multi-NLP System Technical Guide](docs/technical/multi-nlp-system.md) (1,676 lines)
+- 📚 **Documentation**: [Multi-NLP System Technical Guide](docs/reference/nlp/multi-nlp-system.md) (1,676 lines)
 
 #### Технические исправления
 - ✅ **Celery enum fix**: Исправлена критическая ошибка enum descriptiontype в database
@@ -313,37 +313,61 @@ nano .env.production.local  # Настроить домен и пароли
 ```
 
 **Документация агентов:**
-- [Быстрый старт](AGENTS_QUICKSTART.md) - Начните здесь!
-- [Финальная архитектура](AGENTS_FINAL_ARCHITECTURE.md) - Полное описание системы
+- [Быстрый старт](docs/guides/agents/quickstart.md) - Начните здесь!
+- [Финальная архитектура](docs/explanations/agents-system/architecture.md) - Полное описание системы
 - [Агенты README](.claude/agents/README.md) - Описание всех 8 агентов
-- [Orchestrator Guide](docs/development/orchestrator-agent-guide.md) - Детальное руководство
+- [Orchestrator Guide](docs/guides/agents/orchestrator-usage.md) - Детальное руководство
 
 ## 📚 Документация
 
-### Основная документация
-- [DEPLOYMENT.md](DEPLOYMENT.md) - **Руководство по production деплою**
-- [CLAUDE.md](CLAUDE.md) - Руководство для Claude Code
-- [План разработки](docs/development/development-plan.md)
-- [Календарь разработки](docs/development/development-calendar.md)
-- [Текущий статус](docs/development/current-status.md)
-- [История изменений](docs/development/changelog.md)
+**Обновленная структура документации (November 2025):** Теперь следует фреймворку [Diátaxis](https://diataxis.fr/) для лучшей организации.
 
-### Техническая документация
-- [Архитектура деплоя](docs/architecture/deployment-architecture.md)
-- [Celery задачи](docs/components/backend/celery-tasks.md)
-- [Reader компонент](docs/components/frontend/reader-component.md)
-- [Система Claude Code Agents](docs/development/claude-code-agents-system.md)
+**Навигация:** [docs/README.md](docs/README.md) - Центральный индекс документации
 
-### Операционная документация
-- [Backup and Restore Guide](docs/operations/BACKUP_AND_RESTORE.md) - Complete backup/restore procedures
-- [Backup and Restore (RU)](docs/operations/BACKUP_AND_RESTORE.ru.md) - Полное руководство по бэкапу
+### 📘 Руководства (Guides)
+Пошаговые инструкции и how-to guides:
+- [Installation Guide](docs/guides/getting-started/installation.md) - Установка проекта
+- [Production Deployment](docs/guides/deployment/production-deployment.md) - Production деплой
+- [Docker Setup](docs/operations/docker/setup.md) - Настройка Docker
+- [Testing Guide](docs/guides/testing/testing-guide.md) - Руководство по тестированию
+- [Agents Quickstart](docs/guides/agents/quickstart.md) - Начало работы с агентами
 
-### Руководства пользователя
-- [Инструкция по установке](docs/user-guides/installation-guide.md)
-- [Руководство пользователя](docs/user-guides/user-manual.md)
+### 📖 Справочная документация (Reference)
+Техническая документация и API:
+- [API Documentation](docs/reference/api/overview.md) - REST API справочник
+- [Database Schema](docs/reference/database/schema.md) - Схема базы данных
+- [Components Reference](docs/reference/components/) - Backend, Frontend, Parser компоненты
+- [Multi-NLP System](docs/reference/nlp/multi-nlp-system.md) - NLP система
 
-### Security Documentation
-- [SECURITY.md](backend/SECURITY.md) - **Application Security Guide** (NEW ✨)
+### 🎓 Объяснения (Explanations)
+Концепции и архитектура:
+- [System Architecture](docs/explanations/architecture/system-architecture.md) - Общая архитектура
+- [Multi-NLP Architecture](docs/explanations/architecture/nlp/architecture.md) - Архитектура NLP
+- [CFI System](docs/explanations/concepts/cfi-system.md) - Canonical Fragment Identifier
+- [Agents System](docs/explanations/agents-system/overview.md) - Система агентов Claude Code
+
+### 🔧 Операции (Operations)
+Деплоймент и обслуживание:
+- [Deployment Overview](docs/operations/deployment/overview.md) - Обзор деплоймента
+- [Docker Operations](docs/operations/docker/) - Docker setup, upgrade, security
+- [Backup Procedures](docs/operations/backup/procedures.md) - Резервное копирование
+- [Monitoring Setup](docs/operations/monitoring/setup.md) - Настройка мониторинга
+
+### 👨‍💻 Процесс разработки (Development)
+- [Development Plan](docs/development/planning/development-plan.md) - План разработки
+- [Development Calendar](docs/development/planning/development-calendar.md) - Календарь
+- [Current Status](docs/development/status/current-status.md) - Текущий статус
+- [Changelog 2025](docs/development/changelog/2025.md) - История изменений
+
+### 🔐 Безопасность (Security)
+- [SECURITY.md](backend/SECURITY.md) - **Application Security Guide**
+- [Security Reports](docs/security/reports/) - Отчеты по безопасности
+
+### 🇷🇺 Русская документация
+- [Документация на русском](docs/ru/README.md) - Зеркало всей структуры на русском языке
+
+### Для разработчиков
+- [CLAUDE.md](CLAUDE.md) - Руководство для Claude Code с обновленной структурой документации
 
 ## 🔐 Security Features (Week 15 - October 2025)
 
