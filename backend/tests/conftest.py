@@ -233,15 +233,27 @@ def authenticated_headers(client, sample_user_data):
     """Get authenticated headers for testing."""
     async def _get_headers():
         # Register user
-        await client.post("/api/v1/auth/register", json=sample_user_data)
+        reg_response = await client.post("/api/v1/auth/register", json=sample_user_data)
+        
+        # If registration failed (e.g., user already exists), that's OK - try login anyway
+        if reg_response.status_code not in [201, 400]:
+            raise Exception(f"Registration failed with status {reg_response.status_code}: {reg_response.text}")
         
         # Login
-        response = await client.post("/api/v1/auth/login", json={
+        login_response = await client.post("/api/v1/auth/login", json={
             "email": sample_user_data["email"],
             "password": sample_user_data["password"]
         })
         
-        tokens = response.json()["tokens"]
+        # Check login succeeded
+        if login_response.status_code != 200:
+            raise Exception(f"Login failed with status {login_response.status_code}: {login_response.text}")
+        
+        data = login_response.json()
+        if "tokens" not in data:
+            raise Exception(f"Login response missing 'tokens': {data}")
+            
+        tokens = data["tokens"]
         return {"Authorization": f"Bearer {tokens['access_token']}"}
     
     return _get_headers
