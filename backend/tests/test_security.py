@@ -51,7 +51,7 @@ def client():
 class TestSecurityHeaders:
     """Test security headers are present and configured correctly."""
 
-    def test_security_headers_present(self):
+    def test_security_headers_present(self, client):
         """Test all required security headers are present."""
         response = client.get("/health")
 
@@ -69,7 +69,7 @@ class TestSecurityHeaders:
         assert "referrer-policy" in headers, "Referrer-Policy header missing"
         assert "permissions-policy" in headers, "Permissions-Policy header missing"
 
-    def test_hsts_header_configuration(self):
+    def test_hsts_header_configuration(self, client):
         """Test HSTS header is properly configured."""
         response = client.get("/health")
         hsts = response.headers.get("strict-transport-security", "").lower()
@@ -78,21 +78,21 @@ class TestSecurityHeaders:
         assert "includesubdomains" in hsts, "HSTS includeSubDomains not set"
         assert "preload" in hsts, "HSTS preload not set"
 
-    def test_x_frame_options_deny(self):
+    def test_x_frame_options_deny(self, client):
         """Test X-Frame-Options is set to DENY."""
         response = client.get("/health")
         x_frame = response.headers.get("x-frame-options", "").upper()
 
         assert x_frame == "DENY", "X-Frame-Options should be DENY"
 
-    def test_x_content_type_options_nosniff(self):
+    def test_x_content_type_options_nosniff(self, client):
         """Test X-Content-Type-Options is set to nosniff."""
         response = client.get("/health")
         x_content_type = response.headers.get("x-content-type-options", "").lower()
 
         assert x_content_type == "nosniff", "X-Content-Type-Options should be nosniff"
 
-    def test_csp_header_has_safe_defaults(self):
+    def test_csp_header_has_safe_defaults(self, client):
         """Test CSP header contains safe default directives."""
         response = client.get("/health")
         csp = response.headers.get("content-security-policy", "").lower()
@@ -101,7 +101,7 @@ class TestSecurityHeaders:
         assert "default-src" in csp, "CSP missing default-src"
         assert "frame-ancestors 'none'" in csp, "CSP should prevent framing"
 
-    def test_server_header_removed(self):
+    def test_server_header_removed(self, client):
         """Test Server header is removed (information disclosure)."""
         response = client.get("/health")
 
@@ -159,7 +159,7 @@ class TestRateLimiting:
         rate_limited_count = sum(1 for r in responses[20:] if r.status_code == 429)
         assert rate_limited_count > 0, "Rate limiting should trigger after limit"
 
-    def test_rate_limit_headers_present(self):
+    def test_rate_limit_headers_present(self, client):
         """Test rate limit headers are included in response."""
         response = client.get("/health")
 
@@ -167,7 +167,7 @@ class TestRateLimiting:
         # This test is for documentation purposes
         # Custom implementation returns headers differently
 
-    def test_rate_limit_429_response(self):
+    def test_rate_limit_429_response(self, client):
         """Test 429 response format when rate limited."""
         # Make many requests to trigger rate limit
         for i in range(25):
@@ -258,9 +258,9 @@ class TestInputValidation:
     def test_validate_password_strength_strong(self):
         """Test password validation accepts strong passwords."""
         strong_passwords = [
-            "Strong123!",
-            "MyP@ssw0rd",
-            "Secure#2024Pass",
+            "Strong123!Pass",  # 14 chars - meets 12 char requirement
+            "MyP@ssw0rdSecure",  # 16 chars
+            "Secure#2024Pass",  # 16 chars
         ]
 
         for password in strong_passwords:
@@ -391,7 +391,7 @@ class TestSecretsManagement:
         assert not is_valid
         assert "postgres123" in error.lower()
 
-    def test_validate_secret_not_default_safe(self):
+    def test_validate_secret_not_default_safe(self, client):
         """Test validate_secret_not_default accepts safe values."""
         secret = "postgresql://user:secure_password_xyz@localhost/db"
         forbidden = ["postgres123", "test123"]
@@ -409,7 +409,7 @@ class TestSecretsManagement:
 class TestCORS:
     """Test CORS configuration."""
 
-    def test_cors_headers_present(self):
+    def test_cors_headers_present(self, client):
         """Test CORS headers are present in response."""
         response = client.options(
             "/api/v1/books",
@@ -423,7 +423,7 @@ class TestCORS:
         assert "access-control-allow-origin" in response.headers
         assert "access-control-allow-methods" in response.headers
 
-    def test_cors_allowed_origin(self):
+    def test_cors_allowed_origin(self, client):
         """Test CORS allows configured origins."""
         response = client.get(
             "/health",
@@ -434,7 +434,7 @@ class TestCORS:
         origin = response.headers.get("access-control-allow-origin", "")
         assert origin in ["http://localhost:3000", "*"] or origin == ""
 
-    def test_cors_credentials_allowed(self):
+    def test_cors_credentials_allowed(self, client):
         """Test CORS allows credentials."""
         response = client.options(
             "/api/v1/books",
@@ -456,7 +456,7 @@ class TestCORS:
 class TestAuthentication:
     """Test authentication security."""
 
-    def test_protected_endpoint_requires_auth(self):
+    def test_protected_endpoint_requires_auth(self, client):
         """Test protected endpoints require authentication."""
         # Attempt to access protected endpoint without token
         response = client.get("/api/v1/users/me")
@@ -464,7 +464,7 @@ class TestAuthentication:
         # Should return 401 Unauthorized or 403 Forbidden
         assert response.status_code in [401, 403]
 
-    def test_invalid_token_rejected(self):
+    def test_invalid_token_rejected(self, client):
         """Test invalid JWT token is rejected."""
         # Try with invalid token
         response = client.get(
@@ -484,7 +484,7 @@ class TestAuthentication:
 class TestGeneralSecurity:
     """General security tests."""
 
-    def test_no_sql_injection_in_query_params(self):
+    def test_no_sql_injection_in_query_params(self, client):
         """Test SQL injection attempts are handled safely."""
         # SQL injection attempt
         malicious_query = "'; DROP TABLE users; --"
@@ -494,13 +494,13 @@ class TestGeneralSecurity:
         # Should not crash (may return 400, 404, or 200 with no results)
         assert response.status_code in [200, 400, 404]
 
-    def test_no_path_traversal_in_file_uploads(self):
+    def test_no_path_traversal_in_file_uploads(self, client):
         """Test path traversal prevention in file operations."""
         # This would need actual file upload endpoint
         # Placeholder for documentation
         pass
 
-    def test_no_xss_in_error_messages(self):
+    def test_no_xss_in_error_messages(self, client):
         """Test error messages don't contain unescaped user input."""
         # Attempt XSS in query param
         xss_attempt = "<script>alert('xss')</script>"
@@ -520,7 +520,7 @@ class TestGeneralSecurity:
 class TestSecurityIntegration:
     """Integration tests for multiple security features."""
 
-    def test_security_posture_health_endpoint(self):
+    def test_security_posture_health_endpoint(self, client):
         """Test /health endpoint has all security features enabled."""
         response = client.get("/health")
 
@@ -533,7 +533,7 @@ class TestSecurityIntegration:
         # Should return 200
         assert response.status_code == 200
 
-    def test_rate_limiting_and_security_headers_together(self):
+    def test_rate_limiting_and_security_headers_together(self, client):
         """Test rate limiting and security headers work together."""
         response = client.get("/health")
 

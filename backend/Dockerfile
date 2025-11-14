@@ -26,10 +26,16 @@ WORKDIR /app
 # Copy requirements first for better layer caching (changes occasionally)
 COPY requirements.txt .
 
+# Install nltk first and download data BEFORE other dependencies
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip && \
+    pip install nltk && \
+    python -m nltk.downloader -d /root/nltk_data punkt stopwords wordnet averaged_perceptron_tagger && \
+    echo "✅ NLTK and data downloaded"
+
 # Install Python dependencies with BuildKit cache mount for pip
 # Cache persists across rebuilds - no redownload!
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade pip && \
     pip install -r requirements.txt
 
 # Download NLP models with separate cache mounts
@@ -38,14 +44,6 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install https://github.com/explosion/spacy-models/releases/download/ru_core_news_lg-3.7.0/ru_core_news_lg-3.7.0-py3-none-any.whl && \
     echo "✅ SpaCy ru_core_news_lg-3.7.0 downloaded"
-
-# NLTK data
-RUN python -c "import nltk; \
-    nltk.download('punkt', download_dir='/root/nltk_data'); \
-    nltk.download('stopwords', download_dir='/root/nltk_data'); \
-    nltk.download('wordnet', download_dir='/root/nltk_data'); \
-    nltk.download('averaged_perceptron_tagger', download_dir='/root/nltk_data')" && \
-    echo "✅ NLTK data downloaded"
 
 # Stanza models
 RUN python -c "import stanza; stanza.download('ru', model_dir='/root/stanza_resources', verbose=False)" && \
