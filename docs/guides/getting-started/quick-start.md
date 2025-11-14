@@ -109,8 +109,8 @@ exit
 
 | Сервис | Порт | Описание |
 |---------|------|----------|
-| Frontend | 5173 | React приложение |
-| Backend | 8000 | FastAPI сервер |
+| Frontend (Vite) | 5173 | React приложение |
+| Backend | 8000 | FastAPI сервер (Uvicorn) |
 | PostgreSQL | 5432 | База данных |
 | Redis | 6379 | Кэш и очередь задач |
 | Celery Worker | - | Фоновые задачи |

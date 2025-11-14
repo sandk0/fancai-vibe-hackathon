@@ -205,8 +205,8 @@ export const BookCard: React.FC<BookCardProps> = ({
 ### EpubReader (October 2025) ⭐ PRIMARY
 **File:** `frontend/src/components/Reader/EpubReader.tsx` (835 lines)
 **Purpose:** Professional EPUB reader with CFI navigation
-**Technology:** epub.js 0.3.93 + react-reader 2.0.15
-**Status:** ✅ Production Ready
+**Technology:** epub.js 0.3.93 (custom React wrapper)
+**Status:** ✅ Production Ready (react-reader library removed - custom implementation)
 
 **Key Features:**
 - 📍 **CFI-based position tracking** (pixel-perfect)
