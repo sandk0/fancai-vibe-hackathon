@@ -24,7 +24,7 @@ spacy==3.7.2
 nltk==3.9  # Updated from 3.8.1 (CVE fix)
 stanza==1.7.0
 natasha==1.6.0
-pymorphy3==1.2.1
+pymorphy3==2.0.6
 # deeppavlov==1.4.0  # BLOCKED: Requires fastapi<=0.89.1, pydantic<2 (we have 0.104.1, 2.5.0)
                       # Week 1: Code implemented but not installable
                       # Week 2: Will be replaced with GLiNER (no conflicts)
