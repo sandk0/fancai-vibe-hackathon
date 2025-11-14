@@ -163,6 +163,8 @@ monitoring/prometheus/data/
 !CONTRIBUTING.md
 !LICENSE.md
 !CHANGELOG.md
+!FAQ.md
+!TROUBLESHOOTING.md
 
 # Test files (keep organized in tests/)
 /backend/test_*.py

@@ -2,6 +2,26 @@
 
 **BookReader AI** - это современное веб-приложение для чтения художественной литературы с автоматической генерацией изображений по описаниям из книг. Приложение использует передовые NLP технологии для извлечения описаний и AI-сервисы для создания визуализаций.
 
+## 🚀 Quick Links
+
+**New to BookReader AI?**
+- [Quick Start (5 minutes)](docs/guides/getting-started/quick-start.md) - Get up and running fast
+- [Your First Book](docs/guides/getting-started/first-book.md) - Upload and read tutorial
+- [FAQ](FAQ.md) - Frequently asked questions
+- [Troubleshooting](TROUBLESHOOTING.md) - Common issues and solutions
+
+**For Developers:**
+- [Contributing Guide](CONTRIBUTING.md) - How to contribute
+- [Development Workflow](docs/guides/development/workflow.md) - Development process
+- [API Documentation](docs/reference/api/overview.md) - REST API reference
+- [Testing Guide](docs/guides/testing/testing-guide.md) - Running tests
+
+**Documentation:**
+- [Documentation Index](docs/README.md) - Complete documentation hub
+- [Architecture Overview](docs/explanations/architecture/system-architecture.md) - System design
+- [Multi-NLP System](docs/reference/nlp/multi-nlp-system.md) - NLP engine details
+- [Deployment Guide](docs/guides/deployment/production-deployment.md) - Production setup
+
 ## 📋 Текущий статус проекта
 
 **Phase:** Week 17 ✅ ЗАВЕРШЕНО (100%) - Performance & Security Optimization Complete
