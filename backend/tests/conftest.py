@@ -14,7 +14,7 @@ from app.models import User, Book, Chapter, Description, GeneratedImage
 
 # Test database URL - using PostgreSQL since models use UUID type
 # This connects to the same postgres container but with a test database
-TEST_DATABASE_URL = "postgresql+asyncpg://postgres:postgres123@postgres:5432/bookreader_test"
+TEST_DATABASE_URL = "postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test"
 
 # Create test engine
 test_engine = create_async_engine(
