@@ -174,13 +174,15 @@ class GeneratedImage(Base):
         return {
             "service": self.service_used,
             "status": self.status,
-            "generated_at": self.generated_at.isoformat()
-            if self.generated_at
-            else None,
+            "generated_at": (
+                self.generated_at.isoformat() if self.generated_at else None
+            ),
             "generation_time": self.generation_time_seconds,
-            "dimensions": f"{self.image_width}x{self.image_height}"
-            if self.image_width and self.image_height
-            else None,
+            "dimensions": (
+                f"{self.image_width}x{self.image_height}"
+                if self.image_width and self.image_height
+                else None
+            ),
             "file_size_kb": round(self.file_size / 1024) if self.file_size else None,
             "quality_score": self.quality_score,
         }

@@ -6,6 +6,7 @@ Validates performance regression (<4s for 2171 descriptions).
 """
 
 import pytest
+import pytest_asyncio
 import asyncio
 import time
 from datetime import datetime
@@ -30,7 +31,7 @@ SAMPLE_TEXT = """
 class TestMultiNLPIntegration:
     """Integration tests for Multi-NLP system."""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def manager(self):
         """Create and initialize manager."""
         mgr = MultiNLPManager()

@@ -240,14 +240,16 @@ async def get_user_books(
                         "language": book.language,
                         "description": book.description or "",
                         "total_pages": book.total_pages,
-                        "estimated_reading_time_hours": round(
-                            book.estimated_reading_time / 60, 1
-                        )
-                        if book.estimated_reading_time > 0
-                        else 0.0,
-                        "chapters_count": len(book.chapters)
-                        if hasattr(book, "chapters") and book.chapters
-                        else 0,
+                        "estimated_reading_time_hours": (
+                            round(book.estimated_reading_time / 60, 1)
+                            if book.estimated_reading_time > 0
+                            else 0.0
+                        ),
+                        "chapters_count": (
+                            len(book.chapters)
+                            if hasattr(book, "chapters") and book.chapters
+                            else 0
+                        ),
                         # FIX #2: Use round(..., 1) to preserve decimal precision (0.1% granularity)
                         "reading_progress_percent": round(reading_progress, 1),
                         "has_cover": bool(book.cover_image),
@@ -256,12 +258,14 @@ async def get_user_books(
                         # КРИТИЧЕСКИ ВАЖНО: is_processing вычисляется динамически
                         # Книга в обработке, если парсинг не завершён
                         "is_processing": not book.is_parsed,
-                        "created_at": book.created_at.isoformat()
-                        if book.created_at
-                        else None,
-                        "last_accessed": book.last_accessed.isoformat()
-                        if book.last_accessed
-                        else None,
+                        "created_at": (
+                            book.created_at.isoformat() if book.created_at else None
+                        ),
+                        "last_accessed": (
+                            book.last_accessed.isoformat()
+                            if book.last_accessed
+                            else None
+                        ),
                     }
                 )
             except Exception as e:
@@ -383,9 +387,9 @@ async def get_book(
                 "progress_percent": round(progress_percent, 1),
             },
             "created_at": book.created_at.isoformat(),
-            "last_accessed": book.last_accessed.isoformat()
-            if book.last_accessed
-            else None,
+            "last_accessed": (
+                book.last_accessed.isoformat() if book.last_accessed else None
+            ),
         }
 
         # Cache the result (1 hour TTL for book metadata)

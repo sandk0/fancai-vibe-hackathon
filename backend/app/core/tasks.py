@@ -164,7 +164,9 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
 
                 print(f"🔍 [ASYNC TASK] NLP extracted {len(descriptions)} descriptions")
                 if descriptions:
-                    print(f"🔍 [ASYNC TASK] First description sample: {descriptions[0]}")
+                    print(
+                        f"🔍 [ASYNC TASK] First description sample: {descriptions[0]}"
+                    )
 
                 # Сохраняем описания в базе данных
                 for i, desc_data in enumerate(descriptions):
@@ -192,9 +194,11 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
                             "word_count", len(desc_data["content"].split())
                         ),
                         priority_score=desc_data["priority_score"],
-                        entities_mentioned=", ".join(desc_data["entities_mentioned"])
-                        if desc_data.get("entities_mentioned")
-                        else "",
+                        entities_mentioned=(
+                            ", ".join(desc_data["entities_mentioned"])
+                            if desc_data.get("entities_mentioned")
+                            else ""
+                        ),
                     )
                     db.add(description)
                     print(
@@ -585,11 +589,15 @@ async def _get_system_stats_async() -> Dict[str, Any]:
             "processed_books": processed_books,
             "total_descriptions": total_descriptions,
             "total_images": total_images,
-            "processing_rate": round((processed_books / total_books * 100), 2)
-            if total_books > 0
-            else 0.0,
-            "generation_rate": round((total_images / total_descriptions * 100), 2)
-            if total_descriptions > 0
-            else 0.0,
+            "processing_rate": (
+                round((processed_books / total_books * 100), 2)
+                if total_books > 0
+                else 0.0
+            ),
+            "generation_rate": (
+                round((total_images / total_descriptions * 100), 2)
+                if total_descriptions > 0
+                else 0.0
+            ),
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }

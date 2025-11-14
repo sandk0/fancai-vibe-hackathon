@@ -418,9 +418,11 @@ async def get_book_images(
                     "id": str(description.id),
                     "type": description.type.value,
                     "text": description.content,  # Полный текст
-                    "content": description.content[:100] + "..."
-                    if len(description.content) > 100
-                    else description.content,  # Сокращенный для превью
+                    "content": (
+                        description.content[:100] + "..."
+                        if len(description.content) > 100
+                        else description.content
+                    ),  # Сокращенный для превью
                     "confidence_score": description.confidence_score,
                     "priority_score": description.priority_score,
                     "entities_mentioned": description.entities_mentioned,
@@ -583,9 +585,11 @@ async def regenerate_image(
                 "id": str(description.id),
                 "type": description.type.value,
                 "text": description.content,
-                "content": description.content[:100] + "..."
-                if len(description.content) > 100
-                else description.content,
+                "content": (
+                    description.content[:100] + "..."
+                    if len(description.content) > 100
+                    else description.content
+                ),
             },
         }
 

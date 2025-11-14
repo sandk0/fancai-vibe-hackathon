@@ -161,9 +161,11 @@ async def get_parsing_status(
                 "status": "completed",
                 "progress": 100,
                 "message": "Parsing completed",
-                "descriptions_found": sum(ch.descriptions_found for ch in book.chapters)
-                if book.chapters
-                else 0,
+                "descriptions_found": (
+                    sum(ch.descriptions_found for ch in book.chapters)
+                    if book.chapters
+                    else 0
+                ),
             }
         elif book.parsing_progress > 0:
             response = {

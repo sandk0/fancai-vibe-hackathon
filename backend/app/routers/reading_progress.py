@@ -74,30 +74,36 @@ async def get_reading_progress(
         progress = progress_result.scalar_one_or_none()
 
         response = {
-            "progress": {
-                "id": str(progress.id) if progress else None,
-                "current_chapter": progress.current_chapter if progress else 1,
-                "current_page": progress.current_page if progress else 1,
-                "current_position": progress.current_position if progress else 0,
-                "current_position_percent": progress.current_position
+            "progress": (
+                {
+                    "id": str(progress.id) if progress else None,
+                    "current_chapter": progress.current_chapter if progress else 1,
+                    "current_page": progress.current_page if progress else 1,
+                    "current_position": progress.current_position if progress else 0,
+                    "current_position_percent": (
+                        progress.current_position if progress else 0
+                    ),  # Процент для EPUB reader (совпадает с current_position)
+                    "reading_location_cfi": (
+                        progress.reading_location_cfi if progress else None
+                    ),
+                    "scroll_offset_percent": (
+                        progress.scroll_offset_percent if progress else 0.0
+                    ),  # Точный % скролла внутри страницы
+                    "reading_time_minutes": (
+                        progress.reading_time_minutes if progress else 0
+                    ),
+                    "reading_speed_wpm": (
+                        progress.reading_speed_wpm if progress else 0.0
+                    ),
+                    "last_read_at": (
+                        progress.last_read_at.isoformat()
+                        if progress and progress.last_read_at
+                        else None
+                    ),
+                }
                 if progress
-                else 0,  # Процент для EPUB reader (совпадает с current_position)
-                "reading_location_cfi": progress.reading_location_cfi
-                if progress
-                else None,
-                "scroll_offset_percent": progress.scroll_offset_percent
-                if progress
-                else 0.0,  # Точный % скролла внутри страницы
-                "reading_time_minutes": progress.reading_time_minutes
-                if progress
-                else 0,
-                "reading_speed_wpm": progress.reading_speed_wpm if progress else 0.0,
-                "last_read_at": progress.last_read_at.isoformat()
-                if progress and progress.last_read_at
-                else None,
-            }
-            if progress
-            else None
+                else None
+            )
         }
 
         # Cache the result (5 minutes TTL for progress data)
@@ -199,9 +205,9 @@ async def update_reading_progress(
                 "scroll_offset_percent": progress.scroll_offset_percent,
                 "reading_time_minutes": progress.reading_time_minutes,
                 "reading_speed_wpm": progress.reading_speed_wpm,
-                "last_read_at": progress.last_read_at.isoformat()
-                if progress.last_read_at
-                else None,
+                "last_read_at": (
+                    progress.last_read_at.isoformat() if progress.last_read_at else None
+                ),
             },
             "message": "Reading progress updated successfully",
         }

@@ -230,9 +230,9 @@ class SpacyProcessor(BaseNLPProcessor):
                             "context": sentence,
                             "type": DescriptionType.LOCATION.value,
                             "confidence_score": 0.6,
-                            "entities_mentioned": match.group(1)
-                            if match.lastindex >= 1
-                            else content,
+                            "entities_mentioned": (
+                                match.group(1) if match.lastindex >= 1 else content
+                            ),
                             "text_position_start": match.start(),
                             "text_position_end": match.end(),
                             "position": position,
@@ -256,9 +256,9 @@ class SpacyProcessor(BaseNLPProcessor):
                             "context": sentence,
                             "type": DescriptionType.CHARACTER.value,
                             "confidence_score": 0.5,
-                            "entities_mentioned": match.group(1)
-                            if match.lastindex >= 1
-                            else content,
+                            "entities_mentioned": (
+                                match.group(1) if match.lastindex >= 1 else content
+                            ),
                             "text_position_start": match.start(),
                             "text_position_end": match.end(),
                             "position": position,
@@ -282,9 +282,9 @@ class SpacyProcessor(BaseNLPProcessor):
                             "context": sentence,
                             "type": DescriptionType.ATMOSPHERE.value,
                             "confidence_score": 0.7,
-                            "entities_mentioned": match.group(1)
-                            if match.lastindex >= 1
-                            else content,
+                            "entities_mentioned": (
+                                match.group(1) if match.lastindex >= 1 else content
+                            ),
                             "text_position_start": match.start(),
                             "text_position_end": match.end(),
                             "position": position,

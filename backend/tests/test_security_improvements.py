@@ -96,8 +96,8 @@ def test_password_strength_complexity():
     assert is_valid is False
     assert "special character" in error.lower()
 
-    # All requirements met
-    is_valid, error = validate_password_strength("SecurePass123!")
+    # All requirements met (12+ chars minimum, no sequential numbers)
+    is_valid, error = validate_password_strength("SecureP@ss8042")
     assert is_valid is True
 
 

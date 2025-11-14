@@ -139,9 +139,11 @@ class NLPModelCache:
             "max_models": self.max_models,
             "total_hits": total_hits,
             "total_loads": total_loads,
-            "hit_rate": (total_hits / (total_hits + total_loads) * 100)
-            if (total_hits + total_loads) > 0
-            else 0,
+            "hit_rate": (
+                (total_hits / (total_hits + total_loads) * 100)
+                if (total_hits + total_loads) > 0
+                else 0
+            ),
             "model_stats": self.model_stats,
             "cache_dir_size_mb": self._get_cache_dir_size() / 1024 / 1024,
         }

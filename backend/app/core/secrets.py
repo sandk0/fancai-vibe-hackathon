@@ -441,7 +441,9 @@ def startup_secrets_check(is_production: bool = None) -> None:
 
     # Skip strict secrets validation in CI/test environments
     if is_ci:
-        logger.info("Running in CI/test environment - skipping strict secrets validation")
+        logger.info(
+            "Running in CI/test environment - skipping strict secrets validation"
+        )
         print("🔧 CI/Test mode: Skipping strict secrets validation")
         print("💡 Test credentials are allowed in CI/CD pipelines")
         return
@@ -470,9 +472,7 @@ def startup_secrets_check(is_production: bool = None) -> None:
                 "⚠️  Development mode: Using dev credentials (warnings are acceptable)"
             )
         else:
-            print(
-                "⚠️  Application started with warnings - review secrets configuration"
-            )
+            print("⚠️  Application started with warnings - review secrets configuration")
     else:
         print("✅ All secrets validated successfully")
 

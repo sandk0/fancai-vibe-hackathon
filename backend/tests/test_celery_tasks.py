@@ -252,7 +252,7 @@ class TestProcessBookTask:
         assert result["status"] == "failed"
         assert "error" in result
 
-    def test_process_book_not_found(self):
+    def test_process_book_not_found(self, test_db):
         """Test processing non-existent book."""
         non_existent_id = str(uuid4())
 
@@ -568,7 +568,7 @@ class TestCleanupOldImagesTask:
         # Records deleted even if files don't exist
         assert not mock_unlink.called
 
-    def test_cleanup_returns_stats(self):
+    def test_cleanup_returns_stats(self, test_db):
         """Test that cleanup returns proper statistics."""
         result = cleanup_old_images_task(days_old=30)
 
@@ -622,7 +622,7 @@ class TestUtilityTasks:
         assert result == "Celery is working!"
         assert isinstance(result, str)
 
-    def test_system_stats_returns_all_counts(self):
+    def test_system_stats_returns_all_counts(self, test_db):
         """Test system stats returns all required fields."""
         result = system_stats_task()
 
@@ -635,7 +635,7 @@ class TestUtilityTasks:
         assert "generation_rate" in result
         assert "timestamp" in result
 
-    def test_system_stats_calculates_rates(self):
+    def test_system_stats_calculates_rates(self, test_db):
         """Test that processing and generation rates are calculated correctly."""
         result = system_stats_task()
 

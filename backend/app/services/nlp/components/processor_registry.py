@@ -98,7 +98,9 @@ class ProcessorRegistry:
                     processor = DeepPavlovProcessor(use_gpu=False)
                     if processor.is_available():
                         self.processors["deeppavlov"] = processor
-                        logger.info("✅ DeepPavlov processor initialized (F1 0.94-0.97)")
+                        logger.info(
+                            "✅ DeepPavlov processor initialized (F1 0.94-0.97)"
+                        )
                     else:
                         logger.warning(
                             "DeepPavlov not available - install with: pip install deeppavlov"
@@ -168,16 +170,22 @@ class ProcessorRegistry:
 
         for name, processor in self.processors.items():
             status["processor_details"][name] = {
-                "type": processor.processor_type.value
-                if hasattr(processor, "processor_type")
-                else "unknown",
+                "type": (
+                    processor.processor_type.value
+                    if hasattr(processor, "processor_type")
+                    else "unknown"
+                ),
                 "loaded": processor.loaded if hasattr(processor, "loaded") else False,
-                "available": processor.is_available()
-                if hasattr(processor, "is_available")
-                else False,
-                "performance_metrics": processor.get_performance_metrics()
-                if hasattr(processor, "get_performance_metrics")
-                else {},
+                "available": (
+                    processor.is_available()
+                    if hasattr(processor, "is_available")
+                    else False
+                ),
+                "performance_metrics": (
+                    processor.get_performance_metrics()
+                    if hasattr(processor, "get_performance_metrics")
+                    else {}
+                ),
                 "config": asdict(self.processor_configs.get(name, ProcessorConfig())),
             }
 

@@ -411,12 +411,12 @@ class AdvancedDescriptionExtractor:
             "filtered": {
                 "total": len(filtered_descriptions),
                 "length_distribution": length_distribution,
-                "avg_priority_weight": sum(
-                    score.priority_weight for _, score in filtered_descriptions
-                )
-                / len(filtered_descriptions)
-                if filtered_descriptions
-                else 0,
+                "avg_priority_weight": (
+                    sum(score.priority_weight for _, score in filtered_descriptions)
+                    / len(filtered_descriptions)
+                    if filtered_descriptions
+                    else 0
+                ),
             },
         }
 
