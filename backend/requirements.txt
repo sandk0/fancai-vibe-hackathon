@@ -67,7 +67,7 @@ aiosqlite==0.19.0
 
 # Форматирование и линтинг
 black==24.3.0  # Updated from 23.11.0 (CVE-2024-21503)
-ruff==0.1.6
+ruff==0.14.5
 mypy==1.7.1
 
 # Type stubs для mypy
