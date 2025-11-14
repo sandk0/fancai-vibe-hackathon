@@ -55,7 +55,7 @@ prometheus-fastapi-instrumentator==6.1.0
 
 # Безопасность
 python-decouple==3.8
-cryptography==43.0.1  # Updated from 41.0.7 (CVE-2024-26130, CVE-2023-50782, CVE-2023-49083, CVE-2023-38325)
+cryptography==46.0.3  # Updated from 41.0.7 (CVE-2024-26130, CVE-2023-50782, CVE-2023-49083, CVE-2023-38325)
 ecdsa>=0.19.0  # SECURITY NOTE: CVE-2024-23342 - No fix available yet. Accepted risk.
                # Mitigation: Ensure usage is limited to non-critical signing operations
 
