@@ -188,10 +188,10 @@ feat(parser): добавлен парсер EPUB файлов
 - Реализован класс EpubParser с методом extract_content()
 - Добавлена поддержка CSS стилей и изображений
 - Добавлены unit тесты для всех публичных методов
-- Обновлена документация: docs/components/backend/epub-parser.md
+- Обновлена документация: docs/reference/components/parser/book-parser.md
 
 Closes #123
-Docs: docs/components/backend/epub-parser.md
+Docs: docs/reference/components/parser/book-parser.md
 
 fix(reader): исправлена пагинация на мобильных устройствах
 
@@ -291,11 +291,41 @@ fancai-vibe-hackathon/
 │   │   └── nlp_processor.py # ✅ NLP обработка с приоритетами
 │   └── docs/               # ✅ NEW: Backend documentation
 │       └── TYPE_CHECKING.md # ✅ NEW: MyPy strict mode guide (~30KB)
-├── docs/                   # Документация проекта
-│   ├── development/        # План, календарь, changelog
-│   ├── architecture/       # Техническая документация
-│   ├── components/         # Документация компонентов
-│   └── user-guides/        # Руководства пользователей
+├── docs/                   # ✅ REORGANIZED (Nov 2025) - Diátaxis framework
+│   ├── README.md           # Central navigation hub
+│   ├── guides/             # 📘 Tutorials & How-to guides
+│   │   ├── getting-started/  # Installation, quick start
+│   │   ├── development/      # Dev environment, testing
+│   │   ├── deployment/       # Production deployment
+│   │   ├── agents/           # Claude Code agents usage
+│   │   └── testing/          # Testing guides
+│   ├── reference/          # 📖 Technical specifications
+│   │   ├── api/              # REST API documentation
+│   │   ├── database/         # Database schema, migrations
+│   │   ├── components/       # Component documentation
+│   │   ├── nlp/              # Multi-NLP system reference
+│   │   └── cli/              # CLI commands reference
+│   ├── explanations/       # 🎓 Concepts & architecture
+│   │   ├── architecture/     # System architecture
+│   │   ├── concepts/         # CFI, EPUB integration
+│   │   ├── design-decisions/ # Technology choices
+│   │   └── agents-system/    # Agents architecture
+│   ├── operations/         # 🔧 Deployment & maintenance
+│   │   ├── deployment/       # Deployment procedures
+│   │   ├── docker/           # Docker operations
+│   │   ├── backup/           # Backup procedures
+│   │   └── monitoring/       # Monitoring setup
+│   ├── development/        # 👨‍💻 Development process
+│   │   ├── planning/         # Development plan, calendar
+│   │   ├── changelog/        # Version history
+│   │   ├── status/           # Current status
+│   │   └── performance/      # Optimization plans
+│   ├── refactoring/        # 🔨 Refactoring documentation
+│   ├── ci-cd/              # 🔄 CI/CD workflows
+│   ├── security/           # 🔐 Security documentation
+│   ├── reports/            # 📊 Archived temporal reports
+│   │   └── archive/2025-Q4/  # Q4 2025 reports archive
+│   └── ru/                 # 🇷🇺 Russian translations (mirror structure)
 ├── .github/                # ✅ NEW: CI/CD workflows
 │   └── workflows/
 │       └── type-check.yml  # ✅ NEW: MyPy type checking в CI/CD
@@ -453,6 +483,8 @@ docker-compose exec backend python scripts/generate_docs.py
 ```
 
 ### Important File Locations
+
+**Code:**
 - **CFI Reading System:** `backend/app/models/book.py` (ReadingProgress модель)
 - **epub.js Component:** `frontend/src/components/Reader/EpubReader.tsx` (835 строк)
 - **Multi-NLP Manager:** `backend/app/services/multi_nlp_manager.py` (627 строк)
@@ -460,6 +492,18 @@ docker-compose exec backend python scripts/generate_docs.py
 - **Book Parser with CFI:** `backend/app/services/book_parser.py` (796 строк)
 - **Основной промпт:** `prompts.md`
 - **Конфигурация Docker:** `docker-compose.yml`
-- **План разработки:** `docs/development/development-plan.md`
-- **API документация:** `docs/architecture/api-documentation.md`
-- **Схема БД:** `docs/architecture/database-schema.md`
+
+**Documentation (Updated Structure - Nov 2025):**
+- **Документация центр:** `docs/README.md` (навигация по Diátaxis framework)
+- **План разработки:** `docs/development/planning/development-plan.md`
+- **Календарь разработки:** `docs/development/planning/development-calendar.md`
+- **Changelog:** `docs/development/changelog/2025.md`
+- **Текущий статус:** `docs/development/status/current-status.md`
+- **API документация:** `docs/reference/api/overview.md`
+- **Схема БД:** `docs/reference/database/schema.md`
+- **Системная архитектура:** `docs/explanations/architecture/system-architecture.md`
+- **Multi-NLP архитектура:** `docs/explanations/architecture/nlp/architecture.md`
+- **Production deployment:** `docs/guides/deployment/production-deployment.md`
+- **Docker setup:** `docs/operations/docker/setup.md`
+- **Testing guide:** `docs/guides/testing/testing-guide.md`
+- **Agents guide:** `docs/guides/agents/quickstart.md`
