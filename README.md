@@ -66,7 +66,7 @@ nano .env.production.local  # Настроить домен и пароли
 - ✅ Регистрация и аутентификация пользователей
 - ✅ Загрузка и парсинг EPUB/FB2 книг
 - ✅ **CFI Reading System** - Canonical Fragment Identifier для точного позиционирования
-- ✅ **epub.js Integration** - профессиональная читалка с react-reader
+- ✅ **epub.js Integration** - профессиональная читалка с кастомным React компонентом
 - ✅ **Hybrid Restoration** - CFI + scroll offset для pixel-perfect восстановления позиции
 - ✅ React Frontend с полной интеграцией
 - ✅ Пользовательские настройки (темы, шрифты)
@@ -153,7 +153,7 @@ nano .env.production.local  # Настроить домен и пароли
 ### CFI Reading System & epub.js Integration
 - ✅ **Canonical Fragment Identifier (CFI)** - точное позиционирование в EPUB книгах
 - ✅ **epub.js 0.3.93** - профессиональный EPUB парсинг и рендеринг
-- ✅ **react-reader 2.0.15** - полнофункциональная читалка с темной темой
+- ✅ **Custom EpubReader component** - собственный React wrapper (835 строк) с темной темой
 - ✅ **Hybrid Restoration** - комбинация CFI + scroll_offset_percent для pixel-perfect восстановления
 - ✅ **Smart Highlight System** - автоматическое выделение описаний в тексте
 - ✅ **Locations Generation** - точный трекинг прогресса чтения (0-100%)
@@ -203,8 +203,7 @@ nano .env.production.local  # Настроить домен и пароли
 
 #### Frontend (Оптимизации Недели 16)
 - **React 18+** с **TypeScript** - Полная типобезопасность в strict mode
-- **epub.js 0.3.93** - Профессиональный движок рендеринга EPUB
-- **react-reader 2.0.15** - React wrapper для epub.js
+- **epub.js 0.3.93** - Профессиональный движок рендеринга EPUB (кастомный React wrapper, 835 строк)
 - **Vite** - Ультра-быстрый build tool с разделением кода и ленивой загрузкой
 - **Tailwind CSS** - Utility-first CSS с оптимизацией очистки
 - **React Query/TanStack Query** - Server state с интеллектуальным кэшированием

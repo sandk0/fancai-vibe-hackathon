@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Frontend
 - **React 18+** с **TypeScript**
 - **epub.js 0.3.93** - EPUB парсинг и рендеринг (NEW: октябрь 2025)
-- **react-reader 2.0.15** - React wrapper для epub.js (NEW: октябрь 2025)
+- **Custom EpubReader component** - собственный React wrapper для epub.js (835 строк, октябрь 2025)
 - **Tailwind CSS** для стилизации
 - **React Query/TanStack Query** для управления состоянием сервера
 - **Zustand** для клиентского состояния
@@ -38,7 +38,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - ADAPTIVE - автоматический выбор режима (интеллектуально)
 
 - **Ensemble Voting**:
-  - Weighted consensus: SpaCy (1.0), Natasha (0.8), Stanza (0.7)
+  - Weighted consensus: SpaCy (1.0), Natasha (1.2), Stanza (0.8)
   - Consensus threshold: 0.6 (60%)
   - Context enrichment + deduplication
 
@@ -262,23 +262,33 @@ fancai-vibe-hackathon/
 │   │   ├── chapter.py      # ✅ Chapter модель
 │   │   ├── description.py  # ✅ Description модель с типами
 │   │   ├── image.py        # ✅ GeneratedImage модель
-│   │   └── admin_settings.py # ORPHANED - модель существует, таблица УДАЛЕНА!
+│   │   ├── reading_session.py # ✅ ReadingSession модель (детальная аналитика)
+│   │   # admin_settings.py - УДАЛЕН (orphaned model, таблица удалена в Oct 2025)
 │   ├── app/routers/        # ✅ REFACTORED (Phase 3) - Modular API routes
-│   │   ├── admin/          # ✅ NEW: Admin router модули (6 modules, 904→485 lines)
+│   │   ├── admin/          # ✅ NEW: Admin router модули (8 modules, 904→485 lines)
 │   │   │   ├── __init__.py
 │   │   │   ├── stats.py           # System statistics (2 endpoints)
 │   │   │   ├── nlp_settings.py    # Multi-NLP config (5 endpoints)
 │   │   │   ├── parsing.py         # Book parsing management (3 endpoints)
 │   │   │   ├── images.py          # Image generation (3 endpoints)
 │   │   │   ├── system.py          # Health & maintenance (2 endpoints)
-│   │   │   └── users.py           # User management (2 endpoints)
+│   │   │   ├── users.py           # User management (2 endpoints)
+│   │   │   ├── cache.py           # ✅ NEW: Redis cache management (4 endpoints)
+│   │   │   └── reading_sessions.py # ✅ NEW: Session cleanup (3 endpoints)
 │   │   ├── books/          # ✅ NEW: Books router модули (3 modules, 799 lines refactored)
 │   │   │   ├── __init__.py
 │   │   │   ├── crud.py            # CRUD operations (8 endpoints)
 │   │   │   ├── validation.py      # Validation utilities
 │   │   │   └── processing.py      # Processing & progress (5 endpoints)
-│   │   ├── users.py        # ✅ Пользовательские endpoints
-│   │   └── nlp.py          # ✅ NLP тестирование и обработка
+│   │   ├── auth.py         # ✅ Authentication endpoints (7 endpoints)
+│   │   ├── users.py        # ✅ User management endpoints (6 endpoints)
+│   │   ├── chapters.py     # ✅ Chapter endpoints (2 endpoints)
+│   │   ├── descriptions.py # ✅ Description endpoints (3 endpoints)
+│   │   ├── images.py       # ✅ Image generation endpoints (8 endpoints)
+│   │   ├── reading_progress.py    # ✅ Progress tracking (2 endpoints)
+│   │   ├── reading_sessions.py    # ✅ Session management (6 endpoints)
+│   │   ├── health.py       # ✅ Health checks (4 endpoints)
+│   │   └── nlp.py          # ✅ NLP testing endpoints (4 endpoints)
 │   ├── app/services/       # ✅ REFACTORED (Phase 3) - Business logic
 │   │   ├── book/           # ✅ NEW: Book services модули (4 services, SRP applied)
 │   │   │   ├── __init__.py
