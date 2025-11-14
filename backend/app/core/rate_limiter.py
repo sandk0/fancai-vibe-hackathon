@@ -218,9 +218,11 @@ class ParsingRateLimiter:
                 "queue_length": queue_length,
                 "total_started": stats.get("started", 0),
                 "total_completed": stats.get("completed", 0),
-                "capacity_percent": (active_count / self.max_concurrent * 100)
-                if self.max_concurrent > 0
-                else 0,
+                "capacity_percent": (
+                    (active_count / self.max_concurrent * 100)
+                    if self.max_concurrent > 0
+                    else 0
+                ),
             }
 
         except Exception as e:

@@ -525,10 +525,10 @@ jobs:
           echo "## Database Performance Analysis" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Connection Statistics" >> $GITHUB_STEP_SUMMARY
-          psql -h postgres -U postgres -d bookreader_test -c "SELECT count(*) as connections FROM pg_stat_activity;" >> $GITHUB_STEP_SUMMARY
+          psql -h localhost -U postgres -d bookreader_test -c "SELECT count(*) as connections FROM pg_stat_activity;" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Database Size" >> $GITHUB_STEP_SUMMARY
-          psql -h postgres -U postgres -d bookreader_test -c "SELECT pg_size_pretty(pg_database_size('bookreader_test'));" >> $GITHUB_STEP_SUMMARY
+          psql -h localhost -U postgres -d bookreader_test -c "SELECT pg_size_pretty(pg_database_size('bookreader_test'));" >> $GITHUB_STEP_SUMMARY
 
   performance-summary:
     name: Performance Test Summary

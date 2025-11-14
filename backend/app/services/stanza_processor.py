@@ -219,9 +219,11 @@ class EnhancedStanzaProcessor(EnhancedNLPProcessor):
                                     "entities_mentioned": [head_word.text, word.text],
                                     "text_position_start": 0,  # Stanza не предоставляет char offsets
                                     "text_position_end": len(extended_context),
-                                    "position": sentence.sent_id
-                                    if hasattr(sentence, "sent_id")
-                                    else 0,
+                                    "position": (
+                                        sentence.sent_id
+                                        if hasattr(sentence, "sent_id")
+                                        else 0
+                                    ),
                                     "word_count": len(extended_context.split()),
                                     "priority_score": confidence
                                     * 1.2,  # Синтаксические зависимости получают бонус
@@ -265,12 +267,16 @@ class EnhancedStanzaProcessor(EnhancedNLPProcessor):
                             "type": desc_type,
                             "confidence_score": confidence,
                             "entities_mentioned": [entity.text],
-                            "text_position_start": entity.start_char
-                            if hasattr(entity, "start_char")
-                            else 0,
-                            "text_position_end": entity.end_char
-                            if hasattr(entity, "end_char")
-                            else len(entity.text),
+                            "text_position_start": (
+                                entity.start_char
+                                if hasattr(entity, "start_char")
+                                else 0
+                            ),
+                            "text_position_end": (
+                                entity.end_char
+                                if hasattr(entity, "end_char")
+                                else len(entity.text)
+                            ),
                             "position": 0,
                             "word_count": len(extended_context.split()),
                             "priority_score": confidence * 1.1,
