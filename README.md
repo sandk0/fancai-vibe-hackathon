@@ -2,25 +2,25 @@
 
 **BookReader AI** - это современное веб-приложение для чтения художественной литературы с автоматической генерацией изображений по описаниям из книг. Приложение использует передовые NLP технологии для извлечения описаний и AI-сервисы для создания визуализаций.
 
-## 🚀 Quick Links
+## 🚀 Быстрые ссылки
 
-**New to BookReader AI?**
-- [Quick Start (5 minutes)](docs/guides/getting-started/quick-start.md) - Get up and running fast
-- [Your First Book](docs/guides/getting-started/first-book.md) - Upload and read tutorial
-- [FAQ](FAQ.md) - Frequently asked questions
-- [Troubleshooting](TROUBLESHOOTING.md) - Common issues and solutions
+**Новичок в BookReader AI?**
+- [Быстрый старт (5 минут)](docs/guides/getting-started/quick-start.md) - Запуск за несколько минут
+- [Ваша первая книга](docs/guides/getting-started/first-book.md) - Туториал по загрузке и чтению
+- [FAQ](FAQ.md) - Часто задаваемые вопросы
+- [Устранение неполадок](TROUBLESHOOTING.md) - Распространенные проблемы и решения
 
-**For Developers:**
-- [Contributing Guide](CONTRIBUTING.md) - How to contribute
-- [Development Workflow](docs/guides/development/workflow.md) - Development process
-- [API Documentation](docs/reference/api/overview.md) - REST API reference
-- [Testing Guide](docs/guides/testing/testing-guide.md) - Running tests
+**Для разработчиков:**
+- [Руководство по участию](CONTRIBUTING.md) - Как внести вклад
+- [Процесс разработки](docs/guides/development/workflow.md) - Workflow разработки
+- [Документация API](docs/reference/api/overview.md) - Справочник REST API
+- [Руководство по тестированию](docs/guides/testing/testing-guide.md) - Запуск тестов
 
-**Documentation:**
-- [Documentation Index](docs/README.md) - Complete documentation hub
-- [Architecture Overview](docs/explanations/architecture/system-architecture.md) - System design
-- [Multi-NLP System](docs/reference/nlp/multi-nlp-system.md) - NLP engine details
-- [Deployment Guide](docs/guides/deployment/production-deployment.md) - Production setup
+**Документация:**
+- [Индекс документации](docs/README.md) - Полный центр документации
+- [Обзор архитектуры](docs/explanations/architecture/system-architecture.md) - Дизайн системы
+- [Multi-NLP система](docs/reference/nlp/multi-nlp-system.md) - Детали NLP движка
+- [Руководство по развертыванию](docs/guides/deployment/production-deployment.md) - Production настройка
 
 ## 📋 Текущий статус проекта
 
@@ -87,66 +87,66 @@ nano .env.production.local  # Настроить домен и пароли
 - ✅ Автоматические скрипты деплоя
 - ✅ SSL сертификаты через Let's Encrypt
 
-## 🚀 Performance Improvements (Weeks 15-17 - Oct 2025)
+## 🚀 Улучшения производительности (Недели 15-17 - октябрь 2025)
 
-### Database Performance Revolution (Week 17) ⚡
-- **100x faster queries** - JSONB migration + GIN indexes
-  - Query time: 500ms → <5ms for complex metadata searches
-  - Database: PostgreSQL 15+ with JSONB columns + GIN indexes
-  - Impact: Real-time user experience, instant searches
-- **10x capacity increase** - Concurrent users: 50 → 500+
-- **70% reduced database load** - Thanks to caching + indexing
+### Революция производительности базы данных (Неделя 17) ⚡
+- **В 100 раз быстрее запросы** - Миграция на JSONB + GIN индексы
+  - Время запроса: 500ms → <5ms для сложных поисков по метаданным
+  - База данных: PostgreSQL 15+ с JSONB колонками + GIN индексами
+  - Эффект: Пользовательский опыт в реальном времени, мгновенный поиск
+- **В 10 раз больше емкость** - Одновременные пользователи: 50 → 500+
+- **На 70% снижена нагрузка на БД** - Благодаря кэшированию + индексации
 
-### API Performance Optimization (Week 16) 🚀
-- **83% faster API responses** - Redis caching layer implementation
-  - Response time: 200-500ms → <50ms (cached endpoints)
-  - Cache hit rate: 85% for frequently accessed data
-  - TTL: 1 hour for book metadata, user sessions
-- **Redis**: High-performance in-memory caching with intelligent invalidation
+### Оптимизация производительности API (Неделя 16) 🚀
+- **На 83% быстрее ответы API** - Реализация слоя кэширования Redis
+  - Время ответа: 200-500ms → <50ms (кэшированные endpoints)
+  - Процент попаданий в кэш: 85% для часто запрашиваемых данных
+  - TTL: 1 час для метаданных книг, пользовательских сессий
+- **Redis**: Высокопроизводительное кэширование в памяти с интеллектуальной инвалидацией
 
-### Frontend Performance Boost (Week 16) ⚡
-- **66% faster Time to Interactive** - 3.5s → 1.2s
-  - Code splitting with React.lazy() + Suspense
-  - Route-based lazy loading
-  - Dynamic imports for heavy components
-- **29% smaller bundle size** - 543KB → 386KB (gzipped)
-  - Vite build optimizations (terser, rollup)
-  - Tree shaking for unused code
-  - CSS purging (Tailwind optimization)
+### Ускорение Frontend (Неделя 16) ⚡
+- **На 66% быстрее Time to Interactive** - 3.5s → 1.2s
+  - Разделение кода с React.lazy() + Suspense
+  - Ленивая загрузка на основе роутов
+  - Динамические импорты для тяжелых компонентов
+- **На 29% меньше размер бандла** - 543KB → 386KB (gzipped)
+  - Оптимизации сборки Vite (terser, rollup)
+  - Tree shaking для неиспользуемого кода
+  - Очистка CSS (оптимизация Tailwind)
 
-### Security Hardening (Week 15) 🔐
-- **Rate limiting** - DDoS protection
-  - Auth endpoints: 5 req/min (brute-force prevention)
-  - Public endpoints: 20 req/min (abuse prevention)
-  - API endpoints: 100 req/min (normal operations)
-  - Heavy operations: 10 req/min (resource protection)
-  - Implementation: Redis-based with sliding window
-- **9 Security headers** - Production-grade security
+### Усиление безопасности (Неделя 15) 🔐
+- **Rate limiting** - Защита от DDoS
+  - Auth endpoints: 5 req/min (защита от brute-force)
+  - Public endpoints: 20 req/min (защита от злоупотреблений)
+  - API endpoints: 100 req/min (нормальные операции)
+  - Тяжелые операции: 10 req/min (защита ресурсов)
+  - Реализация: На основе Redis со скользящим окном
+- **9 заголовков безопасности** - Production-grade безопасность
   - HSTS, CSP, X-Frame-Options, X-Content-Type-Options
-  - Referrer-Policy, Permissions-Policy, and more
-- **Secrets validation** - Startup security checks
-  - SECRET_KEY strength validation (32+ chars)
-  - Production credential checks
-  - Auto-generation: `openssl rand -hex 32`
+  - Referrer-Policy, Permissions-Policy и другие
+- **Валидация секретов** - Проверки безопасности при запуске
+  - Валидация стойкости SECRET_KEY (32+ символов)
+  - Проверки production credentials
+  - Авто-генерация: `openssl rand -hex 32`
 
-### Testing & CI/CD (Week 15-16) 🧪
-- **47 E2E tests** - Comprehensive Playwright test suite
-  - Authentication flows, book management, reading interface
-  - Image generation workflows, admin panel functionality
-- **GitHub Actions CI/CD** - Automated quality gates
-  - Backend tests, frontend tests, type checking
-  - Security scanning, automated deployment
-- **Pre-commit hooks** - Quality enforcement before every commit
+### Тестирование и CI/CD (Недели 15-16) 🧪
+- **47 E2E тестов** - Комплексный набор тестов Playwright
+  - Потоки аутентификации, управление книгами, интерфейс чтения
+  - Процессы генерации изображений, функциональность админ-панели
+- **GitHub Actions CI/CD** - Автоматизированные контрольные точки качества
+  - Backend тесты, frontend тесты, проверка типов
+  - Сканирование безопасности, автоматическое развертывание
+- **Pre-commit hooks** - Обеспечение качества перед каждым коммитом
 
-### Key Metrics Summary 📊
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| Database Query Time | 500ms | <5ms | **100x faster** |
-| API Response Time (cached) | 200-500ms | <50ms | **83% faster** |
-| Frontend TTI | 3.5s | 1.2s | **66% faster** |
-| Bundle Size (gzipped) | 543KB | 386KB | **29% smaller** |
-| Concurrent Users | 50 | 500+ | **10x capacity** |
-| Cache Hit Rate | 0% | 85% | **New feature** |
+### Сводка ключевых метрик 📊
+| Метрика | До | После | Улучшение |
+|---------|-----|-------|-----------|
+| Время запроса к БД | 500ms | <5ms | **В 100 раз быстрее** |
+| Время ответа API (кэш) | 200-500ms | <50ms | **На 83% быстрее** |
+| Frontend TTI | 3.5s | 1.2s | **На 66% быстрее** |
+| Размер бандла (gzipped) | 543KB | 386KB | **На 29% меньше** |
+| Одновременные пользователи | 50 | 500+ | **В 10 раз больше** |
+| Процент попаданий в кэш | 0% | 85% | **Новая функция** |
 
 ## 🆕 Latest Updates (октябрь 2025)
 
@@ -199,39 +199,39 @@ nano .env.production.local  # Настроить домен и пароли
 
 ## 🏗 Архитектура
 
-### Technology Stack
+### Технологический стек
 
-#### Frontend (Week 16 Optimizations)
-- **React 18+** с **TypeScript** - Full type safety with strict mode
-- **epub.js 0.3.93** - Professional EPUB rendering engine
+#### Frontend (Оптимизации Недели 16)
+- **React 18+** с **TypeScript** - Полная типобезопасность в strict mode
+- **epub.js 0.3.93** - Профессиональный движок рендеринга EPUB
 - **react-reader 2.0.15** - React wrapper для epub.js
-- **Vite** - Ultra-fast build tool with code splitting & lazy loading
-- **Tailwind CSS** - Utility-first CSS with purging optimization
-- **React Query/TanStack Query** - Server state with intelligent caching
-- **Zustand** - Lightweight client state management
-- **Playwright** - E2E testing framework (47 comprehensive tests)
-- **Performance:**
-  - Bundle size: 386KB gzipped (29% smaller)
-  - Time to Interactive: 1.2s (66% faster)
-  - Code splitting: Route-based lazy loading
+- **Vite** - Ультра-быстрый build tool с разделением кода и ленивой загрузкой
+- **Tailwind CSS** - Utility-first CSS с оптимизацией очистки
+- **React Query/TanStack Query** - Server state с интеллектуальным кэшированием
+- **Zustand** - Легковесное управление клиентским состоянием
+- **Playwright** - Framework E2E тестирования (47 комплексных тестов)
+- **Производительность:**
+  - Размер бандла: 386KB gzipped (на 29% меньше)
+  - Time to Interactive: 1.2s (на 66% быстрее)
+  - Разделение кода: Ленивая загрузка на основе роутов
 
-#### Backend (Week 15-17 Optimizations)
-- **Python 3.11+** с **FastAPI** - Async API framework with rate limiting
-- **PostgreSQL 15+** - Primary database with JSONB + GIN indexes
-  - **JSONB columns:** book_metadata, generation_parameters, moderation_result
-  - **GIN indexes:** 100x faster queries (<5ms)
-  - **CHECK constraints:** Data integrity validation
-- **Redis** - High-performance caching & task queue
-  - **Caching layer:** 85% hit rate, 83% faster API
-  - **Rate limiter:** Sliding window with per-endpoint limits
-  - **Session store:** JWT token blacklist & user sessions
-- **Celery** - Distributed task queue with Redis backend
-- **SQLAlchemy** ORM with **Alembic** migrations - Async support
-- **Security:**
+#### Backend (Оптимизации Недель 15-17)
+- **Python 3.11+** с **FastAPI** - Async API framework с rate limiting
+- **PostgreSQL 15+** - Основная база данных с JSONB + GIN индексами
+  - **JSONB колонки:** book_metadata, generation_parameters, moderation_result
+  - **GIN индексы:** В 100 раз быстрее запросы (<5ms)
+  - **CHECK constraints:** Валидация целостности данных
+- **Redis** - Высокопроизводительное кэширование и очередь задач
+  - **Слой кэширования:** 85% hit rate, на 83% быстрее API
+  - **Rate limiter:** Скользящее окно с лимитами на endpoint
+  - **Session store:** Черный список JWT токенов и пользовательские сессии
+- **Celery** - Распределенная очередь задач с Redis backend
+- **SQLAlchemy** ORM с **Alembic** миграциями - Async поддержка
+- **Безопасность:**
   - Rate limiting (5-100 req/min)
-  - 9 security headers (HSTS, CSP, X-Frame-Options, etc.)
-  - Secrets validation on startup
-  - Input sanitization & XSS prevention
+  - 9 заголовков безопасности (HSTS, CSP, X-Frame-Options и др.)
+  - Валидация секретов при запуске
+  - Санитизация входных данных и защита от XSS
 
 #### NLP & AI
 - **Multi-NLP Manager** - координация 3 процессоров
@@ -242,26 +242,26 @@ nano .env.production.local  # Настроить домен и пароли
 - **Ensemble Voting**: weighted consensus для максимального качества
 - **AI Generation:** pollinations.ai, OpenAI DALL-E (опционально)
 
-#### DevOps & CI/CD (Week 15-16)
-- **Docker** - Multi-stage builds with security hardening
-  - Non-root users (node, nobody, www-data)
-  - Minimal base images (alpine, slim)
-  - Health checks & resource limits
-- **GitHub Actions** - Automated CI/CD pipeline
-  - Backend tests (pytest with coverage)
-  - Frontend tests (Playwright E2E + Vitest unit)
-  - Type checking (MyPy strict mode)
-  - Security scanning (dependency audit)
-  - Automated deployment (staging + production)
-- **Monitoring** - Full observability stack
-  - Prometheus - Metrics collection
-  - Grafana - Visualization & dashboards
-  - Loki - Log aggregation
-- **Security Tools**
-  - Pre-commit hooks (quality gates)
-  - Dependency scanning (npm audit, pip-audit)
-  - Secrets detection (gitleaks)
-  - Container scanning (Trivy)
+#### DevOps & CI/CD (Недели 15-16)
+- **Docker** - Многоэтапные сборки с усилением безопасности
+  - Пользователи без root (node, nobody, www-data)
+  - Минимальные базовые образы (alpine, slim)
+  - Health checks и лимиты ресурсов
+- **GitHub Actions** - Автоматизированный CI/CD pipeline
+  - Backend тесты (pytest с покрытием)
+  - Frontend тесты (Playwright E2E + Vitest unit)
+  - Проверка типов (MyPy strict mode)
+  - Сканирование безопасности (аудит зависимостей)
+  - Автоматическое развертывание (staging + production)
+- **Мониторинг** - Полный стек наблюдаемости
+  - Prometheus - Сбор метрик
+  - Grafana - Визуализация и дашборды
+  - Loki - Агрегация логов
+- **Инструменты безопасности**
+  - Pre-commit hooks (контрольные точки качества)
+  - Сканирование зависимостей (npm audit, pip-audit)
+  - Обнаружение секретов (gitleaks)
+  - Сканирование контейнеров (Trivy)
 
 ### Core Components
 
@@ -389,70 +389,70 @@ nano .env.production.local  # Настроить домен и пароли
 ### Для разработчиков
 - [CLAUDE.md](CLAUDE.md) - Руководство для Claude Code с обновленной структурой документации
 
-## 🔐 Security Features (Week 15 - October 2025)
+## 🔐 Функции безопасности (Неделя 15 - октябрь 2025)
 
-**Security Posture:** Production-ready with multi-layer protection
+**Состояние безопасности:** Готово к production с многоуровневой защитой
 
-### Implemented Security Measures
+### Реализованные меры безопасности
 
-| Feature | Status | Risk Reduction |
+| Функция | Статус | Снижение риска |
 |---------|--------|----------------|
-| Rate Limiting | ✅ Active | DDoS attacks: High → Low |
-| Security Headers | ✅ Active | XSS, Clickjacking: High → Low |
-| Secrets Validation | ✅ Active | Credential leaks: High → Low |
-| Input Validation | ✅ Active | Injection attacks: High → Low |
-| CORS Configuration | ✅ Active | Unauthorized access: Medium → Low |
-| JWT Authentication | ✅ Active | Unauthorized access: High → Low |
+| Rate Limiting | ✅ Активно | DDoS атаки: Высокий → Низкий |
+| Заголовки безопасности | ✅ Активно | XSS, Clickjacking: Высокий → Низкий |
+| Валидация секретов | ✅ Активно | Утечки credentials: Высокий → Низкий |
+| Валидация ввода | ✅ Активно | Injection атаки: Высокий → Низкий |
+| Конфигурация CORS | ✅ Активно | Неавторизованный доступ: Средний → Низкий |
+| JWT аутентификация | ✅ Активно | Неавторизованный доступ: Высокий → Низкий |
 
 ### Rate Limiting
 
-- **Auth endpoints:** 5 requests/minute (brute-force protection)
-- **Public endpoints:** 20 requests/minute (abuse prevention)
-- **API endpoints:** 100 requests/minute (normal operations)
-- **Heavy operations:** 10 requests/minute (resource protection)
-- **Implementation:** Redis-based distributed rate limiter with sliding window
+- **Auth endpoints:** 5 запросов/минуту (защита от brute-force)
+- **Public endpoints:** 20 запросов/минуту (защита от злоупотреблений)
+- **API endpoints:** 100 запросов/минуту (нормальные операции)
+- **Тяжелые операции:** 10 запросов/минуту (защита ресурсов)
+- **Реализация:** Распределенный rate limiter на основе Redis со скользящим окном
 
-### Security Headers
+### Заголовки безопасности
 
-All responses include:
-- **HSTS** - Force HTTPS (production)
-- **CSP** - Content Security Policy (XSS prevention)
-- **X-Frame-Options** - Clickjacking protection
-- **X-Content-Type-Options** - MIME sniffing prevention
-- **Referrer-Policy** - Information leakage control
-- **Permissions-Policy** - Browser feature restrictions
+Все ответы включают:
+- **HSTS** - Принудительный HTTPS (production)
+- **CSP** - Content Security Policy (защита от XSS)
+- **X-Frame-Options** - Защита от clickjacking
+- **X-Content-Type-Options** - Защита от MIME sniffing
+- **Referrer-Policy** - Контроль утечки информации
+- **Permissions-Policy** - Ограничения функций браузера
 
-### Secrets Management
+### Управление секретами
 
-- **Startup validation:** Application checks all required secrets on start
-- **Strength validation:** SECRET_KEY must be 32+ chars with complexity requirements
-- **Production checks:** Prevents default/test credentials in production mode
-- **Auto-generation:** `openssl rand -hex 32` for cryptographically secure keys
+- **Валидация при запуске:** Приложение проверяет все необходимые секреты при старте
+- **Валидация стойкости:** SECRET_KEY должен быть 32+ символов с требованиями сложности
+- **Production проверки:** Предотвращает использование default/test credentials в production режиме
+- **Авто-генерация:** `openssl rand -hex 32` для криптографически стойких ключей
 
-### Input Validation & Sanitization
+### Валидация и санитизация ввода
 
-- **Filename sanitization:** Path traversal prevention
-- **Email validation:** RFC 5322 compliant
-- **Password strength:** Minimum 8 chars with complexity requirements
-- **URL validation:** Scheme whitelisting (http/https only)
-- **UUID validation:** Format verification
-- **XSS prevention:** HTML escaping for user inputs
+- **Санитизация имен файлов:** Предотвращение path traversal
+- **Валидация email:** Соответствие RFC 5322
+- **Стойкость пароля:** Минимум 8 символов с требованиями сложности
+- **Валидация URL:** Whitelist схем (только http/https)
+- **Валидация UUID:** Проверка формата
+- **Защита от XSS:** HTML экранирование пользовательского ввода
 
-### Quick Security Check
+### Быстрая проверка безопасности
 
 ```bash
-# Test security headers
+# Проверка заголовков безопасности
 curl -I http://localhost:8000/health
 
-# Run security tests
+# Запуск тестов безопасности
 cd backend && pytest tests/test_security.py -v
 
-# Validate secrets
-# Application validates automatically on startup
-docker-compose up backend  # Will show validation report
+# Валидация секретов
+# Приложение валидирует автоматически при запуске
+docker-compose up backend  # Покажет отчет валидации
 ```
 
-**📖 For complete security documentation, see [backend/SECURITY.md](backend/SECURITY.md)**
+**📖 Для полной документации по безопасности см. [backend/SECURITY.md](backend/SECURITY.md)**
 
 ## 🛠 Инструменты разработки
 

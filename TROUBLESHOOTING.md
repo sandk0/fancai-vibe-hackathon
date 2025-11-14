@@ -1,77 +1,77 @@
-# Troubleshooting Guide
+# Руководство по устранению неполадок
 
-Common problems and solutions for BookReader AI.
+Распространенные проблемы и решения для BookReader AI.
 
-## Table of Contents
+## Содержание
 
-- [Quick Diagnostics](#quick-diagnostics)
-- [Installation Issues](#installation-issues)
-- [Docker Issues](#docker-issues)
-- [Database Issues](#database-issues)
-- [Backend Issues](#backend-issues)
-- [Frontend Issues](#frontend-issues)
-- [NLP System Issues](#nlp-system-issues)
-- [Image Generation Issues](#image-generation-issues)
-- [Performance Issues](#performance-issues)
-- [Deployment Issues](#deployment-issues)
-- [Getting Help](#getting-help)
+- [Быстрая диагностика](#быстрая-диагностика)
+- [Проблемы установки](#проблемы-установки)
+- [Проблемы Docker](#проблемы-docker)
+- [Проблемы базы данных](#проблемы-базы-данных)
+- [Проблемы Backend](#проблемы-backend)
+- [Проблемы Frontend](#проблемы-frontend)
+- [Проблемы NLP системы](#проблемы-nlp-системы)
+- [Проблемы генерации изображений](#проблемы-генерации-изображений)
+- [Проблемы производительности](#проблемы-производительности)
+- [Проблемы развертывания](#проблемы-развертывания)
+- [Получение помощи](#получение-помощи)
 
 ---
 
-## Quick Diagnostics
+## Быстрая диагностика
 
-### Health Check
+### Проверка работоспособности
 
-Run these commands to quickly diagnose issues:
+Выполните эти команды для быстрой диагностики проблем:
 
 ```bash
-# Check all services status
+# Проверка статуса всех сервисов
 docker-compose ps
 
-# Check backend health
+# Проверка работоспособности backend
 curl http://localhost:8000/health
 
-# Check frontend
+# Проверка frontend
 curl http://localhost:5173
 
-# Check logs
+# Проверка логов
 docker-compose logs --tail=50 backend
 docker-compose logs --tail=50 frontend
 docker-compose logs --tail=50 celery-worker
 
-# Check disk space
+# Проверка места на диске
 df -h
 
-# Check memory
+# Проверка памяти
 free -h
 ```
 
-### Common Issues Checklist
+### Контрольный список распространенных проблем
 
-- [ ] All Docker containers running?
-- [ ] .env file exists and configured?
-- [ ] Ports not conflicting (8000, 5173, 5432, 6379)?
-- [ ] Database initialized and migrated?
-- [ ] NLP models downloaded?
-- [ ] Sufficient disk space (>5GB free)?
-- [ ] Sufficient memory (>2GB free)?
+- [ ] Все Docker контейнеры запущены?
+- [ ] Файл .env существует и настроен?
+- [ ] Порты не конфликтуют (8000, 5173, 5432, 6379)?
+- [ ] База данных инициализирована и мигрирована?
+- [ ] NLP модели загружены?
+- [ ] Достаточно места на диске (>5GB свободно)?
+- [ ] Достаточно памяти (>2GB свободно)?
 
 ---
 
-## Installation Issues
+## Проблемы установки
 
-### Issue: Cannot clone repository
+### Проблема: Не удается клонировать репозиторий
 
-**Problem:**
+**Ошибка:**
 ```
 fatal: repository not found
 ```
 
-**Solutions:**
-1. Check repository URL is correct
-2. Verify Git credentials/SSH keys
-3. Check network connection
-4. Try HTTPS instead of SSH (or vice versa)
+**Решения:**
+1. Проверьте правильность URL репозитория
+2. Проверьте Git credentials/SSH ключи
+3. Проверьте сетевое подключение
+4. Попробуйте HTTPS вместо SSH (или наоборот)
 
 ```bash
 # HTTPS
@@ -81,14 +81,14 @@ git clone https://github.com/your-org/fancai-vibe-hackathon.git
 git clone git@github.com:your-org/fancai-vibe-hackathon.git
 ```
 
-### Issue: Python version too old
+### Проблема: Устаревшая версия Python
 
-**Problem:**
+**Ошибка:**
 ```
 Python 3.11+ required, you have 3.9
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
 # macOS
 brew install python@3.11
@@ -98,44 +98,44 @@ sudo add-apt-repository ppa:deadsnakes/ppa
 sudo apt update
 sudo apt install python3.11
 
-# Verify
+# Проверка
 python3.11 --version
 ```
 
-### Issue: Node.js version too old
+### Проблема: Устаревшая версия Node.js
 
-**Problem:**
+**Ошибка:**
 ```
 Node.js 18+ required
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Using nvm (recommended)
+# Используя nvm (рекомендуется)
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
 nvm install 18
 nvm use 18
 
-# Verify
+# Проверка
 node --version
 ```
 
-### Issue: Missing .env file
+### Проблема: Отсутствует файл .env
 
-**Problem:**
+**Ошибка:**
 ```
 Error: .env file not found
 ```
 
-**Solution:**
+**Решение:**
 ```bash
-# Copy example file
+# Скопировать файл-пример
 cp .env.example .env
 
-# Edit with your values
+# Редактировать со своими значениями
 nano .env
 
-# Required variables:
+# Обязательные переменные:
 # - DATABASE_URL
 # - REDIS_URL
 # - SECRET_KEY
@@ -144,207 +144,207 @@ nano .env
 
 ---
 
-## Docker Issues
+## Проблемы Docker
 
-### Issue: Docker daemon not running
+### Проблема: Docker daemon не запущен
 
-**Problem:**
+**Ошибка:**
 ```
 Cannot connect to the Docker daemon
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Start Docker
+# Запуск Docker
 # macOS
 open -a Docker
 
 # Linux
 sudo systemctl start docker
 
-# Verify
+# Проверка
 docker ps
 ```
 
-### Issue: Port already in use
+### Проблема: Порт уже используется
 
-**Problem:**
+**Ошибка:**
 ```
 Error: bind: address already in use
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Find process using port (example: 8000)
+# Найти процесс, использующий порт (пример: 8000)
 lsof -i :8000
 
-# Kill process
+# Убить процесс
 kill -9 <PID>
 
-# Or change port in docker-compose.yml
+# Или изменить порт в docker-compose.yml
 ports:
-  - "8001:8000"  # Changed from 8000:8000
+  - "8001:8000"  # Изменено с 8000:8000
 ```
 
-### Issue: Container keeps restarting
+### Проблема: Контейнер постоянно перезапускается
 
-**Problem:**
+**Ошибка:**
 ```
 backend_1 exited with code 1
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Check logs for error
+# Проверить логи на ошибки
 docker-compose logs backend
 
-# Common causes:
-# 1. Database not ready - wait 30s and retry
-# 2. Missing environment variables - check .env
-# 3. Port conflict - see above
-# 4. Missing dependencies - rebuild image
+# Распространенные причины:
+# 1. База данных не готова - подождите 30с и повторите
+# 2. Отсутствуют переменные окружения - проверьте .env
+# 3. Конфликт портов - см. выше
+# 4. Отсутствуют зависимости - пересоберите образ
 
-# Rebuild image
+# Пересборка образа
 docker-compose build --no-cache backend
 docker-compose up -d
 ```
 
-### Issue: Permission denied errors
+### Проблема: Ошибки прав доступа
 
-**Problem:**
+**Ошибка:**
 ```
 mkdir: cannot create directory: Permission denied
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Fix ownership (Linux)
+# Исправить владение (Linux)
 sudo chown -R $USER:$USER .
 
-# Or run with sudo (not recommended)
+# Или запустить с sudo (не рекомендуется)
 sudo docker-compose up -d
 
-# macOS: Reset Docker Desktop file sharing
+# macOS: Сбросить общий доступ к файлам Docker Desktop
 # Docker Desktop → Preferences → Resources → File Sharing
 ```
 
-### Issue: Out of disk space
+### Проблема: Не хватает места на диске
 
-**Problem:**
+**Ошибка:**
 ```
 No space left on device
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Clean Docker system
+# Очистка системы Docker
 docker system prune -a --volumes
 
-# Remove unused images
+# Удаление неиспользуемых образов
 docker image prune -a
 
-# Remove unused volumes
+# Удаление неиспользуемых томов
 docker volume prune
 
-# Check space freed
+# Проверка освобожденного места
 df -h
 ```
 
 ---
 
-## Database Issues
+## Проблемы базы данных
 
-### Issue: Database connection failed
+### Проблема: Не удалось подключиться к базе данных
 
-**Problem:**
+**Ошибка:**
 ```
 sqlalchemy.exc.OperationalError: could not connect to server
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Check PostgreSQL running
+# Проверить, что PostgreSQL запущен
 docker-compose ps postgres
 
-# Check connection string
+# Проверить строку подключения
 echo $DATABASE_URL
 
-# Verify format
+# Проверить формат
 # postgresql://user:password@localhost:5432/dbname
 
-# Restart database
+# Перезапустить базу данных
 docker-compose restart postgres
 
-# Wait 10s for startup
+# Подождать 10с для запуска
 sleep 10
 
-# Test connection
+# Проверить подключение
 docker-compose exec backend python -c "from app.core.database import engine; engine.connect()"
 ```
 
-### Issue: Migration fails
+### Проблема: Миграция не работает
 
-**Problem:**
+**Ошибка:**
 ```
 alembic.util.exc.CommandError: Can't locate revision
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Check current version
+# Проверить текущую версию
 cd backend && alembic current
 
-# Check available versions
+# Проверить доступные версии
 alembic history
 
-# Reset to base (DESTRUCTIVE - development only!)
+# Сброс к базовой (ДЕСТРУКТИВНО - только разработка!)
 alembic downgrade base
 
-# Apply all migrations
+# Применить все миграции
 alembic upgrade head
 
-# Force clean (DESTRUCTIVE - development only!)
+# Принудительная очистка (ДЕСТРУКТИВНО - только разработка!)
 docker-compose down -v
 docker-compose up -d
 cd backend && alembic upgrade head
 ```
 
-### Issue: Duplicate key error
+### Проблема: Ошибка дублирования ключа
 
-**Problem:**
+**Ошибка:**
 ```
 psycopg2.errors.UniqueViolation: duplicate key value
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Check for existing data
+# Проверить существующие данные
 docker-compose exec postgres psql -U postgres -d bookreader -c "SELECT * FROM table_name WHERE id='value';"
 
-# Delete duplicate (if appropriate)
+# Удалить дубликат (если уместно)
 docker-compose exec postgres psql -U postgres -d bookreader -c "DELETE FROM table_name WHERE id='value';"
 
-# Or reset database (DESTRUCTIVE)
+# Или сбросить базу данных (ДЕСТРУКТИВНО)
 docker-compose down -v
 docker-compose up -d
 ```
 
-### Issue: Table doesn't exist
+### Проблема: Таблица не существует
 
-**Problem:**
+**Ошибка:**
 ```
 psycopg2.errors.UndefinedTable: relation "table_name" does not exist
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Run migrations
+# Запустить миграции
 cd backend && alembic upgrade head
 
-# If that fails, check migration files
+# Если не работает, проверить файлы миграций
 ls backend/alembic/versions/
 
-# Recreate database (DESTRUCTIVE)
+# Пересоздать базу данных (ДЕСТРУКТИВНО)
 docker-compose down -v
 docker-compose up -d
 cd backend && alembic upgrade head
@@ -352,443 +352,443 @@ cd backend && alembic upgrade head
 
 ---
 
-## Backend Issues
+## Проблемы Backend
 
-### Issue: Import errors
+### Проблема: Ошибки импорта
 
-**Problem:**
+**Ошибка:**
 ```
 ModuleNotFoundError: No module named 'app'
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Install dependencies
+# Установить зависимости
 cd backend
 pip install -r requirements.txt
 
-# Verify installation
+# Проверить установку
 pip list | grep fastapi
 
-# If in Docker, rebuild
+# Если в Docker, пересобрать
 docker-compose build backend
 ```
 
-### Issue: Celery worker not starting
+### Проблема: Celery worker не запускается
 
-**Problem:**
+**Ошибка:**
 ```
 [ERROR] Consumer: Cannot connect to redis
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Check Redis running
+# Проверить, что Redis запущен
 docker-compose ps redis
 
-# Check Redis connection
+# Проверить подключение Redis
 docker-compose exec backend python -c "import redis; r = redis.from_url('redis://redis:6379'); r.ping()"
 
-# Restart Redis
+# Перезапустить Redis
 docker-compose restart redis
 
-# Restart Celery worker
+# Перезапустить Celery worker
 docker-compose restart celery-worker
 
-# Check worker logs
+# Проверить логи worker
 docker-compose logs -f celery-worker
 ```
 
-### Issue: JWT token errors
+### Проблема: Ошибки JWT токена
 
-**Problem:**
+**Ошибка:**
 ```
 401 Unauthorized: Invalid token
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Check SECRET_KEY is set
+# Проверить, что SECRET_KEY установлен
 echo $SECRET_KEY
 
-# Generate new secret (if missing)
+# Сгенерировать новый секрет (если отсутствует)
 openssl rand -hex 32
 
-# Update .env
+# Обновить .env
 SECRET_KEY=<generated_key>
 
-# Restart backend
+# Перезапустить backend
 docker-compose restart backend
 
-# Clear browser cookies/localStorage
+# Очистить cookies/localStorage браузера
 # DevTools → Application → Clear Storage
 ```
 
-### Issue: Slow API responses
+### Проблема: Медленные ответы API
 
-**Problem:**
-API calls take >1 second
+**Проблема:**
+API вызовы занимают >1 секунды
 
-**Solutions:**
+**Решения:**
 ```bash
-# Check database indexes
+# Проверить индексы базы данных
 docker-compose exec postgres psql -U postgres -d bookreader -c "\d+ books"
 
-# Check Redis cache
+# Проверить кэш Redis
 docker-compose exec redis redis-cli INFO stats
 
-# Enable query logging
-# In backend/app/core/database.py
+# Включить логирование запросов
+# В backend/app/core/database.py
 # engine = create_async_engine(url, echo=True)
 
-# Restart backend
+# Перезапустить backend
 docker-compose restart backend
 ```
 
 ---
 
-## Frontend Issues
+## Проблемы Frontend
 
-### Issue: npm install fails
+### Проблема: npm install не работает
 
-**Problem:**
+**Ошибка:**
 ```
 npm ERR! code ERESOLVE
 npm ERR! ERESOLVE unable to resolve dependency tree
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Clean install
+# Чистая установка
 cd frontend
 rm -rf node_modules package-lock.json
 npm install
 
-# Use legacy peer deps (if needed)
+# Использовать legacy peer deps (если нужно)
 npm install --legacy-peer-deps
 
-# Or use exact versions
+# Или использовать точные версии
 npm ci
 ```
 
-### Issue: Build fails
+### Проблема: Сборка не работает
 
-**Problem:**
+**Ошибка:**
 ```
 ERROR in ./src/components/Component.tsx
 Module not found: Error: Can't resolve 'module'
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Check imports
-# Make sure paths are correct
-# Use absolute imports from 'src/'
+# Проверить импорты
+# Убедитесь, что пути правильные
+# Используйте абсолютные импорты из 'src/'
 
-# Clean and rebuild
+# Очистить и пересобрать
 rm -rf dist node_modules
 npm install
 npm run build
 
-# Check TypeScript errors
+# Проверить ошибки TypeScript
 npm run type-check
 ```
 
-### Issue: Development server won't start
+### Проблема: Сервер разработки не запускается
 
-**Problem:**
+**Ошибка:**
 ```
 Port 5173 is already in use
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Find process
+# Найти процесс
 lsof -i :5173
 
-# Kill process
+# Убить процесс
 kill -9 <PID>
 
-# Or change port
-# In vite.config.ts
+# Или изменить порт
+# В vite.config.ts
 server: {
   port: 5174
 }
 ```
 
-### Issue: Hot reload not working
+### Проблема: Hot reload не работает
 
-**Problem:**
-Changes not reflected in browser
+**Проблема:**
+Изменения не отражаются в браузере
 
-**Solutions:**
+**Решения:**
 ```bash
-# Clear cache
-# Browser DevTools → Network → Disable cache
+# Очистить кэш
+# DevTools браузера → Network → Disable cache
 
-# Restart dev server
+# Перезапустить dev сервер
 # Ctrl+C
 npm run dev
 
-# Check file watcher limits (Linux)
+# Проверить лимиты file watcher (Linux)
 echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p
 ```
 
-### Issue: TypeScript errors
+### Проблема: Ошибки TypeScript
 
-**Problem:**
+**Ошибка:**
 ```
 Type 'X' is not assignable to type 'Y'
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Check type definitions
+# Проверить определения типов
 npm run type-check
 
-# Update types
+# Обновить типы
 npm install --save-dev @types/node @types/react @types/react-dom
 
-# Restart TypeScript server (VS Code)
+# Перезапустить TypeScript server (VS Code)
 # Cmd+Shift+P → "TypeScript: Restart TS Server"
 ```
 
 ---
 
-## NLP System Issues
+## Проблемы NLP системы
 
-### Issue: NLP models not found
+### Проблема: NLP модели не найдены
 
-**Problem:**
+**Ошибка:**
 ```
 OSError: Can't find model 'ru_core_news_lg'
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Download SpaCy model
+# Скачать модель SpaCy
 python -m spacy download ru_core_news_lg
 
-# Download Stanza model
+# Скачать модель Stanza
 python -c "import stanza; stanza.download('ru')"
 
-# Install Natasha (if missing)
+# Установить Natasha (если отсутствует)
 pip install natasha
 
-# Verify installation
+# Проверить установку
 python -c "import spacy; nlp = spacy.load('ru_core_news_lg'); print('SpaCy OK')"
 python -c "import stanza; nlp = stanza.Pipeline('ru'); print('Stanza OK')"
 python -c "from natasha import Segmenter; print('Natasha OK')"
 ```
 
-### Issue: Low description quality
+### Проблема: Низкое качество описаний
 
-**Problem:**
-Too few or irrelevant descriptions extracted
+**Проблема:**
+Слишком мало или нерелевантные описания извлечены
 
-**Solutions:**
+**Решения:**
 ```bash
-# Switch to ENSEMBLE mode (best quality)
+# Переключиться на режим ENSEMBLE (лучшее качество)
 curl -X PUT http://localhost:8000/api/v1/admin/multi-nlp-settings/mode \
   -H "Content-Type: application/json" \
   -d '{"mode": "ENSEMBLE"}'
 
-# Adjust processor weights
-# Increase Natasha (best for Russian literature)
+# Настроить веса процессоров
+# Увеличить Natasha (лучший для русской литературы)
 curl -X PUT http://localhost:8000/api/v1/admin/multi-nlp-settings/natasha \
   -d '{"weight": 1.5, "threshold": 0.2}'
 
-# Check processor status
+# Проверить статус процессоров
 curl http://localhost:8000/api/v1/admin/multi-nlp-settings/status
 ```
 
-### Issue: NLP processing too slow
+### Проблема: NLP обработка слишком медленная
 
-**Problem:**
-Book parsing takes >30 seconds
+**Проблема:**
+Парсинг книги занимает >30 секунд
 
-**Solutions:**
+**Решения:**
 ```bash
-# Use SINGLE mode (fastest)
+# Использовать режим SINGLE (самый быстрый)
 curl -X PUT http://localhost:8000/api/v1/admin/multi-nlp-settings/mode \
   -d '{"mode": "SINGLE"}'
 
-# Use only SpaCy (fastest processor)
-# In backend/app/core/config.py
+# Использовать только SpaCy (самый быстрый процессор)
+# В backend/app/core/config.py
 ACTIVE_PROCESSORS = ["spacy"]
 
-# Increase batch size (careful with memory!)
-# In multi_nlp_manager.py
-BATCH_SIZE = 10  # Default: 5
+# Увеличить размер батча (осторожно с памятью!)
+# В multi_nlp_manager.py
+BATCH_SIZE = 10  # По умолчанию: 5
 ```
 
-### Issue: Memory errors during NLP
+### Проблема: Ошибки памяти во время NLP
 
-**Problem:**
+**Ошибка:**
 ```
 MemoryError: Unable to allocate array
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Reduce batch size
-# In multi_nlp_manager.py
-BATCH_SIZE = 3  # Default: 5
+# Уменьшить размер батча
+# В multi_nlp_manager.py
+BATCH_SIZE = 3  # По умолчанию: 5
 
-# Process chapters sequentially
+# Обрабатывать главы последовательно
 curl -X PUT http://localhost:8000/api/v1/admin/multi-nlp-settings/mode \
   -d '{"mode": "SEQUENTIAL"}'
 
-# Increase Docker memory limit
-# In docker-compose.yml
+# Увеличить лимит памяти Docker
+# В docker-compose.yml
 services:
   backend:
     deploy:
       resources:
         limits:
-          memory: 4G  # Increase from 2G
+          memory: 4G  # Увеличить с 2G
 ```
 
 ---
 
-## Image Generation Issues
+## Проблемы генерации изображений
 
-### Issue: Images not generating
+### Проблема: Изображения не генерируются
 
-**Problem:**
-No images appear after book upload
+**Проблема:**
+Изображения не появляются после загрузки книги
 
-**Solutions:**
+**Решения:**
 ```bash
-# Check Celery worker
+# Проверить Celery worker
 docker-compose logs celery-worker
 
-# Check pollinations.ai service
+# Проверить сервис pollinations.ai
 curl https://image.pollinations.ai/prompt/test
 
-# Verify descriptions exist
+# Проверить наличие описаний
 curl http://localhost:8000/api/v1/books/{book_id}/descriptions
 
-# Restart Celery worker
+# Перезапустить Celery worker
 docker-compose restart celery-worker
 
-# Check task queue
+# Проверить очередь задач
 docker-compose exec redis redis-cli LLEN celery
 ```
 
-### Issue: Image generation fails
+### Проблема: Генерация изображения не работает
 
-**Problem:**
+**Ошибка:**
 ```
 Task generate_image failed: Connection timeout
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Check internet connection
+# Проверить интернет-соединение
 ping image.pollinations.ai
 
-# Increase timeout
-# In backend/app/services/image_generator.py
-timeout = 60  # Increase from 30
+# Увеличить timeout
+# В backend/app/services/image_generator.py
+timeout = 60  # Увеличить с 30
 
-# Use alternative service
-# In .env
+# Использовать альтернативный сервис
+# В .env
 OPENAI_API_KEY=sk-...
 ```
 
-### Issue: Poor image quality
+### Проблема: Низкое качество изображений
 
-**Problem:**
-Generated images don't match descriptions
+**Проблема:**
+Сгенерированные изображения не соответствуют описаниям
 
-**Solutions:**
+**Решения:**
 ```bash
-# Improve prompts
-# Edit backend/app/services/prompt_engineering.py
-# Add more context, genre-specific details
+# Улучшить промпты
+# Редактировать backend/app/services/prompt_engineering.py
+# Добавить больше контекста, деталей по жанрам
 
-# Use better AI service
-# DALL-E instead of pollinations.ai
-# In .env
+# Использовать лучший AI сервис
+# DALL-E вместо pollinations.ai
+# В .env
 OPENAI_API_KEY=sk-...
 IMAGE_SERVICE=openai
 
-# Adjust generation parameters
-# In backend/app/services/image_generator.py
-quality = "hd"  # For DALL-E
-steps = 50  # For Stable Diffusion
+# Настроить параметры генерации
+# В backend/app/services/image_generator.py
+quality = "hd"  # Для DALL-E
+steps = 50  # Для Stable Diffusion
 ```
 
 ---
 
-## Performance Issues
+## Проблемы производительности
 
-### Issue: Slow database queries
+### Проблема: Медленные запросы к базе данных
 
-**Problem:**
-API responses >500ms
+**Проблема:**
+Ответы API >500ms
 
-**Solutions:**
+**Решения:**
 ```bash
-# Check indexes exist
+# Проверить наличие индексов
 docker-compose exec postgres psql -U postgres -d bookreader -c "\d+ books"
 
-# Create missing indexes
-# Should see GIN indexes on JSONB columns
+# Создать отсутствующие индексы
+# Должны быть видны GIN индексы на JSONB колонках
 
-# Run VACUUM
+# Запустить VACUUM
 docker-compose exec postgres psql -U postgres -d bookreader -c "VACUUM ANALYZE;"
 
-# Check slow queries
+# Проверить медленные запросы
 docker-compose exec postgres psql -U postgres -d bookreader -c "SELECT * FROM pg_stat_statements ORDER BY mean_exec_time DESC LIMIT 10;"
 ```
 
-### Issue: High memory usage
+### Проблема: Высокое использование памяти
 
-**Problem:**
-Docker containers using >4GB RAM
+**Проблема:**
+Docker контейнеры используют >4GB RAM
 
-**Solutions:**
+**Решения:**
 ```bash
-# Check memory usage
+# Проверить использование памяти
 docker stats
 
-# Reduce Celery workers
-# In docker-compose.yml
+# Уменьшить Celery workers
+# В docker-compose.yml
 command: celery -A app.core.celery worker --concurrency=2
 
-# Reduce NLP batch size
-# In multi_nlp_manager.py
+# Уменьшить размер NLP батча
+# В multi_nlp_manager.py
 BATCH_SIZE = 3
 
-# Increase swap (Linux)
+# Увеличить swap (Linux)
 sudo fallocate -l 4G /swapfile
 sudo chmod 600 /swapfile
 sudo mkswap /swapfile
 sudo swapon /swapfile
 ```
 
-### Issue: Slow frontend loading
+### Проблема: Медленная загрузка frontend
 
-**Problem:**
-Page load time >3 seconds
+**Проблема:**
+Время загрузки страницы >3 секунд
 
-**Solutions:**
+**Решения:**
 ```bash
-# Build production bundle
+# Собрать production бандл
 cd frontend
 npm run build
 
-# Check bundle size
+# Проверить размер бандла
 npm run build -- --mode=production --analyze
 
-# Enable code splitting
-# Already implemented with React.lazy()
+# Включить разделение кода
+# Уже реализовано с React.lazy()
 
-# Enable caching
-# In nginx.conf
+# Включить кэширование
+# В nginx.conf
 location /static/ {
     expires 1y;
     add_header Cache-Control "public, immutable";
@@ -797,138 +797,138 @@ location /static/ {
 
 ---
 
-## Deployment Issues
+## Проблемы развертывания
 
-### Issue: SSL certificate fails
+### Проблема: SSL сертификат не работает
 
-**Problem:**
+**Ошибка:**
 ```
 Failed to obtain Let's Encrypt certificate
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Check domain DNS
+# Проверить DNS домена
 nslookup your-domain.com
 
-# Check port 80 accessible
+# Проверить доступность порта 80
 curl http://your-domain.com
 
-# Check Certbot logs
+# Проверить логи Certbot
 docker-compose logs certbot
 
-# Manual certificate request
+# Ручной запрос сертификата
 ./scripts/deploy.sh ssl
 
-# If fails, check firewall
+# Если не работает, проверить firewall
 sudo ufw status
 sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
 ```
 
-### Issue: Production deployment fails
+### Проблема: Production развертывание не работает
 
-**Problem:**
+**Ошибка:**
 ```
 Health check failed
 ```
 
-**Solutions:**
+**Решения:**
 ```bash
-# Check all services running
+# Проверить, что все сервисы запущены
 ./scripts/deploy.sh status
 
-# Check logs
+# Проверить логи
 docker-compose -f docker-compose.prod.yml logs
 
-# Verify .env.production
+# Проверить .env.production
 cat .env.production | grep -v PASSWORD
 
-# Restart services
+# Перезапустить сервисы
 ./scripts/deploy.sh restart
 
-# Full redeployment
+# Полное повторное развертывание
 ./scripts/deploy.sh deploy
 ```
 
-### Issue: Nginx 502 Bad Gateway
+### Проблема: Nginx 502 Bad Gateway
 
-**Problem:**
-Browser shows "502 Bad Gateway"
+**Ошибка:**
+Браузер показывает "502 Bad Gateway"
 
-**Solutions:**
+**Решения:**
 ```bash
-# Check backend running
+# Проверить, что backend запущен
 docker-compose ps backend
 
-# Check Nginx logs
+# Проверить логи Nginx
 docker-compose logs nginx
 
-# Check Nginx config
+# Проверить конфигурацию Nginx
 docker-compose exec nginx nginx -t
 
-# Restart Nginx
+# Перезапустить Nginx
 docker-compose restart nginx
 
-# If persists, check firewall
+# Если проблема сохраняется, проверить firewall
 sudo ufw status
 ```
 
 ---
 
-## Getting Help
+## Получение помощи
 
-### Before Asking for Help
+### Перед запросом помощи
 
-1. Check this troubleshooting guide
-2. Search existing [GitHub Issues](https://github.com/your-org/fancai-vibe-hackathon/issues)
-3. Check [FAQ](FAQ.md)
-4. Review relevant documentation in [docs/](docs/)
+1. Проверьте это руководство по устранению неполадок
+2. Поищите существующие [GitHub Issues](https://github.com/your-org/fancai-vibe-hackathon/issues)
+3. Проверьте [FAQ](FAQ.md)
+4. Просмотрите соответствующую документацию в [docs/](docs/)
 
-### How to Report an Issue
+### Как сообщить о проблеме
 
-Include:
-1. **Description:** What's wrong?
-2. **Steps to reproduce:** How can we reproduce it?
-3. **Expected behavior:** What should happen?
-4. **Actual behavior:** What actually happens?
-5. **Environment:**
-   - OS (macOS 14, Ubuntu 22.04, etc.)
-   - Docker version
-   - Browser (if frontend issue)
-6. **Logs:** Relevant error messages
-7. **Screenshots:** If applicable
+Включите:
+1. **Описание:** Что не так?
+2. **Шаги для воспроизведения:** Как мы можем воспроизвести это?
+3. **Ожидаемое поведение:** Что должно произойти?
+4. **Фактическое поведение:** Что происходит на самом деле?
+5. **Окружение:**
+   - ОС (macOS 14, Ubuntu 22.04 и т.д.)
+   - Версия Docker
+   - Браузер (если проблема frontend)
+6. **Логи:** Соответствующие сообщения об ошибках
+7. **Скриншоты:** Если применимо
 
-### Useful Diagnostic Commands
+### Полезные диагностические команды
 
 ```bash
-# System info
+# Информация о системе
 uname -a
 docker --version
 docker-compose --version
 
-# Service status
+# Статус сервисов
 docker-compose ps
 docker-compose logs --tail=100
 
-# Resource usage
+# Использование ресурсов
 docker stats
 df -h
 free -h
 
-# Network
+# Сеть
 netstat -tuln | grep -E '8000|5173|5432|6379'
 
-# Environment
+# Окружение
 env | grep -E 'DATABASE_URL|REDIS_URL|SECRET_KEY' | sed 's/=.*/=***/'
 ```
 
-### Contact
+### Контакты
 
 - **GitHub Issues:** https://github.com/your-org/fancai-vibe-hackathon/issues
-- **Documentation:** [docs/](docs/)
-- **Email:** support@bookreader.ai (if available)
+- **Документация:** [docs/](docs/)
+- **Email:** support@bookreader.ai (если доступен)
 
 ---
 
-**Last Updated:** November 14, 2025
+**Последнее обновление:** 14 ноября 2025

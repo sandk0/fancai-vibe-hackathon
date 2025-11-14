@@ -1,100 +1,100 @@
-# Contributing to BookReader AI
+# Руководство по внесению вклада в BookReader AI
 
-Thank you for your interest in contributing to BookReader AI! This document provides guidelines and instructions for contributing to the project.
+Благодарим вас за интерес к проекту BookReader AI! Этот документ содержит рекомендации и инструкции по внесению вклада в проект.
 
-## Table of Contents
+## Содержание
 
-- [Code of Conduct](#code-of-conduct)
-- [Getting Started](#getting-started)
-- [Development Workflow](#development-workflow)
-- [Coding Standards](#coding-standards)
-- [Commit Guidelines](#commit-guidelines)
-- [Pull Request Process](#pull-request-process)
-- [Documentation Requirements](#documentation-requirements)
-- [Testing Requirements](#testing-requirements)
-- [Community](#community)
+- [Кодекс поведения](#кодекс-поведения)
+- [Начало работы](#начало-работы)
+- [Процесс разработки](#процесс-разработки)
+- [Стандарты кодирования](#стандарты-кодирования)
+- [Рекомендации по коммитам](#рекомендации-по-коммитам)
+- [Процесс Pull Request](#процесс-pull-request)
+- [Требования к документации](#требования-к-документации)
+- [Требования к тестированию](#требования-к-тестированию)
+- [Сообщество](#сообщество)
 
-## Code of Conduct
+## Кодекс поведения
 
-By participating in this project, you agree to maintain a respectful and inclusive environment for all contributors.
+Участвуя в этом проекте, вы соглашаетесь поддерживать уважительную и инклюзивную среду для всех участников.
 
-## Getting Started
+## Начало работы
 
-### Prerequisites
+### Требования
 
-Before contributing, ensure you have:
+Перед началом работы убедитесь, что у вас установлено:
 - Python 3.11+
 - Node.js 18+
-- Docker and Docker Compose
+- Docker и Docker Compose
 - Git
 
-### Setting Up Your Development Environment
+### Настройка окружения разработки
 
-1. **Fork and Clone**
+1. **Форк и клонирование**
    ```bash
    git fork <repository-url>
    git clone https://github.com/YOUR_USERNAME/fancai-vibe-hackathon.git
    cd fancai-vibe-hackathon
    ```
 
-2. **Set Up Environment**
+2. **Настройка окружения**
    ```bash
-   # Copy environment template
+   # Копирование шаблона окружения
    cp .env.example .env
 
-   # Install dependencies
+   # Установка зависимостей
    cd backend && pip install -r requirements.txt
    cd ../frontend && npm install
    ```
 
-3. **Start Development Environment**
+3. **Запуск окружения разработки**
    ```bash
    docker-compose -f docker-compose.dev.yml up -d
    ```
 
-4. **Verify Setup**
+4. **Проверка установки**
    ```bash
-   # Backend health check
+   # Проверка работоспособности backend
    curl http://localhost:8000/health
 
-   # Frontend should be available at http://localhost:5173
+   # Frontend должен быть доступен по адресу http://localhost:5173
    ```
 
-For detailed setup instructions, see [Installation Guide](docs/guides/getting-started/installation.md).
+Подробные инструкции по установке см. в [Руководстве по установке](docs/guides/getting-started/installation.md).
 
-## Development Workflow
+## Процесс разработки
 
-### 1. Create a Feature Branch
+### 1. Создайте ветку для функциональности
 
 ```bash
 git checkout -b feature/your-feature-name
-# or
+# или
 git checkout -b fix/bug-description
 ```
 
-### 2. Make Your Changes
+### 2. Внесите изменения
 
-Follow these guidelines:
-- Write clear, readable code
-- Follow existing code style
-- Add tests for new features
-- Update documentation
-- Keep commits atomic and focused
+Следуйте этим рекомендациям:
+- Пишите чистый, читаемый код
+- Следуйте существующему стилю кода
+- Добавляйте тесты для новых функций
+- Обновляйте документацию
+- Делайте коммиты атомарными и сфокусированными
 
-### 3. Run Tests
+### 3. Запустите тесты
 
 ```bash
-# Backend tests
+# Тесты backend
 cd backend && pytest -v --cov=app
 
-# Frontend tests
+# Тесты frontend
 cd frontend && npm test
 
-# E2E tests
+# E2E тесты
 cd frontend && npm run test:e2e
 ```
 
-### 4. Lint and Format
+### 4. Проверка стиля и форматирование
 
 ```bash
 # Backend
@@ -109,67 +109,67 @@ npm run lint
 npm run type-check
 ```
 
-### 5. Pre-commit Hooks
+### 5. Pre-commit хуки
 
-We use pre-commit hooks to ensure code quality:
+Мы используем pre-commit хуки для обеспечения качества кода:
 
 ```bash
-# Install hooks
+# Установка хуков
 pre-commit install
 
-# Run all checks
+# Запуск всех проверок
 pre-commit run --all-files
 ```
 
-## Coding Standards
+## Стандарты кодирования
 
 ### Python (Backend)
 
-**Style Guide:** PEP 8 with Black formatting
+**Руководство по стилю:** PEP 8 с форматированием Black
 
-**Type Hints:** Required for all functions
+**Аннотации типов:** Обязательны для всех функций
 ```python
 def extract_descriptions(text: str, description_type: str) -> List[Description]:
     """
-    Extract descriptions from text.
+    Извлекает описания из текста.
 
     Args:
-        text: Source text to analyze
-        description_type: Type of descriptions to extract
+        text: Исходный текст для анализа
+        description_type: Тип извлекаемых описаний
 
     Returns:
-        List of found descriptions with metadata
+        Список найденных описаний с метаданными
 
     Example:
         >>> descriptions = extract_descriptions(chapter_text, 'location')
-        >>> print(f"Found {len(descriptions)} location descriptions")
+        >>> print(f"Найдено {len(descriptions)} описаний локаций")
     """
     pass
 ```
 
-**Docstrings:** Google style required
-- All public functions must have docstrings
-- Include Args, Returns, Raises, Example sections
-- Keep descriptions clear and concise
+**Docstrings:** Обязателен Google style
+- Все публичные функции должны иметь docstrings
+- Включайте разделы Args, Returns, Raises, Example
+- Описания должны быть четкими и краткими
 
-**Code Organization:**
-- Follow Single Responsibility Principle (SRP)
-- Maximum file size: ~500 lines
-- Use custom exceptions from `app/core/exceptions.py`
-- Use reusable dependencies from `app/core/dependencies.py`
+**Организация кода:**
+- Следуйте принципу единственной ответственности (SRP)
+- Максимальный размер файла: ~500 строк
+- Используйте пользовательские исключения из `app/core/exceptions.py`
+- Используйте переиспользуемые зависимости из `app/core/dependencies.py`
 
 ### TypeScript (Frontend)
 
-**Style Guide:** ESLint + Prettier
+**Руководство по стилю:** ESLint + Prettier
 
-**Type Safety:** Strict mode enabled
+**Безопасность типов:** Включен строгий режим
 ```typescript
 /**
- * Book reader component with image support
+ * Компонент читалки книг с поддержкой изображений
  *
- * @param book - Book object to read
- * @param currentPage - Current page number
- * @param onPageChange - Callback when page changes
+ * @param book - Объект книги для чтения
+ * @param currentPage - Номер текущей страницы
+ * @param onPageChange - Callback при смене страницы
  */
 interface BookReaderProps {
   book: Book;
@@ -178,37 +178,37 @@ interface BookReaderProps {
 }
 ```
 
-**Components:**
-- Use functional components with hooks
-- Props must be typed with interfaces
-- Use React.memo for performance-critical components
-- Follow React best practices
+**Компоненты:**
+- Используйте функциональные компоненты с хуками
+- Props должны быть типизированы с помощью интерфейсов
+- Используйте React.memo для критичных по производительности компонентов
+- Следуйте лучшим практикам React
 
-### Database Migrations
+### Миграции базы данных
 
-**Alembic Conventions:**
+**Соглашения Alembic:**
 ```bash
-# Create migration
+# Создание миграции
 cd backend
 alembic revision --autogenerate -m "descriptive_migration_name"
 
-# Review generated migration carefully!
-# Edit if needed before applying
+# Внимательно проверьте сгенерированную миграцию!
+# При необходимости отредактируйте перед применением
 
-# Apply migration
+# Применение миграции
 alembic upgrade head
 ```
 
-**Migration Guidelines:**
-- Always review auto-generated migrations
-- Use `op.batch_alter_table()` for SQLite compatibility
-- Include both `upgrade()` and `downgrade()`
-- Test migrations on clean database
-- Document breaking changes
+**Рекомендации по миграциям:**
+- Всегда проверяйте автоматически сгенерированные миграции
+- Используйте `op.batch_alter_table()` для совместимости с SQLite
+- Включайте как `upgrade()`, так и `downgrade()`
+- Тестируйте миграции на чистой базе данных
+- Документируйте breaking changes
 
-## Commit Guidelines
+## Рекомендации по коммитам
 
-### Commit Message Format
+### Формат сообщения коммита
 
 ```
 <type>(<scope>): <subject>
@@ -218,81 +218,81 @@ alembic upgrade head
 <footer>
 ```
 
-### Types
+### Типы
 
-- **feat**: New feature
-- **fix**: Bug fix
-- **docs**: Documentation changes
-- **style**: Code style changes (formatting, no logic changes)
-- **refactor**: Code refactoring
-- **test**: Adding or updating tests
-- **chore**: Build, CI, dependencies, tooling
+- **feat**: Новая функциональность
+- **fix**: Исправление бага
+- **docs**: Изменения в документации
+- **style**: Изменения стиля кода (форматирование, без изменения логики)
+- **refactor**: Рефакторинг кода
+- **test**: Добавление или обновление тестов
+- **chore**: Сборка, CI, зависимости, инструменты
 
-### Examples
+### Примеры
 
-**Good commits:**
+**Хорошие коммиты:**
 ```bash
-feat(parser): add EPUB file parser
+feat(parser): добавлен парсер EPUB файлов
 
-- Implement EpubParser class with extract_content() method
-- Add support for CSS styles and images
-- Add unit tests for all public methods
-- Update documentation: docs/components/backend/epub-parser.md
+- Реализован класс EpubParser с методом extract_content()
+- Добавлена поддержка CSS стилей и изображений
+- Добавлены unit тесты для всех публичных методов
+- Обновлена документация: docs/components/backend/epub-parser.md
 
 Closes #123
 
-fix(reader): fix pagination on mobile devices
+fix(reader): исправлена пагинация на мобильных устройствах
 
-- Fix text overflow on screens <768px
-- Optimize page height calculation for different fonts
-- Add responsive tests
+- Исправлено переполнение текста на экранах <768px
+- Оптимизирован расчет высоты страницы для разных шрифтов
+- Добавлены responsive тесты
 
 Fixes #456
 
-docs: update development plan and calendar
+docs: обновлен план разработки и календарь
 
-- Mark EPUB parser tasks as completed
-- Add new tasks for Phase 2
-- Update time estimates
+- Отмечены задачи парсера EPUB как выполненные
+- Добавлены новые задачи для Phase 2
+- Обновлены временные оценки
 
 [skip ci]
 ```
 
-**Bad commits:**
+**Плохие коммиты:**
 ```bash
-# Too vague
-fix: bug fix
+# Слишком расплывчато
+fix: исправление бага
 
-# No context
-update files
+# Нет контекста
+обновление файлов
 
-# Multiple unrelated changes
-feat: add parser, fix auth, update docs
+# Несколько несвязанных изменений
+feat: добавлен парсер, исправлена auth, обновлена документация
 ```
 
-### Commit Rules
+### Правила для коммитов
 
-- Commits should be atomic (one logical change)
-- Write clear, descriptive commit messages
-- Reference issues when applicable (`Closes #123`, `Fixes #456`)
-- Use present tense ("add feature" not "added feature")
-- Capitalize first letter of subject
-- No period at end of subject
-- Separate subject from body with blank line
-- Wrap body at 72 characters
+- Коммиты должны быть атомарными (одно логическое изменение)
+- Пишите четкие, описательные сообщения коммитов
+- Ссылайтесь на issues когда применимо (`Closes #123`, `Fixes #456`)
+- Используйте настоящее время ("добавить функцию", а не "добавлена функция")
+- Начинайте subject с заглавной буквы
+- Не ставьте точку в конце subject
+- Отделяйте subject от body пустой строкой
+- Переносите body на 72 символах
 
-## Pull Request Process
+## Процесс Pull Request
 
-### Before Submitting
+### Перед отправкой
 
-1. **Ensure all tests pass**
+1. **Убедитесь, что все тесты проходят**
    ```bash
-   # Run full test suite
+   # Запуск полного набора тестов
    cd backend && pytest -v --cov=app
    cd frontend && npm test && npm run test:e2e
    ```
 
-2. **Check code quality**
+2. **Проверьте качество кода**
    ```bash
    # Backend
    cd backend && ruff check . && black --check . && mypy app/ --strict
@@ -301,103 +301,103 @@ feat: add parser, fix auth, update docs
    cd frontend && npm run lint && npm run type-check
    ```
 
-3. **Update documentation**
-   - Update relevant documentation files
-   - Add docstrings to new functions
-   - Update changelog if needed
+3. **Обновите документацию**
+   - Обновите соответствующие файлы документации
+   - Добавьте docstrings к новым функциям
+   - Обновите changelog при необходимости
 
-4. **Verify pre-commit hooks pass**
+4. **Проверьте прохождение pre-commit хуков**
    ```bash
    pre-commit run --all-files
    ```
 
-### PR Template
+### Шаблон PR
 
-When creating a PR, include:
+При создании PR включите:
 
 ```markdown
-## Description
-Brief description of changes
+## Описание
+Краткое описание изменений
 
-## Type of Change
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] Documentation update
+## Тип изменения
+- [ ] Исправление бага (non-breaking change, которое исправляет проблему)
+- [ ] Новая функциональность (non-breaking change, которое добавляет функциональность)
+- [ ] Breaking change (исправление или функция, которая приведет к тому, что существующая функциональность не будет работать как ожидается)
+- [ ] Обновление документации
 
-## Testing
-- [ ] Backend tests pass
-- [ ] Frontend tests pass
-- [ ] E2E tests pass
-- [ ] Manual testing completed
+## Тестирование
+- [ ] Backend тесты пройдены
+- [ ] Frontend тесты пройдены
+- [ ] E2E тесты пройдены
+- [ ] Ручное тестирование завершено
 
-## Documentation
-- [ ] Code includes docstrings
-- [ ] README updated (if needed)
-- [ ] API documentation updated (if needed)
-- [ ] Changelog updated
+## Документация
+- [ ] Код включает docstrings
+- [ ] README обновлен (если необходимо)
+- [ ] API документация обновлена (если необходимо)
+- [ ] Changelog обновлен
 
-## Related Issues
+## Связанные Issues
 Closes #<issue_number>
 
-## Screenshots (if applicable)
-Add screenshots for UI changes
+## Скриншоты (если применимо)
+Добавьте скриншоты для изменений UI
 ```
 
-### Review Process
+### Процесс проверки
 
-1. **Automated Checks**
-   - CI/CD pipeline must pass
-   - All tests must pass
-   - Code coverage should not decrease
-   - Type checking must pass
+1. **Автоматические проверки**
+   - CI/CD pipeline должен пройти
+   - Все тесты должны пройти
+   - Покрытие кода не должно уменьшаться
+   - Проверка типов должна пройти
 
 2. **Code Review**
-   - At least one approval required
-   - Address all review comments
-   - Keep discussions constructive
+   - Требуется минимум одобрение одного рецензента
+   - Ответьте на все комментарии к ревью
+   - Поддерживайте конструктивные обсуждения
 
-3. **Merge**
-   - Squash commits for cleaner history (optional)
-   - Delete branch after merge
-   - Monitor CI/CD after merge
+3. **Слияние**
+   - Squash коммитов для более чистой истории (опционально)
+   - Удалите ветку после слияния
+   - Отслеживайте CI/CD после слияния
 
-## Documentation Requirements
+## Требования к документации
 
-**CRITICAL:** Every code change MUST be accompanied by documentation updates!
+**КРИТИЧЕСКИ ВАЖНО:** Каждое изменение кода ДОЛЖНО сопровождаться обновлением документации!
 
-### Required Documentation Updates
+### Обязательные обновления документации
 
-After implementing a feature, update:
+После реализации функциональности обновите:
 
-1. **README.md** - If adding new functionality
-2. **docs/development/planning/development-plan.md** - Mark completed tasks
-3. **docs/development/planning/development-calendar.md** - Record dates
-4. **docs/development/changelog/2025.md** - Detailed change description
-5. **docs/development/status/current-status.md** - Current project state
-6. **Code documentation** - Docstrings, comments, module READMEs
+1. **README.md** - Если добавляется новая функциональность
+2. **docs/development/planning/development-plan.md** - Отметьте выполненные задачи
+3. **docs/development/planning/development-calendar.md** - Зафиксируйте даты
+4. **docs/development/changelog/2025.md** - Детальное описание изменений
+5. **docs/development/status/current-status.md** - Текущее состояние проекта
+6. **Документация кода** - Docstrings, комментарии, README модулей
 
-### Documentation Standards
+### Стандарты документации
 
 **Python Docstrings:**
 ```python
 def function_name(param1: Type1, param2: Type2) -> ReturnType:
     """
-    Brief one-sentence description.
+    Краткое описание в одно предложение.
 
-    More detailed description if needed.
-    Can span multiple paragraphs.
+    Более детальное описание при необходимости.
+    Может занимать несколько параграфов.
 
     Args:
-        param1: Description of param1
-        param2: Description of param2
+        param1: Описание param1
+        param2: Описание param2
 
     Returns:
-        Description of return value
+        Описание возвращаемого значения
 
     Raises:
-        ValueError: When it's raised
-        HTTPException: When it's raised
+        ValueError: Когда выбрасывается
+        HTTPException: Когда выбрасывается
 
     Example:
         >>> result = function_name("test", 42)
@@ -405,63 +405,63 @@ def function_name(param1: Type1, param2: Type2) -> ReturnType:
         expected_output
 
     Note:
-        Important notes about usage
+        Важные замечания об использовании
     """
 ```
 
 **TypeScript JSDoc:**
 ```typescript
 /**
- * Brief description of component/function
+ * Краткое описание компонента/функции
  *
- * @param {Type} paramName - Parameter description
- * @returns {ReturnType} Return value description
+ * @param {Type} paramName - Описание параметра
+ * @returns {ReturnType} Описание возвращаемого значения
  *
  * @example
  * const result = functionName(param);
  *
- * @throws {Error} When error is thrown
+ * @throws {Error} Когда выбрасывается ошибка
  */
 ```
 
-For detailed documentation guidelines, see [CLAUDE.md](CLAUDE.md).
+Подробные рекомендации по документации см. в [CLAUDE.md](CLAUDE.md).
 
-## Testing Requirements
+## Требования к тестированию
 
-### Test Coverage Requirements
+### Требования к покрытию тестами
 
-- **Minimum coverage:** 70% overall
-- **Core modules:** 100% coverage required
-- **New features:** Must include tests
-- **Bug fixes:** Must include regression tests
+- **Минимальное покрытие:** 70% в целом
+- **Основные модули:** Требуется 100% покрытие
+- **Новые функции:** Должны включать тесты
+- **Исправления багов:** Должны включать регрессионные тесты
 
-### Testing Pyramid
+### Пирамида тестирования
 
-1. **Unit Tests** (Backend)
+1. **Unit тесты** (Backend)
    ```bash
    cd backend
    pytest tests/unit/ -v
    ```
 
-2. **Integration Tests** (Backend)
+2. **Интеграционные тесты** (Backend)
    ```bash
    cd backend
    pytest tests/integration/ -v
    ```
 
-3. **Component Tests** (Frontend)
+3. **Компонентные тесты** (Frontend)
    ```bash
    cd frontend
    npm test
    ```
 
-4. **E2E Tests** (Full stack)
+4. **E2E тесты** (Full stack)
    ```bash
    cd frontend
    npm run test:e2e
    ```
 
-### Writing Tests
+### Написание тестов
 
 **Backend (pytest):**
 ```python
@@ -469,7 +469,7 @@ import pytest
 from app.services.book_parser import BookParser
 
 def test_parse_epub_valid_file():
-    """Test parsing valid EPUB file."""
+    """Тест парсинга валидного EPUB файла."""
     parser = BookParser()
     result = parser.parse_epub("tests/fixtures/sample.epub")
 
@@ -479,7 +479,7 @@ def test_parse_epub_valid_file():
 
 @pytest.mark.asyncio
 async def test_async_function():
-    """Test async function."""
+    """Тест асинхронной функции."""
     result = await some_async_function()
     assert result == expected_value
 ```
@@ -491,131 +491,131 @@ import { render, screen } from '@testing-library/react';
 import { BookReader } from './BookReader';
 
 describe('BookReader', () => {
-  it('renders book content', () => {
-    const book = { title: 'Test Book', content: 'Content' };
+  it('отображает контент книги', () => {
+    const book = { title: 'Тестовая книга', content: 'Контент' };
     render(<BookReader book={book} />);
-    expect(screen.getByText('Test Book')).toBeInTheDocument();
+    expect(screen.getByText('Тестовая книга')).toBeInTheDocument();
   });
 });
 ```
 
-For detailed testing guidelines, see [Testing Guide](docs/guides/testing/testing-guide.md).
+Подробные рекомендации по тестированию см. в [Руководстве по тестированию](docs/guides/testing/testing-guide.md).
 
-## Community
+## Сообщество
 
-### Getting Help
+### Получение помощи
 
-- **Documentation:** Check [docs/](docs/) first
-- **Issues:** Search existing issues before creating new ones
-- **Discussions:** Use GitHub Discussions for questions
-- **Discord/Slack:** (Add if available)
+- **Документация:** Сначала проверьте [docs/](docs/)
+- **Issues:** Поищите существующие issues перед созданием новых
+- **Обсуждения:** Используйте GitHub Discussions для вопросов
+- **Discord/Slack:** (Добавьте, если доступно)
 
-### Reporting Bugs
+### Сообщение об ошибках
 
-Use the bug report template:
-
-```markdown
-**Bug Description**
-Clear description of the bug
-
-**To Reproduce**
-Steps to reproduce:
-1. Go to '...'
-2. Click on '...'
-3. See error
-
-**Expected Behavior**
-What should happen
-
-**Screenshots**
-If applicable
-
-**Environment**
-- OS: [e.g. macOS 14.0]
-- Browser: [e.g. Chrome 120]
-- Version: [e.g. 1.0.0]
-
-**Additional Context**
-Any other information
-```
-
-### Feature Requests
-
-Use the feature request template:
+Используйте шаблон отчета об ошибке:
 
 ```markdown
-**Feature Description**
-Clear description of the feature
+**Описание ошибки**
+Четкое описание ошибки
 
-**Use Case**
-Why is this feature needed?
+**Как воспроизвести**
+Шаги для воспроизведения:
+1. Перейдите в '...'
+2. Нажмите на '...'
+3. Увидите ошибку
 
-**Proposed Solution**
-How should it work?
+**Ожидаемое поведение**
+Что должно произойти
 
-**Alternatives Considered**
-Other approaches considered
+**Скриншоты**
+Если применимо
 
-**Additional Context**
-Any other information
+**Окружение**
+- ОС: [например macOS 14.0]
+- Браузер: [например Chrome 120]
+- Версия: [например 1.0.0]
+
+**Дополнительный контекст**
+Любая другая информация
 ```
 
-## Quick Reference
+### Запросы функциональности
 
-### Common Commands
+Используйте шаблон запроса функциональности:
+
+```markdown
+**Описание функции**
+Четкое описание функции
+
+**Сценарий использования**
+Зачем нужна эта функция?
+
+**Предлагаемое решение**
+Как это должно работать?
+
+**Рассмотренные альтернативы**
+Другие рассмотренные подходы
+
+**Дополнительный контекст**
+Любая другая информация
+```
+
+## Краткая справка
+
+### Часто используемые команды
 
 ```bash
-# Development
+# Разработка
 docker-compose -f docker-compose.dev.yml up -d
 
-# Tests
+# Тесты
 cd backend && pytest -v --cov=app
 cd frontend && npm test
 
-# Linting
+# Линтинг
 cd backend && ruff check . && black .
 cd frontend && npm run lint
 
-# Type checking
+# Проверка типов
 cd backend && mypy app/ --strict
 cd frontend && npm run type-check
 
-# Database migrations
+# Миграции базы данных
 cd backend && alembic upgrade head
-cd backend && alembic revision --autogenerate -m "description"
+cd backend && alembic revision --autogenerate -m "описание"
 
-# Pre-commit hooks
+# Pre-commit хуки
 pre-commit install
 pre-commit run --all-files
 ```
 
-### File Structure
+### Структура файлов
 
 ```
 fancai-vibe-hackathon/
-├── frontend/           # React application
-├── backend/            # FastAPI application
+├── frontend/           # React приложение
+├── backend/            # FastAPI приложение
 │   ├── app/
-│   │   ├── core/      # Core utilities (config, db, exceptions, dependencies)
-│   │   ├── models/    # SQLAlchemy models
-│   │   ├── routers/   # API routes (modular)
-│   │   ├── services/  # Business logic (modular)
-│   │   └── schemas/   # Pydantic schemas
-│   └── tests/         # Tests
-├── docs/              # Documentation
-│   ├── guides/        # Tutorials & how-to guides
-│   ├── reference/     # Technical documentation
-│   ├── explanations/  # Concepts & architecture
-│   └── operations/    # Deployment & maintenance
-└── scripts/           # Utility scripts
+│   │   ├── core/      # Основные утилиты (config, db, exceptions, dependencies)
+│   │   ├── models/    # SQLAlchemy модели
+│   │   ├── routers/   # API роуты (модульные)
+│   │   ├── services/  # Бизнес-логика (модульная)
+│   │   └── schemas/   # Pydantic схемы
+│   └── tests/         # Тесты
+├── docs/              # Документация
+│   ├── guides/        # Руководства и how-to guides
+│   ├── reference/     # Техническая документация
+│   ├── explanations/  # Концепции и архитектура
+│   └── operations/    # Деплоймент и обслуживание
+└── scripts/           # Вспомогательные скрипты
 ```
 
-## License
+## Лицензия
 
-By contributing, you agree that your contributions will be licensed under the same license as the project.
+Внося вклад, вы соглашаетесь, что ваш вклад будет лицензирован под той же лицензией, что и проект.
 
 ---
 
-**Thank you for contributing to BookReader AI!**
+**Спасибо за ваш вклад в BookReader AI!**
 
-For questions, check [FAQ.md](FAQ.md) or open an issue.
+По вопросам обращайтесь к [FAQ.md](FAQ.md) или создайте issue.

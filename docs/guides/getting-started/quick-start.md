@@ -1,298 +1,298 @@
-# Quick Start Guide
+# Руководство по быстрому старту
 
-Get BookReader AI up and running in 5 minutes.
+Запустите BookReader AI всего за 5 минут.
 
-## Prerequisites
+## Требования
 
-Before you begin, ensure you have:
-- [Docker Desktop](https://www.docker.com/products/docker-desktop) installed
-- [Git](https://git-scm.com/downloads) installed
-- 4GB+ RAM available
-- 5GB+ disk space available
+Перед началом убедитесь, что у вас установлено:
+- [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- [Git](https://git-scm.com/downloads)
+- 4GB+ доступной оперативной памяти
+- 5GB+ свободного места на диске
 
-## 5-Minute Setup
+## 5-минутная настройка
 
-### Step 1: Clone Repository (30 seconds)
+### Шаг 1: Клонирование репозитория (30 секунд)
 
 ```bash
 git clone <repository-url>
 cd fancai-vibe-hackathon
 ```
 
-### Step 2: Configure Environment (1 minute)
+### Шаг 2: Настройка окружения (1 минута)
 
 ```bash
-# Copy environment template
+# Копирование шаблона окружения
 cp .env.example .env
 
-# Generate secret key
+# Генерация секретного ключа
 openssl rand -hex 32
 
-# Edit .env and set SECRET_KEY
+# Редактирование .env и установка SECRET_KEY
 nano .env
 ```
 
-**Minimal .env configuration:**
+**Минимальная конфигурация .env:**
 ```bash
-# Required
+# Обязательные параметры
 SECRET_KEY=<your-generated-key>
 DATABASE_URL=postgresql://postgres:postgres@postgres:5432/bookreader
 REDIS_URL=redis://redis:6379
 
-# AI Service (free)
+# AI сервис (бесплатный)
 POLLINATIONS_ENABLED=true
 ```
 
-### Step 3: Start Application (3 minutes)
+### Шаг 3: Запуск приложения (3 минуты)
 
 ```bash
-# Start all services
+# Запуск всех сервисов
 docker-compose up -d
 
-# Wait for services to start (about 2-3 minutes)
-# Watch progress:
+# Ожидание запуска сервисов (около 2-3 минут)
+# Просмотр прогресса:
 docker-compose logs -f backend
 ```
 
-### Step 4: Verify Installation (30 seconds)
+### Шаг 4: Проверка установки (30 секунд)
 
 ```bash
-# Check backend health
+# Проверка здоровья backend
 curl http://localhost:8000/health
-# Expected: {"status": "healthy"}
+# Ожидается: {"status": "healthy"}
 
-# Check frontend
+# Проверка frontend
 open http://localhost:5173
-# Or visit in browser
+# Или откройте в браузере
 ```
 
-### Step 5: Create Admin Account (30 seconds)
+### Шаг 5: Создание администраторского аккаунта (30 секунд)
 
 ```bash
-# Access backend container
+# Доступ к контейнеру backend
 docker-compose exec backend bash
 
-# Create superuser
+# Создание суперпользователя
 python -m app.scripts.create_superuser
-# Follow prompts to create account
+# Следуйте подсказкам для создания аккаунта
 
-# Exit container
+# Выход из контейнера
 exit
 ```
 
-## Quick Test
+## Быстрый тест
 
-### Upload Your First Book
+### Загрузка первой книги
 
-1. **Open Application**
-   - Navigate to http://localhost:5173
-   - Login with admin credentials
+1. **Открыть приложение**
+   - Перейти на http://localhost:5173
+   - Войти с учетными данными администратора
 
-2. **Upload Book**
-   - Click "Upload Book" button
-   - Select an EPUB file
-   - Wait for upload (2-5 seconds)
+2. **Загрузить книгу**
+   - Нажать кнопку "Загрузить книгу"
+   - Выбрать EPUB файл
+   - Дождаться загрузки (2-5 секунд)
 
-3. **Wait for Processing**
-   - Book parsing starts automatically
-   - Watch progress indicator
-   - Takes ~10-30 seconds depending on book size
+3. **Дождаться обработки**
+   - Парсинг книги запускается автоматически
+   - Наблюдать за индикатором прогресса
+   - Занимает ~10-30 секунд в зависимости от размера книги
 
-4. **Start Reading**
-   - Click "Open Book"
-   - Descriptions are automatically highlighted
-   - Click on highlighted text to see generated images
+4. **Начать чтение**
+   - Нажать "Открыть книгу"
+   - Описания автоматически подсвечиваются
+   - Кликнуть на подсвеченный текст для просмотра сгенерированных изображений
 
-## What's Running?
+## Что запущено?
 
-After `docker-compose up -d`, you have:
+После выполнения `docker-compose up -d` у вас работают:
 
-| Service | Port | Description |
-|---------|------|-------------|
-| Frontend | 5173 | React application |
-| Backend | 8000 | FastAPI server |
-| PostgreSQL | 5432 | Database |
-| Redis | 6379 | Cache & task queue |
-| Celery Worker | - | Background tasks |
+| Сервис | Порт | Описание |
+|---------|------|----------|
+| Frontend | 5173 | React приложение |
+| Backend | 8000 | FastAPI сервер |
+| PostgreSQL | 5432 | База данных |
+| Redis | 6379 | Кэш и очередь задач |
+| Celery Worker | - | Фоновые задачи |
 
-## Common Commands
+## Основные команды
 
 ```bash
-# View logs
+# Просмотр логов
 docker-compose logs -f backend
 docker-compose logs -f frontend
 docker-compose logs -f celery-worker
 
-# Restart service
+# Перезапуск сервиса
 docker-compose restart backend
 
-# Stop all services
+# Остановка всех сервисов
 docker-compose down
 
-# Start again
+# Повторный запуск
 docker-compose up -d
 
-# Clean restart (removes data!)
+# Чистый перезапуск (удаляет данные!)
 docker-compose down -v
 docker-compose up -d
 ```
 
-## What's Next?
+## Что дальше?
 
-### For Users
+### Для пользователей
 
-- [Upload your first book](first-book.md) - Detailed walkthrough
-- [User Manual](user-manual.md) - Full feature guide
-- [FAQ](../../../FAQ.md) - Frequently asked questions
+- [Загрузка первой книги](first-book.md) - Подробное руководство
+- [Руководство пользователя](user-manual.md) - Полное описание функций
+- [FAQ](../../../FAQ.md) - Часто задаваемые вопросы
 
-### For Developers
+### Для разработчиков
 
-- [Installation Guide](installation.md) - Detailed setup
-- [Development Workflow](../development/workflow.md) - How to contribute
-- [Testing Guide](../testing/testing-guide.md) - Running tests
-- [Contributing Guide](../../../CONTRIBUTING.md) - Contribution guidelines
+- [Руководство по установке](installation.md) - Детальная настройка
+- [Процесс разработки](../development/workflow.md) - Как внести вклад
+- [Руководство по тестированию](../testing/testing-guide.md) - Запуск тестов
+- [Руководство для контрибьюторов](../../../CONTRIBUTING.md) - Правила участия
 
-## Troubleshooting
+## Решение проблем
 
-### Services Won't Start
+### Сервисы не запускаются
 
 ```bash
-# Check if ports are available
+# Проверка доступности портов
 lsof -i :8000
 lsof -i :5173
 
-# Check Docker is running
+# Проверка работы Docker
 docker ps
 
-# View detailed logs
+# Просмотр подробных логов
 docker-compose logs
 ```
 
-### Cannot Connect to Backend
+### Не удается подключиться к Backend
 
 ```bash
-# Restart backend
+# Перезапуск backend
 docker-compose restart backend
 
-# Wait 10 seconds
+# Ожидание 10 секунд
 sleep 10
 
-# Test connection
+# Проверка соединения
 curl http://localhost:8000/health
 ```
 
-### NLP Models Missing
+### Отсутствуют NLP модели
 
 ```bash
-# Enter backend container
+# Вход в контейнер backend
 docker-compose exec backend bash
 
-# Download models
+# Загрузка моделей
 python -m spacy download ru_core_news_lg
 python -c "import stanza; stanza.download('ru')"
 
-# Exit and restart
+# Выход и перезапуск
 exit
 docker-compose restart backend
 ```
 
-### More Help
+### Дополнительная помощь
 
-- [Troubleshooting Guide](../../../TROUBLESHOOTING.md) - Complete troubleshooting
-- [FAQ](../../../FAQ.md) - Common questions
-- [GitHub Issues](https://github.com/your-org/fancai-vibe-hackathon/issues) - Report bugs
+- [Руководство по решению проблем](../../../TROUBLESHOOTING.md) - Полное руководство
+- [FAQ](../../../FAQ.md) - Часто задаваемые вопросы
+- [GitHub Issues](https://github.com/your-org/fancai-vibe-hackathon/issues) - Сообщить о баге
 
-## Quick Reference
+## Быстрая справка
 
-### URLs
+### URL-адреса
 
 - **Frontend:** http://localhost:5173
 - **Backend API:** http://localhost:8000
-- **API Docs:** http://localhost:8000/docs
+- **API документация:** http://localhost:8000/docs
 - **API Redoc:** http://localhost:8000/redoc
 
-### Default Credentials (Development)
+### Учетные данные по умолчанию (разработка)
 
-- **Username:** admin@example.com
-- **Password:** Set during superuser creation
+- **Имя пользователя:** admin@example.com
+- **Пароль:** Установлен при создании суперпользователя
 
-### Environment Variables
+### Переменные окружения
 
-See [.env.example](.env.example) for all available options.
+См. [.env.example](.env.example) для всех доступных опций.
 
-**Required:**
-- `SECRET_KEY` - JWT secret (32+ characters)
-- `DATABASE_URL` - PostgreSQL connection
-- `REDIS_URL` - Redis connection
+**Обязательные:**
+- `SECRET_KEY` - секрет JWT (32+ символов)
+- `DATABASE_URL` - подключение PostgreSQL
+- `REDIS_URL` - подключение Redis
 
-**Optional:**
-- `OPENAI_API_KEY` - For DALL-E image generation
-- `DEBUG` - Enable debug mode (default: false)
+**Опциональные:**
+- `OPENAI_API_KEY` - для генерации изображений DALL-E
+- `DEBUG` - включить режим отладки (по умолчанию: false)
 
-## Architecture Overview
+## Обзор архитектуры
 
 ```
 ┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│   Browser   │────▶│   Frontend   │────▶│   Backend   │
-│  (Client)   │     │   (React)    │     │  (FastAPI)  │
+│   Браузер   │────▶│   Frontend   │────▶│   Backend   │
+│  (Клиент)   │     │   (React)    │     │  (FastAPI)  │
 └─────────────┘     └──────────────┘     └─────────────┘
                                                  │
                           ┌──────────────────────┼────────────────┐
                           │                      │                │
                     ┌─────▼─────┐         ┌─────▼─────┐   ┌─────▼─────┐
                     │PostgreSQL │         │   Redis   │   │  Celery   │
-                    │ (Database)│         │  (Cache)  │   │ (Workers) │
+                    │    (БД)   │         │   (Кэш)   │   │ (Воркеры) │
                     └───────────┘         └───────────┘   └───────────┘
 ```
 
-## Features Available After Setup
+## Доступные функции после настройки
 
-- User authentication (JWT)
-- Book upload (EPUB, FB2)
-- Automatic NLP parsing
-- AI image generation
-- Reading interface with CFI positioning
-- Smart description highlighting
-- Progress tracking
-- Dark/light themes
+- Аутентификация пользователей (JWT)
+- Загрузка книг (EPUB, FB2)
+- Автоматический NLP парсинг
+- AI генерация изображений
+- Интерфейс чтения с CFI позиционированием
+- Умная подсветка описаний
+- Отслеживание прогресса
+- Темная/светлая темы
 
-## Performance Expectations
+## Ожидаемая производительность
 
-| Operation | Time |
-|-----------|------|
-| Book upload | 2-5s |
-| Book parsing | 10-30s |
-| Image generation | 5-15s per image |
-| Page load | <2s |
+| Операция | Время |
+|----------|-------|
+| Загрузка книги | 2-5с |
+| Парсинг книги | 10-30с |
+| Генерация изображения | 5-15с на изображение |
+| Загрузка страницы | <2с |
 
-## Next Steps
+## Следующие шаги
 
-1. **Explore Features**
-   - Upload different book formats
-   - Try different NLP modes (Admin panel)
-   - Customize reading settings
+1. **Изучить функции**
+   - Загрузить книги разных форматов
+   - Попробовать разные режимы NLP (панель администратора)
+   - Настроить параметры чтения
 
-2. **Development**
-   - Read [Development Workflow](../development/workflow.md)
-   - Check [Contributing Guide](../../../CONTRIBUTING.md)
-   - Run tests: `cd backend && pytest`
+2. **Разработка**
+   - Прочитать [Процесс разработки](../development/workflow.md)
+   - Изучить [Руководство для контрибьюторов](../../../CONTRIBUTING.md)
+   - Запустить тесты: `cd backend && pytest`
 
-3. **Production Deployment**
-   - See [Production Deployment Guide](../deployment/production-deployment.md)
-   - Set up SSL certificates
-   - Configure monitoring
+3. **Production развертывание**
+   - См. [Руководство по Production развертыванию](../deployment/production-deployment.md)
+   - Настроить SSL сертификаты
+   - Настроить мониторинг
 
-## Support
+## Поддержка
 
-- **Documentation:** [docs/](../../README.md)
+- **Документация:** [docs/](../../README.md)
 - **FAQ:** [FAQ.md](../../../FAQ.md)
-- **Troubleshooting:** [TROUBLESHOOTING.md](../../../TROUBLESHOOTING.md)
-- **Issues:** [GitHub Issues](https://github.com/your-org/fancai-vibe-hackathon/issues)
+- **Решение проблем:** [TROUBLESHOOTING.md](../../../TROUBLESHOOTING.md)
+- **Вопросы:** [GitHub Issues](https://github.com/your-org/fancai-vibe-hackathon/issues)
 
 ---
 
-**Congratulations!** You now have BookReader AI running locally.
+**Поздравляем!** BookReader AI теперь запущен локально.
 
-For detailed documentation, see [Documentation Index](../../README.md).
+Для подробной документации см. [Индекс документации](../../README.md).
 
-**Last Updated:** November 14, 2025
+**Последнее обновление:** 14 ноября 2025

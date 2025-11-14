@@ -1,67 +1,67 @@
-# Frequently Asked Questions (FAQ)
+# Частозадаваемые вопросы (FAQ)
 
-Common questions and answers about BookReader AI.
+Распространенные вопросы и ответы о BookReader AI.
 
-## Table of Contents
+## Содержание
 
-- [General Questions](#general-questions)
-- [Getting Started](#getting-started)
-- [Development](#development)
-- [Features](#features)
-- [Multi-NLP System](#multi-nlp-system)
-- [Performance](#performance)
-- [Deployment](#deployment)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
+- [Общие вопросы](#общие-вопросы)
+- [Начало работы](#начало-работы)
+- [Разработка](#разработка)
+- [Функциональность](#функциональность)
+- [Multi-NLP система](#multi-nlp-система)
+- [Производительность](#производительность)
+- [Развертывание](#развертывание)
+- [Устранение неполадок](#устранение-неполадок)
+- [Участие в проекте](#участие-в-проекте)
 
 ---
 
-## General Questions
+## Общие вопросы
 
-### What is BookReader AI?
+### Что такое BookReader AI?
 
-BookReader AI is a web application for reading fiction with automatic AI-generated illustrations based on descriptions extracted from books. It uses advanced NLP technologies to extract descriptions and AI services to create visualizations.
+BookReader AI - это веб-приложение для чтения художественной литературы с автоматической генерацией иллюстраций на основе описаний, извлеченных из книг. Оно использует передовые NLP технологии для извлечения описаний и AI-сервисы для создания визуализаций.
 
-### What book formats are supported?
+### Какие форматы книг поддерживаются?
 
-Currently supported formats:
-- **EPUB** (recommended) - Full support with CFI positioning
-- **FB2** - Full support
-- **PDF** - Planned for Phase 2
-- **MOBI** - Planned for Phase 2
+В настоящее время поддерживаются форматы:
+- **EPUB** (рекомендуется) - Полная поддержка с CFI позиционированием
+- **FB2** - Полная поддержка
+- **PDF** - Запланировано для Phase 2
+- **MOBI** - Запланировано для Phase 2
 
-### What languages are supported?
+### Какие языки поддерживаются?
 
-The NLP system is optimized for **Russian language** using:
+NLP система оптимизирована для **русского языка** с использованием:
 - SpaCy (ru_core_news_lg)
-- Natasha (Russian morphology specialist)
-- Stanza (Russian dependency parsing)
+- Natasha (специалист по русской морфологии)
+- Stanza (русский dependency parsing)
 
-English support is planned for Phase 2.
+Поддержка английского языка запланирована для Phase 2.
 
-### Is this project open source?
+### Является ли проект open source?
 
-This is currently a private project. Licensing details will be announced later.
+В настоящее время это частный проект. Детали лицензирования будут объявлены позже.
 
-### What is the current project status?
+### Каков текущий статус проекта?
 
-**Phase 1 (MVP)** is 100% complete (as of October 2025):
-- Full book management system
-- Advanced Multi-NLP parser
-- AI image generation
-- CFI reading system with epub.js
-- Production-ready deployment
-- Comprehensive testing suite
+**Phase 1 (MVP)** завершен на 100% (по состоянию на октябрь 2025):
+- Полная система управления книгами
+- Продвинутый Multi-NLP парсер
+- AI генерация изображений
+- CFI система чтения с epub.js
+- Production-ready развертывание
+- Комплексный набор тестов
 
-For detailed status, see [Current Status](docs/development/status/current-status.md).
+Для детального статуса см. [Текущий статус](docs/development/status/current-status.md).
 
 ---
 
-## Getting Started
+## Начало работы
 
-### How do I install BookReader AI?
+### Как установить BookReader AI?
 
-**Quick start:**
+**Быстрый старт:**
 ```bash
 git clone <repository-url>
 cd fancai-vibe-hackathon
@@ -69,330 +69,330 @@ cp .env.example .env
 docker-compose up -d
 ```
 
-For detailed instructions, see [Installation Guide](docs/guides/getting-started/installation.md).
+Для детальных инструкций см. [Руководство по установке](docs/guides/getting-started/installation.md).
 
-### What are the system requirements?
+### Каковы системные требования?
 
-**Development:**
+**Разработка:**
 - Python 3.11+
 - Node.js 18+
 - PostgreSQL 15+
 - Redis 6+
 - Docker & Docker Compose
-- 4GB+ RAM recommended
+- Рекомендуется 4GB+ RAM
 
 **Production:**
 - 8GB+ RAM
-- 4+ CPU cores
-- 50GB+ SSD storage
-- Ubuntu 20.04+ or similar
+- 4+ ядра CPU
+- 50GB+ SSD хранилище
+- Ubuntu 20.04+ или аналогичная
 
-### How long does setup take?
+### Сколько времени занимает настройка?
 
-- **With Docker:** 5-10 minutes (automated)
-- **Manual setup:** 30-60 minutes (backend + frontend + database)
+- **С Docker:** 5-10 минут (автоматизировано)
+- **Ручная настройка:** 30-60 минут (backend + frontend + база данных)
 
-### Do I need API keys for AI services?
+### Нужны ли API ключи для AI сервисов?
 
-**For development:**
-- pollinations.ai - No API key needed (free, default service)
-- OpenAI DALL-E - Optional (requires API key)
-- Midjourney - Optional (requires subscription)
+**Для разработки:**
+- pollinations.ai - API ключ не нужен (бесплатный, сервис по умолчанию)
+- OpenAI DALL-E - Опционально (требуется API ключ)
+- Midjourney - Опционально (требуется подписка)
 
-**For production:**
-- Recommended to set up at least one paid service for reliability
+**Для production:**
+- Рекомендуется настроить хотя бы один платный сервис для надежности
 
 ---
 
-## Development
+## Разработка
 
-### How do I run tests?
+### Как запустить тесты?
 
 ```bash
-# Backend tests
+# Backend тесты
 cd backend && pytest -v --cov=app
 
-# Frontend tests
+# Frontend тесты
 cd frontend && npm test
 
-# E2E tests
+# E2E тесты
 cd frontend && npm run test:e2e
 
-# All tests
+# Все тесты
 npm run test:all
 ```
 
-See [Testing Guide](docs/guides/testing/testing-guide.md) for details.
+См. [Руководство по тестированию](docs/guides/testing/testing-guide.md) для деталей.
 
-### How do I run the development server?
+### Как запустить сервер разработки?
 
 ```bash
-# With Docker (recommended)
+# С Docker (рекомендуется)
 docker-compose -f docker-compose.dev.yml up
 
-# Without Docker
-# Terminal 1: Backend
+# Без Docker
+# Терминал 1: Backend
 cd backend && uvicorn app.main:app --reload
 
-# Terminal 2: Frontend
+# Терминал 2: Frontend
 cd frontend && npm run dev
 
-# Terminal 3: Celery worker
+# Терминал 3: Celery worker
 cd backend && celery -A app.core.celery worker --loglevel=info
 ```
 
-### What IDE is recommended?
+### Какую IDE рекомендуется использовать?
 
 **Backend (Python):**
-- PyCharm Professional (recommended)
-- VS Code with Python extension
-- Vim/Neovim with LSP
+- PyCharm Professional (рекомендуется)
+- VS Code с расширением Python
+- Vim/Neovim с LSP
 
 **Frontend (TypeScript):**
-- VS Code (recommended)
+- VS Code (рекомендуется)
 - WebStorm
-- Vim/Neovim with LSP
+- Vim/Neovim с LSP
 
-### How do I debug the application?
+### Как отладить приложение?
 
-See [Troubleshooting Guide](TROUBLESHOOTING.md) for common issues.
+См. [Руководство по устранению неполадок](TROUBLESHOOTING.md) для распространенных проблем.
 
-**Backend debugging:**
+**Отладка Backend:**
 ```python
-# Add breakpoint
+# Добавить breakpoint
 import pdb; pdb.set_trace()
 
-# Or use your IDE's debugger
+# Или используйте debugger вашей IDE
 ```
 
-**Frontend debugging:**
-- Use browser DevTools (Chrome/Firefox)
-- React DevTools extension
-- Redux DevTools for state inspection
+**Отладка Frontend:**
+- Используйте DevTools браузера (Chrome/Firefox)
+- Расширение React DevTools
+- Redux DevTools для инспекции состояния
 
 ---
 
-## Features
+## Функциональность
 
-### How does the Multi-NLP system work?
+### Как работает Multi-NLP система?
 
-The Multi-NLP system uses **3 specialized processors**:
-- **SpaCy** (ru_core_news_lg) - Entity recognition, weight 1.0
-- **Natasha** - Russian morphology specialist, weight 1.2
-- **Stanza** (ru) - Dependency parsing, weight 0.8
+Multi-NLP система использует **3 специализированных процессора**:
+- **SpaCy** (ru_core_news_lg) - Entity recognition, вес 1.0
+- **Natasha** - Специалист по русской морфологии, вес 1.2
+- **Stanza** (ru) - Dependency parsing, вес 0.8
 
-It operates in **5 modes**:
-1. **SINGLE** - One processor (fast)
-2. **PARALLEL** - All processors in parallel (max coverage)
-3. **SEQUENTIAL** - Sequential processing (controlled)
-4. **ENSEMBLE** - Voting with weighted consensus (max quality) ⭐ Recommended
-5. **ADAPTIVE** - Automatic mode selection (intelligent)
+Работает в **5 режимах**:
+1. **SINGLE** - Один процессор (быстро)
+2. **PARALLEL** - Все процессоры параллельно (максимальное покрытие)
+3. **SEQUENTIAL** - Последовательная обработка (контролируемо)
+4. **ENSEMBLE** - Голосование с weighted consensus (максимальное качество) ⭐ Рекомендуется
+5. **ADAPTIVE** - Автоматический выбор режима (интеллектуально)
 
-For details, see [Multi-NLP System](docs/reference/nlp/multi-nlp-system.md).
+Для деталей см. [Multi-NLP система](docs/reference/nlp/multi-nlp-system.md).
 
-### What is CFI and why do we use it?
+### Что такое CFI и зачем мы его используем?
 
-**CFI (Canonical Fragment Identifier)** is a standard for precise positioning in EPUB books.
+**CFI (Canonical Fragment Identifier)** - это стандарт для точного позиционирования в EPUB книгах.
 
-Benefits:
-- Pixel-perfect reading position restoration
-- Works across different screen sizes
-- Standard-compliant (EPUB 3)
-- Supported by epub.js out of the box
+Преимущества:
+- Pixel-perfect восстановление позиции чтения
+- Работает на разных размерах экранов
+- Соответствует стандарту (EPUB 3)
+- Поддерживается epub.js из коробки
 
-See [CFI System Explanation](docs/explanations/concepts/cfi-system.md).
+См. [Объяснение CFI системы](docs/explanations/concepts/cfi-system.md).
 
-### How does image generation work?
+### Как работает генерация изображений?
 
-1. **Book Upload** → Parser extracts chapters
-2. **NLP Processing** → Multi-NLP extracts descriptions
-3. **Prompt Engineering** → Generates prompts based on genre/type
-4. **AI Generation** → pollinations.ai creates images
-5. **Caching** → Deduplication and storage
-6. **Display** → Smart highlighting in reader
+1. **Загрузка книги** → Парсер извлекает главы
+2. **NLP обработка** → Multi-NLP извлекает описания
+3. **Prompt engineering** → Генерирует промпты на основе жанра/типа
+4. **AI генерация** → pollinations.ai создает изображения
+5. **Кэширование** → Дедупликация и хранение
+6. **Отображение** → Умное выделение в читалке
 
-Average generation time: <30 seconds per image.
+Среднее время генерации: <30 секунд на изображение.
 
-### Can I use custom AI services?
+### Могу ли я использовать собственные AI сервисы?
 
-Yes! The system supports:
-- pollinations.ai (default, free)
-- OpenAI DALL-E (requires API key)
-- Midjourney (requires subscription)
-- Custom services (implement interface)
+Да! Система поддерживает:
+- pollinations.ai (по умолчанию, бесплатный)
+- OpenAI DALL-E (требуется API ключ)
+- Midjourney (требуется подписка)
+- Пользовательские сервисы (реализуйте интерфейс)
 
-Configure in `backend/app/core/config.py`.
+Настройка в `backend/app/core/config.py`.
 
 ---
 
-## Multi-NLP System
+## Multi-NLP система
 
-### Which NLP mode should I use?
+### Какой NLP режим использовать?
 
-**Recommendations:**
-- **ENSEMBLE** - Best quality, recommended for production (60% consensus)
-- **ADAPTIVE** - Intelligent automatic selection
-- **PARALLEL** - Maximum coverage but slower
-- **SINGLE** - Fast testing/development
+**Рекомендации:**
+- **ENSEMBLE** - Лучшее качество, рекомендуется для production (60% consensus)
+- **ADAPTIVE** - Интеллектуальный автоматический выбор
+- **PARALLEL** - Максимальное покрытие, но медленнее
+- **SINGLE** - Быстрое тестирование/разработка
 
-### How accurate is the description extraction?
+### Насколько точно извлечение описаний?
 
-**Current metrics:**
-- Relevance: >70% (KPI achieved ✅)
-- SpaCy quality: 0.78
-- Natasha quality: 0.82 (best)
-- Stanza quality: 0.75
+**Текущие метрики:**
+- Релевантность: >70% (KPI достигнут ✅)
+- Качество SpaCy: 0.78
+- Качество Natasha: 0.82 (лучший)
+- Качество Stanza: 0.75
 
-Test case: 2,171 descriptions extracted in 4 seconds from a 25-chapter book.
+Тестовый случай: 2,171 описание извлечено за 4 секунды из книги с 25 главами.
 
-### Can I adjust NLP processor weights?
+### Могу ли я настроить веса NLP процессоров?
 
-Yes! Use the Admin API:
+Да! Используйте Admin API:
 
 ```bash
-# Update SpaCy weight
+# Обновить вес SpaCy
 curl -X PUT http://localhost:8000/api/v1/admin/multi-nlp-settings/spacy \
   -H "Content-Type: application/json" \
   -d '{"weight": 1.2, "threshold": 0.3}'
 
-# Update Natasha weight
+# Обновить вес Natasha
 curl -X PUT http://localhost:8000/api/v1/admin/multi-nlp-settings/natasha \
   -H "Content-Type: application/json" \
   -d '{"weight": 1.0, "threshold": 0.25}'
 ```
 
-See [Multi-NLP Admin API](docs/reference/api/admin-nlp.md).
+См. [Multi-NLP Admin API](docs/reference/api/admin-nlp.md).
 
-### What types of descriptions are extracted?
+### Какие типы описаний извлекаются?
 
-Three main types:
-1. **Location** - Places, settings, environments
-2. **Character** - Character appearances, clothing
-3. **Atmosphere** - Mood, ambiance, weather
+Три основных типа:
+1. **Location** - Места, окружение, локации
+2. **Character** - Внешность персонажей, одежда
+3. **Atmosphere** - Настроение, атмосфера, погода
 
-Each type has specific patterns optimized for Russian literature.
-
----
-
-## Performance
-
-### How fast is the book parsing?
-
-**Benchmark (25-chapter book):**
-- Book upload: <2 seconds
-- EPUB parsing: ~1 second
-- NLP processing: ~4 seconds (2,171 descriptions)
-- Total: ~7 seconds
-
-With ENSEMBLE mode on 3 processors.
-
-### What about reader performance?
-
-**Metrics:**
-- Page load time: <2 seconds
-- Time to Interactive: 1.2s (66% faster with optimizations)
-- Bundle size: 386KB gzipped (29% smaller)
-
-### How does caching work?
-
-**Redis caching:**
-- Cache hit rate: 85%
-- API response time: 200-500ms → <50ms (cached)
-- TTL: 1 hour for book metadata, user sessions
-
-**Database:**
-- JSONB + GIN indexes: 100x faster queries (<5ms)
-- Concurrent users: 500+ (10x increase)
-
-See [Performance Report](docs/reports/performance/week17-database-performance.md).
-
-### Can the system handle many concurrent users?
-
-Yes! After Week 17 optimizations:
-- **50 → 500+ concurrent users** (10x increase)
-- Rate limiting protects against abuse
-- Redis caching reduces database load by 70%
+Каждый тип имеет специфические паттерны, оптимизированные для русской литературы.
 
 ---
 
-## Deployment
+## Производительность
 
-### How do I deploy to production?
+### Насколько быстро парсятся книги?
+
+**Бенчмарк (книга с 25 главами):**
+- Загрузка книги: <2 секунд
+- Парсинг EPUB: ~1 секунда
+- NLP обработка: ~4 секунды (2,171 описание)
+- Итого: ~7 секунд
+
+В режиме ENSEMBLE на 3 процессорах.
+
+### А как насчет производительности читалки?
+
+**Метрики:**
+- Время загрузки страницы: <2 секунд
+- Time to Interactive: 1.2s (на 66% быстрее с оптимизациями)
+- Размер бандла: 386KB gzipped (на 29% меньше)
+
+### Как работает кэширование?
+
+**Redis кэширование:**
+- Процент попаданий в кэш: 85%
+- Время ответа API: 200-500ms → <50ms (кэшировано)
+- TTL: 1 час для метаданных книг, пользовательских сессий
+
+**База данных:**
+- JSONB + GIN индексы: В 100 раз быстрее запросы (<5ms)
+- Одновременные пользователи: 500+ (в 10 раз больше)
+
+См. [Отчет о производительности](docs/reports/performance/week17-database-performance.md).
+
+### Может ли система обрабатывать много одновременных пользователей?
+
+Да! После оптимизаций Недели 17:
+- **50 → 500+ одновременных пользователей** (в 10 раз больше)
+- Rate limiting защищает от злоупотреблений
+- Redis кэширование снижает нагрузку на БД на 70%
+
+---
+
+## Развертывание
+
+### Как развернуть в production?
 
 ```bash
-# Initialize environment
+# Инициализация окружения
 ./scripts/deploy.sh init
 
-# Set up SSL
+# Настройка SSL
 ./scripts/deploy.sh ssl
 
-# Deploy application
+# Развертывание приложения
 ./scripts/deploy.sh deploy
 
-# Check status
+# Проверка статуса
 ./scripts/deploy.sh status
 ```
 
-See [Production Deployment Guide](docs/guides/deployment/production-deployment.md).
+См. [Руководство по Production развертыванию](docs/guides/deployment/production-deployment.md).
 
-### What about SSL certificates?
+### А как насчет SSL сертификатов?
 
-Automatic SSL setup with Let's Encrypt:
+Автоматическая настройка SSL с Let's Encrypt:
 ```bash
 ./scripts/deploy.sh ssl
 ```
 
-Certificates auto-renew via cron job.
+Сертификаты автоматически обновляются через cron job.
 
-### How do I monitor the application?
+### Как мониторить приложение?
 
-**Monitoring stack (optional):**
+**Стек мониторинга (опционально):**
 ```bash
 ./scripts/setup-monitoring.sh start
 ```
 
-Includes:
-- **Prometheus** - Metrics collection
-- **Grafana** - Visualization dashboards
-- **Loki** - Log aggregation
+Включает:
+- **Prometheus** - Сбор метрик
+- **Grafana** - Визуализация и дашборды
+- **Loki** - Агрегация логов
 
-Access Grafana at `http://your-domain:3000`.
+Доступ к Grafana по адресу `http://your-domain:3000`.
 
-### What about backups?
+### А как насчет резервного копирования?
 
-**Automated backups:**
+**Автоматические бэкапы:**
 ```bash
-# Daily backups (cron)
+# Ежедневные бэкапы (cron)
 ./scripts/backup.sh full
 
-# Restore from backup
+# Восстановление из бэкапа
 ./scripts/backup.sh restore backup_name.tar.gz
 ```
 
-See [Backup Procedures](docs/operations/backup/procedures.md).
+См. [Процедуры резервного копирования](docs/operations/backup/procedures.md).
 
 ---
 
-## Troubleshooting
+## Устранение неполадок
 
-### Docker containers won't start
+### Docker контейнеры не запускаются
 
-**Check logs:**
+**Проверьте логи:**
 ```bash
 docker-compose logs backend
 docker-compose logs frontend
 ```
 
-**Common issues:**
-- Port conflicts (8000, 5173, 5432, 6379)
-- Missing .env file
-- Incorrect environment variables
+**Распространенные проблемы:**
+- Конфликты портов (8000, 5173, 5432, 6379)
+- Отсутствует .env файл
+- Неправильные переменные окружения
 
-See [Troubleshooting Guide](TROUBLESHOOTING.md) for solutions.
+См. [Руководство по устранению неполадок](TROUBLESHOOTING.md) для решений.
 
-### NLP models not found
+### NLP модели не найдены
 
-**Install required models:**
+**Установите необходимые модели:**
 ```bash
 # SpaCy
 python -m spacy download ru_core_news_lg
@@ -400,31 +400,31 @@ python -m spacy download ru_core_news_lg
 # Stanza
 python -c "import stanza; stanza.download('ru')"
 
-# Natasha (installed via pip)
+# Natasha (устанавливается через pip)
 pip install natasha
 ```
 
-### Database migrations fail
+### Миграции базы данных не работают
 
-**Reset and retry:**
+**Сбросить и повторить:**
 ```bash
-# Check current version
+# Проверить текущую версию
 cd backend && alembic current
 
-# Downgrade if needed
+# Откатить при необходимости
 alembic downgrade -1
 
-# Upgrade
+# Применить обновление
 alembic upgrade head
 
-# Force clean (development only!)
+# Принудительная очистка (только для разработки!)
 docker-compose down -v
 docker-compose up -d
 ```
 
-### Frontend build errors
+### Ошибки сборки Frontend
 
-**Clean and reinstall:**
+**Очистить и переустановить:**
 ```bash
 cd frontend
 rm -rf node_modules package-lock.json
@@ -432,94 +432,94 @@ npm install
 npm run build
 ```
 
-### Images not generating
+### Изображения не генерируются
 
-**Check:**
-1. pollinations.ai service status
-2. Celery worker running: `docker-compose logs celery-worker`
-3. Redis connection: `docker-compose logs redis`
+**Проверьте:**
+1. Статус сервиса pollinations.ai
+2. Celery worker запущен: `docker-compose logs celery-worker`
+3. Соединение Redis: `docker-compose logs redis`
 
-**Restart Celery:**
+**Перезапустить Celery:**
 ```bash
 docker-compose restart celery-worker
 ```
 
-### Tests failing
+### Тесты падают
 
-**Common causes:**
-1. Missing test fixtures
-2. Database not in test mode
-3. Async tests not properly awaited
-4. Environment variables not set
+**Распространенные причины:**
+1. Отсутствуют тестовые фикстуры
+2. База данных не в тестовом режиме
+3. Async тесты неправильно awaited
+4. Не установлены переменные окружения
 
-**Debug:**
+**Отладка:**
 ```bash
-# Run specific test with verbose output
+# Запустить конкретный тест с подробным выводом
 pytest tests/test_file.py::test_function -v -s
 
-# Check test coverage
+# Проверить тестовое покрытие
 pytest --cov=app --cov-report=html
 ```
 
 ---
 
-## Contributing
+## Участие в проекте
 
-### How can I contribute?
+### Как я могу внести вклад?
 
-1. Read [CONTRIBUTING.md](CONTRIBUTING.md)
-2. Check [open issues](https://github.com/your-org/fancai-vibe-hackathon/issues)
-3. Fork the repository
-4. Create a feature branch
-5. Make changes with tests
-6. Submit a pull request
+1. Прочитайте [CONTRIBUTING.md](CONTRIBUTING.md)
+2. Проверьте [открытые issues](https://github.com/your-org/fancai-vibe-hackathon/issues)
+3. Сделайте fork репозитория
+4. Создайте feature branch
+5. Внесите изменения с тестами
+6. Отправьте pull request
 
-### What are the coding standards?
+### Каковы стандарты кодирования?
 
 **Backend (Python):**
-- PEP 8 with Black formatting
-- Type hints required (MyPy strict mode)
+- PEP 8 с форматированием Black
+- Обязательны type hints (MyPy strict mode)
 - Docstrings (Google style)
-- Test coverage >70%
+- Покрытие тестами >70%
 
 **Frontend (TypeScript):**
 - ESLint + Prettier
-- Strict type checking
-- JSDoc comments
+- Строгая проверка типов
+- JSDoc комментарии
 - React best practices
 
-See [Coding Standards](CONTRIBUTING.md#coding-standards).
+См. [Стандарты кодирования](CONTRIBUTING.md#coding-standards).
 
-### How do I write documentation?
+### Как писать документацию?
 
-**Required for every change:**
-1. Update README.md (if new feature)
-2. Update development-plan.md (mark tasks)
-3. Update development-calendar.md (dates)
-4. Update changelog.md (detailed description)
-5. Update current-status.md (project state)
-6. Add docstrings/comments in code
+**Требуется для каждого изменения:**
+1. Обновить README.md (если новая функция)
+2. Обновить development-plan.md (отметить задачи)
+3. Обновить development-calendar.md (даты)
+4. Обновить changelog.md (детальное описание)
+5. Обновить current-status.md (состояние проекта)
+6. Добавить docstrings/комментарии в код
 
-See [Documentation Requirements](CONTRIBUTING.md#documentation-requirements).
+См. [Требования к документации](CONTRIBUTING.md#documentation-requirements).
 
-### How long does PR review take?
+### Сколько времени занимает ревью PR?
 
-- Simple fixes: 1-2 days
-- New features: 3-7 days
-- Breaking changes: 1-2 weeks
+- Простые исправления: 1-2 дня
+- Новые функции: 3-7 дней
+- Breaking changes: 1-2 недели
 
-Automated CI/CD checks run immediately.
-
----
-
-## Still Have Questions?
-
-- **Documentation:** Check [docs/](docs/) directory
-- **Issues:** Search [GitHub Issues](https://github.com/your-org/fancai-vibe-hackathon/issues)
-- **Troubleshooting:** See [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
-- **Contributing:** See [CONTRIBUTING.md](CONTRIBUTING.md)
-- **Contact:** Open a new issue with your question
+Автоматические CI/CD проверки запускаются немедленно.
 
 ---
 
-**Last Updated:** November 14, 2025
+## Остались вопросы?
+
+- **Документация:** Проверьте директорию [docs/](docs/)
+- **Issues:** Поищите в [GitHub Issues](https://github.com/your-org/fancai-vibe-hackathon/issues)
+- **Устранение неполадок:** См. [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+- **Участие:** См. [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Контакт:** Откройте новый issue с вашим вопросом
+
+---
+
+**Последнее обновление:** 14 ноября 2025
