@@ -1,0 +1,84 @@
+# Development with SSL support
+# Extends docker-compose.dev.yml and adds nginx with SSL
+
+services:
+  # Nginx with SSL for development
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: bookreader_nginx_dev
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN_NAME=${DOMAIN_NAME:-localhost}
+    volumes:
+      - ./nginx/nginx.dev-ssl.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/certbot-www:/var/www/certbot:ro
+      - ./backend/storage:/var/www/storage:ro
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+    networks:
+      - bookreader_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backend from dev config
+  backend:
+    extends:
+      file: docker-compose.dev.yml
+      service: backend
+    ports:
+      - "8000:8000"  # Expose for direct access during dev
+
+  # Frontend from dev config
+  frontend:
+    extends:
+      file: docker-compose.dev.yml
+      service: frontend
+    environment:
+      - VITE_API_URL=https://${DOMAIN_NAME:-localhost}/api/v1
+      - VITE_WS_URL=wss://${DOMAIN_NAME:-localhost}/ws
+      - NODE_ENV=development
+
+  # PostgreSQL
+  postgres:
+    extends:
+      file: docker-compose.dev.yml
+      service: postgres
+
+  # Redis
+  redis:
+    extends:
+      file: docker-compose.dev.yml
+      service: redis
+
+  # Celery worker
+  celery-worker:
+    extends:
+      file: docker-compose.dev.yml
+      service: celery-worker
+
+  # Celery beat (optional)
+  celery-beat:
+    extends:
+      file: docker-compose.yml
+      service: celery-beat
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-bookreader_dev}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - SECRET_KEY=${SECRET_KEY}
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploaded_books:
+
+networks:
+  bookreader_network:
+    driver: bridge
