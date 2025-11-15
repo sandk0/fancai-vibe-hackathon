@@ -23,6 +23,14 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    // Allow access from external domains (for nginx proxy)
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      'fancai.ru',
+      'www.fancai.ru',
+      '.fancai.ru', // Allow all subdomains
+    ],
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
