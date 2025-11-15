@@ -18,8 +18,18 @@ sudo usermod -aG docker $USER
 # Install Docker Compose (v2)
 sudo apt install docker-compose-plugin
 
+# Install Git
+sudo apt install git -y
+
 # Logout and login to apply group changes
 ```
+
+**Recommended Server Specifications:**
+- CPU: 2+ cores (4GB RAM server)
+- RAM: 4GB minimum (tested on 4GB VPS)
+- Storage: 20GB+ SSD
+- OS: Ubuntu 22.04 LTS (recommended)
+- Network: Public IP with domain name
 
 ### 2. Environment Configuration
 
@@ -52,33 +62,98 @@ POLLINATIONS_ENABLED=true
 
 ### 3. SSL Certificate Setup
 
-#### Option A: Let's Encrypt (Recommended)
+#### Option A: Docker-based Let's Encrypt (Recommended - No Downtime)
+
+**Quick Start:**
+
+```bash
+# 1. Create directories
+mkdir -p nginx/ssl nginx/certbot-www/.well-known/acme-challenge
+chmod -R 755 nginx/certbot-www
+echo "OK" > nginx/certbot-www/.well-known/acme-challenge/test.txt
+
+# 2. Start temporary nginx (HTTP only)
+docker compose -f docker-compose.temp-ssl.yml up -d
+
+# 3. Test webroot accessibility
+curl http://yourdomain.com/.well-known/acme-challenge/test.txt
+# Should return: OK
+
+# 4. Get certificate (STAGING first - for testing)
+docker run -it --rm \
+  -v "$(pwd)/nginx/ssl:/etc/letsencrypt" \
+  -v "$(pwd)/nginx/certbot-www:/var/www/certbot" \
+  certbot/certbot:latest \
+  certonly --webroot -w /var/www/certbot \
+  --email your@email.com \
+  --agree-tos --no-eff-email \
+  --staging \
+  -d yourdomain.com -d www.yourdomain.com
+
+# 5. If successful, get PRODUCTION certificate
+docker run -it --rm \
+  -v "$(pwd)/nginx/ssl:/etc/letsencrypt" \
+  -v "$(pwd)/nginx/certbot-www:/var/www/certbot" \
+  certbot/certbot:latest \
+  certonly --webroot -w /var/www/certbot \
+  --email your@email.com \
+  --agree-tos --no-eff-email \
+  -d yourdomain.com -d www.yourdomain.com
+
+# 6. Copy certificates to nginx directory
+cp nginx/ssl/live/yourdomain.com/fullchain.pem nginx/ssl/fullchain.pem
+cp nginx/ssl/live/yourdomain.com/privkey.pem nginx/ssl/privkey.pem
+chmod 644 nginx/ssl/fullchain.pem
+chmod 600 nginx/ssl/privkey.pem
+
+# 7. Stop temporary nginx and start production
+docker compose -f docker-compose.temp-ssl.yml down
+docker compose -f docker-compose.prod.yml up -d
+
+# 8. Setup auto-renewal (add to crontab: sudo crontab -e)
+# 0 0,12 * * * cd /opt/bookreader && docker run --rm -v "$(pwd)/nginx/ssl:/etc/letsencrypt" -v "$(pwd)/nginx/certbot-www:/var/www/certbot" certbot/certbot:latest renew --quiet && docker compose -f docker-compose.prod.yml restart nginx
+```
+
+**📖 Complete Guide:** See `SSL-QUICKSTART.md` in project root or `docs/operations/deployment/ssl-setup-manual.md`
+
+#### Option B: Traditional Certbot (Requires Downtime)
+
 ```bash
 # Install Certbot
 sudo apt install certbot
 
-# Create SSL directory
-mkdir -p nginx/ssl
+# Stop nginx if running
+docker compose -f docker-compose.prod.yml stop nginx
 
 # Obtain certificate
-sudo certbot certonly --standalone -d bookreader.yourdomain.com
+sudo certbot certonly --standalone -d yourdomain.com -d www.yourdomain.com
 
 # Copy certificates
-sudo cp /etc/letsencrypt/live/bookreader.yourdomain.com/fullchain.pem nginx/ssl/
-sudo cp /etc/letsencrypt/live/bookreader.yourdomain.com/privkey.pem nginx/ssl/
-sudo cp /etc/letsencrypt/live/bookreader.yourdomain.com/chain.pem nginx/ssl/
+sudo cp /etc/letsencrypt/live/yourdomain.com/fullchain.pem nginx/ssl/
+sudo cp /etc/letsencrypt/live/yourdomain.com/privkey.pem nginx/ssl/
 sudo chown -R $USER:$USER nginx/ssl/
+chmod 644 nginx/ssl/fullchain.pem
+chmod 600 nginx/ssl/privkey.pem
 ```
 
-#### Option B: Self-Signed (Development)
+#### Option C: Self-Signed (Development Only)
+
 ```bash
 mkdir -p nginx/ssl
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -keyout nginx/ssl/privkey.pem \
     -out nginx/ssl/fullchain.pem \
-    -subj "/C=US/ST=State/L=City/O=Organization/CN=bookreader.yourdomain.com"
-cp nginx/ssl/fullchain.pem nginx/ssl/chain.pem
+    -subj "/C=US/ST=State/L=City/O=Organization/CN=yourdomain.com"
+chmod 644 nginx/ssl/fullchain.pem
+chmod 600 nginx/ssl/privkey.pem
 ```
+
+**⚠️ SSL Troubleshooting:**
+
+- **"Connection refused"**: Check DNS (`nslookup yourdomain.com`), firewall (`sudo ufw allow 80/tcp && sudo ufw allow 443/tcp`)
+- **"Invalid response"**: DNS not propagated yet, wait 5-10 minutes
+- **"too many certificates"**: Used staging server first with `--staging` flag
+- **HTTPS not working**: Check `docker compose -f docker-compose.prod.yml logs nginx`
 
 ### 4. Deploy Application
 

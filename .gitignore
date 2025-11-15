@@ -165,6 +165,7 @@ monitoring/prometheus/data/
 !CHANGELOG.md
 !FAQ.md
 !TROUBLESHOOTING.md
+!SSL-QUICKSTART.md
 
 # Test files (keep organized in tests/)
 /backend/test_*.py
