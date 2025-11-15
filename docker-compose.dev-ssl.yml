@@ -34,6 +34,8 @@ services:
       file: docker-compose.dev.yml
       service: backend
     environment:
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - DEBUG=${DEBUG:-true}
       - SENTRY_DSN=${SENTRY_DSN:-}
       - SMTP_PASSWORD=${SMTP_PASSWORD:-}
     ports:
