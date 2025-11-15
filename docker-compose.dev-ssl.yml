@@ -33,6 +33,9 @@ services:
     extends:
       file: docker-compose.dev.yml
       service: backend
+    environment:
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
     ports:
       - "8000:8000"  # Expose for direct access during dev
 
