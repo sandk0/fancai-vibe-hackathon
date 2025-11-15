@@ -1,0 +1,19 @@
+# Temporary nginx for SSL certificate initialization
+# Use this to obtain SSL certificates before starting the full production stack
+
+services:
+  nginx-temp:
+    image: nginx:alpine
+    container_name: bookreader_nginx_temp
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.http-only.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certbot-www:/var/www/certbot:ro
+    networks:
+      - bookreader-network
+    restart: no
+
+networks:
+  bookreader-network:
+    driver: bridge
