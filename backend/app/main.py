@@ -71,9 +71,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
-    max_age=600,  # Cache preflight requests for 10 minutes
+    expose_headers=["Content-Disposition", "X-Total-Count", "X-Page-Count"],  # For file downloads & pagination
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
 # Подключение роутеров

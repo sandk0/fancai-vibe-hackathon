@@ -1,19 +1,27 @@
-# Production Docker Compose for BookReader AI
-# Note: version field is obsolete in modern Docker Compose
+# Staging Docker Compose for BookReader AI
+# Optimized for 4GB RAM / 2 CPU cores server
+# Target memory budget: ~3.5GB (leaving 500MB system overhead)
+#
+# Memory allocation:
+# - PostgreSQL: 512MB-1GB
+# - Redis: 256MB-512MB
+# - Backend: 1-1.5GB (NLP models)
+# - Celery: 512MB-1GB
+# - Frontend nginx: 128MB-256MB
+# - Nginx reverse proxy: 128MB
+# Total: ~3.5GB
 
 services:
-  # Nginx Reverse Proxy с SSL и load balancing
+  # Nginx Reverse Proxy - MINIMAL RESOURCES
   nginx:
     image: nginx:1.25-alpine
-    container_name: bookreader_nginx
+    container_name: bookreader_nginx_staging
     ports:
       - "80:80"
       - "443:443"
     environment:
-      # Domain name for nginx configuration template substitution
       - DOMAIN_NAME=${DOMAIN_NAME:-localhost}
     volumes:
-      # Template configuration (processed by entrypoint)
       - ./nginx/nginx.prod.conf.template:/etc/nginx/nginx.conf.template:ro
       - ./nginx/docker-entrypoint.sh:/docker-entrypoint.d/00-envsubst.sh:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
@@ -27,15 +35,20 @@ services:
     restart: unless-stopped
     networks:
       - bookreader_network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 128M
+        reservations:
+          memory: 64M
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-    labels:
-      - "com.centurylinklabs.watchtower.enable=false"
 
-  # Frontend Production Build
+  # Frontend Production Build - MINIMAL
   frontend:
     image: bookreader-frontend:latest
     build:
@@ -44,65 +57,74 @@ services:
       args:
         - VITE_API_URL=${DOMAIN_URL:-http://localhost}/api/v1
         - VITE_WS_URL=${DOMAIN_URL:-http://localhost}/ws
-        - VITE_APP_NAME=BookReader AI
-    container_name: bookreader_frontend
+        - VITE_APP_NAME=BookReader AI Staging
+    container_name: bookreader_frontend_staging
     environment:
       - NODE_ENV=production
     restart: unless-stopped
     networks:
       - bookreader_network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+        reservations:
+          memory: 128M
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:80/"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
 
-  # Backend API
+  # Backend API - OPTIMIZED FOR LOW MEMORY
   backend:
     image: bookreader-backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
-    container_name: bookreader_backend
+    container_name: bookreader_backend_staging
     environment:
       # Database
       - DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
-      
+
       # Redis
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/2
-      
+
       # Security
       - SECRET_KEY=${SECRET_KEY}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       - JWT_REFRESH_TOKEN_EXPIRE_DAYS=${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-7}
-      
+
       # Environment
       - DEBUG=false
-      - ENVIRONMENT=production
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=${LOG_LEVEL:-WARNING}  # Less verbose logging
+
       # CORS and Domain
       - CORS_ORIGINS=${DOMAIN_URL:-http://localhost}
       - ALLOWED_HOSTS=${DOMAIN_NAME:-localhost},localhost,127.0.0.1
-      
+
       # AI Services
       - POLLINATIONS_ENABLED=${POLLINATIONS_ENABLED:-true}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      
-      # Performance
-      - WORKERS_COUNT=${WORKERS_COUNT:-4}
+
+      # Performance - REDUCED for staging
+      - WORKERS_COUNT=${WORKERS_COUNT:-2}  # Reduced from 4
       - MAX_FILE_SIZE=${MAX_FILE_SIZE:-52428800}
-      
+
+      # NLP model directories
+      - NLTK_DATA=/root/nltk_data
+      - STANZA_RESOURCES_DIR=/root/stanza_resources
+
     volumes:
       - ./backend/storage:/app/storage
       - /dev/shm:/dev/shm  # Shared memory for Gunicorn
-      # NLP models persistence - prevents re-downloading on rebuild (saves ~1.3GB download)
+      # NLP models persistence
       - nlp_nltk_data:/root/nltk_data
       - nlp_stanza_models:/root/stanza_resources
     depends_on:
@@ -113,8 +135,6 @@ services:
     restart: unless-stopped
     networks:
       - bookreader_network
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -124,42 +144,40 @@ services:
     deploy:
       resources:
         limits:
-          memory: 4G
+          cpus: '1.0'
+          memory: 1.5G  # NLP models need memory
         reservations:
-          memory: 1G
+          memory: 768M
 
-  # Celery Worker for background tasks
+  # Celery Worker - SINGLE CONCURRENCY
   celery-worker:
     image: bookreader-backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
-    container_name: bookreader_celery
+    container_name: bookreader_celery_staging
     command: >
-      celery -A app.core.celery_app worker 
-      --loglevel=${LOG_LEVEL:-info} 
-      --concurrency=${CELERY_CONCURRENCY:-1} 
-      --max-tasks-per-child=100
-      --max-memory-per-child=1500000
+      celery -A app.core.celery_app worker
+      --loglevel=${LOG_LEVEL:-warning}
+      --concurrency=1
+      --max-tasks-per-child=50
+      --max-memory-per-child=800000
       --prefetch-multiplier=1
     environment:
-      # Database & Redis
       - DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/2
       - SECRET_KEY=${SECRET_KEY}
-      - ENVIRONMENT=production
+      - ENVIRONMENT=staging
       - POLLINATIONS_ENABLED=${POLLINATIONS_ENABLED:-true}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+      - LOG_LEVEL=${LOG_LEVEL:-WARNING}
       # NLP model directories
       - NLTK_DATA=/root/nltk_data
       - STANZA_RESOURCES_DIR=/root/stanza_resources
     volumes:
       - ./backend/storage:/app/storage
-      # NLP models persistence - celery worker also uses NLP for parsing
       - nlp_nltk_data:/root/nltk_data
       - nlp_stanza_models:/root/stanza_resources
     depends_on:
@@ -175,22 +193,21 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G
+          cpus: '0.8'
+          memory: 1G  # Reduced from 2G
         reservations:
-          memory: 1G
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
+          memory: 512M
 
-  # Celery Beat Scheduler
+  # Celery Beat Scheduler - MINIMAL
   celery-beat:
     image: bookreader-backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
-    container_name: bookreader_beat
+    container_name: bookreader_beat_staging
     command: >
-      celery -A app.core.celery_app beat 
-      --loglevel=${LOG_LEVEL:-info} 
+      celery -A app.core.celery_app beat
+      --loglevel=${LOG_LEVEL:-warning}
       --schedule=/tmp/celerybeat-schedule
       --pidfile=/tmp/celerybeat.pid
     environment:
@@ -199,41 +216,54 @@ services:
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/2
       - SECRET_KEY=${SECRET_KEY}
-      - ENVIRONMENT=production
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=${LOG_LEVEL:-WARNING}
     volumes:
-      - beat_schedule:/tmp  # Persistent schedule storage
+      - beat_schedule:/tmp
     depends_on:
       redis:
         condition: service_healthy
     restart: unless-stopped
     networks:
       - bookreader_network
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
+        reservations:
+          memory: 128M
 
-  # PostgreSQL Database with optimization
+  # PostgreSQL Database - OPTIMIZED FOR 4GB
   postgres:
     image: postgres:15-alpine
-    container_name: bookreader_postgres
+    container_name: bookreader_postgres_staging
     environment:
       - POSTGRES_DB=${DB_NAME}
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_INITDB_ARGS=--encoding=UTF8 --locale=C
       - PGDATA=/var/lib/postgresql/data/pgdata
-    # Use custom postgresql.conf for optimized settings
     command: >
       postgres
-      -c config_file=/etc/postgresql/postgresql.conf
+      -c shared_preload_libraries=pg_stat_statements
+      -c pg_stat_statements.track=all
+      -c max_connections=100
+      -c shared_buffers=128MB
+      -c effective_cache_size=512MB
+      -c work_mem=2MB
+      -c maintenance_work_mem=32MB
+      -c random_page_cost=1.1
+      -c temp_file_limit=1GB
+      -c log_min_duration_statement=2000
+      -c log_line_prefix='%t [%p]: [%l-1] user=%u,db=%d '
+      -c log_checkpoints=on
+      -c log_connections=off
+      -c log_disconnections=off
+      -c log_lock_waits=on
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
-      # Mount optimized postgresql.conf (created: 2025-11-15)
-      - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
-      # Log directory for debugging
-      - postgres_logs:/var/log/postgresql
     restart: unless-stopped
     networks:
       - bookreader_network
@@ -246,22 +276,28 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          cpus: '0.8'
+          memory: 768M  # Reduced from 1G
         reservations:
-          memory: 512M
+          memory: 384M
 
-  # Redis with persistence and optimization
+  # Redis - MINIMAL CONFIGURATION
   redis:
     image: redis:7-alpine
-    container_name: bookreader_redis
-    # Use custom redis.conf for optimized settings
+    container_name: bookreader_redis_staging
     command: >
-      redis-server /usr/local/etc/redis/redis.conf
+      redis-server
       --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+      --maxmemory 384mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1 60 100
+      --dbfilename dump.rdb
+      --appendfilename appendonly.aof
+      --tcp-keepalive 300
+      --timeout 0
     volumes:
       - redis_data:/data
-      # Mount optimized redis.conf (created: 2025-11-15)
-      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
     restart: unless-stopped
     networks:
       - bookreader_network
@@ -273,57 +309,38 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          cpus: '0.4'
+          memory: 384M  # Reduced from 512M
         reservations:
-          memory: 256M
+          memory: 192M
 
-  # Log Management with rotation
+  # Log Management (Optional - can be disabled to save memory)
   logrotate:
     image: blacklabelops/logrotate:latest
-    container_name: bookreader_logrotate
+    container_name: bookreader_logrotate_staging
+    profiles:
+      - logging  # Only start if 'logging' profile is active
     volumes:
       - ./logs:/logs
       - ./logrotate/logrotate.conf:/etc/logrotate.conf:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
-    labels:
-      - "com.centurylinklabs.watchtower.enable=false"
-
-  # Watchtower for auto-updates (опционально)
-  watchtower:
-    image: containrrr/watchtower
-    container_name: bookreader_watchtower
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: >
-      --interval 86400 
-      --cleanup 
-      --label-enable
-      --notifications-level info
-      --include-stopped
-      --revive-stopped
-    restart: unless-stopped
-    environment:
-      - WATCHTOWER_NOTIFICATIONS=${WATCHTOWER_NOTIFICATIONS:-}
-      - WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL=${SLACK_WEBHOOK_URL:-}
-      - WATCHTOWER_NOTIFICATION_SLACK_IDENTIFIER=BookReader-AI
-      - WATCHTOWER_DEBUG=${WATCHTOWER_DEBUG:-false}
-    profiles:
-      - watchtower
-    labels:
-      - "com.centurylinklabs.watchtower.enable=false"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 32M
 
 volumes:
   postgres_data:
-    driver: local
-  postgres_logs:
     driver: local
   redis_data:
     driver: local
   beat_schedule:
     driver: local
-  # NLP models persistence - prevents re-downloading ~1.3GB on every rebuild
+  # NLP models persistence
   nlp_nltk_data:
     driver: local
   nlp_stanza_models:
@@ -334,6 +351,6 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.20.0.0/16
+        - subnet: 172.21.0.0/16
     driver_opts:
-      com.docker.network.bridge.name: br-bookreader
+      com.docker.network.bridge.name: br-bookreader-staging
