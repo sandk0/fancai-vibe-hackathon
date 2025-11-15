@@ -77,7 +77,7 @@ services:
       - STANZA_RESOURCES_DIR=/root/stanza_resources
     volumes:
       - ./backend:/app
-      - uploaded_books:/app/uploads
+      - uploaded_books:/app/storage
       # Persistent NLP model storage - survives rebuilds!
       - nlp_nltk_data:/root/nltk_data
       - nlp_stanza_models:/root/stanza_resources
@@ -126,7 +126,7 @@ services:
       - STANZA_RESOURCES_DIR=/root/stanza_resources
     volumes:
       - ./backend:/app
-      - uploaded_books:/app/uploads
+      - uploaded_books:/app/storage
       # Share NLP models with backend
       - nlp_nltk_data:/root/nltk_data
       - nlp_stanza_models:/root/stanza_resources
