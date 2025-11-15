@@ -67,6 +67,7 @@ SECRETS_CONFIG = {
             "name": "SENTRY_DSN",
             "description": "Sentry error tracking DSN",
             "required_in_production": True,
+            "required_in_development": False,  # Optional in development/staging
         },
         {
             "name": "SMTP_PASSWORD",
@@ -255,9 +256,11 @@ class SecretsValidator:
 
         # Validate recommended secrets
         for secret_config in SECRETS_CONFIG[SecretCategory.RECOMMENDED]:
-            required = self.is_production and secret_config.get(
-                "required_in_production", False
-            )
+            if self.is_production:
+                required = secret_config.get("required_in_production", False)
+            else:
+                # In development/staging mode
+                required = secret_config.get("required_in_development", False)
             result = self._validate_secret(secret_config, required=required)
 
             if not result["exists"]:
