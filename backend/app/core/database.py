@@ -18,24 +18,25 @@ logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
 # Создание асинхронного движка базы данных
 # ============================================================================
-# Connection Pool Optimization (Updated: 2025-10-28)
+# Connection Pool Optimization (Updated: 2025-11-15)
 # ============================================================================
-# Оптимизировано для reading sessions high concurrency (100+ users):
+# Configurable via environment variables for different deployment scenarios:
 #
-# - pool_size: 20 connections (increased from 10)
-#   Baseline для 100+ concurrent active sessions
+# STAGING (4GB RAM, 2 CPU cores):
+# - DB_POOL_SIZE: 10 (baseline for moderate concurrency)
+# - DB_MAX_OVERFLOW: 10 (total capacity: 20 connections)
 #
-# - max_overflow: 40 connections (increased from 20)
-#   Total capacity: 60 connections (20 + 40 overflow)
-#   Handles traffic bursts up to 60 concurrent DB operations
+# PRODUCTION (8GB+ RAM, 4+ CPU cores):
+# - DB_POOL_SIZE: 20 (high concurrency baseline)
+# - DB_MAX_OVERFLOW: 40 (total capacity: 60 connections)
 #
-# - pool_recycle: 3600s (1 hour)
+# - pool_recycle: Configurable via DB_POOL_RECYCLE (default 3600s)
 #   Recycle connections to prevent stale connections & memory leaks
 #
 # - pool_pre_ping: True
 #   Health check before using connection (adds ~1ms overhead but prevents errors)
 #
-# - pool_timeout: 30s
+# - pool_timeout: Configurable via DB_POOL_TIMEOUT (default 30s)
 #   Wait time for available connection from pool
 #
 # - pool_use_lifo: True
@@ -43,19 +44,19 @@ logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 #
 # - connect_args: application_name for PostgreSQL monitoring
 #
-# Performance metrics (before/after optimization):
-# - Concurrent users: 50 → 100+ (2x improvement)
-# - Connection wait time: ~200ms → <10ms (20x improvement)
-# - Connection errors: ~5% → <0.1% (50x reduction)
+# Performance metrics (production profile):
+# - Concurrent users: 100+ (optimized for high traffic)
+# - Connection wait time: <10ms (excellent response time)
+# - Connection errors: <0.1% (highly reliable)
 # ============================================================================
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,  # Вывод SQL запросов в debug режиме
-    pool_size=20,  # Base connection pool size (OPTIMIZED: increased from 10)
-    max_overflow=40,  # Allow up to 40 additional connections (OPTIMIZED: increased from 20)
+    pool_size=settings.DB_POOL_SIZE,  # Configurable: default 20 (production) or 10 (staging)
+    max_overflow=settings.DB_MAX_OVERFLOW,  # Configurable: default 40 (production) or 10 (staging)
     pool_pre_ping=True,  # Health check before using connection
-    pool_recycle=3600,  # Recycle connections every 1 hour
-    pool_timeout=30,  # Timeout waiting for connection (30 seconds)
+    pool_recycle=settings.DB_POOL_RECYCLE,  # Configurable: default 3600s
+    pool_timeout=settings.DB_POOL_TIMEOUT,  # Configurable: default 30s
     pool_use_lifo=True,  # LIFO for better connection reuse
     # PostgreSQL-specific connection settings
     connect_args={

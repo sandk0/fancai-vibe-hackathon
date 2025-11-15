@@ -33,8 +33,22 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
-    chunkSizeWarningLimit: 500, // Warn for chunks > 500KB
+    // SECURITY: Disable source maps in production to prevent code exposure
+    // Use 'hidden' if you need source maps for error tracking (Sentry) without exposing them
+    sourcemap: process.env.NODE_ENV !== 'production',
+
+    // Target modern browsers (smaller bundle size)
+    target: 'es2020',
+
+    // Chunk size warning threshold
+    chunkSizeWarningLimit: 600,
+
+    // CSS code splitting
+    cssCodeSplit: true,
+
+    // Minification (esbuild is faster than terser)
+    minify: 'esbuild',
+
     rollupOptions: {
       output: {
         manualChunks: {
@@ -77,12 +91,24 @@ export default defineConfig({
             'react-hot-toast',
           ],
         },
+
+        // Asset file names (organized by type)
+        assetFileNames: (assetInfo) => {
+          const info = assetInfo.name.split('.');
+          const ext = info[info.length - 1];
+          if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
+            return 'assets/images/[name]-[hash][extname]';
+          } else if (/woff2?|ttf|otf|eot/i.test(ext)) {
+            return 'assets/fonts/[name]-[hash][extname]';
+          }
+          return 'assets/[name]-[hash][extname]';
+        },
+
+        // Chunk file names (for code splitting)
+        chunkFileNames: 'assets/js/[name]-[hash].js',
+        entryFileNames: 'assets/js/[name]-[hash].js',
       },
     },
-    // Enable tree shaking with esbuild (faster than terser)
-    minify: 'esbuild',
-    // Note: esbuild doesn't have as many options as terser,
-    // but it's significantly faster
   },
   // Enable optimizeDeps for faster dev server
   optimizeDeps: {

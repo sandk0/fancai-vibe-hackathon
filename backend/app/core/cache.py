@@ -56,12 +56,12 @@ class CacheManager:
             # Format: redis://:password@host:port/db
             redis_url = settings.REDIS_URL
 
-            # Create connection pool
+            # Create connection pool (configurable for different deployment scenarios)
             self._pool = ConnectionPool.from_url(
                 redis_url,
                 encoding="utf-8",
                 decode_responses=True,
-                max_connections=50,
+                max_connections=settings.REDIS_MAX_CONNECTIONS,  # Configurable: 50 (staging) or 100 (production)
                 socket_connect_timeout=5,
                 socket_keepalive=True,
             )

@@ -58,7 +58,8 @@ temp/
 .env.*.local
 
 # Alembic
-alembic.ini
+# alembic.ini - CRITICAL: Required for migrations in production! Do NOT exclude!
+# If you need different settings per env, use alembic.ini with env variable substitution
 
 # Uploads and storage (should be mounted as volumes)
 uploads/

@@ -21,6 +21,13 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          memory: 512M
     restart: unless-stopped
 
   # Redis Cache & Queue
@@ -41,6 +48,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          memory: 256M
     restart: unless-stopped
 
   # FastAPI Backend
@@ -82,6 +96,13 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 2G  # NLP models require significant memory
+        reservations:
+          memory: 1G
     restart: unless-stopped
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
@@ -121,10 +142,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2'
-          memory: 6G
+          cpus: '1.0'
+          memory: 1.5G  # Reduced from 6G - more realistic for dev
         reservations:
-          memory: 2G
+          memory: 512M
     restart: unless-stopped
     command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2 --max-tasks-per-child=10
 
@@ -183,6 +204,13 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M  # Vite dev server doesn't need much
+        reservations:
+          memory: 256M
     restart: unless-stopped
     command: npm run dev -- --host 0.0.0.0 --port 5173
 
