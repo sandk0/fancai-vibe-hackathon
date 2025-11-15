@@ -78,6 +78,9 @@ volumes:
   postgres_data:
   redis_data:
   uploaded_books:
+  nlp_nltk_data:
+  nlp_stanza_models:
+  beat_schedule:
 
 networks:
   bookreader_network:
