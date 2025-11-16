@@ -160,6 +160,7 @@ services:
       - SECRET_KEY=${SECRET_KEY}
     volumes:
       - ./backend:/app
+      - beat_schedule:/tmp/celerybeat
     depends_on:
       postgres:
         condition: service_healthy
@@ -174,7 +175,8 @@ services:
         reservations:
           memory: 256M
     restart: unless-stopped
-    command: celery -A app.core.celery_app beat --loglevel=info
+    # Используем /tmp для schedule файла (доступен для записи)
+    command: celery -A app.core.celery_app beat --loglevel=info --schedule=/tmp/celerybeat/schedule.db
 
   # React + Vite Frontend
   frontend:
