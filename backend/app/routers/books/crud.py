@@ -171,6 +171,7 @@ async def upload_book(
         raise BookProcessingException(str(e))
 
 
+@router.get("", include_in_schema=True)
 @router.get("/")
 async def get_user_books(
     skip: int = 0,

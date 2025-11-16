@@ -44,6 +44,9 @@ app = FastAPI(
     version=VERSION,
     docs_url="/docs",
     redoc_url="/redoc",
+    # Отключаем автоматический редирект с trailing slash
+    # Это предотвращает 307 редиректы которые могут нарушить HTTPS
+    redirect_slashes=False,
 )
 
 # ============================================================================
