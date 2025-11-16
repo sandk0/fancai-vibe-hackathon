@@ -37,7 +37,7 @@ export const booksAPI = {
     if (params?.limit) searchParams.append('limit', params.limit.toString());
     if (params?.sort_by) searchParams.append('sort_by', params.sort_by);
 
-    const url = `/books${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    const url = `/books/${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
     return apiClient.get(url);
   },
 
