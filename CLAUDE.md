@@ -25,23 +25,66 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **SQLAlchemy** ORM с **Alembic** для миграций
 
 ### NLP & AI
-- **Advanced Multi-NLP Manager** - координация 3 процессоров
+
+#### **Multi-NLP System - Strategy Pattern Architecture** (NEW: November 2025)
+
+**STATUS:** ✅ **RUNNING IN PRODUCTION** (Refactored from 627 → 304 lines, 52% reduction)
+
+**Architecture:**
+- **2,947 lines** of modular code across **15 modules**
+- **Strategy Pattern** implementation for flexible NLP processing
+- **3 layers:** Strategies (7 files) / Components (3 files) / Utils (5 files)
+
+**Location:** `backend/app/services/nlp/`
+```
+nlp/
+├── strategies/          # 7 files - Processing strategies
+│   ├── base_strategy.py
+│   ├── single_strategy.py
+│   ├── parallel_strategy.py
+│   ├── sequential_strategy.py
+│   ├── ensemble_strategy.py
+│   ├── adaptive_strategy.py
+│   └── strategy_factory.py
+├── components/          # 3 files - Core components
+│   ├── processor_registry.py    # Processor lifecycle
+│   ├── ensemble_voter.py         # Weighted consensus
+│   └── config_loader.py          # Configuration
+└── utils/               # 5 files - Utilities
+    ├── text_analysis.py
+    ├── quality_scorer.py
+    ├── type_mapper.py
+    ├── description_filter.py
+    └── text_cleaner.py
+```
+
+**NLP Processors:**
   - **SpaCy** (ru_core_news_lg) - entity recognition, вес 1.0
   - **Natasha** - русская морфология и NER, вес 1.2 (специализация)
   - **Stanza** (ru) - dependency parsing, вес 0.8
+  - **DeepPavlov** (397 lines) - NOT integrated (dependency conflicts)
 
-- **5 режимов обработки**:
-  - SINGLE - один процессор (быстро)
-  - PARALLEL - параллельная обработка (максимальное покрытие)
-  - SEQUENTIAL - последовательная обработка
-  - ENSEMBLE - voting с consensus алгоритмом (максимальное качество)
-  - ADAPTIVE - автоматический выбор режима (интеллектуально)
+**5 Processing Strategies:**
+  - **SINGLE** - один процессор (SingleStrategy)
+  - **PARALLEL** - параллельная обработка (ParallelStrategy)
+  - **SEQUENTIAL** - последовательная обработка (SequentialStrategy)
+  - **ENSEMBLE** - voting с consensus (EnsembleStrategy)
+  - **ADAPTIVE** - автоматический выбор (AdaptiveStrategy)
 
-- **Ensemble Voting**:
+**Ensemble Voting (ensemble_voter.py):**
   - Weighted consensus: SpaCy (1.0), Natasha (1.2), Stanza (0.8)
   - Consensus threshold: 0.6 (60%)
   - Context enrichment + deduplication
+  - 192 lines of voting logic
 
+**🚨 CRITICAL NOTE (2025-11-18):**
+- ✅ New architecture running in production
+- ❌ **0% test coverage** (BLOCKER - see Phase 4)
+- ❌ LangExtract (464 lines) not integrated - needs API key
+- ❌ Advanced Parser (6 files) not integrated
+- **See:** `docs/reports/EXECUTIVE_SUMMARY_2025-11-18.md`
+
+**Image Generation:**
 - **pollinations.ai** (основной сервис генерации изображений)
 - **OpenAI DALL-E, Midjourney, Stable Diffusion** (опциональные)
 
@@ -497,18 +540,25 @@ docker-compose exec backend python scripts/generate_docs.py
 **Code:**
 - **CFI Reading System:** `backend/app/models/book.py` (ReadingProgress модель)
 - **epub.js Component:** `frontend/src/components/Reader/EpubReader.tsx` (835 строк)
-- **Multi-NLP Manager:** `backend/app/services/multi_nlp_manager.py` (627 строк)
+- **Multi-NLP Manager:** `backend/app/services/multi_nlp_manager.py` (304 строк, refactored from 627)
+- **NLP Architecture (NEW):** `backend/app/services/nlp/` (2,947 lines across 15 modules)
 - **Admin multi-nlp settings:** `backend/app/routers/admin.py` (5 endpoints)
 - **Book Parser with CFI:** `backend/app/services/book_parser.py` (796 строк)
+- **LangExtract (unintegrated):** `backend/app/services/llm_description_enricher.py` (464 lines)
+- **Advanced Parser (unintegrated):** `backend/app/services/advanced_parser/` (6 files)
 - **Основной промпт:** `prompts.md`
 - **Конфигурация Docker:** `docker-compose.yml`
 
 **Documentation (Updated Structure - Nov 2025):**
 - **Документация центр:** `docs/README.md` (навигация по Diátaxis framework)
-- **План разработки:** `docs/development/planning/development-plan.md`
+- **План разработки (latest):** `docs/development/planning/development-plan-2025-11-18.md`
+- **План разработки (old):** `docs/development/planning/development-plan.md`
 - **Календарь разработки:** `docs/development/planning/development-calendar.md`
 - **Changelog:** `docs/development/changelog/2025.md`
 - **Текущий статус:** `docs/development/status/current-status.md`
+- **Executive Summary (NEW):** `docs/reports/EXECUTIVE_SUMMARY_2025-11-18.md`
+- **Comprehensive Analysis (NEW):** `docs/reports/2025-11-18-comprehensive-analysis.md`
+- **Audit Report (NEW):** `docs/reports/2025-11-18-comprehensive-audit-report.md`
 - **API документация:** `docs/reference/api/overview.md`
 - **Схема БД:** `docs/reference/database/schema.md`
 - **Системная архитектура:** `docs/explanations/architecture/system-architecture.md`
@@ -517,3 +567,4 @@ docker-compose exec backend python scripts/generate_docs.py
 - **Docker setup:** `docs/operations/docker/setup.md`
 - **Testing guide:** `docs/guides/testing/testing-guide.md`
 - **Agents guide:** `docs/guides/agents/quickstart.md`
+- **Multi-NLP Agent (updated):** `.claude/agents/multi-nlp-expert.md` (v2.0, 425 lines)
