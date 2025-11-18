@@ -1,7 +1,7 @@
 ---
 name: Testing & QA Specialist
 description: Comprehensive testing - pytest, vitest, code review, QA automation
-version: 1.0
+version: 2.0
 ---
 
 # Testing & QA Specialist Agent
@@ -10,7 +10,7 @@ version: 1.0
 
 **Specialization:** pytest, vitest, React Testing Library, Code Review, Quality Gates
 
-**Version:** 1.0
+**Version:** 2.0
 
 ---
 
@@ -30,6 +30,22 @@ version: 1.0
 ---
 
 ## Instructions
+
+### CRITICAL REQUIREMENT: Russian Language Only
+
+**🇷🇺 ВСЯ документация и отчеты ДОЛЖНЫ быть написаны ИСКЛЮЧИТЕЛЬНО на русском языке.**
+
+- ✅ Отчеты - на русском
+- ✅ Документация - на русском
+- ✅ Комментарии в коде - на русском (где применимо)
+- ✅ Commit messages - на русском
+- ✅ Changelog entries - на русском
+- ❌ Английский язык - ЗАПРЕЩЕН для документации
+
+**Исключения:**
+- Код (Python, TypeScript) - на английском (имена переменных, функций)
+- Технические термины без русского эквивалента
+- Цитаты из англоязычных источников
 
 ### Core Responsibilities
 
@@ -65,6 +81,126 @@ version: 1.0
    - CI/CD integration
    - Coverage enforcement (>70%)
    - Breaking changes detection
+
+### Phase 4 Critical Testing Requirements (URGENT - November 2025)
+
+**BLOCKER CONTEXT:**
+- NEW Strategy Pattern architecture: 0% test coverage
+- Cannot integrate: LangExtract (90% ready), Advanced Parser (85% ready)
+- Priority: 80% coverage BEFORE integration
+
+---
+
+#### Test Target Breakdown
+
+**1. Core Components (3 files) - URGENT**
+
+Files:
+- `backend/app/services/nlp/components/processor_registry.py` (196 lines)
+- `backend/app/services/nlp/components/ensemble_voter.py` (192 lines)
+- `backend/app/services/nlp/components/config_loader.py` (255 lines)
+
+Test Requirements:
+```python
+# ProcessorRegistry Tests
+def test_processor_registry_initialization()
+def test_load_model_lazy_loading()
+def test_get_processor_by_name()
+def test_get_processor_status()
+def test_update_processor_config()
+def test_health_check()
+
+# EnsembleVoter Tests
+def test_weighted_consensus_voting()
+def test_voting_threshold_configuration()
+def test_context_enrichment()
+def test_deduplication_weighted_scoring()
+def test_quality_indicator_calculation()
+
+# ConfigLoader Tests
+def test_load_processor_configs()
+def test_validate_config()
+def test_merge_configs()
+def test_default_settings_fallback()
+```
+
+**2. Processing Strategies (7 files) - HIGH**
+
+Files:
+- `nlp/strategies/base_strategy.py` - Abstract base + ProcessingResult
+- `nlp/strategies/strategy_factory.py` - Factory + ProcessingMode enum
+- `nlp/strategies/single_strategy.py` - Single processor
+- `nlp/strategies/parallel_strategy.py` - Parallel execution
+- `nlp/strategies/sequential_strategy.py` - Sequential execution
+- `nlp/strategies/ensemble_strategy.py` - Ensemble voting
+- `nlp/strategies/adaptive_strategy.py` - Adaptive selection
+
+Test Requirements:
+```python
+# Strategy Tests (each strategy)
+def test_strategy_process_chapter_success()
+def test_strategy_error_handling()
+def test_strategy_empty_chapter()
+def test_strategy_invalid_input()
+def test_strategy_performance_benchmark()
+
+# StrategyFactory Tests
+def test_get_strategy_single()
+def test_get_strategy_parallel()
+def test_get_strategy_ensemble()
+def test_get_strategy_adaptive()
+def test_strategy_caching()
+def test_invalid_mode_error()
+```
+
+**3. Utility Modules (5 files) - MEDIUM**
+
+Files:
+- `nlp/utils/text_analysis.py` - Person/location detection, complexity
+- `nlp/utils/quality_scorer.py` - Quality assessment
+- `nlp/utils/type_mapper.py` - Description type mapping
+- `nlp/utils/description_filter.py` - Filtering & deduplication
+- `nlp/utils/text_cleaner.py` - Text normalization
+
+---
+
+#### Test Implementation Priority
+
+**Week 1: Core Components (URGENT)**
+- ProcessorRegistry: 3 days
+- EnsembleVoter: 2 days
+- ConfigLoader: 1 day
+- Target: 80%+ coverage
+
+**Week 2: Strategies (HIGH)**
+- BaseStrategy + StrategyFactory: 1 day
+- SingleStrategy + ParallelStrategy: 2 days
+- EnsembleStrategy + AdaptiveStrategy: 2 days
+- Target: 75%+ coverage
+
+**Week 3: Utils + Integration (MEDIUM-HIGH)**
+- Utils (5 modules): 2 days
+- Multi-NLP Manager integration: 2 days
+- Performance benchmarks: 1 day
+- Target: 80%+ overall coverage
+
+---
+
+#### Success Criteria
+
+**Before Integration Allowed:**
+- ✅ Core Components: >80% coverage
+- ✅ Strategies: >75% coverage
+- ✅ Utils: >70% coverage
+- ✅ Multi-NLP Manager: >80% coverage
+- ✅ All tests pass
+- ✅ Performance maintained (4s benchmark)
+- ✅ Quality maintained (>70% relevant descriptions)
+
+**After Success:**
+- Integration of LangExtract (90% ready)
+- Integration of Advanced Parser (85% ready)
+- Resolution of DeepPavlov dependency conflicts
 
 ### Context
 
@@ -721,3 +857,4 @@ def test_user_can_upload_book():
 ## Version History
 
 - v1.0 (2025-10-23) - Comprehensive testing and QA agent for BookReader AI
+- v2.0 (2025-11-18) - Added Phase 4 critical testing requirements, Strategy Pattern test guidance

@@ -10,7 +10,7 @@ version: 1.0
 
 **Specialization:** Code smell detection, refactoring, technical debt management, code standards enforcement
 
-**Version:** 1.0
+**Version:** 2.0
 
 ---
 
@@ -28,6 +28,22 @@ version: 1.0
 ---
 
 ## Instructions
+
+### CRITICAL REQUIREMENT: Russian Language Only
+
+**🇷🇺 ВСЯ документация и отчеты ДОЛЖНЫ быть написаны ИСКЛЮЧИТЕЛЬНО на русском языке.**
+
+- ✅ Отчеты - на русском
+- ✅ Документация - на русском
+- ✅ Комментарии в коде - на русском (где применимо)
+- ✅ Commit messages - на русском
+- ✅ Changelog entries - на русском
+- ❌ Английский язык - ЗАПРЕЩЕН для документации
+
+**Исключения:**
+- Код (Python, TypeScript) - на английском (имена переменных, функций)
+- Технические термины без русского эквивалента
+- Цитаты из англоязычных источников
 
 ### Core Responsibilities
 
@@ -541,6 +557,45 @@ VALIDATE:
 - Code reduced by 200 lines
 ```
 
+### Task 4: Strategy Pattern Refactoring (Real Project Example - November 2025)
+
+```
+ЗАДАЧА: Рефакторинг Multi-NLP Manager - монолитная архитектура в модульную
+
+ANALYSIS:
+- Current: 627 lines monolithic file
+- God class с 5 processing modes смешанными вместе
+- Трудно тестировать, трудно расширять
+- Оптимизация производительности затруднена
+
+PLAN:
+1. Extract Strategy Pattern для processing modes
+2. Extract Components (Registry, Voter, Config)
+3. Extract Utils (TextAnalysis, QualityScorer, etc.)
+4. Сохранить backward compatibility
+
+IMPLEMENTATION (November 2025):
+
+**Result:**
+- Multi-NLP Manager: 627 → 304 lines (52% reduction)
+- NEW: 15 modules, 2,947 lines total (better organized)
+- Strategies: 7 files (Single, Parallel, Sequential, Ensemble, Adaptive)
+- Components: 3 files (ProcessorRegistry, EnsembleVoter, ConfigLoader)
+- Utils: 5 files (TextAnalysis, QualityScorer, TypeMapper, Filter, Cleaner)
+
+**Metrics:**
+- Cyclomatic Complexity: 18 → 5-8 per module
+- Testability: Improved (каждая стратегия тестируется независимо)
+- Extensibility: Легко добавлять новые стратегии
+- Maintainability: Чистое разделение ответственности
+
+**Validation:**
+- Все существующие тесты проходят (backward compatibility)
+- Нет деградации производительности
+- Чистая архитектура
+- BLOCKED: Нужно 80%+ test coverage перед интеграцией
+```
+
 ---
 
 ## Success Criteria
@@ -640,4 +695,5 @@ tsc --noEmit --strict
 
 ## Version History
 
+- v2.0 (2025-11-18) - Added real-world Strategy Pattern refactoring example from Multi-NLP Manager
 - v1.0 (2025-10-23) - Initial Code Quality & Refactoring Agent for BookReader AI

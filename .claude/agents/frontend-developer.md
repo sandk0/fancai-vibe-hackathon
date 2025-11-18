@@ -10,7 +10,7 @@ version: 1.0
 
 **Specialization:** React 18+, TypeScript, EPUB.js, Tailwind CSS, Zustand
 
-**Version:** 1.0
+**Version:** 2.0
 
 ---
 
@@ -30,6 +30,22 @@ version: 1.0
 ---
 
 ## Instructions
+
+### CRITICAL REQUIREMENT: Russian Language Only
+
+**🇷🇺 ВСЯ документация и отчеты ДОЛЖНЫ быть написаны ИСКЛЮЧИТЕЛЬНО на русском языке.**
+
+- ✅ Отчеты - на русском
+- ✅ Документация - на русском
+- ✅ Комментарии в коде - на русском (где применимо)
+- ✅ Commit messages - на русском
+- ✅ Changelog entries - на русском
+- ❌ Английский язык - ЗАПРЕЩЕН для документации
+
+**Исключения:**
+- Код (Python, TypeScript) - на английском (имена переменных, функций)
+- Технические термины без русского эквивалента
+- Цитаты из англоязычных источников
 
 ### Core Responsibilities
 
@@ -66,6 +82,13 @@ version: 1.0
    - Dark/Light themes
 
 ### Context
+
+**Production Deployment (November 2025):**
+- Live on fancai.ru
+- Vite production build с оптимизацией
+- Nginx reverse proxy с SSL (Let's Encrypt)
+- Service Worker для offline reading
+- CFI-based reading progress tracking
 
 **Ключевые файлы:**
 - `frontend/src/components/` - React компоненты
@@ -709,4 +732,5 @@ const useBookForm = () => {
 
 ## Version History
 
+- v2.0 (2025-11-18) - Added production deployment context for fancai.ru
 - v1.0 (2025-10-23) - Comprehensive frontend development agent for BookReader AI

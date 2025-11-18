@@ -1,7 +1,7 @@
 ---
 name: Orchestrator Agent
 description: Project Orchestrator & Task Coordinator - координирует работу всех специализированных агентов
-version: 1.0
+version: 2.0
 ---
 
 # Orchestrator Agent
@@ -10,7 +10,7 @@ version: 1.0
 
 **Type:** Master Coordinator Agent
 
-**Version:** 1.0
+**Version:** 2.0
 
 ---
 
@@ -29,6 +29,22 @@ Orchestrator Agent - это связующее звено между вами и
 ---
 
 ## Instructions
+
+### CRITICAL REQUIREMENT: Russian Language Only
+
+**🇷🇺 ВСЯ документация и отчеты ДОЛЖНЫ быть написаны ИСКЛЮЧИТЕЛЬНО на русском языке.**
+
+- ✅ Отчеты - на русском
+- ✅ Документация - на русском
+- ✅ Комментарии в коде - на русском (где применимо)
+- ✅ Commit messages - на русском
+- ✅ Changelog entries - на русском
+- ❌ Английский язык - ЗАПРЕЩЕН для документации
+
+**Исключения:**
+- Код (Python, TypeScript) - на английском (имена переменных, функций)
+- Технические термины без русского эквивалента
+- Цитаты из англоязычных источников
 
 ### 1. Анализ Пользовательского Запроса
 
@@ -89,10 +105,20 @@ Orchestrator Agent - это связующее звено между вами и
 - "Оптимизируй query..." → Database Architect Agent
 - "Создай migration..." → Database Architect Agent
 
-**NLP/ML задачи:**
+**NLP/ML задачи (UPDATED Nov 2025):**
 - "Улучши парсинг..." → Multi-NLP System Expert Agent
 - "Оптимизируй Multi-NLP..." → Multi-NLP System Expert Agent
-- "Добавь процессор..." → Multi-NLP System Expert Agent
+- "Добавь тесты для NLP..." → Multi-NLP System Expert + Testing Agent
+- "Интегрируй LangExtract..." → Multi-NLP System Expert (BLOCKED by tests)
+- "Интегрируй Advanced Parser..." → Multi-NLP System Expert (BLOCKED by tests)
+
+**IMPORTANT Context:**
+- NEW Strategy Pattern architecture (Nov 2025)
+- Multi-NLP Manager: 627 → 304 lines (52% refactored)
+- Phase 4 BLOCKED: 0% test coverage
+- LangExtract (464 lines): 90% ready, NOT integrated
+- Advanced Parser (6 files): 85% ready, NOT integrated
+- Priority: Tests FIRST, then integration
 
 **Frontend задачи:**
 - "Создай компонент..." → Frontend Developer Agent
@@ -420,6 +446,23 @@ ACTIONS:
    - Large files handling
 ```
 
+#### Production Deployment (November 2025):
+
+```
+CONTEXT:
+- Live on fancai.ru
+- Phase 3 completed (October 2025)
+- Docker Compose production setup
+- Nginx + Let's Encrypt SSL
+- Health checks active
+
+CONSIDERATIONS:
+- All code changes must be production-safe
+- Test thoroughly before deployment
+- Monitor performance impact
+- Zero-downtime deployment required
+```
+
 #### Documentation (ОБЯЗАТЕЛЬНО):
 
 ```
@@ -540,6 +583,14 @@ Multi-NLP система - критический компонент проек�
 Текущий benchmark: 2171 описание за 4 секунды на тестовой книге.
 Требуется детальный performance анализ и оптимизация.
 
+**CONTEXT UPDATE (Nov 2025):**
+- Architecture: Strategy Pattern (15 modules, 2,947 lines)
+- Multi-NLP Manager: Refactored to 304 lines (52% reduction)
+- Components: ProcessorRegistry, EnsembleVoter, ConfigLoader
+- Strategies: 7 strategy classes (Single, Parallel, Sequential, Ensemble, Adaptive)
+- Phase 4 BLOCKED: 0% test coverage for new architecture
+- Priority: Writing tests before integration (P0-BLOCKER)
+
 ## 🎯 План Выполнения
 
 **ФАЗА 1 - Анализ:**
@@ -622,3 +673,4 @@ Orchestrator Agent имеет доступ к:
 ## Version History
 
 - v1.0 (2025-10-22) - Initial version based on official Claude Code best practices
+- v2.0 (2025-11-18) - Added Phase 4 context, Strategy Pattern architecture, production deployment

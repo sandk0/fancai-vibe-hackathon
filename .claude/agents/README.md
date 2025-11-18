@@ -1,8 +1,9 @@
 # Claude Code Subagents для BookReader AI
 
-**Версия:** 2.0.0
-**Дата:** 23.10.2025
-**Статус:** Production Ready
+**Версия:** 2.1.0
+**Дата:** 18.11.2025
+**Статус:** Production Ready + Phase 4 Blocked
+**Last Major Update:** Multi-NLP Expert v2.0 (November 2025)
 
 ---
 
@@ -38,16 +39,29 @@
 
 **Роль:** Эксперт по Multi-NLP системе (КРИТИЧЕСКИЙ компонент проекта)
 
+**Версия:** 2.0 (November 2025) - Strategy Pattern Architecture
+
 **Специализация:**
-- SpaCy + Natasha + Stanza процессоры
-- Ensemble voting оптимизация
-- Performance tuning (benchmark: 2171 descriptions in 4s)
+- NEW: Strategy Pattern architecture (15 modules, 2,947 lines)
+- Multi-NLP Manager: 627 → 304 lines (52% refactored)
+- Components: ProcessorRegistry, EnsembleVoter, ConfigLoader
+- Strategies: 7 classes (Single, Parallel, Sequential, Ensemble, Adaptive)
+- Performance: 2171 descriptions in 4s (maintained)
+- SpaCy + Natasha + Stanza + DeepPavlov
 
 **Когда использовать:**
 - Оптимизация парсинга книг
-- Улучшение качества извлечения описаний
-- Добавление новых NLP процессоров
-- Performance проблемы с Multi-NLP
+- Работа с Strategy Pattern компонентами
+- Добавление тестов для NLP (CRITICAL - 0% coverage)
+- Интеграция LangExtract/Advanced Parser (BLOCKED by tests)
+- Оптимизация ensemble voting
+
+**IMPORTANT:**
+- Phase 4 BLOCKED: 0% test coverage для новой архитектуры
+- LangExtract (464 lines): 90% ready, NOT integrated
+- Advanced Parser (6 files): 85% ready, NOT integrated
+- DeepPavlov (397 lines): Dependency conflicts
+- Priority: Tests FIRST, then integration
 
 **Пример:**
 ```
@@ -338,6 +352,24 @@ Orchestrator автоматически:
 
 ## 💡 Лучшие практики
 
+### CRITICAL REQUIREMENT: Russian Language Only
+
+**🇷🇺 ВСЯ документация и отчеты ДОЛЖНЫ быть написаны ИСКЛЮЧИТЕЛЬНО на русском языке.**
+
+- ✅ Отчеты - на русском
+- ✅ Документация - на русском
+- ✅ Комментарии в коде - на русском (где применимо)
+- ✅ Commit messages - на русском
+- ✅ Changelog entries - на русском
+- ❌ Английский язык - ЗАПРЕЩЕН для документации
+
+**Исключения:**
+- Код (Python, TypeScript) - на английском (имена переменных, функций)
+- Технические термины без русского эквивалента
+- Цитаты из англоязычных источников
+
+---
+
 ### 1. Research-Plan-Implement workflow
 
 **Всегда начинайте с анализа:**
@@ -605,8 +637,8 @@ Document
 
 ---
 
-**Версия:** 2.0.0 (10 агентов)
+**Версия:** 2.1.0 (10 агентов)
 **Автор:** Claude Code Agents System
 **Лицензия:** Private Project
 **Поддержка:** См. документацию в `/docs/development/`
-**Last Updated:** 23.10.2025
+**Last Updated:** 18.11.2025

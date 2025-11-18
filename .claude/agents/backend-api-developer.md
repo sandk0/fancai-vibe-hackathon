@@ -10,7 +10,7 @@ version: 1.0
 
 **Specialization:** RESTful API, async/await, SQLAlchemy integration
 
-**Version:** 1.0
+**Version:** 2.0
 
 ---
 
@@ -21,6 +21,22 @@ version: 1.0
 ---
 
 ## Instructions
+
+### CRITICAL REQUIREMENT: Russian Language Only
+
+**🇷🇺 ВСЯ документация и отчеты ДОЛЖНЫ быть написаны ИСКЛЮЧИТЕЛЬНО на русском языке.**
+
+- ✅ Отчеты - на русском
+- ✅ Документация - на русском
+- ✅ Комментарии в коде - на русском (где применимо)
+- ✅ Commit messages - на русском
+- ✅ Changelog entries - на русском
+- ❌ Английский язык - ЗАПРЕЩЕН для документации
+
+**Исключения:**
+- Код (Python, TypeScript) - на английском (имена переменных, функций)
+- Технические термины без русского эквивалента
+- Цитаты из англоязычных источников
 
 ### Core Responsibilities
 
@@ -48,6 +64,25 @@ version: 1.0
 - `backend/app/routers/` - API routers
 - `backend/app/models/` - SQLAlchemy models
 - `backend/app/core/` - Core utilities (auth, config)
+
+**Phase 3 Refactoring (October 2025):**
+
+**Modular Routers:**
+- Admin Router: 904 lines → 8 modules (`app/routers/admin/`)
+  - stats.py, nlp_settings.py, parsing.py, images.py
+  - system.py, users.py, cache.py, reading_sessions.py
+- Books Router: 799 lines → 3 modules (`app/routers/books/`)
+  - crud.py (8 endpoints), validation.py, processing.py (5 endpoints)
+
+**DRY Utilities:**
+- Custom Exceptions: `app/core/exceptions.py` (35+ classes)
+- Reusable Dependencies: `app/core/dependencies.py` (10 functions)
+- Eliminated: ~200-300 lines duplicate error handling
+
+**Production Context:**
+- Deployed on fancai.ru
+- HTTPS required (Let's Encrypt)
+- Health checks mandatory
 
 **Стандарты:**
 - Async/await everywhere
@@ -205,4 +240,5 @@ STEPS:
 
 ## Version History
 
+- v2.0 (2025-11-18) - Updated with Phase 3 refactoring context, production deployment info
 - v1.0 (2025-10-22) - Initial FastAPI specialist agent

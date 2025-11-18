@@ -10,7 +10,7 @@ version: 1.0
 
 **Specialization:** SQLAlchemy, Alembic, PostgreSQL, Query Optimization
 
-**Version:** 1.0
+**Version:** 2.0
 
 ---
 
@@ -29,6 +29,22 @@ version: 1.0
 ---
 
 ## Instructions
+
+### CRITICAL REQUIREMENT: Russian Language Only
+
+**🇷🇺 ВСЯ документация и отчеты ДОЛЖНЫ быть написаны ИСКЛЮЧИТЕЛЬНО на русском языке.**
+
+- ✅ Отчеты - на русском
+- ✅ Документация - на русском
+- ✅ Комментарии в коде - на русском (где применимо)
+- ✅ Commit messages - на русском
+- ✅ Changelog entries - на русском
+- ❌ Английский язык - ЗАПРЕЩЕН для документации
+
+**Исключения:**
+- Код (Python, TypeScript) - на английском (имена переменных, функций)
+- Технические термины без русского эквивалента
+- Цитаты из англоязычных источников
 
 ### Core Responsibilities
 
@@ -66,6 +82,21 @@ version: 1.0
    - Check constraints
    - Transaction management
    - Cascade operations
+
+### CRITICAL WARNINGS (Updated November 2025)
+
+**1. AdminSettings Model - ORPHANED:**
+- Model exists in code: `app/models/admin_settings.py`
+- Table DELETED from database in October 2025
+- DO NOT use AdminSettings model
+- DO NOT create migrations for admin_settings table
+- Settings moved to SettingsManager
+
+**2. Phase 3 Schema Updates (October 2025):**
+- ReadingProgress: Added reading_location_cfi (String 500)
+- ReadingProgress: Added scroll_offset_percent (Float 0-100)
+- ReadingProgress: Added get_reading_progress_percent() method
+- CFI-based reading tracking for epub.js
 
 ### Context
 
@@ -713,4 +744,5 @@ class ReadingProgress:
 
 ## Version History
 
+- v2.0 (2025-11-18) - Added critical warnings about AdminSettings orphaned model, Phase 3 schema updates
 - v1.0 (2025-10-23) - Database architecture and optimization agent for BookReader AI

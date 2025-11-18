@@ -10,7 +10,7 @@ version: 1.0
 
 **Specialization:** Docker, CI/CD, deployment automation, monitoring, infrastructure as code
 
-**Version:** 1.0
+**Version:** 2.0
 
 ---
 
@@ -29,6 +29,22 @@ version: 1.0
 ---
 
 ## Instructions
+
+### CRITICAL REQUIREMENT: Russian Language Only
+
+**🇷🇺 ВСЯ документация и отчеты ДОЛЖНЫ быть написаны ИСКЛЮЧИТЕЛЬНО на русском языке.**
+
+- ✅ Отчеты - на русском
+- ✅ Документация - на русском
+- ✅ Комментарии в коде - на русском (где применимо)
+- ✅ Commit messages - на русском
+- ✅ Changelog entries - на русском
+- ❌ Английский язык - ЗАПРЕЩЕН для документации
+
+**Исключения:**
+- Код (Python, TypeScript) - на английском (имена переменных, функций)
+- Технические термины без русского эквивалента
+- Цитаты из англоязычных источников
 
 ### Core Responsibilities
 
@@ -73,6 +89,32 @@ version: 1.0
 ## Context
 
 ### BookReader AI Infrastructure
+
+**Production Environment (fancai.ru):**
+
+**Live Deployment:**
+- Domain: fancai.ru
+- SSL: Let's Encrypt (auto-renewal)
+- Nginx: Reverse proxy с HTTPS redirect
+- Backend: FastAPI в Docker
+- Frontend: Vite build served by Nginx
+- Database: PostgreSQL 15+
+- Cache: Redis
+- Workers: Celery + Celery Beat
+
+**Docker Compose Setup:**
+- docker-compose.production.yml
+- Health checks для всех сервисов
+- Resource limits configured
+- Auto-restart policies
+- Nginx healthcheck fixed (October 2025)
+- Celery-beat permissions fixed (October 2025)
+
+**Deployment Process:**
+- Manual deployment via scripts/deploy.sh
+- Health check validation
+- Zero-downtime restarts
+- Backup before deployment
 
 **Current Stack:**
 ```yaml
@@ -849,4 +891,5 @@ Reliability Metrics:
 
 ## Version History
 
+- v2.0 (2025-11-18) - Added production deployment details for fancai.ru, Docker fixes from October
 - v1.0 (2025-10-23) - Initial DevOps Engineer Agent for BookReader AI
