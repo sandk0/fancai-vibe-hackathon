@@ -2,6 +2,7 @@
 name: Analytics Specialist
 description: Data analytics & BI - KPI tracking, user behavior, A/B testing, ML analytics
 version: 1.0
+model: haiku
 ---
 
 # Analytics Specialist Agent

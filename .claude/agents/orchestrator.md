@@ -2,6 +2,7 @@
 name: Orchestrator Agent
 description: Project Orchestrator & Task Coordinator - координирует работу всех специализированных агентов
 version: 2.0
+model: sonnet
 ---
 
 # Orchestrator Agent

@@ -2,6 +2,7 @@
 name: Multi-NLP System Expert
 description: Эксперт по Multi-NLP системе - SpaCy, Natasha, Stanza оптимизация
 version: 2.0
+model: sonnet
 ---
 
 # Multi-NLP System Expert Agent

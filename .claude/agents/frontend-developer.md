@@ -2,6 +2,7 @@
 name: Frontend Developer
 description: React/TypeScript разработчик - компоненты, EPUB.js читалка, Tailwind CSS
 version: 1.0
+model: sonnet
 ---
 
 # Frontend Developer Agent

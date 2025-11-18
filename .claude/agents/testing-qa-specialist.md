@@ -2,6 +2,7 @@
 name: Testing & QA Specialist
 description: Comprehensive testing - pytest, vitest, code review, QA automation
 version: 2.0
+model: haiku
 ---
 
 # Testing & QA Specialist Agent

@@ -2,6 +2,7 @@
 name: Documentation Master
 description: Автоматическое обновление документации - README, changelog, docstrings
 version: 2.0
+model: haiku
 ---
 
 # Documentation Master Agent

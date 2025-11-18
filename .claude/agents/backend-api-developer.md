@@ -2,6 +2,7 @@
 name: Backend API Developer
 description: FastAPI разработчик - создание endpoints, Pydantic validation, async patterns
 version: 1.0
+model: sonnet
 ---
 
 # Backend API Developer Agent

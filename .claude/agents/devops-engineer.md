@@ -2,6 +2,7 @@
 name: DevOps Engineer
 description: DevOps specialist - Docker, CI/CD, deployment, monitoring, infrastructure automation
 version: 1.0
+model: sonnet
 ---
 
 # DevOps Engineer Agent

@@ -2,6 +2,7 @@
 name: Database Architect
 description: Database design - SQLAlchemy models, Alembic migrations, оптимизация запросов
 version: 1.0
+model: sonnet
 ---
 
 # Database Architect Agent

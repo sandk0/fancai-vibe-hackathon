@@ -2,6 +2,7 @@
 name: Code Quality & Refactoring
 description: Code quality expert - рефакторинг, code smells, design patterns, SOLID principles
 version: 1.0
+model: sonnet
 ---
 
 # Code Quality & Refactoring Agent
