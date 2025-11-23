@@ -153,8 +153,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         Returns:
             Response с security headers
         """
-        # Обработка request
-        response = await call_next(request)
+        # Обработка request с error handling для anyio.EndOfStream
+        try:
+            response = await call_next(request)
+        except Exception as e:
+            # Log the error but don't crash - let FastAPI handle it
+            logger.warning(f"Error in security headers middleware: {type(e).__name__}: {e}")
+            raise
 
         # ========================================================================
         # 1. Strict-Transport-Security (HSTS)

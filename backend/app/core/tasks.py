@@ -101,6 +101,46 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
     async with AsyncSessionLocal() as db:
         print(f"🔍 [ASYNC TASK] Starting async processing for book {book_id}")
 
+        # КРИТИЧЕСКАЯ ВАЛИДАЦИЯ: Проверяем наличие NLP процессоров
+        from app.services.multi_nlp_manager import multi_nlp_manager
+
+        # Инициализируем если нужно
+        if (
+            not hasattr(multi_nlp_manager, "_initialized")
+            or not multi_nlp_manager._initialized
+        ):
+            print("🧠 [ASYNC TASK] Initializing multi NLP manager...")
+            await multi_nlp_manager.initialize()
+
+        # Проверяем что процессоры загружены
+        if not hasattr(multi_nlp_manager, "processor_registry"):
+            error_msg = "❌ CRITICAL: multi_nlp_manager.processor_registry не существует!"
+            print(f"[ASYNC TASK] {error_msg}")
+            logger.error(error_msg)
+            raise RuntimeError(
+                "Cannot process book - multi_nlp_manager.processor_registry not initialized"
+            )
+
+        available_processors = multi_nlp_manager.processor_registry.processors
+        if not available_processors or len(available_processors) == 0:
+            error_msg = "❌ CRITICAL: No NLP processors available! Cannot process book."
+            print(f"[ASYNC TASK] {error_msg}")
+            logger.error(error_msg)
+            raise RuntimeError(
+                "Cannot process book - no NLP processors loaded. "
+                "Please ensure at least one processor (SpaCy, Natasha, or Stanza) is properly installed."
+            )
+
+        # Логируем успешную проверку
+        processor_names = list(available_processors.keys())
+        print(
+            f"✅ [ASYNC TASK] NLP processors validation passed: "
+            f"{len(available_processors)} processors available: {processor_names}"
+        )
+        logger.info(
+            f"Processing book with {len(available_processors)} NLP processors: {processor_names}"
+        )
+
         # Получаем книгу
         book_result = await db.execute(select(Book).where(Book.id == book_id))
         book = book_result.scalar_one_or_none()
@@ -135,23 +175,9 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
                     f"Processing chapter {chapter.chapter_number} of book {book_id}"
                 )
 
-                # Извлекаем описания из текста главы (с ленивой загрузкой)
-                from app.services.multi_nlp_manager import multi_nlp_manager
-
+                # Извлекаем описания из текста главы
                 print(
                     f"📝 [ASYNC TASK] Chapter content length: {len(chapter.content)} chars"
-                )
-
-                # Инициализируем если нужно
-                if (
-                    not hasattr(multi_nlp_manager, "_initialized")
-                    or not multi_nlp_manager._initialized
-                ):
-                    print("🧠 [ASYNC TASK] Initializing multi NLP manager...")
-                    await multi_nlp_manager.initialize()
-
-                print(
-                    f"🧠 [ASYNC TASK] Multi-NLP manager initialized: {multi_nlp_manager._initialized}"
                 )
 
                 # Извлекаем описания

@@ -65,49 +65,116 @@ class ProcessorRegistry:
         from ...natasha_processor import EnhancedNatashaProcessor
         from ...stanza_processor import EnhancedStanzaProcessor
         from ...deeppavlov_processor import DeepPavlovProcessor
+        from ...gliner_processor import GLiNERProcessor
+
+        initialization_attempts = 0
+        successful_initializations = 0
 
         for processor_name, config in self.processor_configs.items():
             if not config.enabled:
-                logger.info(f"Processor {processor_name} is disabled, skipping")
+                logger.info(f"⏭️  Processor {processor_name} is disabled, skipping")
                 continue
 
+            initialization_attempts += 1
+            logger.info(f"🔄 Attempting to initialize {processor_name} processor...")
+
             try:
+                processor = None
+
                 if processor_name == "spacy":
                     processor = EnhancedSpacyProcessor(config)
                     await processor.load_model()
                     if processor.is_available():
                         self.processors["spacy"] = processor
-                        logger.info("✅ SpaCy processor initialized")
+                        successful_initializations += 1
+                        logger.info("✅ SpaCy processor initialized successfully")
+                    else:
+                        logger.warning(
+                            f"⚠️  SpaCy processor loaded but not available. "
+                            f"Check model installation: python -m spacy download ru_core_news_lg"
+                        )
 
                 elif processor_name == "natasha":
                     processor = EnhancedNatashaProcessor(config)
                     await processor.load_model()
                     if processor.is_available():
                         self.processors["natasha"] = processor
-                        logger.info("✅ Natasha processor initialized")
+                        successful_initializations += 1
+                        logger.info("✅ Natasha processor initialized successfully")
+                    else:
+                        logger.warning(
+                            f"⚠️  Natasha processor loaded but not available. "
+                            f"Check installation: pip install natasha"
+                        )
 
                 elif processor_name == "stanza":
                     processor = EnhancedStanzaProcessor(config)
                     await processor.load_model()
                     if processor.is_available():
                         self.processors["stanza"] = processor
-                        logger.info("✅ Stanza processor initialized")
+                        successful_initializations += 1
+                        logger.info("✅ Stanza processor initialized successfully")
+                    else:
+                        logger.warning(
+                            f"⚠️  Stanza processor loaded but not available. "
+                            f"Check model installation: python -c 'import stanza; stanza.download(\"ru\")'"
+                        )
 
-                elif processor_name == "deeppavlov":
-                    # NEW: DeepPavlov processor - F1 0.94-0.97!
-                    processor = DeepPavlovProcessor(use_gpu=False)
+                elif processor_name == "gliner":
+                    # NEW: GLiNER processor - F1 0.90-0.95, no dependency conflicts!
+                    processor = GLiNERProcessor(config)
+                    await processor.load_model()
                     if processor.is_available():
-                        self.processors["deeppavlov"] = processor
+                        self.processors["gliner"] = processor
+                        successful_initializations += 1
                         logger.info(
-                            "✅ DeepPavlov processor initialized (F1 0.94-0.97)"
+                            "✅ GLiNER processor initialized successfully (F1 0.90-0.95, zero-shot NER)"
                         )
                     else:
                         logger.warning(
-                            "DeepPavlov not available - install with: pip install deeppavlov"
+                            f"⚠️  GLiNER not available. "
+                            f"Install with: pip install gliner>=0.2.0"
+                        )
+
+                elif processor_name == "deeppavlov":
+                    # DeepPavlov processor - F1 0.94-0.97 but has dependency conflicts
+                    processor = DeepPavlovProcessor(use_gpu=False)
+                    if processor.is_available():
+                        self.processors["deeppavlov"] = processor
+                        successful_initializations += 1
+                        logger.info(
+                            "✅ DeepPavlov processor initialized successfully (F1 0.94-0.97)"
+                        )
+                    else:
+                        logger.warning(
+                            f"⚠️  DeepPavlov not available - has dependency conflicts. "
+                            f"Using GLiNER as replacement (F1 0.90-0.95, no conflicts)"
                         )
 
             except Exception as e:
-                logger.error(f"Failed to initialize {processor_name} processor: {e}")
+                logger.error(
+                    f"❌ Failed to initialize {processor_name} processor: {type(e).__name__}: {e}",
+                    exc_info=True
+                )
+
+        # Validation: Ensure minimum 2 processors loaded for ensemble voting
+        logger.info(
+            f"📊 Processor initialization complete: {successful_initializations}/{initialization_attempts} successful"
+        )
+
+        if len(self.processors) < 2:
+            error_msg = (
+                f"❌ CRITICAL: Only {len(self.processors)} processor(s) loaded - "
+                f"need at least 2 for ensemble voting. "
+                f"Available: {list(self.processors.keys())}. "
+                f"Check processor installations and configurations."
+            )
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
+
+        logger.info(
+            f"✅ Sufficient processors loaded: {list(self.processors.keys())}"
+        )
 
     def get_processor(self, name: str) -> Optional[Any]:
         """Get processor by name."""

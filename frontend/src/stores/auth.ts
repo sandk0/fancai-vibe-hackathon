@@ -126,9 +126,10 @@ export const useAuthStore = create<AuthState>()(
         localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
       },
 
-      loadUserFromStorage: () => {
+      loadUserFromStorage: async () => {
         console.log('📱 Loading user from storage...');
-        
+        set({ isLoading: true }); // Start loading
+
         try {
           const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
           const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
@@ -141,26 +142,32 @@ export const useAuthStore = create<AuthState>()(
           if (token && refreshToken) {
             const user = userData ? JSON.parse(userData) : null;
             console.log('✅ Restoring user session for:', user?.email);
-            
+
+            // Set token and user data first
             set({
               accessToken: token,
               refreshToken: refreshToken,
               user,
               isAuthenticated: true,
-              isLoading: false, // Stop loading after successful restore
+              // Keep isLoading true until we verify token
             });
 
-            // Try to refresh user data, but don't logout on failure
+            // Verify token with API call before allowing page to render
             if (user) {
-              authAPI.getCurrentUser()
-                .then((response) => {
-                  console.log('✅ User data refreshed successfully');
-                  get().updateUser(response.user);
-                })
-                .catch((error) => {
-                  console.warn('⚠️ Failed to refresh user data:', error);
-                  // Don't automatically logout - let the API interceptor handle token refresh
-                });
+              try {
+                const response = await authAPI.getCurrentUser();
+                console.log('✅ Token verified, user data refreshed successfully');
+                get().updateUser(response.user);
+                set({ isLoading: false }); // Stop loading after successful verification
+              } catch (error) {
+                console.warn('⚠️ Token verification failed:', error);
+                // Token is invalid - clear auth state
+                get().logout();
+                set({ isLoading: false });
+              }
+            } else {
+              // No user data but have tokens - still set loading false
+              set({ isLoading: false });
             }
           } else {
             console.log('❌ No valid tokens found, user not authenticated');
@@ -169,7 +176,7 @@ export const useAuthStore = create<AuthState>()(
               accessToken: null,
               refreshToken: null,
               isAuthenticated: false,
-              isLoading: false, // Stop loading even if no tokens
+              isLoading: false, // Stop loading - no tokens to verify
             });
           }
         } catch (error) {

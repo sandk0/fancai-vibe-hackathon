@@ -42,17 +42,23 @@ from ...services.book import book_service, book_progress_service
 from ...models.book import Book
 from ...models.user import User
 from ...core.tasks import process_book_task
+from ...schemas.responses import (
+    BookListResponse,
+    BookDetailResponse,
+    BookUploadResponse,
+    BookDeleteResponse,
+)
 
 
 router = APIRouter()
 
 
-@router.post("/upload")
+@router.post("/upload", response_model=BookUploadResponse)
 async def upload_book(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
+) -> BookUploadResponse:
     """
     Загружает книгу, парсит её и сохраняет в базе данных.
 
@@ -171,14 +177,14 @@ async def upload_book(
         raise BookProcessingException(str(e))
 
 
-@router.get("/")
+@router.get("/", response_model=BookListResponse)
 async def get_user_books(
     skip: int = 0,
     limit: int = 50,
     sort_by: str = "created_desc",
     db: AsyncSession = Depends(get_database_session),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> BookListResponse:
     """
     Получает список книг пользователя.
 
@@ -239,7 +245,11 @@ async def get_user_books(
                         "genre": book.genre,
                         "language": book.language,
                         "description": book.description or "",
+                        "cover_image": book.cover_image,
+                        "file_format": book.file_format,
+                        "file_size": book.file_size,
                         "total_pages": book.total_pages,
+                        "estimated_reading_time": book.estimated_reading_time or 0,
                         "estimated_reading_time_hours": (
                             round(book.estimated_reading_time / 60, 1)
                             if book.estimated_reading_time > 0
@@ -250,13 +260,10 @@ async def get_user_books(
                             if hasattr(book, "chapters") and book.chapters
                             else 0
                         ),
-                        # FIX #2: Use round(..., 1) to preserve decimal precision (0.1% granularity)
                         "reading_progress_percent": round(reading_progress, 1),
                         "has_cover": bool(book.cover_image),
                         "is_parsed": book.is_parsed,
                         "parsing_progress": book.parsing_progress,
-                        # КРИТИЧЕСКИ ВАЖНО: is_processing вычисляется динамически
-                        # Книга в обработке, если парсинг не завершён
                         "is_processing": not book.is_parsed,
                         "created_at": (
                             book.created_at.isoformat() if book.created_at else None
@@ -298,12 +305,12 @@ async def get_user_books(
         raise BookListFetchException(str(e))
 
 
-@router.get("/{book_id}")
+@router.get("/{book_id}", response_model=BookDetailResponse)
 async def get_book(
     book: Book = Depends(get_user_book),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
+) -> BookDetailResponse:
     """
     Получает информацию о конкретной книге.
 
@@ -365,31 +372,43 @@ async def get_book(
 
         response = {
             "id": str(book.id),
+            "user_id": str(book.user_id),
             "title": book.title,
             "author": book.author,
             "genre": book.genre,
             "language": book.language,
-            "description": book.description,
-            "total_pages": book.total_pages,
-            "estimated_reading_time_hours": round(book.estimated_reading_time / 60, 1),
+            "file_path": book.file_path,
             "file_format": book.file_format,
-            "file_size_mb": round(book.file_size / (1024 * 1024), 2),
-            "has_cover": bool(book.cover_image),
+            "file_size": book.file_size,
+            "cover_image": book.cover_image,
+            "description": book.description,
+            "book_metadata": book.book_metadata,
+            "total_pages": book.total_pages,
+            "estimated_reading_time": book.estimated_reading_time or 0,
             "is_parsed": book.is_parsed,
             "parsing_progress": book.parsing_progress,
+            "parsing_error": book.parsing_error,
+            "created_at": book.created_at.isoformat(),
+            "updated_at": book.updated_at.isoformat(),
+            "last_accessed": (
+                book.last_accessed.isoformat() if book.last_accessed else None
+            ),
+            # Frontend computed fields
+            "estimated_reading_time_hours": (
+                round(book.estimated_reading_time / 60, 1)
+                if book.estimated_reading_time > 0
+                else 0.0
+            ),
+            "file_size_mb": round(book.file_size / (1024 * 1024), 2),
+            "has_cover": bool(book.cover_image),
             "chapters": chapters_data,
             "reading_progress": {
                 "current_chapter": current_chapter,
                 "current_page": current_page,
                 "current_position": current_position,
                 "reading_location_cfi": reading_location_cfi,
-                # FIX #2: Use round(..., 1) for decimal precision
                 "progress_percent": round(progress_percent, 1),
             },
-            "created_at": book.created_at.isoformat(),
-            "last_accessed": (
-                book.last_accessed.isoformat() if book.last_accessed else None
-            ),
         }
 
         # Cache the result (1 hour TTL for book metadata)

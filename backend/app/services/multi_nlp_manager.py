@@ -13,6 +13,7 @@ Target: 627 lines → <300 lines (52% reduction)
 
 import asyncio
 import logging
+import os
 from typing import Dict, Any, Optional
 from datetime import datetime
 
@@ -77,6 +78,29 @@ class MultiNLPManager:
         """Backward compatibility: set processor_registry.processor_configs."""
         self.processor_registry.processor_configs = value
 
+    # ========================================================================
+    # Feature Flags Support
+    # ========================================================================
+
+    def _is_feature_enabled(self, feature_name: str, default: bool = True) -> bool:
+        """
+        Check if a feature flag is enabled via environment variables.
+
+        Args:
+            feature_name: Feature flag name (e.g., "USE_NEW_NLP_ARCHITECTURE")
+            default: Default value if env var not set
+
+        Returns:
+            True if enabled, False otherwise
+
+        Example:
+            >>> if self._is_feature_enabled("USE_ADVANCED_PARSER"):
+            ...     # Use advanced parser
+        """
+        env_value = os.getenv(feature_name)
+        if env_value is not None:
+            return env_value.lower() in ("true", "1", "yes", "on")
+        return default
 
     async def initialize(self):
         """
@@ -106,6 +130,16 @@ class MultiNLPManager:
 
             # Initialize processor registry
             await self.processor_registry.initialize(self.config_loader)
+
+            # Log feature flags status
+            feature_flags_status = {
+                "USE_NEW_NLP_ARCHITECTURE": self._is_feature_enabled("USE_NEW_NLP_ARCHITECTURE", True),
+                "ENABLE_ENSEMBLE_VOTING": self._is_feature_enabled("ENABLE_ENSEMBLE_VOTING", True),
+                "ENABLE_PARALLEL_PROCESSING": self._is_feature_enabled("ENABLE_PARALLEL_PROCESSING", True),
+                "USE_ADVANCED_PARSER": self._is_feature_enabled("USE_ADVANCED_PARSER", False),
+                "USE_LLM_ENRICHMENT": self._is_feature_enabled("USE_LLM_ENRICHMENT", False),
+            }
+            logger.info(f"Feature flags: {feature_flags_status}")
 
             self._initialized = True
             logger.info(

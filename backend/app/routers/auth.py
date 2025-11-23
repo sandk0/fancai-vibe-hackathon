@@ -15,6 +15,12 @@ from ..core.auth import get_current_active_user, security
 from ..services.auth_service import auth_service
 from ..models.user import User
 from ..middleware.rate_limit import rate_limit, RATE_LIMIT_PRESETS
+from ..schemas.responses import (
+    UserResponse,
+    LoginResponse,
+    RegisterResponse,
+    RefreshTokenResponse,
+)
 
 
 router = APIRouter()
@@ -50,26 +56,17 @@ class UserProfileUpdateRequest(BaseModel):
     new_password: Optional[str] = None
 
 
-class UserResponse(BaseModel):
-    """Модель ответа с информацией о пользователе."""
-
-    id: str
-    email: str
-    full_name: Optional[str]
-    is_active: bool
-    is_verified: bool
-    is_admin: bool
-    created_at: str
-    last_login: Optional[str]
+# UserResponse уже импортирован из app.schemas.responses
+# Дублирующий класс удален (lines 59-70) - использовался неправильный schema без updated_at
 
 
-@router.post("/auth/register", status_code=status.HTTP_201_CREATED)
+@router.post("/auth/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
 @rate_limit(**RATE_LIMIT_PRESETS["registration"])
 async def register_user(
     user_request: UserRegistrationRequest,
     request: Request,
     db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
+) -> RegisterResponse:
     """
     Регистрация нового пользователя.
 
@@ -103,18 +100,26 @@ async def register_user(
             full_name=user_request.full_name,
         )
 
+        # Refresh user object to ensure all fields are loaded
+        await db.refresh(user)
+
+        # Access all fields while still in session to avoid detached instance errors
+        user_data = {
+            "id": str(user.id),
+            "email": user.email,
+            "full_name": user.full_name,
+            "is_active": user.is_active,
+            "is_verified": user.is_verified,
+            "is_admin": user.is_admin,
+            "created_at": user.created_at.isoformat(),
+            "updated_at": user.updated_at.isoformat(),
+        }
+
         # Создаем токены для нового пользователя
         tokens = auth_service.create_tokens_for_user(user)
 
         return {
-            "user": {
-                "id": str(user.id),
-                "email": user.email,
-                "full_name": user.full_name,
-                "is_active": user.is_active,
-                "is_verified": user.is_verified,
-                "created_at": user.created_at.isoformat(),
-            },
+            "user": user_data,
             "tokens": tokens,
             "message": "User registered successfully",
         }
@@ -123,13 +128,13 @@ async def register_user(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.post("/auth/login")
+@router.post("/auth/login", response_model=LoginResponse)
 @rate_limit(**RATE_LIMIT_PRESETS["auth"])
 async def login_user(
     user_request: UserLoginRequest,
     request: Request,
     db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
+) -> LoginResponse:
     """
     Вход пользователя в систему.
 
@@ -155,19 +160,27 @@ async def login_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # User object already refreshed in auth_service.authenticate_user()
+    # All fields including created_at, updated_at are loaded
+
+    # Access all fields while still in session to avoid detached instance errors
+    user_data = {
+        "id": str(user.id),
+        "email": user.email,
+        "full_name": user.full_name,
+        "is_active": user.is_active,
+        "is_verified": user.is_verified,
+        "is_admin": user.is_admin,
+        "created_at": user.created_at.isoformat(),
+        "updated_at": user.updated_at.isoformat(),
+        "last_login": user.last_login.isoformat() if user.last_login else None,
+    }
+
     # Создаем токены
     tokens = auth_service.create_tokens_for_user(user)
 
     return {
-        "user": {
-            "id": str(user.id),
-            "email": user.email,
-            "full_name": user.full_name,
-            "is_active": user.is_active,
-            "is_verified": user.is_verified,
-            "is_admin": user.is_admin,
-            "last_login": user.last_login.isoformat() if user.last_login else None,
-        },
+        "user": user_data,
         "tokens": tokens,
         "message": "Login successful",
     }
@@ -224,6 +237,7 @@ async def get_current_user_info(
             "is_verified": current_user.is_verified,
             "is_admin": current_user.is_admin,
             "created_at": current_user.created_at.isoformat(),
+            "updated_at": current_user.updated_at.isoformat(),
             "last_login": (
                 current_user.last_login.isoformat() if current_user.last_login else None
             ),

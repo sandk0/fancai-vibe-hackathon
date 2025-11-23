@@ -50,6 +50,7 @@ class NLPProcessorType(Enum):
     SPACY = "spacy"
     NATASHA = "natasha"
     STANZA = "stanza"
+    GLINER = "gliner"  # GLiNER zero-shot NER (DeepPavlov replacement)
     NLTK = "nltk"
     PYMORPHY = "pymorphy"
     HYBRID = "hybrid"

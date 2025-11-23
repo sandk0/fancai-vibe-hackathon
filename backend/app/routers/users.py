@@ -13,6 +13,7 @@ from ..models.user import User, Subscription
 from ..models.book import Book
 from ..models.description import Description
 from ..services.user_statistics_service import UserStatisticsService
+from ..schemas.responses import UserResponse
 
 
 router = APIRouter()

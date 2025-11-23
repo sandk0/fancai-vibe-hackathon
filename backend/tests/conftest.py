@@ -14,7 +14,8 @@ from app.models import User, Book, Chapter, Description, GeneratedImage
 
 # Test database URL - using PostgreSQL since models use UUID type
 # This connects to the same postgres container but with a test database
-TEST_DATABASE_URL = "postgresql+asyncpg://postgres:postgres123@localhost:5432/bookreader_test"
+# NOTE: Use service name "postgres" for Docker environment, not "localhost"
+TEST_DATABASE_URL = "postgresql+asyncpg://postgres:postgres123@postgres:5432/bookreader_test"
 
 # Create test engine
 test_engine = create_async_engine(
@@ -320,6 +321,70 @@ async def test_book_with_descriptions(test_user, db_session):
     return str(book.id)
 
 
+@pytest_asyncio.fixture
+async def admin_auth_headers(db_session: AsyncSession, client: AsyncClient):
+    """Get authenticated headers for admin user with proper DB setup."""
+    from app.models.user import User
+    from app.services.auth_service import AuthService
+
+    # Create admin user
+    auth_service = AuthService()
+    admin_user = User(
+        email="test_admin@example.com",
+        full_name="Test Admin",
+        password_hash=auth_service.get_password_hash("AdminPass123!"),
+        is_admin=True
+    )
+    db_session.add(admin_user)
+    await db_session.commit()
+
+    # Login and get token
+    login_response = await client.post("/api/v1/auth/login", json={
+        "email": "test_admin@example.com",
+        "password": "AdminPass123!"
+    })
+
+    if login_response.status_code != 200:
+        raise Exception(f"Admin login failed: {login_response.text}")
+
+    data = login_response.json()
+    tokens = data["tokens"]
+
+    return {"Authorization": f"Bearer {tokens['access_token']}"}
+
+
+@pytest_asyncio.fixture
+async def auth_headers(db_session: AsyncSession, client: AsyncClient):
+    """Get authenticated headers for regular user."""
+    from app.models.user import User
+    from app.services.auth_service import AuthService
+
+    # Create regular user
+    auth_service = AuthService()
+    user = User(
+        email="regular_user@example.com",
+        full_name="Regular User",
+        password_hash=auth_service.get_password_hash("RegularPass123!"),
+        is_admin=False
+    )
+    db_session.add(user)
+    await db_session.commit()
+
+    # Login and get token
+    login_response = await client.post("/api/v1/auth/login", json={
+        "email": "regular_user@example.com",
+        "password": "RegularPass123!"
+    })
+
+    if login_response.status_code != 200:
+        raise Exception(f"User login failed: {login_response.text}")
+
+    data = login_response.json()
+    tokens = data["tokens"]
+
+    return {"Authorization": f"Bearer {tokens['access_token']}"}
+
+
 @pytest.fixture
 async def test_book_with_progress(test_user, db_session):
     """Create a book with reading progress for testing."""
@@ -367,3 +432,14 @@ async def test_book_with_progress(test_user, db_session):
     await db_session.commit()
     await db_session.refresh(book)
     return str(book.id)
+
+
+@pytest_asyncio.fixture
+async def initialized_feature_flags(db_session: AsyncSession):
+    """Initialize feature flags for testing."""
+    from app.services.feature_flag_manager import FeatureFlagManager
+
+    manager = FeatureFlagManager(db_session)
+    await manager.initialize()
+    yield
+    # Cleanup is handled by test_db fixture

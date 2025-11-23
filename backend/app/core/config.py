@@ -96,7 +96,7 @@ class Settings(BaseSettings):
 
     # CORS - загружается из .env (docker-compose передает полный список)
     CORS_ORIGINS: str = (
-        "http://localhost:3000"  # Minimal fallback, should be overridden by .env
+        "http://localhost:3000,http://localhost:5173,http://localhost:5174"  # Development: React (3000), Vite (5173, 5174)
     )
 
     @model_validator(mode="after")

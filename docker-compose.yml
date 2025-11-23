@@ -221,6 +221,7 @@ volumes:
   redis_data:
   uploaded_books:
   frontend_node_modules:
+  beat_schedule:
   # NLP model storage - persists across container rebuilds
   nlp_nltk_data:
     name: bookreader_nlp_nltk_data

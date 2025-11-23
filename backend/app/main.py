@@ -80,6 +80,60 @@ app.add_middleware(
     max_age=3600,  # Cache preflight requests for 1 hour
 )
 
+# ============================================================================
+# Exception Handlers - CORS headers for error responses
+# ============================================================================
+
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """
+    Обработчик HTTP exceptions с CORS headers.
+
+    Гарантирует что CORS headers присутствуют даже в error responses.
+    """
+    origin = request.headers.get("origin")
+
+    response = JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
+
+    # Добавляем CORS headers если origin разрешен
+    if origin and origin in settings.cors_origins_list:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Expose-Headers"] = "Content-Disposition, X-Total-Count, X-Page-Count"
+
+    return response
+
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """
+    Обработчик всех необработанных exceptions с CORS headers.
+
+    Предотвращает CORS ошибки при 500 Internal Server Error.
+    """
+    origin = request.headers.get("origin")
+
+    response = JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
+
+    # Добавляем CORS headers если origin разрешен
+    if origin and origin in settings.cors_origins_list:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Expose-Headers"] = "Content-Disposition, X-Total-Count, X-Page-Count"
+
+    return response
+
+
 # Подключение роутеров
 app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(users.router, prefix="/api/v1", tags=["users"])

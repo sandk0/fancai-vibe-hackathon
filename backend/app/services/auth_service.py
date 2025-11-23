@@ -222,6 +222,11 @@ class AuthService:
         user.last_login = datetime.now(timezone.utc)
         await db.commit()
 
+        # CRITICAL FIX: Refresh user object to ensure all server-default fields
+        # (created_at, updated_at) are loaded from database after commit
+        # This prevents ResponseValidationError when LoginResponse expects these fields
+        await db.refresh(user)
+
         return user
 
     async def get_user_by_email(self, db: AsyncSession, email: str) -> Optional[User]:
