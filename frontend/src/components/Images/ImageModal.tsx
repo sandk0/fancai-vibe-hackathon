@@ -103,8 +103,12 @@ export const ImageModal: React.FC<ImageModalProps> = ({
 
   // Update current image URL when prop changes
   React.useEffect(() => {
+    console.log('🔄 [ImageModal] useEffect: imageUrl prop changed to:', imageUrl);
     setCurrentImageUrl(imageUrl);
   }, [imageUrl]);
+
+  // Log current state before render
+  console.log('🎨 [ImageModal] Render with currentImageUrl:', currentImageUrl);
 
   // Close on escape key
   React.useEffect(() => {
