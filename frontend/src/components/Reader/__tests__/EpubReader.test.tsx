@@ -817,10 +817,16 @@ describe('EpubReader Component', () => {
       const mockOpenModal = vi.fn();
       vi.mocked(useImageModal).mockReturnValue({
         selectedImage: null,
+        selectedDescription: null,
         isOpen: false,
+        isGenerating: false,
+        generationStatus: 'idle',
+        generationError: null,
+        descriptionPreview: null,
         openModal: mockOpenModal,
         closeModal: vi.fn(),
         updateImage: vi.fn(),
+        cancelGeneration: vi.fn(),
       });
 
       renderEpubReader();

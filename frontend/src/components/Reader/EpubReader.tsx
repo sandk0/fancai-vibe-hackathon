@@ -67,6 +67,7 @@ import { SelectionMenu } from './SelectionMenu';
 import { TocSidebar } from './TocSidebar';
 import { ReaderControls } from './ReaderControls';
 import { ReaderHeader } from './ReaderHeader';
+import { ImageGenerationStatus } from './ImageGenerationStatus';
 import { notify } from '@/stores/ui';
 import { useNavigate } from 'react-router-dom';
 
@@ -148,7 +149,19 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   const { nextPage, prevPage } = useEpubNavigation(rendition);
 
   // Hook 7: Image modal management
-  const { selectedImage, isOpen: isModalOpen, openModal, closeModal, updateImage } = useImageModal();
+  const {
+    selectedImage,
+    isOpen: isModalOpen,
+    openModal,
+    closeModal,
+    updateImage,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    isGenerating: _isGeneratingImage, // Available for future use
+    generationStatus,
+    generationError,
+    descriptionPreview,
+    cancelGeneration,
+  } = useImageModal();
 
   // Hook 8: Keyboard navigation (disabled when modal is open)
   useKeyboardNavigation(nextPage, prevPage, renditionReady && !isModalOpen);
@@ -448,6 +461,15 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
           />
         </div>
       )}
+
+      {/* Image Generation Status */}
+      <ImageGenerationStatus
+        status={generationStatus}
+        descriptionPreview={descriptionPreview}
+        error={generationError}
+        theme={theme}
+        onCancel={cancelGeneration}
+      />
 
       {/* Image Modal */}
       {isModalOpen && selectedImage && (

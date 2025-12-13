@@ -10,6 +10,11 @@ import type {
 } from '@/types/api';
 
 export const imagesAPI = {
+  // Get image for specific description
+  async getImageForDescription(descriptionId: string): Promise<GeneratedImage> {
+    return apiClient.get(`/images/description/${descriptionId}`);
+  },
+
   // Generation status
   async getGenerationStatus(): Promise<GenerationStatus> {
     return apiClient.get('/images/generation/status');

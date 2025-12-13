@@ -431,6 +431,77 @@ async def generate_images_for_chapter(
         )
 
 
+@router.get("/images/description/{description_id}")
+async def get_image_for_description(
+    description_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_database_session),
+) -> Dict[str, Any]:
+    """
+    Получает изображение для конкретного описания.
+
+    Args:
+        description_id: ID описания
+        current_user: Текущий пользователь
+        db: Сессия базы данных
+
+    Returns:
+        Данные изображения или 404 если не найдено
+
+    Raises:
+        HTTPException 404: Описание или изображение не найдено
+    """
+    # Получаем изображение с описанием и главой
+    query = (
+        select(GeneratedImage, Description, Chapter)
+        .join(Description, GeneratedImage.description_id == Description.id)
+        .join(Chapter, Description.chapter_id == Chapter.id)
+        .join(Book, Chapter.book_id == Book.id)
+        .where(Description.id == description_id)
+        .where(Book.user_id == current_user.id)
+    )
+
+    result = await db.execute(query)
+    row = result.first()
+
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Image not found for this description",
+        )
+
+    generated_image, description, chapter = row
+
+    return {
+        "id": str(generated_image.id),
+        "image_url": generated_image.image_url,
+        "created_at": generated_image.created_at.isoformat(),
+        "generation_time_seconds": generated_image.generation_time_seconds,
+        "service_used": generated_image.service_used or "pollinations",
+        "status": generated_image.status or "completed",
+        "is_moderated": generated_image.is_moderated or False,
+        "view_count": generated_image.view_count or 0,
+        "download_count": generated_image.download_count or 0,
+        "description": {
+            "id": str(description.id),
+            "type": description.type.value,
+            "text": description.content,
+            "content": (
+                description.content[:100] + "..."
+                if len(description.content) > 100
+                else description.content
+            ),
+            "confidence_score": description.confidence_score,
+            "priority_score": description.priority_score,
+        },
+        "chapter": {
+            "id": str(chapter.id),
+            "number": chapter.chapter_number,
+            "title": chapter.title,
+        },
+    }
+
+
 @router.get("/images/book/{book_id}")
 async def get_book_images(
     book_id: UUID,
