@@ -351,16 +351,31 @@ class GoogleImagenGenerator:
                     image = response.generated_images[0]
                     raw_image_data = image.image.image_bytes
 
-                    # Google Imagen API returns base64-encoded string, need to decode
+                    logger.info(f"Imagen raw_image_data type: {type(raw_image_data)}")
+                    if isinstance(raw_image_data, bytes):
+                        logger.info(f"Imagen raw_image_data first 20 bytes: {raw_image_data[:20]}")
+
+                    # Google Imagen API returns base64-encoded data
+                    # It can be either str or bytes containing base64 text
                     if isinstance(raw_image_data, str):
-                        logger.debug("Imagen returned base64 string, decoding...")
+                        logger.info("Imagen returned base64 string, decoding...")
                         image_bytes = base64.b64decode(raw_image_data)
                         image_base64 = raw_image_data  # Already base64
+                    elif isinstance(raw_image_data, bytes):
+                        # Check if bytes contain base64 text (starts with ASCII letters like 'iVBOR')
+                        # PNG magic bytes are: 0x89 0x50 0x4E 0x47 (‰PNG)
+                        if raw_image_data[:4] == b'\x89PNG':
+                            logger.info("Imagen returned raw PNG bytes")
+                            image_bytes = raw_image_data
+                            image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+                        else:
+                            # Bytes contain base64-encoded text, decode it
+                            logger.info("Imagen returned bytes containing base64 text, decoding...")
+                            image_base64 = raw_image_data.decode('utf-8')
+                            image_bytes = base64.b64decode(image_base64)
                     else:
-                        # If it's already bytes, use as is
-                        logger.debug("Imagen returned raw bytes")
-                        image_bytes = raw_image_data
-                        image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+                        logger.error(f"Unexpected data type from Imagen: {type(raw_image_data)}")
+                        raise ValueError(f"Unexpected data type: {type(raw_image_data)}")
 
                     # Save locally (decoded bytes)
                     local_path = await self._save_image(image_bytes, prompt)
