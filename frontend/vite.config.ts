@@ -22,7 +22,7 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
-    port: 80,
+    port: 5173,
     // Disable host checking completely (required for direct domain access without nginx)
     // In Vite 5.x, 'true' disables all host checks
     allowedHosts: true,
