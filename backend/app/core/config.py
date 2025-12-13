@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     IMAGEN_ENABLED: bool = True
     IMAGEN_MODEL: str = "imagen-4.0-generate-001"  # imagen-3.0-generate-002, imagen-4.0-fast-generate-001
     IMAGEN_ASPECT_RATIO: str = "4:3"  # 1:1, 3:4, 4:3, 9:16, 16:9
-    IMAGEN_SAFETY_LEVEL: str = "block_some"  # block_none, block_few, block_some, block_most
+    IMAGEN_SAFETY_LEVEL: str = "block_low_and_above"  # Only block_low_and_above is supported
     IMAGEN_TIMEOUT_SECONDS: int = 60
 
     # Legacy AI services (optional)

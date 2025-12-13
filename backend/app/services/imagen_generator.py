@@ -46,7 +46,7 @@ class ImagenConfig:
     model: str = "imagen-4.0-generate-001"
     aspect_ratio: str = "4:3"  # 1:1, 3:4, 4:3, 9:16, 16:9
     person_generation: str = "allow_adult"  # dont_allow, allow_adult, allow_all
-    safety_filter_level: str = "block_some"  # block_none, block_few, block_some, block_most
+    safety_filter_level: str = "block_low_and_above"  # Only block_low_and_above is supported by Imagen API
     timeout_seconds: int = 60
     max_retries: int = 3
     retry_delay: float = 1.0
