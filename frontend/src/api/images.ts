@@ -15,10 +15,14 @@ import type {
  * Converts relative API paths (e.g., /api/v1/images/file/xxx.png) to full URLs.
  */
 function normalizeImageUrl(url: string | null | undefined): string {
+  console.log('🔧 [normalizeImageUrl] Input URL:', url);
+  console.log('🔧 [normalizeImageUrl] config.api.baseUrl:', config.api.baseUrl);
+
   if (!url) return '';
 
   // If URL is already absolute (starts with http:// or https://), return as is
   if (url.startsWith('http://') || url.startsWith('https://')) {
+    console.log('🔧 [normalizeImageUrl] URL is absolute, returning as is');
     return url;
   }
 
@@ -28,10 +32,13 @@ function normalizeImageUrl(url: string | null | undefined): string {
     // url is like "/api/v1/images/file/xxx.png"
     // Result: "https://fancai.ru/api/v1/images/file/xxx.png"
     const baseUrl = config.api.baseUrl.replace(/\/+$/, ''); // Remove trailing slashes
-    return `${baseUrl}${url}`;
+    const result = `${baseUrl}${url}`;
+    console.log('🔧 [normalizeImageUrl] Converted to absolute:', result);
+    return result;
   }
 
   // For other relative URLs, just return as is
+  console.log('🔧 [normalizeImageUrl] Returning as is (other relative):', url);
   return url;
 }
 
@@ -44,8 +51,11 @@ export const imagesAPI = {
   async getImageForDescription(descriptionId: string): Promise<GeneratedImage> {
     const response = await apiClient.get(`/images/description/${descriptionId}`) as GeneratedImage;
     // Normalize image URL
+    console.log('🔗 [imagesAPI] getImageForDescription - Raw image_url:', response.image_url);
     if (response.image_url) {
-      response.image_url = normalizeImageUrl(response.image_url);
+      const normalizedUrl = normalizeImageUrl(response.image_url);
+      console.log('🔗 [imagesAPI] getImageForDescription - Normalized image_url:', normalizedUrl);
+      response.image_url = normalizedUrl;
     }
     return response;
   },
@@ -86,8 +96,11 @@ export const imagesAPI = {
       message: string;
     };
     // Normalize image URL
+    console.log('🔗 [imagesAPI] Raw image_url from backend:', response.image_url);
     if (response.image_url) {
-      response.image_url = normalizeImageUrl(response.image_url);
+      const normalizedUrl = normalizeImageUrl(response.image_url);
+      console.log('🔗 [imagesAPI] Normalized image_url:', normalizedUrl);
+      response.image_url = normalizedUrl;
     }
     return response;
   },

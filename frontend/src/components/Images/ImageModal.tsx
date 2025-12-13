@@ -293,6 +293,8 @@ export const ImageModal: React.FC<ImageModalProps> = ({
             onClick={() => !isRegenerating && setIsZoomed(!isZoomed)}
             onError={(e) => {
               const target = e.target as HTMLImageElement;
+              console.error('❌ [ImageModal] Image load error for URL:', currentImageUrl);
+              console.error('❌ [ImageModal] Original imageUrl prop:', imageUrl);
               target.src = '/placeholder-image.jpg'; // Fallback image
             }}
           />
