@@ -99,6 +99,7 @@ services:
       # LangExtract Configuration (PRIMARY PARSER)
       - USE_LANGEXTRACT_PRIMARY=true
       - LANGEXTRACT_API_KEY=${LANGEXTRACT_API_KEY:?LANGEXTRACT_API_KEY is required for lite version}
+      - LANGEXTRACT_MODEL=${LANGEXTRACT_MODEL:-gemini-2.0-flash}
       # Disable NLP processors (not installed in lite version)
       - USE_ADVANCED_PARSER=false
       - USE_NLP_PROCESSORS=false
@@ -126,7 +127,7 @@ services:
       resources:
         limits:
           cpus: '1.0'
-          memory: 512M  # Much less than full version (no NLP models)
+          memory: 768M  # Increased for LangExtract API buffering
         reservations:
           memory: 256M
     restart: unless-stopped
@@ -149,8 +150,10 @@ services:
       # LangExtract
       - USE_LANGEXTRACT_PRIMARY=true
       - LANGEXTRACT_API_KEY=${LANGEXTRACT_API_KEY}
+      - LANGEXTRACT_MODEL=${LANGEXTRACT_MODEL:-gemini-2.0-flash}
       - USE_ADVANCED_PARSER=false
       - USE_NLP_PROCESSORS=false
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-52428800}
     volumes:
       - ./backend:/app
       - uploaded_books:/app/storage

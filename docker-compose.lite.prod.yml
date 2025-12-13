@@ -118,6 +118,7 @@ services:
       # LangExtract (PRIMARY PARSER)
       - USE_LANGEXTRACT_PRIMARY=true
       - LANGEXTRACT_API_KEY=${LANGEXTRACT_API_KEY:?LANGEXTRACT_API_KEY is required}
+      - LANGEXTRACT_MODEL=${LANGEXTRACT_MODEL:-gemini-2.0-flash}
       # Disable NLP processors
       - USE_ADVANCED_PARSER=false
       - USE_NLP_PROCESSORS=false
@@ -138,7 +139,7 @@ services:
     networks:
       - bookreader_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python", "/app/healthcheck.py"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -147,9 +148,9 @@ services:
       resources:
         limits:
           cpus: '1.0'
-          memory: 768M
+          memory: 1G  # Increased for LangExtract API buffering
         reservations:
-          memory: 384M
+          memory: 512M
 
   # Celery Worker (Lite)
   celery-worker:
@@ -176,12 +177,15 @@ services:
       # LangExtract
       - USE_LANGEXTRACT_PRIMARY=true
       - LANGEXTRACT_API_KEY=${LANGEXTRACT_API_KEY}
+      - LANGEXTRACT_MODEL=${LANGEXTRACT_MODEL:-gemini-2.0-flash}
       - USE_ADVANCED_PARSER=false
       - USE_NLP_PROCESSORS=false
       # Image generation
       - POLLINATIONS_ENABLED=${POLLINATIONS_ENABLED:-true}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-52428800}
     volumes:
       - ./backend/storage:/app/storage
+      - /dev/shm:/dev/shm
     depends_on:
       backend:
         condition: service_healthy

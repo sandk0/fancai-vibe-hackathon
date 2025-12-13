@@ -242,16 +242,26 @@ class MultiNLPManager:
         if self._should_use_langextract(text):
             logger.info("Using LangExtract (LLM) for extraction")
             langextract = _get_langextract_processor()
-            result = await langextract.extract_descriptions(text, chapter_id)
 
-            # Update statistics
-            self.processing_statistics["total_processed"] += 1
-            self.processing_statistics.setdefault("processor_usage", {})
-            self.processing_statistics["processor_usage"]["langextract"] = (
-                self.processing_statistics["processor_usage"].get("langextract", 0) + 1
-            )
+            # Safety check: ensure LangExtract is available before calling
+            if langextract is None or not langextract.is_available():
+                logger.warning(
+                    "LangExtract enabled but not available (missing API key?). "
+                    "Falling back to NLP processors or returning empty result."
+                )
+                # Continue to Advanced Parser or NLP processors if available
+                # Otherwise will return empty result at the end
+            else:
+                result = await langextract.extract_descriptions(text, chapter_id)
 
-            return result
+                # Update statistics
+                self.processing_statistics["total_processed"] += 1
+                self.processing_statistics.setdefault("processor_usage", {})
+                self.processing_statistics["processor_usage"]["langextract"] = (
+                    self.processing_statistics["processor_usage"].get("langextract", 0) + 1
+                )
+
+                return result
 
         # PRIORITY 2: Advanced Parser (feature-flagged)
         if self._should_use_advanced_parser(text):

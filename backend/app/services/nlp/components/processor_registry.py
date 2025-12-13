@@ -75,11 +75,21 @@ class ProcessorRegistry:
 
         # Import here to avoid circular dependencies
         # These imports are safe now because NLP libraries use dynamic imports
-        from ...enhanced_nlp_system import EnhancedSpacyProcessor
-        from ...natasha_processor import EnhancedNatashaProcessor
-        from ...stanza_processor import EnhancedStanzaProcessor
-        from ...deeppavlov_processor import DeepPavlovProcessor
-        from ...gliner_processor import GLiNERProcessor
+        # Wrap in try-except to handle missing NLP libraries in lite mode
+        try:
+            from ...enhanced_nlp_system import EnhancedSpacyProcessor
+            from ...natasha_processor import EnhancedNatashaProcessor
+            from ...stanza_processor import EnhancedStanzaProcessor
+            from ...deeppavlov_processor import DeepPavlovProcessor
+            from ...gliner_processor import GLiNERProcessor
+        except ImportError as e:
+            logger.error(
+                f"❌ Failed to import NLP processors: {e}. "
+                f"USE_NLP_PROCESSORS is enabled but NLP libraries not installed. "
+                f"Set USE_NLP_PROCESSORS=false and USE_LANGEXTRACT_PRIMARY=true for lite mode."
+            )
+            # Don't raise - just return with no processors initialized
+            return
 
         initialization_attempts = 0
         successful_initializations = 0
