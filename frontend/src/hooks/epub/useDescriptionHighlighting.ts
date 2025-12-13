@@ -5,13 +5,27 @@
  * Highlights description text in the rendered EPUB content and makes them clickable.
  * Handles dynamic re-highlighting when page changes or descriptions update.
  *
- * IMPROVEMENTS (v2.0):
- * - 6 search strategies for 100% coverage (previously 3)
- * - Advanced text normalization (whitespace, non-breaking spaces, chapter headers)
+ * IMPROVEMENTS (v2.1):
+ * - 9 search strategies for maximum coverage
+ * - Advanced text normalization (whitespace, non-breaking spaces, quotes, dashes)
+ * - Enhanced chapter header removal (9 patterns including "Глава X Название Текст...")
  * - Debounced rendering instead of setTimeout hack
  * - Performance tracking and warnings
- * - Fuzzy matching support
+ * - Fuzzy matching with Longest Common Substring (LCS)
+ * - Middle section matching for unreliable start/end
+ * - First sentence extraction
  * - CFI-based highlighting when available
+ *
+ * SEARCH STRATEGIES (in order):
+ * S1: First 40 chars
+ * S2: Skip 10, take 10-50
+ * S3: Skip 20, take 20-60
+ * S4: Full match (short texts)
+ * S5: First 5 words
+ * S6: CFI-based (if available)
+ * S7: Middle section (15%-60%)
+ * S8: Longest Common Substring fuzzy
+ * S9: First sentence case-insensitive
  *
  * @param rendition - epub.js Rendition instance
  * @param descriptions - Array of descriptions to highlight
@@ -60,13 +74,43 @@ const normalizeText = (text: string): string => {
 
 /**
  * Remove chapter headers from description content
+ * Enhanced v2.1: Handles complex patterns like:
+ * - "Глава 4 Нити Том Меррилин..." -> "Том Меррилин..."
+ * - "Глава 1. Начало Он проснулся..." -> "Он проснулся..."
+ * - "ЧАСТЬ ПЕРВАЯ ГЛАВА 1 Текст..." -> "Текст..."
  */
 const removeChapterHeaders = (text: string): string => {
-  return text
-    .replace(/^(Глава\s+[А-Яа-я\d]+\.?\s*)+/gi, '') // "Глава 1", "Глава первая"
-    .replace(/^(Chapter\s+[A-Za-z\d]+\.?\s*)+/gi, '') // English chapters
-    .replace(/^\d+\.\s*/, '') // Numbered headings
-    .trim();
+  let result = text;
+
+  // Pattern 1: "Глава X НазваниеГлавы " followed by content starting with capital
+  // This catches "Глава 4 Нити Том Меррилин..." -> "Том Меррилин..."
+  result = result.replace(/^Глава\s+\d+\.?\s+[А-Яа-яA-Za-z]+\s+(?=[А-ЯA-Z])/gi, '');
+
+  // Pattern 2: "Глава X. Название главы" with period separator
+  result = result.replace(/^Глава\s+\d+\.?\s*[А-Яа-яA-Za-z\s]{1,50}?\s+(?=[А-ЯA-Z][а-яa-z])/gi, '');
+
+  // Pattern 3: Basic chapter headers "Глава 1", "Глава первая", "Глава I"
+  result = result.replace(/^(Глава\s+[А-Яа-я\dIVXLC]+\.?\s*)+/gi, '');
+
+  // Pattern 4: English chapters "Chapter 1", "Chapter One"
+  result = result.replace(/^(Chapter\s+[A-Za-z\d]+\.?\s*)+/gi, '');
+
+  // Pattern 5: Numbered headings "1.", "1.1", "1.1.1"
+  result = result.replace(/^\d+(\.\d+)*\.?\s+/, '');
+
+  // Pattern 6: Part headers "Часть 1", "Part I", "ЧАСТЬ ПЕРВАЯ"
+  result = result.replace(/^(Часть|Part)\s+[А-Яа-яA-Za-z\dIVXLC]+\.?\s*/gi, '');
+
+  // Pattern 7: "ПРОЛОГ", "ЭПИЛОГ", "ПРЕДИСЛОВИЕ"
+  result = result.replace(/^(ПРОЛОГ|ЭПИЛОГ|ПРЕДИСЛОВИЕ|ВВЕДЕНИЕ|ПОСЛЕСЛОВИЕ)\s*/gi, '');
+
+  // Pattern 8: Combination "ЧАСТЬ ПЕРВАЯ ГЛАВА 1"
+  result = result.replace(/^ЧАСТЬ\s+[А-ЯA-Z]+\s+(ГЛАВА\s+\d+\s*)?/gi, '');
+
+  // Pattern 9: Titles with dashes "Глава 1 - Название"
+  result = result.replace(/^Глава\s+\d+\s*[-–—]\s*[А-Яа-яA-Za-z\s]+\s+(?=[А-ЯA-Z])/gi, '');
+
+  return result.trim();
 };
 
 /**
@@ -74,6 +118,52 @@ const removeChapterHeaders = (text: string): string => {
  */
 const getFirstWords = (text: string, count: number): string => {
   return text.split(/\s+/).slice(0, count).join(' ');
+};
+
+/**
+ * Find longest common substring between two texts
+ * Used for fuzzy matching when exact match fails
+ */
+const findLongestCommonSubstring = (text1: string, text2: string, minLength: number = 30): string | null => {
+  const len1 = text1.length;
+  const len2 = text2.length;
+
+  if (len1 < minLength || len2 < minLength) return null;
+
+  let maxLength = 0;
+  let endIndex = 0;
+
+  // Use a sliding window approach for performance
+  for (let i = 0; i < len1; i++) {
+    for (let j = 0; j < len2; j++) {
+      let length = 0;
+      while (
+        i + length < len1 &&
+        j + length < len2 &&
+        text1[i + length].toLowerCase() === text2[j + length].toLowerCase()
+      ) {
+        length++;
+      }
+      if (length > maxLength) {
+        maxLength = length;
+        endIndex = i + length;
+      }
+    }
+  }
+
+  if (maxLength >= minLength) {
+    return text1.substring(endIndex - maxLength, endIndex);
+  }
+  return null;
+};
+
+/**
+ * Extract middle section of text (skip start and end)
+ */
+const getMiddleSection = (text: string, startPercent: number = 0.2, endPercent: number = 0.7): string => {
+  const startIdx = Math.floor(text.length * startPercent);
+  const endIdx = Math.floor(text.length * endPercent);
+  return text.substring(startIdx, endIdx);
 };
 
 export const useDescriptionHighlighting = ({
@@ -263,6 +353,46 @@ export const useDescriptionHighlighting = ({
               // For now, fallback to content search
             } catch (cfiError) {
               console.warn('⚠️ [S6_CFI] Failed to parse CFI:', cfiError);
+            }
+          }
+
+          // ===== STRATEGY 7: Middle section matching (skip unreliable start/end) =====
+          if (index === -1 && normalizedDesc.length >= 80) {
+            const middleSection = getMiddleSection(normalizedDesc, 0.15, 0.6);
+            if (middleSection.length >= 25) {
+              index = normalizedNode.indexOf(middleSection);
+              if (index !== -1) {
+                searchString = middleSection;
+                strategyUsed = 'S7_Middle_Section';
+              }
+            }
+          }
+
+          // ===== STRATEGY 8: Longest common substring (fuzzy matching) =====
+          if (index === -1 && normalizedDesc.length >= 50) {
+            const lcs = findLongestCommonSubstring(normalizedNode, normalizedDesc, 25);
+            if (lcs && lcs.length >= 25) {
+              index = normalizedNode.indexOf(lcs);
+              if (index !== -1) {
+                searchString = lcs;
+                strategyUsed = 'S8_LCS_Fuzzy';
+              }
+            }
+          }
+
+          // ===== STRATEGY 9: Case-insensitive first sentence =====
+          if (index === -1 && normalizedDesc.length >= 30) {
+            // Extract first sentence (up to first period, question, or exclamation)
+            const firstSentenceMatch = normalizedDesc.match(/^[^.!?]+[.!?]?/);
+            if (firstSentenceMatch && firstSentenceMatch[0].length >= 20) {
+              const firstSentence = firstSentenceMatch[0].trim();
+              const lowerNode = normalizedNode.toLowerCase();
+              const lowerSentence = firstSentence.toLowerCase();
+              index = lowerNode.indexOf(lowerSentence);
+              if (index !== -1) {
+                searchString = firstSentence;
+                strategyUsed = 'S9_First_Sentence';
+              }
             }
           }
 
