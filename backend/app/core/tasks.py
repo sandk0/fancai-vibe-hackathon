@@ -122,24 +122,46 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
             )
 
         available_processors = multi_nlp_manager.processor_registry.processors
-        if not available_processors or len(available_processors) == 0:
-            error_msg = "❌ CRITICAL: No NLP processors available! Cannot process book."
+
+        # Check for LangExtract as alternative to NLP processors (lite mode)
+        use_langextract = os.getenv("USE_LANGEXTRACT_PRIMARY", "false").lower() == "true"
+        langextract_available = False
+
+        if use_langextract:
+            try:
+                from app.services.langextract_processor import get_langextract_processor
+                langextract = get_langextract_processor()
+                langextract_available = langextract is not None and langextract.is_available()
+                if langextract_available:
+                    print("✅ [ASYNC TASK] LangExtract processor available as primary")
+                    logger.info("LangExtract processor available as primary")
+            except ImportError as e:
+                logger.warning(f"LangExtract import failed: {e}")
+
+        # Allow processing if EITHER NLP processors OR LangExtract is available
+        if (not available_processors or len(available_processors) == 0) and not langextract_available:
+            error_msg = "❌ CRITICAL: No processors available! Cannot process book."
             print(f"[ASYNC TASK] {error_msg}")
             logger.error(error_msg)
             raise RuntimeError(
-                "Cannot process book - no NLP processors loaded. "
-                "Please ensure at least one processor (SpaCy, Natasha, or Stanza) is properly installed."
+                "Cannot process book - no processors loaded. "
+                "Either enable NLP processors (SpaCy, Natasha, Stanza) or "
+                "set USE_LANGEXTRACT_PRIMARY=true with a valid LANGEXTRACT_API_KEY."
             )
 
         # Логируем успешную проверку
-        processor_names = list(available_processors.keys())
-        print(
-            f"✅ [ASYNC TASK] NLP processors validation passed: "
-            f"{len(available_processors)} processors available: {processor_names}"
-        )
-        logger.info(
-            f"Processing book with {len(available_processors)} NLP processors: {processor_names}"
-        )
+        if available_processors and len(available_processors) > 0:
+            processor_names = list(available_processors.keys())
+            print(
+                f"✅ [ASYNC TASK] NLP processors validation passed: "
+                f"{len(available_processors)} processors available: {processor_names}"
+            )
+            logger.info(
+                f"Processing book with {len(available_processors)} NLP processors: {processor_names}"
+            )
+        elif langextract_available:
+            print("✅ [ASYNC TASK] Using LangExtract as primary processor (lite mode)")
+            logger.info("Processing book with LangExtract as primary processor (lite mode)")
 
         # Получаем книгу
         book_result = await db.execute(select(Book).where(Book.id == book_id))
