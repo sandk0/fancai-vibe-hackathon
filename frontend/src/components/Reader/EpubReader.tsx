@@ -78,7 +78,9 @@ interface EpubReaderProps {
 export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   const viewerRef = useRef<HTMLDivElement>(null);
   const [renditionReady, setRenditionReady] = useState(false);
+  const [isRestoringPosition, setIsRestoringPosition] = useState(true); // Start as true - wait for restoration
   const hasRestoredPosition = useRef(false);
+  const previousBookId = useRef<string | null>(null); // Track book changes
   const navigate = useNavigate();
 
   // State for settings dropdown
@@ -260,6 +262,16 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     return saved === 'true';
   });
 
+  // Reset restoration state when book changes
+  useEffect(() => {
+    if (previousBookId.current !== null && previousBookId.current !== book.id) {
+      console.log('📚 [EpubReader] Book changed, resetting restoration state');
+      hasRestoredPosition.current = false;
+      setIsRestoringPosition(true);
+    }
+    previousBookId.current = book.id;
+  }, [book.id]);
+
   // Save TOC state to localStorage when it changes
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEYS.READER_SETTINGS}_toc_open`, String(isTocOpen));
@@ -308,71 +320,104 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   }, [selection, clearSelection]);
 
   /**
-   * Initial display - show first page immediately when rendition is ready
+   * Unified position initialization - either restore saved position or show first page
+   * FIXES:
+   * - Race condition between displayInitial and restorePosition
+   * - Shows loading overlay until position is ready
+   * - Proper fallback when CFI is invalid
    */
   useEffect(() => {
     if (!rendition || !renditionReady) return;
 
-    const displayInitial = async () => {
-      try {
-        console.log('📖 [EpubReader] Displaying initial page...');
-        await rendition.display();
-        console.log('✅ [EpubReader] Initial page displayed');
-      } catch (err) {
-        console.error('❌ [EpubReader] Error displaying initial page:', err);
-      }
-    };
-
-    displayInitial();
-  }, [rendition, renditionReady]);
-
-  /**
-   * Restore reading position when locations are ready
-   * IMPORTANT: Only runs ONCE on initial load, not on every navigation
-   */
-  useEffect(() => {
-    if (!rendition || !locations || !epubBook || !renditionReady) return;
-
-    // Skip if already restored position
+    // Skip if already restored position for this book
     if (hasRestoredPosition.current) {
       console.log('⏭️ [EpubReader] Position already restored, skipping');
+      setIsRestoringPosition(false);
       return;
     }
 
     let isMounted = true;
 
-    const restorePosition = async () => {
+    const initializePosition = async () => {
+      setIsRestoringPosition(true);
+
       try {
+        // Fetch saved progress
+        console.log('📖 [EpubReader] Fetching saved progress...');
         const { progress: savedProgress } = await booksAPI.getReadingProgress(book.id);
 
-        if (savedProgress?.reading_location_cfi && isMounted) {
+        if (!isMounted) return;
+
+        if (savedProgress?.reading_location_cfi) {
+          // Try to restore saved position
           console.log('📖 [EpubReader] Restoring saved position:', {
             cfi: savedProgress.reading_location_cfi.substring(0, 80) + '...',
             progress: savedProgress.current_position + '%',
             scrollOffset: savedProgress.scroll_offset_percent || 0,
           });
 
-          skipNextRelocated(); // Skip auto-save on restored position
-          await goToCFI(savedProgress.reading_location_cfi, savedProgress.scroll_offset_percent || 0);
+          try {
+            skipNextRelocated(); // Skip auto-save on restored position
+            await goToCFI(savedProgress.reading_location_cfi, savedProgress.scroll_offset_percent || 0);
 
-          // FIX #1 & #5: Set initial progress immediately so header shows correct value
-          setInitialProgress(savedProgress.reading_location_cfi, savedProgress.current_position);
+            // Set initial progress immediately so header shows correct value
+            setInitialProgress(savedProgress.reading_location_cfi, savedProgress.current_position);
 
-          // Mark as restored
-          hasRestoredPosition.current = true;
-          console.log('✅ [EpubReader] Position restoration complete');
+            console.log('✅ [EpubReader] Position restoration complete');
+          } catch (cfiError) {
+            // CFI is invalid - fallback to percentage or first page
+            console.warn('⚠️ [EpubReader] CFI invalid, trying percentage fallback:', cfiError);
+
+            if (savedProgress.current_position > 0 && locations) {
+              // Try to restore by percentage
+              try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const fallbackCfi = (locations as any).cfiFromPercentage(savedProgress.current_position / 100);
+                if (fallbackCfi) {
+                  await rendition.display(fallbackCfi);
+                  setInitialProgress(fallbackCfi, savedProgress.current_position);
+                  console.log('✅ [EpubReader] Restored position via percentage fallback');
+                } else {
+                  throw new Error('Could not generate CFI from percentage');
+                }
+              } catch (fallbackError) {
+                console.error('❌ [EpubReader] Percentage fallback failed, showing first page:', fallbackError);
+                await rendition.display();
+              }
+            } else {
+              // No percentage or locations - show first page
+              await rendition.display();
+            }
+          }
+        } else {
+          // No saved progress - show first page
+          console.log('📖 [EpubReader] No saved progress, displaying first page');
+          await rendition.display();
         }
+
+        // Mark as restored
+        hasRestoredPosition.current = true;
       } catch (err) {
-        console.error('❌ [EpubReader] Error restoring position:', err);
+        console.error('❌ [EpubReader] Error initializing position:', err);
+        // On any error, try to show first page
+        try {
+          await rendition.display();
+        } catch (displayErr) {
+          console.error('❌ [EpubReader] Could not even display first page:', displayErr);
+        }
+      } finally {
+        if (isMounted) {
+          setIsRestoringPosition(false);
+        }
       }
     };
 
-    restorePosition();
+    initializePosition();
 
     return () => {
       isMounted = false;
     };
-  }, [rendition, locations, epubBook, renditionReady, book.id, goToCFI, skipNextRelocated, setInitialProgress]);
+  }, [rendition, renditionReady, book.id, locations, goToCFI, skipNextRelocated, setInitialProgress]);
 
   /**
    * Handle image regeneration
@@ -410,12 +455,12 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
       />
 
       {/* Loading Overlay */}
-      {(isLoading || isGenerating) && (
+      {(isLoading || isGenerating || isRestoringPosition) && (
         <div className={`absolute inset-0 flex items-center justify-center ${getBackgroundColor()} z-10`}>
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
             <p className={theme === 'light' ? 'text-gray-700' : 'text-gray-300'}>
-              {isGenerating ? 'Подготовка книги...' : 'Загрузка книги...'}
+              {isRestoringPosition ? 'Восстановление позиции...' : isGenerating ? 'Подготовка книги...' : 'Загрузка книги...'}
             </p>
           </div>
         </div>
@@ -432,7 +477,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
       )}
 
       {/* Modern Reader Header - Theme-aware with all controls and progress */}
-      {renditionReady && !isLoading && !isGenerating && metadata && (
+      {renditionReady && !isLoading && !isGenerating && !isRestoringPosition && metadata && (
         <ReaderHeader
           title={metadata.title}
           author={metadata.creator}
@@ -448,7 +493,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
       )}
 
       {/* Settings Dropdown (hidden, triggered by header button) */}
-      {renditionReady && !isLoading && !isGenerating && (
+      {renditionReady && !isLoading && !isGenerating && !isRestoringPosition && (
         <div className="fixed top-16 right-4 z-50">
           <ReaderControls
             theme={theme}

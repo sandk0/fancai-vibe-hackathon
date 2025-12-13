@@ -40,6 +40,31 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Rendition, Book, EpubLocationEvent, EpubLocations } from '@/types/epub';
 
+/**
+ * Validate CFI format
+ * CFI must start with "epubcfi(" and end with ")"
+ * Basic validation to catch corrupted or malformed CFIs
+ */
+const isValidCFI = (cfi: string): boolean => {
+  if (!cfi || typeof cfi !== 'string') return false;
+
+  // Basic CFI format: epubcfi(/6/4!/4/2/...)
+  const cfiPattern = /^epubcfi\([^)]+\)$/;
+
+  if (!cfiPattern.test(cfi)) {
+    console.warn('⚠️ [CFI Validation] Invalid CFI format:', cfi.substring(0, 50));
+    return false;
+  }
+
+  // Check for minimum length (shortest valid CFI is ~15 chars)
+  if (cfi.length < 15) {
+    console.warn('⚠️ [CFI Validation] CFI too short:', cfi);
+    return false;
+  }
+
+  return true;
+};
+
 interface UseCFITrackingOptions {
   rendition: Rendition | null;
   locations: EpubLocations | null;
@@ -92,9 +117,15 @@ export const useCFITracking = ({
 
   /**
    * Navigate to a specific CFI with optional scroll offset
+   * Validates CFI format before navigation and throws error if invalid
    */
   const goToCFI = useCallback(async (cfi: string, scrollOffset?: number) => {
     if (!rendition || !cfi) return;
+
+    // Validate CFI format before attempting navigation
+    if (!isValidCFI(cfi)) {
+      throw new Error(`Invalid CFI format: ${cfi.substring(0, 50)}...`);
+    }
 
     try {
       console.log('🎯 [useCFITracking] Navigating to CFI:', cfi.substring(0, 80) + '...');

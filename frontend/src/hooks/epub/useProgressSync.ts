@@ -145,16 +145,26 @@ export const useProgressSync = ({
 
   /**
    * Save on unmount or page close
+   * Uses fetch with keepalive for authenticated requests (sendBeacon doesn't support headers)
    */
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
-      // Note: This will be async but browser may not wait
-      // Better to use navigator.sendBeacon for guaranteed delivery
+
+      // Skip if no changes since last save
+      if (
+        lastSavedRef.current.cfi === currentCFI &&
+        lastSavedRef.current.progress === progress &&
+        lastSavedRef.current.scrollOffset === scrollOffset &&
+        lastSavedRef.current.chapter === currentChapter
+      ) {
+        console.log('⏭️ [useProgressSync] Skipping beacon - no changes since last save');
+        return;
+      }
+
       if (enabled && currentCFI && bookId) {
-        // Try to send beacon (non-blocking)
         const data = JSON.stringify({
           current_chapter: currentChapter,
           current_position_percent: progress,
@@ -165,10 +175,30 @@ export const useProgressSync = ({
         const url = `${window.location.origin}/api/v1/books/${bookId}/progress`;
         const token = localStorage.getItem('auth_token');
 
-        if (token && 'sendBeacon' in navigator) {
-          const blob = new Blob([data], { type: 'application/json' });
-          navigator.sendBeacon(url, blob);
-          console.log('📡 [useProgressSync] Progress sent via beacon on page close');
+        if (token) {
+          // Use fetch with keepalive - supports headers unlike sendBeacon
+          // keepalive allows the request to continue after the page unloads
+          try {
+            fetch(url, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+              },
+              body: data,
+              keepalive: true, // Critical: allows request to complete after page unload
+            }).catch(() => {
+              // Ignore errors on page close - request may have been sent
+            });
+            console.log('📡 [useProgressSync] Progress sent via fetch keepalive on page close');
+          } catch {
+            // Fallback to sendBeacon (won't have auth, but better than nothing)
+            if ('sendBeacon' in navigator) {
+              const blob = new Blob([data], { type: 'application/json' });
+              navigator.sendBeacon(url, blob);
+              console.log('📡 [useProgressSync] Fallback: Progress sent via beacon (no auth)');
+            }
+          }
         }
       }
     };
