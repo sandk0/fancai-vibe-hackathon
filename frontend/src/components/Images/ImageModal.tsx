@@ -291,10 +291,17 @@ export const ImageModal: React.FC<ImageModalProps> = ({
               isZoomed ? 'scale-150 cursor-zoom-out' : 'cursor-zoom-in'
             } ${isRegenerating ? 'opacity-50' : ''}`}
             onClick={() => !isRegenerating && setIsZoomed(!isZoomed)}
+            onLoad={() => {
+              console.log('✅ [ImageModal] Image loaded successfully:', currentImageUrl);
+            }}
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               console.error('❌ [ImageModal] Image load error for URL:', currentImageUrl);
               console.error('❌ [ImageModal] Original imageUrl prop:', imageUrl);
+              console.error('❌ [ImageModal] Event:', e.type, e);
+              // Try to get more info about the error
+              console.error('❌ [ImageModal] Target naturalWidth:', target.naturalWidth);
+              console.error('❌ [ImageModal] Target complete:', target.complete);
               target.src = '/placeholder-image.jpg'; // Fallback image
             }}
           />
