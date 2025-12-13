@@ -454,12 +454,12 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
         <ImageModal
           imageUrl={selectedImage.image_url}
           title={selectedImage.description?.type || 'Generated Image'}
-          description={selectedImage.description?.content || ''}
+          description={selectedImage.description?.text || selectedImage.description?.content || ''}
           imageId={selectedImage.id}
           descriptionData={selectedImage.description ? {
             id: selectedImage.description.id,
             type: selectedImage.description.type,
-            content: selectedImage.description.content,
+            content: selectedImage.description.text || selectedImage.description.content,
             confidence_score: 0,
             priority_score: selectedImage.description.priority_score,
             entities_mentioned: []
