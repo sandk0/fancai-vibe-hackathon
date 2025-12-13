@@ -349,13 +349,23 @@ class GoogleImagenGenerator:
                 # Extract image
                 if response.generated_images:
                     image = response.generated_images[0]
-                    image_bytes = image.image.image_bytes
+                    raw_image_data = image.image.image_bytes
 
-                    # Save locally
+                    # Google Imagen API returns base64-encoded string, need to decode
+                    if isinstance(raw_image_data, str):
+                        logger.debug("Imagen returned base64 string, decoding...")
+                        image_bytes = base64.b64decode(raw_image_data)
+                        image_base64 = raw_image_data  # Already base64
+                    else:
+                        # If it's already bytes, use as is
+                        logger.debug("Imagen returned raw bytes")
+                        image_bytes = raw_image_data
+                        image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+
+                    # Save locally (decoded bytes)
                     local_path = await self._save_image(image_bytes, prompt)
 
                     # Create data URL for frontend
-                    image_base64 = base64.b64encode(image_bytes).decode('utf-8')
                     image_url = f"data:image/png;base64,{image_base64}"
 
                     generation_time = time.time() - start_time
