@@ -178,3 +178,4 @@ start-dev.sh
 /tmp/
 *.log
 .env.mcp
+.env.development
