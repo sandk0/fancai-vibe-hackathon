@@ -179,11 +179,11 @@ class SettingsManager:
 
         # Image generation settings
         self._settings["image_generation"] = {
-            "primary_service": "pollinations",
+            "primary_service": "imagen",
             "fallback_services": [],
             "enable_caching": True,
             "image_quality": "high",
-            "max_generation_time": 30,
+            "max_generation_time": 60,
         }
 
         # Advanced Parser settings

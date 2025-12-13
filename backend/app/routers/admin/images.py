@@ -31,9 +31,9 @@ async def get_image_generation_settings(
         img_settings = await settings_manager.get_category_settings("image_generation")
 
         return ImageGenerationSettings(
-            primary_service=img_settings.get("primary_service", "pollinations"),
+            primary_service=img_settings.get("primary_service", "imagen"),
             fallback_services=img_settings.get(
-                "fallback_services", ["stable_diffusion"]
+                "fallback_services", []
             ),
             enable_caching=img_settings.get("enable_caching", True),
             image_quality=img_settings.get("image_quality", "high"),
@@ -42,8 +42,8 @@ async def get_image_generation_settings(
     except Exception as e:
         print(f"Error getting image generation settings: {e}")
         return ImageGenerationSettings(
-            primary_service="pollinations",
-            fallback_services=["stable_diffusion"],
+            primary_service="imagen",
+            fallback_services=[],
             enable_caching=True,
             image_quality="high",
             max_generation_time=60,

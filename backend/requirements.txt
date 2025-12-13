@@ -31,6 +31,7 @@ gliner>=0.2.0  # NEW: GLiNER for zero-shot NER (DeepPavlov replacement)
 # deeppavlov==1.4.0  # BLOCKED: Requires fastapi<=0.89.1, pydantic<2 (we have 0.120.1, 2.5.0)
                       # REPLACED with GLiNER (F1 0.90-0.95 vs DP 0.94-0.97)
 langextract==0.1.0
+google-genai>=1.0.0  # NEW: Google Imagen 4 image generation API
 
 # Парсинг книг
 ebooklib==0.19

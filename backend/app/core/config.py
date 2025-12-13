@@ -48,9 +48,15 @@ class Settings(BaseSettings):
     UPLOAD_DIRECTORY: str = "./uploads"
     ALLOWED_EXTENSIONS: list = [".epub", ".fb2"]
 
-    # AI сервисы
-    POLLINATIONS_ENABLED: bool = True
-    POLLINATIONS_BASE_URL: str = "https://image.pollinations.ai"
+    # AI сервисы - Google Imagen (replaces Pollinations)
+    GOOGLE_API_KEY: Optional[str] = None  # Primary key for all Google services
+    IMAGEN_ENABLED: bool = True
+    IMAGEN_MODEL: str = "imagen-4.0-generate-001"  # imagen-3.0-generate-002, imagen-4.0-fast-generate-001
+    IMAGEN_ASPECT_RATIO: str = "4:3"  # 1:1, 3:4, 4:3, 9:16, 16:9
+    IMAGEN_SAFETY_LEVEL: str = "block_some"  # block_none, block_few, block_some, block_most
+    IMAGEN_TIMEOUT_SECONDS: int = 60
+
+    # Legacy AI services (optional)
     OPENAI_API_KEY: Optional[str] = None
     MIDJOURNEY_API_KEY: Optional[str] = None
 

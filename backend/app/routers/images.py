@@ -96,10 +96,10 @@ async def get_generation_status(
 
     # API provider info
     api_info = APIProviderInfo(
-        provider="pollinations.ai",
+        provider="Google Imagen 4",
         supported_formats=["PNG"],
-        max_resolution="1024x768",
-        estimated_time_per_image="10-30 seconds",
+        max_resolution="1024x1024",
+        estimated_time_per_image="5-15 seconds",
     )
 
     return ImageGenerationStatusResponse(
@@ -193,7 +193,7 @@ async def generate_image_for_description(
     """
     Генерирует изображение для конкретного описания.
 
-    Синхронно генерирует изображение через pollinations.ai и
+    Синхронно генерирует изображение через Google Imagen 4 API и
     сохраняет результат в базу данных.
 
     Args:
@@ -254,23 +254,15 @@ async def generate_image_for_description(
                 detail=f"Image generation failed: {result.error_message}",
             )
 
-        # Создаем промпт для сохранения в базе
-        from ..services.image_generator import PromptEngineer
-
-        prompt_engineer = PromptEngineer()
-        prompts = prompt_engineer.create_prompt(
-            description.content, description.type, params.style_prompt
-        )
-
         # Сохраняем результат в базе данных
         generated_image = GeneratedImage(
             description_id=description.id,
             user_id=current_user.id,
-            service_used="pollinations",
+            service_used="imagen",
             status="completed",
             image_url=result.image_url,
             local_path=result.local_path,
-            prompt_used=prompts["positive"],  # Используем полный промпт
+            prompt_used=result.prompt_used or params.style_prompt or "default",
             generation_time_seconds=result.generation_time_seconds,
         )
 
@@ -392,11 +384,11 @@ async def generate_images_for_chapter(
                 generated_image = GeneratedImage(
                     description_id=description.id,
                     user_id=current_user.id,
-                    service_used="pollinations",
+                    service_used="imagen",
                     status="completed",
                     image_url=result.image_url,
                     local_path=result.local_path,
-                    prompt_used=request.style_prompt or "default",
+                    prompt_used=result.prompt_used or request.style_prompt or "default",
                     generation_time_seconds=result.generation_time_seconds,
                 )
 
@@ -477,7 +469,7 @@ async def get_image_for_description(
         "image_url": generated_image.image_url,
         "created_at": generated_image.created_at.isoformat(),
         "generation_time_seconds": generated_image.generation_time_seconds,
-        "service_used": generated_image.service_used or "pollinations",
+        "service_used": generated_image.service_used or "imagen",
         "status": generated_image.status or "completed",
         "is_moderated": generated_image.is_moderated or False,
         "view_count": generated_image.view_count or 0,
@@ -796,7 +788,7 @@ async def get_admin_image_stats(
         },
         "system_status": {
             "service_operational": True,
-            "api_provider": "pollinations.ai",
+            "api_provider": "Google Imagen 4",
             "supported_types": service_stats["supported_types"],
         },
     }

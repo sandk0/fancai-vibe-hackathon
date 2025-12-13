@@ -62,20 +62,20 @@ class APIProviderInfo(BaseModel):
     Используется в ImageGenerationStatusResponse.
 
     Attributes:
-        provider: Название провайдера (pollinations.ai, DALL-E, etc.)
+        provider: Название провайдера (Google Imagen 4, DALL-E, etc.)
         supported_formats: Поддерживаемые форматы (PNG, JPG, etc.)
         max_resolution: Максимальное разрешение
         estimated_time_per_image: Ориентировочное время генерации
     """
 
-    provider: str = Field(default="pollinations.ai", description="API provider name")
+    provider: str = Field(default="Google Imagen 4", description="API provider name")
     supported_formats: List[str] = Field(
         default=["PNG"],
         description="Supported image formats"
     )
-    max_resolution: str = Field(default="1024x768", description="Max resolution")
+    max_resolution: str = Field(default="1024x1024", description="Max resolution")
     estimated_time_per_image: str = Field(
-        default="10-30 seconds",
+        default="5-15 seconds",
         description="Estimated generation time"
     )
 

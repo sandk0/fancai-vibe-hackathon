@@ -95,10 +95,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             ],
             "img-src": [
                 "'self'",
-                "data:",  # Allow data URIs for inline images
+                "data:",  # Allow data URIs for inline images (Google Imagen returns base64)
                 "blob:",  # Allow blob URIs for dynamic content
-                "https://image.pollinations.ai",  # Image generation API
-                "https://pollinations.ai",
+                "https://*.googleusercontent.com",  # Google Imagen generated images
+                "https://*.googleapis.com",  # Google API endpoints
                 "https://*.cloudfront.net",  # CDN для uploaded covers
             ],
             "font-src": [
@@ -109,8 +109,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             ],
             "connect-src": [
                 "'self'",
-                "https://image.pollinations.ai",  # Image generation API
-                "https://pollinations.ai",
+                "https://generativelanguage.googleapis.com",  # Google Imagen API
+                "https://*.googleapis.com",  # Google API endpoints
                 "wss://",  # Allow WebSocket connections (for real-time features)
                 "ws://localhost:*",  # Development WebSocket
             ],
