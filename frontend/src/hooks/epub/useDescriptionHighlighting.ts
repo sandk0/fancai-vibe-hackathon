@@ -413,8 +413,8 @@ export const useDescriptionHighlighting = ({
               continue;
             }
 
-            // Determine how much text to highlight (min of description length or 100 chars)
-            const highlightLength = Math.min(text.length, 100);
+            // Highlight the full description text
+            const highlightLength = text.length;
 
             // Create highlight span
             const span = doc.createElement('span');
