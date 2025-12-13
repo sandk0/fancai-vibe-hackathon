@@ -22,11 +22,13 @@ function normalizeImageUrl(url: string | null | undefined): string {
     return url;
   }
 
-  // If URL is a relative API path, prepend the API base URL
+  // If URL is a relative API path, prepend the base URL (without /api/v1 suffix)
   if (url.startsWith('/api/')) {
-    // Remove /api/v1 prefix since it's already in baseUrl
+    // config.api.baseUrl is like "https://fancai.ru" (VITE_API_BASE_URL)
+    // url is like "/api/v1/images/file/xxx.png"
+    // Result: "https://fancai.ru/api/v1/images/file/xxx.png"
     const baseUrl = config.api.baseUrl.replace(/\/+$/, ''); // Remove trailing slashes
-    return `${baseUrl}${url.replace('/api/v1', '')}`;
+    return `${baseUrl}${url}`;
   }
 
   // For other relative URLs, just return as is
