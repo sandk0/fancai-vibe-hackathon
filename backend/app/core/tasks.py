@@ -5,6 +5,7 @@ Background tasks for BookReader AI.
 
 from app.core.celery_app import celery_app
 import asyncio
+import os
 from typing import Dict, Any, List
 import logging
 from datetime import datetime, timezone
