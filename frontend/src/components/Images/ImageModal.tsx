@@ -27,6 +27,9 @@ export const ImageModal: React.FC<ImageModalProps> = ({
   imageId,
   onImageRegenerated
 }) => {
+  // Debug: log received props
+  console.log('🖼️ [ImageModal] Received props:', { imageUrl, isOpen, title, imageId });
+
   const [isZoomed, setIsZoomed] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [showRegenerateOptions, setShowRegenerateOptions] = useState(false);

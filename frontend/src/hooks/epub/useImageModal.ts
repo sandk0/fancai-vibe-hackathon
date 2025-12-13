@@ -169,7 +169,9 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
     try {
       const result = await imagesAPI.generateImageForDescription(description.id);
 
-      console.log('✅ [useImageModal] Image generated:', result.image_url);
+      console.log('✅ [useImageModal] Image generated:', result);
+      console.log('✅ [useImageModal] Image URL:', result.image_url);
+      console.log('✅ [useImageModal] Image URL type:', typeof result.image_url);
 
       const newImage: GeneratedImage = {
         id: result.image_id,
