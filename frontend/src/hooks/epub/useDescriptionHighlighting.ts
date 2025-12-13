@@ -438,7 +438,11 @@ export const useDescriptionHighlighting = ({
             });
 
             // Click handler
-            span.addEventListener('click', () => {
+            span.addEventListener('click', (event) => {
+              // Stop event propagation to prevent epub.js from handling the click
+              event.stopPropagation();
+              event.preventDefault();
+
               console.log('🖱️ [useDescriptionHighlighting] Description clicked:', {
                 id: desc.id,
                 type: desc.type,
