@@ -185,13 +185,13 @@ services:
       context: ./backend
       dockerfile: Dockerfile.lite
     container_name: bookreader_beat_lite
+    user: root  # Run as root to avoid permission issues with schedule file
     environment:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-bookreader_dev}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
       - SECRET_KEY=${SECRET_KEY}
     volumes:
       - ./backend:/app
-      - beat_schedule:/tmp/celerybeat
     depends_on:
       postgres:
         condition: service_healthy
@@ -206,7 +206,7 @@ services:
         reservations:
           memory: 64M
     restart: unless-stopped
-    command: celery -A app.core.celery_app beat --loglevel=info --schedule=/tmp/celerybeat/schedule.db
+    command: celery -A app.core.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
 
   # React + Vite Frontend
   frontend:
@@ -252,7 +252,6 @@ volumes:
   redis_data:
   uploaded_books:
   frontend_node_modules:
-  beat_schedule:
 
 networks:
   bookreader_network:
