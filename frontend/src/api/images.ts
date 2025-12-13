@@ -1,6 +1,7 @@
 // Images API methods
 
 import { apiClient } from './client';
+import { config } from '@/config/env';
 import type {
   GeneratedImage,
   ImageGenerationParams,
@@ -9,10 +10,42 @@ import type {
   DescriptionType,
 } from '@/types/api';
 
+/**
+ * Normalizes image URL to absolute URL.
+ * Converts relative API paths (e.g., /api/v1/images/file/xxx.png) to full URLs.
+ */
+function normalizeImageUrl(url: string | null | undefined): string {
+  if (!url) return '';
+
+  // If URL is already absolute (starts with http:// or https://), return as is
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+
+  // If URL is a relative API path, prepend the API base URL
+  if (url.startsWith('/api/')) {
+    // Remove /api/v1 prefix since it's already in baseUrl
+    const baseUrl = config.api.baseUrl.replace(/\/+$/, ''); // Remove trailing slashes
+    return `${baseUrl}${url.replace('/api/v1', '')}`;
+  }
+
+  // For other relative URLs, just return as is
+  return url;
+}
+
 export const imagesAPI = {
+  /**
+   * Normalize image URL to absolute URL (exported for use in components)
+   */
+  normalizeImageUrl,
   // Get image for specific description
   async getImageForDescription(descriptionId: string): Promise<GeneratedImage> {
-    return apiClient.get(`/images/description/${descriptionId}`);
+    const response = await apiClient.get(`/images/description/${descriptionId}`) as GeneratedImage;
+    // Normalize image URL
+    if (response.image_url) {
+      response.image_url = normalizeImageUrl(response.image_url);
+    }
+    return response;
   },
 
   // Generation status
@@ -41,7 +74,20 @@ export const imagesAPI = {
     created_at: string;
     message: string;
   }> {
-    return apiClient.post(`/images/generate/description/${descriptionId}`, params);
+    const response = await apiClient.post(`/images/generate/description/${descriptionId}`, params) as {
+      image_id: string;
+      description_id: string;
+      image_url: string;
+      generation_time: number;
+      status: string;
+      created_at: string;
+      message: string;
+    };
+    // Normalize image URL
+    if (response.image_url) {
+      response.image_url = normalizeImageUrl(response.image_url);
+    }
+    return response;
   },
 
   // Check if image can be generated (no existing image)
@@ -79,7 +125,28 @@ export const imagesAPI = {
     }>;
     message: string;
   }> {
-    return apiClient.post(`/images/generate/chapter/${chapterId}`, request);
+    const response = await apiClient.post(`/images/generate/chapter/${chapterId}`, request) as {
+      chapter_id: string;
+      total_descriptions: number;
+      processed: number;
+      successful: number;
+      failed: number;
+      images: Array<{
+        description_id: string;
+        description_type: DescriptionType;
+        image_url: string;
+        generation_time: number;
+      }>;
+      message: string;
+    };
+    // Normalize image URLs
+    if (response.images) {
+      response.images = response.images.map(img => ({
+        ...img,
+        image_url: normalizeImageUrl(img.image_url),
+      }));
+    }
+    return response;
   },
 
   // Image management
@@ -115,6 +182,13 @@ export const imagesAPI = {
         total_found: number;
       };
     };
+    // Normalize image URLs
+    if (response.images) {
+      response.images = response.images.map(img => ({
+        ...img,
+        image_url: normalizeImageUrl(img.image_url),
+      }));
+    }
     return response;
   },
 
@@ -141,7 +215,26 @@ export const imagesAPI = {
       content: string;
     };
   }> {
-    return apiClient.post(`/images/regenerate/${imageId}`, params);
+    const response = await apiClient.post(`/images/regenerate/${imageId}`, params) as {
+      image_id: string;
+      description_id: string;
+      image_url: string;
+      generation_time: number;
+      status: string;
+      updated_at: string;
+      message: string;
+      description: {
+        id: string;
+        type: DescriptionType;
+        text: string;
+        content: string;
+      };
+    };
+    // Normalize image URL
+    if (response.image_url) {
+      response.image_url = normalizeImageUrl(response.image_url);
+    }
+    return response;
   },
 
   // Admin endpoints (require admin privileges)
