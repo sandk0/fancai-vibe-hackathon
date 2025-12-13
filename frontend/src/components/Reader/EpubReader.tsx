@@ -150,7 +150,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   // Hook 6: Page navigation
   const { nextPage, prevPage } = useEpubNavigation(rendition);
 
-  // Hook 7: Image modal management
+  // Hook 7: Image modal management with IndexedDB caching
   const {
     selectedImage,
     isOpen: isModalOpen,
@@ -163,7 +163,9 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     generationError,
     descriptionPreview,
     cancelGeneration,
-  } = useImageModal();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    isCached, // For future UI indicator
+  } = useImageModal({ bookId: book.id });
 
   // Hook 8: Keyboard navigation (disabled when modal is open)
   useKeyboardNavigation(nextPage, prevPage, renditionReady && !isModalOpen);

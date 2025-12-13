@@ -4,11 +4,12 @@
  *
  * Handles the modal state for displaying description images.
  * Includes image generation with status tracking and 409 error handling.
+ * Now with IndexedDB caching for offline access.
  *
  * @returns Modal state and control functions
  *
  * @example
- * const { selectedImage, isGenerating, openModal, closeModal } = useImageModal();
+ * const { selectedImage, isGenerating, openModal, closeModal } = useImageModal({ bookId });
  * openModal(description, image);
  */
 
@@ -16,8 +17,14 @@ import { useState, useCallback, useRef } from 'react';
 import type { Description, GeneratedImage } from '@/types/api';
 import { imagesAPI } from '@/api/images';
 import { notify } from '@/stores/ui';
+import { imageCache } from '@/services/imageCache';
 
 export type GenerationStatus = 'idle' | 'generating' | 'completed' | 'error';
+
+interface UseImageModalOptions {
+  bookId?: string; // Required for caching
+  enableCache?: boolean; // Default: true
+}
 
 interface UseImageModalReturn {
   selectedImage: GeneratedImage | null;
@@ -27,13 +34,15 @@ interface UseImageModalReturn {
   generationStatus: GenerationStatus;
   generationError: string | null;
   descriptionPreview: string | null;
+  isCached: boolean; // NEW: indicates if current image is from cache
   openModal: (description: Description, image?: GeneratedImage) => Promise<void>;
   closeModal: () => void;
   updateImage: (newImageUrl: string) => void;
   cancelGeneration: () => void;
 }
 
-export const useImageModal = (): UseImageModalReturn => {
+export const useImageModal = (options: UseImageModalOptions = {}): UseImageModalReturn => {
+  const { bookId, enableCache = true } = options;
   const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
   const [selectedDescription, setSelectedDescription] = useState<Description | null>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -41,13 +50,45 @@ export const useImageModal = (): UseImageModalReturn => {
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus>('idle');
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [descriptionPreview, setDescriptionPreview] = useState<string | null>(null);
+  const [isCached, setIsCached] = useState(false);
 
   // AbortController for cancelling generation
   const abortControllerRef = useRef<AbortController | null>(null);
 
   /**
+   * Try to get cached image URL
+   * Returns null if not cached or cache disabled
+   */
+  const getCachedImageUrl = useCallback(
+    async (descriptionId: string): Promise<string | null> => {
+      if (!enableCache || !bookId) return null;
+      try {
+        return await imageCache.get(descriptionId);
+      } catch {
+        return null;
+      }
+    },
+    [enableCache, bookId]
+  );
+
+  /**
+   * Cache image for offline use
+   */
+  const cacheImage = useCallback(
+    async (descriptionId: string, imageUrl: string): Promise<void> => {
+      if (!enableCache || !bookId) return;
+      try {
+        await imageCache.set(descriptionId, imageUrl, bookId);
+      } catch (err) {
+        console.warn('⚠️ [useImageModal] Failed to cache image:', err);
+      }
+    },
+    [enableCache, bookId]
+  );
+
+  /**
    * Open modal with description and optional image
-   * If no image exists, generate it
+   * If no image exists, check cache first, then generate
    * Handles 409 (image exists) by fetching the existing image
    */
   const openModal = useCallback(async (description: Description, image?: GeneratedImage) => {
@@ -57,17 +98,67 @@ export const useImageModal = (): UseImageModalReturn => {
     setGenerationError(null);
     setSelectedDescription(description);
     setDescriptionPreview(description.content?.substring(0, 100) || null);
+    setIsCached(false);
 
-    // If image already provided, just open modal
+    // If image already provided, check cache for local URL
     if (image) {
       console.log('✅ [useImageModal] Image exists:', image.image_url);
-      setSelectedImage(image);
+
+      // Try to use cached version for faster/offline display
+      const cachedUrl = await getCachedImageUrl(description.id);
+      if (cachedUrl) {
+        console.log('📦 [useImageModal] Using cached image');
+        setSelectedImage({ ...image, image_url: cachedUrl });
+        setIsCached(true);
+      } else {
+        setSelectedImage(image);
+        // Cache the image for future offline use (async, don't wait)
+        cacheImage(description.id, image.image_url);
+      }
+
       setIsOpen(true);
       setGenerationStatus('completed');
       return;
     }
 
-    // Generate image if it doesn't exist
+    // Check cache first before generating
+    const cachedUrl = await getCachedImageUrl(description.id);
+    if (cachedUrl) {
+      console.log('📦 [useImageModal] Found in cache, skipping generation');
+
+      const cachedImage: GeneratedImage = {
+        id: description.id,
+        image_url: cachedUrl,
+        service_used: 'cached',
+        status: 'completed',
+        generation_time_seconds: 0,
+        created_at: new Date().toISOString(),
+        is_moderated: false,
+        view_count: 0,
+        download_count: 0,
+        description: {
+          id: description.id,
+          type: description.type,
+          text: description.content,
+          content: description.content,
+          confidence_score: description.confidence_score || 0,
+          priority_score: description.priority_score,
+        },
+        chapter: {
+          id: '',
+          number: 0,
+          title: '',
+        },
+      };
+
+      setSelectedImage(cachedImage);
+      setIsOpen(true);
+      setGenerationStatus('completed');
+      setIsCached(true);
+      return;
+    }
+
+    // Generate image if not in cache
     console.log('🎨 [useImageModal] No image found, generating...');
     setIsGenerating(true);
     setGenerationStatus('generating');
@@ -109,6 +200,9 @@ export const useImageModal = (): UseImageModalReturn => {
       setIsOpen(true);
       setGenerationStatus('completed');
 
+      // Cache the generated image (async, don't wait)
+      cacheImage(description.id, result.image_url);
+
       notify.success(
         'Изображение создано',
         `Сгенерировано за ${result.generation_time.toFixed(1)}с`
@@ -136,6 +230,9 @@ export const useImageModal = (): UseImageModalReturn => {
           setIsOpen(true);
           setGenerationStatus('completed');
 
+          // Cache the fetched image (async, don't wait)
+          cacheImage(description.id, existingImage.image_url);
+
           // Don't show warning - just open the modal silently
         } catch (fetchError: any) {
           console.error('❌ [useImageModal] Failed to fetch existing image:', fetchError);
@@ -154,7 +251,7 @@ export const useImageModal = (): UseImageModalReturn => {
       setIsGenerating(false);
       abortControllerRef.current = null;
     }
-  }, []);
+  }, [getCachedImageUrl, cacheImage]);
 
   /**
    * Close modal and reset state
@@ -168,6 +265,7 @@ export const useImageModal = (): UseImageModalReturn => {
       setSelectedDescription(null);
       setGenerationError(null);
       setDescriptionPreview(null);
+      setIsCached(false);
       // Don't reset status to idle - keep it for status bar to show completion
     }, 300);
   }, []);
@@ -208,6 +306,7 @@ export const useImageModal = (): UseImageModalReturn => {
     generationStatus,
     generationError,
     descriptionPreview,
+    isCached,
     openModal,
     closeModal,
     updateImage,
