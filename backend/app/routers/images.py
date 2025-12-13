@@ -6,11 +6,15 @@ API роуты для генерации изображений в BookReader AI
 """
 
 from fastapi import APIRouter, HTTPException, Depends, status, BackgroundTasks
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import Dict, Any, List, Optional
 from uuid import UUID
 from pydantic import BaseModel
+from pathlib import Path
+import tempfile
+import os
 
 from ..core.database import get_database_session
 from ..core.auth import get_current_active_user, get_current_admin_user
@@ -32,6 +36,39 @@ from ..schemas.responses import ImageGenerationTaskResponse
 
 
 router = APIRouter()
+
+# Directory where Imagen saves images
+GENERATED_IMAGES_DIR = Path(tempfile.gettempdir()) / "generated_images"
+
+
+@router.get("/images/file/{filename}")
+async def get_generated_image_file(filename: str):
+    """
+    Serve generated image file.
+
+    This endpoint serves image files from the generated_images directory.
+    No authentication required for image access (images are accessed by random filename).
+    """
+    # Validate filename (prevent path traversal)
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filename"
+        )
+
+    # Check if file exists
+    file_path = GENERATED_IMAGES_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Image not found"
+        )
+
+    return FileResponse(
+        path=str(file_path),
+        media_type="image/png",
+        filename=filename
+    )
 
 
 # Pydantic модели для запросов
@@ -254,13 +291,17 @@ async def generate_image_for_description(
                 detail=f"Image generation failed: {result.error_message}",
             )
 
+        # Create HTTP URL from local_path (extract filename)
+        filename = os.path.basename(result.local_path) if result.local_path else None
+        http_url = f"/api/v1/images/file/{filename}" if filename else None
+
         # Сохраняем результат в базе данных
         generated_image = GeneratedImage(
             description_id=description.id,
             user_id=current_user.id,
             service_used="imagen",
             status="completed",
-            image_url=result.image_url,
+            image_url=http_url,  # Store HTTP URL instead of data URL
             local_path=result.local_path,
             prompt_used=result.prompt_used or params.style_prompt or "default",
             generation_time_seconds=result.generation_time_seconds,
@@ -273,7 +314,7 @@ async def generate_image_for_description(
         return ImageGenerationSuccessResponse(
             image_id=generated_image.id,
             description_id=description.id,
-            image_url=result.image_url,
+            image_url=http_url or result.image_url,
             generation_time=result.generation_time_seconds,
             status="completed",
             created_at=generated_image.created_at.isoformat(),
@@ -381,12 +422,16 @@ async def generate_images_for_chapter(
             if result.success and i < len(descriptions_to_process):
                 description = descriptions_to_process[i]
 
+                # Create HTTP URL from local_path
+                filename = os.path.basename(result.local_path) if result.local_path else None
+                http_url = f"/api/v1/images/file/{filename}" if filename else None
+
                 generated_image = GeneratedImage(
                     description_id=description.id,
                     user_id=current_user.id,
                     service_used="imagen",
                     status="completed",
-                    image_url=result.image_url,
+                    image_url=http_url,  # Store HTTP URL instead of data URL
                     local_path=result.local_path,
                     prompt_used=result.prompt_used or request.style_prompt or "default",
                     generation_time_seconds=result.generation_time_seconds,
@@ -397,7 +442,7 @@ async def generate_images_for_chapter(
                     {
                         "description_id": str(description.id),
                         "description_type": description.type.value,
-                        "image_url": result.image_url,
+                        "image_url": http_url or result.image_url,
                         "generation_time": result.generation_time_seconds,
                     }
                 )
