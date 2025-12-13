@@ -23,8 +23,9 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 80,
-    // Allow access from all hosts (required for direct domain access without nginx)
-    allowedHosts: 'all',
+    // Disable host checking completely (required for direct domain access without nginx)
+    // In Vite 5.x, 'true' disables all host checks
+    allowedHosts: true,
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
