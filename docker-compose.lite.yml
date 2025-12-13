@@ -8,12 +8,13 @@
 # - LANGEXTRACT_API_KEY in .env file
 # - Server in supported region (US, EU, etc.) - no proxy needed
 #
-# Memory requirements (total ~2GB):
-# - PostgreSQL: 512MB
-# - Redis: 256MB
-# - Backend: 512MB (no NLP models!)
-# - Celery: 256MB
-# - Frontend: 256MB
+# Memory requirements (total ~5.5GB for 8GB server):
+# - PostgreSQL: 1GB
+# - Redis: 512MB
+# - Backend: 1.5GB
+# - Celery Worker: 1GB
+# - Celery Beat: 256MB
+# - Frontend: 1GB
 #
 # Usage:
 #   docker-compose -f docker-compose.lite.yml up -d
@@ -44,10 +45,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 512M
+          cpus: '1.0'
+          memory: 1G
         reservations:
-          memory: 256M
+          memory: 512M
     restart: unless-stopped
 
   # Redis Cache & Queue
@@ -58,7 +59,7 @@ services:
       redis-server
       --appendonly yes
       --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
-      --maxmemory 256mb
+      --maxmemory 384mb
       --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
@@ -72,10 +73,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.3'
-          memory: 256M
+          cpus: '0.5'
+          memory: 512M
         reservations:
-          memory: 128M
+          memory: 256M
     restart: unless-stopped
 
   # FastAPI Backend (Lite - LangExtract only)
@@ -129,10 +130,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 768M  # Increased for LangExtract API buffering
+          cpus: '2.0'
+          memory: 1536M
         reservations:
-          memory: 256M
+          memory: 512M
     restart: unless-stopped
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
@@ -149,7 +150,7 @@ services:
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
       - SECRET_KEY=${SECRET_KEY}
       - POLLINATIONS_ENABLED=${POLLINATIONS_ENABLED:-true}
-      - CELERY_CONCURRENCY=${CELERY_CONCURRENCY:-2}
+      - CELERY_CONCURRENCY=${CELERY_CONCURRENCY:-4}
       # LangExtract
       - USE_LANGEXTRACT_PRIMARY=true
       - LANGEXTRACT_API_KEY=${LANGEXTRACT_API_KEY}
@@ -178,12 +179,12 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 256M  # Much less - no NLP processing
+          cpus: '1.0'
+          memory: 1G
         reservations:
-          memory: 128M
+          memory: 384M
     restart: unless-stopped
-    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=4
 
   # Celery Beat Scheduler
   celery-beat:
@@ -214,9 +215,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          cpus: '0.3'
+          memory: 256M
         reservations:
-          memory: 64M
+          memory: 128M
     restart: unless-stopped
     command: celery -A app.core.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
 
@@ -253,9 +255,9 @@ services:
       resources:
         limits:
           cpus: '1.0'
-          memory: 512M
+          memory: 1G
         reservations:
-          memory: 256M
+          memory: 512M
     restart: unless-stopped
     command: npm run dev -- --host 0.0.0.0 --port 80
 
