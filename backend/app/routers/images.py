@@ -37,8 +37,9 @@ from ..schemas.responses import ImageGenerationTaskResponse
 
 router = APIRouter()
 
-# Directory where Imagen saves images
-GENERATED_IMAGES_DIR = Path(tempfile.gettempdir()) / "generated_images"
+# Directory where Imagen saves images (persistent storage)
+# Uses /app/storage which is mounted as Docker volume for persistence
+GENERATED_IMAGES_DIR = Path("/app/storage/generated_images")
 
 
 @router.get("/images/file/{filename}")

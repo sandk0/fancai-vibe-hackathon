@@ -426,9 +426,10 @@ class GoogleImagenGenerator:
         Returns:
             Path to saved file
         """
-        # Create directory
-        images_dir = Path(tempfile.gettempdir()) / "generated_images"
-        images_dir.mkdir(exist_ok=True)
+        # Create directory (persistent storage)
+        # Uses /app/storage which is mounted as Docker volume for persistence
+        images_dir = Path("/app/storage/generated_images")
+        images_dir.mkdir(parents=True, exist_ok=True)
 
         # Create unique filename
         prompt_hash = hashlib.md5(prompt.encode(), usedforsecurity=False).hexdigest()[:8]
