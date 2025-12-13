@@ -74,9 +74,38 @@ POST   /api/v1/admin/feature-flags/seed     # Seed defaults
 
 ### NLP & AI
 
-#### **Multi-NLP System - Strategy Pattern Architecture** (NEW: November 2025)
+#### **LLM-Only Parsing (Lite Mode)** ⭐ **НОВАЯ АРХИТЕКТУРА** (December 2025)
 
-**STATUS:** ✅ **RUNNING IN PRODUCTION** (Refactored from 627 → 304 lines, 52% reduction)
+**STATUS:** 🚧 **В РАЗРАБОТКЕ** - Миграция с Multi-NLP на чистый LLM
+
+**Причина миграции:**
+- LangExtract библиотека возвращает сущности (NER) вместо полных описаний
+- Multi-NLP система требует 2.2GB моделей и ~9,000 строк кода
+- Lite версия использует только Google Gemini API для парсинга
+
+**Целевая архитектура:**
+```
+GeminiDescriptionExtractor
+├── TextChunker (recursive, 1024 tokens, 15% overlap)
+├── PromptEngine (few-shot, жанровые шаблоны)
+├── ResponseParser (JSON repair, retry logic)
+├── CostOptimizer (caching, batching)
+└── QualityScorer (5-factor confidence)
+```
+
+**Преимущества Lite версии:**
+- Docker образ: 2.5GB → ~500MB
+- RAM: 2.4GB → ~500MB
+- Код: 9,000 строк → ~600 строк
+- Стоимость: ~$0.02/книга (с кэшированием ~$0.005)
+
+**План миграции:** `docs/reports/LLM_MIGRATION_PLAN_2025-12-13.md`
+
+---
+
+#### **Multi-NLP System - Strategy Pattern Architecture** (November 2025)
+
+**STATUS:** ⚠️ **DEPRECATED** - Заменяется на LLM-Only Lite Mode
 
 **4-Processor Ensemble Active:** (UPDATED: 2025-11-23, Sessions 6-7)
 - **SpaCy** (ru_core_news_lg) - entity recognition, weight 1.0, F1 ~0.82

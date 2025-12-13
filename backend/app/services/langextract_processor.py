@@ -1,22 +1,21 @@
 """
 LangExtract Processor - LLM-based парсер описаний для русскоязычных книг.
 
-АРХИТЕКТУРА:
-- Полная замена NLP процессоров на LLM-based извлечение
-- Оптимизированный промпт для минимального потребления токенов (~150 токенов)
-- Batch обработка: один API вызов на чанк текста
-- Smart chunking с сохранением контекста
+АРХИТЕКТУРА (v2 - December 2025):
+- Прямые вызовы Google Gemini API вместо LangExtract библиотеки
+- LangExtract возвращала сущности (NER), а не описания
+- Новый GeminiDirectExtractor извлекает полные параграфы
 
-КЛЮЧЕВЫЕ ОПТИМИЗАЦИИ:
-1. Один промпт извлекает ВСЕ типы описаний (location, character, atmosphere)
-2. JSON schema для структурированного вывода
-3. Русскоязычные few-shot примеры (2-3 на тип)
-4. Интеллектуальная сегментация по параграфам
+КЛЮЧЕВЫЕ ИЗМЕНЕНИЯ v2:
+1. Замена LangExtract library на direct Gemini API calls
+2. Рекурсивный чанкинг текста (1024 токена, 15% overlap)
+3. JSON repair с retry логикой
+4. Few-shot промпты для русской литературы
 
 ПРОИЗВОДИТЕЛЬНОСТЬ:
 - ~3000-4000 токенов на чанк (включая промпт + текст + ответ)
-- ~$0.0003 за главу (Gemini 2.0 Flash)
-- F1 Score: ~0.90-0.93 (выше NLP ensemble)
+- ~$0.02 за книгу (Gemini 2.0 Flash)
+- 5-15 описаний на главу (вместо 0 с LangExtract)
 
 ИСПОЛЬЗОВАНИЕ:
     processor = LangExtractProcessor()
@@ -25,6 +24,7 @@ LangExtract Processor - LLM-based парсер описаний для русс�
         # result: ProcessingResult с описаниями
 
 Created: 2025-11-30
+Updated: 2025-12-13 (v2 - direct Gemini API)
 Author: BookReader AI Team
 """
 
@@ -390,7 +390,8 @@ JSON формат:
         self.config.api_key = self.config.api_key or os.getenv("LANGEXTRACT_API_KEY")
 
         self.chunker = RussianTextChunker(self.config)
-        self._lx = None
+        self._gemini_extractor = None  # GeminiDirectExtractor (замена LangExtract)
+        self._lx = None  # Deprecated: LangExtract library
         self._available = False
 
         # Статистика
@@ -405,26 +406,47 @@ JSON формат:
         self._initialize_langextract()
 
     def _initialize_langextract(self):
-        """Инициализация LangExtract библиотеки."""
+        """Инициализация Gemini Direct Extractor (замена LangExtract)."""
         try:
-            import langextract as lx
-            self._lx = lx
+            # Используем новый GeminiDirectExtractor вместо LangExtract
+            from app.services.gemini_extractor import (
+                GeminiDirectExtractor,
+                GeminiConfig,
+            )
 
             if not self.config.api_key:
                 logger.warning(
-                    "LANGEXTRACT_API_KEY not set. LangExtract processor disabled. "
+                    "LANGEXTRACT_API_KEY not set. Gemini extractor disabled. "
                     "Set LANGEXTRACT_API_KEY environment variable to enable."
                 )
                 self._available = False
                 return
 
-            self._available = True
-            logger.info(f"LangExtract processor initialized (model: {self.config.model_id})")
-
-        except ImportError:
-            logger.warning(
-                "LangExtract not installed. Install with: pip install langextract"
+            # Создаём конфигурацию для Gemini
+            gemini_config = GeminiConfig(
+                model_id=self.config.model_id,
+                api_key=self.config.api_key,
+                max_chunk_chars=self.config.max_chunk_chars,
+                min_chunk_chars=self.config.min_chunk_chars,
+                min_description_chars=self.config.min_description_chars,
+                max_description_chars=self.config.max_description_chars,
+                min_confidence=self.config.min_confidence,
+                max_retries=self.config.max_retries,
             )
+
+            self._gemini_extractor = GeminiDirectExtractor(gemini_config)
+            self._available = self._gemini_extractor.is_available()
+
+            if self._available:
+                logger.info(f"Gemini Direct Extractor initialized (model: {self.config.model_id})")
+            else:
+                logger.warning("Gemini Direct Extractor failed to initialize")
+
+        except ImportError as e:
+            logger.error(f"Failed to import GeminiDirectExtractor: {e}")
+            self._available = False
+        except Exception as e:
+            logger.error(f"Failed to initialize Gemini extractor: {e}")
             self._available = False
 
     def is_available(self) -> bool:
@@ -561,25 +583,48 @@ JSON формат:
             Tuple[список описаний, количество токенов]
         """
         try:
-            # Формируем промпт с примерами
-            full_prompt = self._build_prompt(chunk_text)
+            # v2: Используем GeminiDirectExtractor вместо LangExtract
+            if self._gemini_extractor is not None:
+                # Извлекаем описания через прямой API Gemini
+                extracted = await self._gemini_extractor._extract_from_chunk(
+                    chunk_text,
+                    chunk_offset
+                )
 
-            # Вызываем LangExtract
-            result = self._lx.extract(
-                text_or_documents=chunk_text,
-                prompt_description=self.EXTRACTION_PROMPT,
-                examples=self._create_examples(),
-                model_id=self.config.model_id,
-                api_key=self.config.api_key,
-            )
+                # Конвертируем в локальный формат ExtractedDescription
+                descriptions = []
+                for desc in extracted:
+                    descriptions.append(ExtractedDescription(
+                        content=desc.content,
+                        description_type=DescriptionType(desc.description_type.value),
+                        confidence=desc.confidence,
+                        entities=desc.entities,
+                        attributes=desc.attributes,
+                        position=desc.position,
+                        source_span=desc.source_span,
+                    ))
 
-            # Парсинг результата
-            descriptions = self._parse_result(result, chunk_offset)
+                # Оценка токенов
+                tokens_used = len(chunk_text) // 4 * 2  # input + output
 
-            # Оценка токенов (приблизительно)
-            tokens_used = len(full_prompt) // 4 + len(chunk_text) // 4
+                return descriptions, tokens_used
 
-            return descriptions, tokens_used
+            # Fallback: старая логика LangExtract (deprecated)
+            if self._lx is not None:
+                full_prompt = self._build_prompt(chunk_text)
+                result = self._lx.extract(
+                    text_or_documents=chunk_text,
+                    prompt_description=self.EXTRACTION_PROMPT,
+                    examples=self._create_examples(),
+                    model_id=self.config.model_id,
+                    api_key=self.config.api_key,
+                )
+                descriptions = self._parse_result(result, chunk_offset)
+                tokens_used = len(full_prompt) // 4 + len(chunk_text) // 4
+                return descriptions, tokens_used
+
+            logger.warning("No extractor available (neither Gemini nor LangExtract)")
+            return [], 0
 
         except Exception as e:
             logger.warning(f"Chunk processing failed: {e}")
