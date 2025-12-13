@@ -26,10 +26,11 @@ from ..core.database import Base
 class ImageService(enum.Enum):
     """AI сервисы для генерации изображений."""
 
-    POLLINATIONS = "pollinations"  # pollinations.ai (основной)
+    POLLINATIONS = "pollinations"  # pollinations.ai (legacy)
     OPENAI_DALLE = "openai_dalle"  # OpenAI DALL-E 3
     MIDJOURNEY = "midjourney"  # Midjourney API
     STABLE_DIFFUSION = "stable_diffusion"  # Stable Diffusion
+    IMAGEN = "imagen"  # Google Imagen 4 (основной)
 
 
 class ImageStatus(enum.Enum):
