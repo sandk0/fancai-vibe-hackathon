@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from ...core.auth import get_current_admin_user
 from ...models.user import User
 from ...services.settings_manager import settings_manager
+from ...schemas.responses.admin import ImageGenerationSettingsUpdateResponse
 
 router = APIRouter()
 
@@ -49,11 +50,11 @@ async def get_image_generation_settings(
         )
 
 
-@router.put("/image-generation-settings")
+@router.put("/image-generation-settings", response_model=ImageGenerationSettingsUpdateResponse)
 async def update_image_generation_settings(
     settings: ImageGenerationSettings,
     admin_user: User = Depends(get_current_admin_user),
-):
+) -> ImageGenerationSettingsUpdateResponse:
     """Update image generation settings."""
 
     try:
@@ -73,10 +74,10 @@ async def update_image_generation_settings(
             "image_generation", "max_generation_time", settings.max_generation_time
         )
 
-        return {
-            "message": "Image generation settings saved successfully",
-            "settings": settings,
-        }
+        return ImageGenerationSettingsUpdateResponse(
+            message="Image generation settings saved successfully",
+            settings=settings.model_dump(),
+        )
     except Exception as e:
         raise HTTPException(
             status_code=500,

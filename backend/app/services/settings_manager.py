@@ -136,7 +136,7 @@ class SettingsManager:
 
         # Stanza settings
         self._settings["nlp_stanza"] = {
-            "enabled": False,
+            "enabled": True,  # ✅ ACTIVATED (Session 6, 2025-11-23) - 4-processor ensemble
             "weight": 0.8,
             "confidence_threshold": 0.5,
             "model_name": "ru",
@@ -184,6 +184,18 @@ class SettingsManager:
             "enable_caching": True,
             "image_quality": "high",
             "max_generation_time": 30,
+        }
+
+        # Advanced Parser settings
+        self._settings["advanced_parser"] = {
+            "enabled": False,  # Disabled by default, enable via USE_ADVANCED_PARSER flag
+            "min_text_length": 500,  # Minimum text length for Advanced Parser
+            "enable_enrichment": False,  # Enable LLM enrichment (requires API key)
+            "min_confidence": 0.6,  # Minimum confidence threshold
+            "min_char_length": 500,  # Minimum description length
+            "max_char_length": 4000,  # Maximum description length
+            "optimal_range_min": 1000,  # Optimal range start
+            "optimal_range_max": 2500,  # Optimal range end
         }
 
         # System settings

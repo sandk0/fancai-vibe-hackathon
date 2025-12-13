@@ -2,6 +2,28 @@
 # Note: version field is obsolete in Compose V2 (removed as per Docker Compose spec)
 
 services:
+  # Xray VLESS Proxy for LangExtract API
+  xray-proxy:
+    image: teddysun/xray:latest
+    volumes:
+      - ./xray-proxy/config.json:/etc/xray/config.json:ro
+    networks:
+      - bookreader_network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "1080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+        reservations:
+          memory: 64M
+    restart: unless-stopped
+
   # PostgreSQL Database
   postgres:
     image: postgres:15.7-alpine
@@ -74,13 +96,22 @@ services:
       - "CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000}"
       # NLP model directories
       - NLTK_DATA=/root/nltk_data
-      - STANZA_RESOURCES_DIR=/root/stanza_resources
+      - STANZA_RESOURCES_DIR=/tmp/stanza_resources
+      - HF_HOME=/tmp/huggingface
+      # LangExtract (LLM-based parser)
+      - USE_LANGEXTRACT_PRIMARY=${USE_LANGEXTRACT_PRIMARY:-false}
+      - LANGEXTRACT_API_KEY=${LANGEXTRACT_API_KEY:-}
+      # Proxy for LangExtract API (VLESS via HTTP proxy)
+      - LANGEXTRACT_PROXY_URL=http://xray-proxy:8080
+      - HTTPS_PROXY=http://xray-proxy:8080
+      - HTTP_PROXY=http://xray-proxy:8080
     volumes:
       - ./backend:/app
       - uploaded_books:/app/storage
       # Persistent NLP model storage - survives rebuilds!
       - nlp_nltk_data:/root/nltk_data
-      - nlp_stanza_models:/root/stanza_resources
+      - nlp_stanza_models:/tmp/stanza_resources
+      - nlp_huggingface_cache:/tmp/huggingface
     ports:
       - "8000:8000"
     depends_on:
@@ -227,6 +258,8 @@ volumes:
     name: bookreader_nlp_nltk_data
   nlp_stanza_models:
     name: bookreader_nlp_stanza_models
+  nlp_huggingface_cache:
+    name: bookreader_nlp_huggingface_cache
 
 networks:
   bookreader_network:

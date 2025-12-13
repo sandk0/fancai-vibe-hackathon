@@ -1,0 +1,68 @@
+# =============================================================================
+# Lightweight Dockerfile for Backend (LangExtract only, no NLP libraries)
+# =============================================================================
+# This is a lightweight version without heavy NLP dependencies:
+# - No SpaCy models (~500MB)
+# - No Stanza models (~630MB)
+# - No GLiNER models (~500MB)
+# - No NLTK data (~100MB)
+#
+# Total image size: ~800MB (vs ~2.5GB for full version)
+# Build time: ~2-3 minutes (vs ~10-15 minutes for full version)
+# =============================================================================
+# syntax=docker/dockerfile:1.4
+FROM python:3.11-slim
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=0 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONPATH=/app \
+    # LangExtract as primary parser (disable NLP processors)
+    USE_LANGEXTRACT_PRIMARY=true \
+    USE_ADVANCED_PARSER=false \
+    USE_NLP_PROCESSORS=false
+
+# Install system dependencies (minimal set)
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    libpq-dev \
+    libmagic1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create working directory
+WORKDIR /app
+
+# Copy lite requirements
+COPY requirements.lite.txt .
+
+# Install Python dependencies (much faster without NLP)
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip && \
+    pip install -r requirements.lite.txt && \
+    echo "✅ Lite dependencies installed"
+
+# Copy source code
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p /app/uploads /app/logs /app/storage
+
+# Create non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser && \
+    chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
+
+# Default command
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

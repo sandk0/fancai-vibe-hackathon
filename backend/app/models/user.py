@@ -90,6 +90,9 @@ class User(Base):
     reading_sessions = relationship(
         "ReadingSession", back_populates="user", cascade="all, delete-orphan"
     )
+    reading_goals = relationship(
+        "ReadingGoal", back_populates="user", cascade="all, delete-orphan"
+    )
     subscription = relationship(
         "Subscription",
         back_populates="user",

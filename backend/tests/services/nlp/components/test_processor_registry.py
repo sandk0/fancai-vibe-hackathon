@@ -155,16 +155,16 @@ async def test_initialize_processors_loads_enabled_only():
     }
 
     # Act
-    with patch('app.services.nlp.components.processor_registry.EnhancedSpacyProcessor') as MockSpacy, \
-         patch('app.services.nlp.components.processor_registry.EnhancedNatashaProcessor') as MockNatasha, \
-         patch('app.services.nlp.components.processor_registry.EnhancedStanzaProcessor') as MockStanza:
+    with patch('app.services.enhanced_nlp_system.EnhancedSpacyProcessor') as MockSpacy, \
+         patch('app.services.natasha_processor.EnhancedNatashaProcessor') as MockNatasha, \
+         patch('app.services.stanza_processor.EnhancedStanzaProcessor') as MockStanza:
 
-        mock_spacy = AsyncMock()
+        mock_spacy = Mock()
         mock_spacy.load_model = AsyncMock()
         mock_spacy.is_available = Mock(return_value=True)
         MockSpacy.return_value = mock_spacy
 
-        mock_stanza = AsyncMock()
+        mock_stanza = Mock()
         mock_stanza.load_model = AsyncMock()
         mock_stanza.is_available = Mock(return_value=True)
         MockStanza.return_value = mock_stanza
@@ -183,20 +183,36 @@ async def test_initialize_processors_handles_unavailable():
     # Arrange
     registry = ProcessorRegistry()
     registry.processor_configs = {
-        "spacy": ProcessorConfig(enabled=True)
+        "spacy": ProcessorConfig(enabled=True),
+        "natasha": ProcessorConfig(enabled=True),
+        "stanza": ProcessorConfig(enabled=True)  # Need 2+ for ensemble, provide 3
     }
 
     # Act
-    with patch('app.services.nlp.components.processor_registry.EnhancedSpacyProcessor') as MockSpacy:
-        mock_spacy = AsyncMock()
+    with patch('app.services.enhanced_nlp_system.EnhancedSpacyProcessor') as MockSpacy, \
+         patch('app.services.natasha_processor.EnhancedNatashaProcessor') as MockNatasha, \
+         patch('app.services.stanza_processor.EnhancedStanzaProcessor') as MockStanza:
+        mock_spacy = Mock()
         mock_spacy.load_model = AsyncMock()
         mock_spacy.is_available = Mock(return_value=False)  # Not available
         MockSpacy.return_value = mock_spacy
 
+        mock_natasha = Mock()
+        mock_natasha.load_model = AsyncMock()
+        mock_natasha.is_available = Mock(return_value=True)
+        MockNatasha.return_value = mock_natasha
+
+        mock_stanza = Mock()
+        mock_stanza.load_model = AsyncMock()
+        mock_stanza.is_available = Mock(return_value=True)
+        MockStanza.return_value = mock_stanza
+
         await registry._initialize_processors()
 
     # Assert
-    assert "spacy" not in registry.processors  # Should not be added
+    assert "spacy" not in registry.processors  # Should not be added (unavailable)
+    assert "natasha" in registry.processors  # Should be added
+    assert "stanza" in registry.processors  # Should be added
 
 
 @pytest.mark.asyncio
@@ -205,17 +221,33 @@ async def test_initialize_processors_handles_exception():
     # Arrange
     registry = ProcessorRegistry()
     registry.processor_configs = {
-        "spacy": ProcessorConfig(enabled=True)
+        "spacy": ProcessorConfig(enabled=True),
+        "natasha": ProcessorConfig(enabled=True),
+        "stanza": ProcessorConfig(enabled=True)  # Need 2+ for ensemble, provide 3
     }
 
     # Act
-    with patch('app.services.nlp.components.processor_registry.EnhancedSpacyProcessor') as MockSpacy:
+    with patch('app.services.enhanced_nlp_system.EnhancedSpacyProcessor') as MockSpacy, \
+         patch('app.services.natasha_processor.EnhancedNatashaProcessor') as MockNatasha, \
+         patch('app.services.stanza_processor.EnhancedStanzaProcessor') as MockStanza:
         MockSpacy.side_effect = Exception("Failed to initialize")
+
+        mock_natasha = Mock()
+        mock_natasha.load_model = AsyncMock()
+        mock_natasha.is_available = Mock(return_value=True)
+        MockNatasha.return_value = mock_natasha
+
+        mock_stanza = Mock()
+        mock_stanza.load_model = AsyncMock()
+        mock_stanza.is_available = Mock(return_value=True)
+        MockStanza.return_value = mock_stanza
 
         await registry._initialize_processors()
 
     # Assert
     assert "spacy" not in registry.processors  # Should not be added due to exception
+    assert "natasha" in registry.processors  # Should be added
+    assert "stanza" in registry.processors  # Should be added
 
 
 # ============================================================================
@@ -248,8 +280,8 @@ def test_get_processor_nonexistent():
     assert processor is None
 
 
-def test_get_enabled_processors():
-    """Тест получения списка enabled процессоров."""
+def test_get_all_processors():
+    """Тест получения списка всех процессоров."""
     # Arrange
     registry = ProcessorRegistry()
     registry.processors = {
@@ -259,139 +291,175 @@ def test_get_enabled_processors():
     }
 
     # Act
-    enabled = registry.get_enabled_processors()
+    all_processors = registry.get_all_processors()
 
     # Assert
-    assert len(enabled) == 3
-    assert "spacy" in enabled
-    assert "natasha" in enabled
-    assert "stanza" in enabled
+    assert len(all_processors) == 3
+    assert "spacy" in all_processors
+    assert "natasha" in all_processors
+    assert "stanza" in all_processors
 
 
-def test_get_enabled_processors_empty():
-    """Тест get_enabled_processors когда нет процессоров."""
+def test_get_all_processors_empty():
+    """Тест get_all_processors когда нет процессоров."""
     # Arrange
     registry = ProcessorRegistry()
 
     # Act
-    enabled = registry.get_enabled_processors()
+    all_processors = registry.get_all_processors()
 
     # Assert
-    assert enabled == []
+    assert all_processors == {}
 
 
 # ============================================================================
 # TESTS: Get Processor Status
 # ============================================================================
 
-def test_get_processor_status():
+def test_get_status():
     """Тест получения статуса всех процессоров."""
     # Arrange
     registry = ProcessorRegistry()
     registry.processor_configs = {
-        "spacy": ProcessorConfig(enabled=True),
-        "natasha": ProcessorConfig(enabled=False)
+        "spacy": ProcessorConfig(enabled=True)
     }
-    registry.processors = {"spacy": Mock()}
+    mock_processor = Mock()
+    mock_processor.processor_type.value = "spacy"
+    mock_processor.loaded = True
+    mock_processor.is_available = Mock(return_value=True)
+    mock_processor.get_performance_metrics = Mock(return_value={"f1_score": 0.85})
+    registry.processors = {"spacy": mock_processor}
 
     # Act
-    status = registry.get_processor_status()
+    status = registry.get_status()
 
     # Assert
-    assert "spacy" in status
-    assert status["spacy"]["loaded"] is True
-    assert status["spacy"]["enabled"] is True
-    assert "natasha" in status
-    assert status["natasha"]["loaded"] is False
-    assert status["natasha"]["enabled"] is False
+    assert "available_processors" in status
+    assert "processor_details" in status
+    assert "spacy" in status["available_processors"]
+    assert "spacy" in status["processor_details"]
+    assert status["processor_details"]["spacy"]["loaded"] is True
+    assert status["processor_details"]["spacy"]["available"] is True
 
 
-def test_get_processor_status_empty():
-    """Тест get_processor_status без процессоров."""
+def test_get_status_empty():
+    """Тест get_status без процессоров."""
     # Arrange
     registry = ProcessorRegistry()
 
     # Act
-    status = registry.get_processor_status()
+    status = registry.get_status()
 
     # Assert
-    assert status == {}
+    assert "available_processors" in status
+    assert "processor_details" in status
+    assert status["available_processors"] == []
+    assert status["processor_details"] == {}
 
 
 # ============================================================================
 # TESTS: Update Processor Config
 # ============================================================================
 
-def test_update_processor_config():
+@pytest.mark.asyncio
+async def test_update_processor_config():
     """Тест обновления конфигурации процессора."""
     # Arrange
     registry = ProcessorRegistry()
     registry.processor_configs["spacy"] = ProcessorConfig(weight=1.0)
 
+    # Mock processor
+    mock_processor = Mock()
+    mock_processor.load_model = AsyncMock()
+    registry.processors["spacy"] = mock_processor
+
+    # Mock settings manager
+    mock_settings = AsyncMock()
+    mock_settings.set_category_settings = AsyncMock()
+
     # Act
-    new_config = ProcessorConfig(weight=1.5, confidence_threshold=0.5)
-    registry.update_processor_config("spacy", new_config)
+    new_config = {"weight": 1.5, "confidence_threshold": 0.5}
+    result = await registry.update_processor_config("spacy", new_config, mock_settings)
 
     # Assert
+    assert result is True
     assert registry.processor_configs["spacy"].weight == 1.5
     assert registry.processor_configs["spacy"].confidence_threshold == 0.5
+    mock_settings.set_category_settings.assert_called_once()
+    mock_processor.load_model.assert_called_once()
 
 
-def test_update_processor_config_nonexistent():
+@pytest.mark.asyncio
+async def test_update_processor_config_nonexistent():
     """Тест обновления несуществующего процессора."""
     # Arrange
     registry = ProcessorRegistry()
 
-    # Act
-    new_config = ProcessorConfig(weight=1.5)
-    registry.update_processor_config("nonexistent", new_config)
+    # Mock settings manager
+    mock_settings = AsyncMock()
+    mock_settings.set_category_settings = AsyncMock()
 
-    # Assert
-    assert "nonexistent" in registry.processor_configs
-    assert registry.processor_configs["nonexistent"].weight == 1.5
+    # Act
+    new_config = {"weight": 1.5}
+    result = await registry.update_processor_config("nonexistent", new_config, mock_settings)
+
+    # Assert - should return False since processor doesn't exist
+    assert result is False
 
 
 # ============================================================================
-# TESTS: Health Check
+# TESTS: is_initialized
 # ============================================================================
 
-@pytest.mark.asyncio
-async def test_health_check_all_healthy():
-    """Тест health check когда все процессоры healthy."""
-    # Arrange
+def test_is_initialized_false_by_default():
+    """Тест что registry не инициализирован по умолчанию."""
+    # Arrange & Act
     registry = ProcessorRegistry()
-    mock_proc1 = AsyncMock()
-    mock_proc1.health_check = AsyncMock(return_value=True)
-    mock_proc2 = AsyncMock()
-    mock_proc2.health_check = AsyncMock(return_value=True)
-
-    registry.processors = {"proc1": mock_proc1, "proc2": mock_proc2}
-
-    # Act
-    health = await registry.health_check()
 
     # Assert
-    assert health["healthy"] is True
-    assert health["proc1"] is True
-    assert health["proc2"] is True
+    assert registry.is_initialized() is False
 
 
 @pytest.mark.asyncio
-async def test_health_check_some_unhealthy():
-    """Тест health check когда некоторые процессоры unhealthy."""
+async def test_is_initialized_true_after_initialize(mock_config_loader):
+    """Тест что registry инициализирован после initialize."""
     # Arrange
     registry = ProcessorRegistry()
-    mock_proc1 = AsyncMock()
-    mock_proc1.health_check = AsyncMock(return_value=True)
-    mock_proc2 = AsyncMock()
-    mock_proc2.health_check = AsyncMock(return_value=False)
-
-    registry.processors = {"proc1": mock_proc1, "proc2": mock_proc2}
 
     # Act
-    health = await registry.health_check()
+    with patch.object(registry, '_initialize_processors', new_callable=AsyncMock):
+        await registry.initialize(mock_config_loader)
 
     # Assert
-    assert health["healthy"] is False
-    assert health["proc1"] is True
-    assert health["proc2"] is False
+    assert registry.is_initialized() is True
+
+
+# ============================================================================
+# TESTS: get_processor_config
+# ============================================================================
+
+def test_get_processor_config_existing():
+    """Тест получения существующей конфигурации."""
+    # Arrange
+    registry = ProcessorRegistry()
+    config = ProcessorConfig(weight=1.5)
+    registry.processor_configs["spacy"] = config
+
+    # Act
+    result = registry.get_processor_config("spacy")
+
+    # Assert
+    assert result == config
+    assert result.weight == 1.5
+
+
+def test_get_processor_config_nonexistent():
+    """Тест получения несуществующей конфигурации."""
+    # Arrange
+    registry = ProcessorRegistry()
+
+    # Act
+    result = registry.get_processor_config("nonexistent")
+
+    # Assert
+    assert result is None

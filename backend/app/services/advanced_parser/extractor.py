@@ -8,7 +8,8 @@ Pipeline:
 1. ParagraphSegmenter - сегментация на параграфы с классификацией
 2. DescriptionBoundaryDetector - детектирование многопараграфных описаний
 3. MultiFactorConfidenceScorer - оценка качества описаний
-4. Фильтрация и ранжирование - отбор лучших описаний
+4. LLMDescriptionEnricher - семантическое обогащение (опционально)
+5. Фильтрация и ранжирование - отбор лучших описаний
 
 РЕВОЛЮЦИОННЫЕ ИЗМЕНЕНИЯ:
 - Фокус на ДЛИННЫЕ описания (500-3500 символов, приоритет 2000-3500)
@@ -18,14 +19,17 @@ Pipeline:
 """
 
 import time
+import logging
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Tuple
+from typing import List, Optional, Dict, Tuple, Any
 from datetime import datetime
 
 from .config import AdvancedParserConfig, DescriptionType, DEFAULT_CONFIG
 from .paragraph_segmenter import ParagraphSegmenter, Paragraph
 from .boundary_detector import DescriptionBoundaryDetector, CompleteDescription
 from .confidence_scorer import MultiFactorConfidenceScorer, ConfidenceScoreBreakdown
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -126,13 +130,25 @@ class AdvancedDescriptionExtractor:
     1. ParagraphSegmenter - сегментация текста
     2. DescriptionBoundaryDetector - детектирование границ
     3. MultiFactorConfidenceScorer - оценка качества
+    4. LLMDescriptionEnricher - семантическое обогащение (опционально)
 
     Предоставляет простой API для извлечения качественных описаний.
 
+    НОВИНКА: LLM Enrichment (опционально):
+    - Извлечение структурированных entities и attributes
+    - Source grounding для проверяемости
+    - Семантическое понимание контекста
+    - Graceful degradation при отсутствии API ключа
+
     Example:
-        >>> extractor = AdvancedDescriptionExtractor()
+        >>> # С LLM enrichment (требует API ключ)
+        >>> extractor = AdvancedDescriptionExtractor(enable_enrichment=True)
         >>> result = extractor.extract(chapter_text)
         >>> print(f"Найдено {result.passed_threshold} качественных описаний")
+        >>> print(f"Обогащено {result.statistics['enrichment']['total_enriched']} описаний")
+        >>>
+        >>> # Без LLM enrichment (базовая функциональность)
+        >>> extractor = AdvancedDescriptionExtractor(enable_enrichment=False)
         >>>
         >>> # Получить длинные описания (2000+ символов)
         >>> long_descs = result.get_long_descriptions(min_chars=2000)
@@ -141,12 +157,15 @@ class AdvancedDescriptionExtractor:
         >>> locations = result.get_by_type(DescriptionType.LOCATION)
     """
 
-    def __init__(self, config: Optional[AdvancedParserConfig] = None):
+    def __init__(
+        self, config: Optional[AdvancedParserConfig] = None, enable_enrichment: bool = True
+    ):
         """
         Инициализация экстрактора.
 
         Args:
             config: Конфигурация парсера (опционально)
+            enable_enrichment: Включить LLM enrichment (опционально, по умолчанию True)
         """
         self.config = config or DEFAULT_CONFIG
 
@@ -155,9 +174,29 @@ class AdvancedDescriptionExtractor:
         self.boundary_detector = DescriptionBoundaryDetector(self.config)
         self.confidence_scorer = MultiFactorConfidenceScorer(self.config)
 
+        # Инициализация LLM enricher (опционально, с graceful degradation)
+        self.enricher = None
+        if enable_enrichment:
+            try:
+                from ..llm_description_enricher import LLMDescriptionEnricher
+
+                self.enricher = LLMDescriptionEnricher()
+                if not self.enricher.is_available():
+                    logger.info(
+                        "LLM enricher не доступен (отсутствует API ключ или библиотека)"
+                    )
+                    self.enricher = None
+                else:
+                    logger.info("✅ LLM enricher успешно инициализирован")
+            except ImportError as e:
+                logger.warning(f"LLMDescriptionEnricher не найден, обогащение отключено: {e}")
+                self.enricher = None
+
         # Статистика работы
         self.total_extractions = 0
         self.total_processing_time = 0.0
+        self.total_enrichments = 0
+        self.total_enrichment_time = 0.0
 
     def extract(
         self,
@@ -172,8 +211,15 @@ class AdvancedDescriptionExtractor:
         1. Сегментация текста на параграфы
         2. Детектирование многопараграфных описаний
         3. Оценка качества каждого описания (5 факторов)
-        4. Фильтрация по порогу confidence
-        5. Ранжирование по приоритету
+        4. LLM обогащение (опционально, только для score > 0.6)
+        5. Фильтрация по порогу confidence
+        6. Ранжирование по приоритету
+
+        LLM Enrichment (если включен):
+        - Применяется только к описаниям с overall_score >= 0.6
+        - Извлекает структурированные entities и attributes
+        - Добавляет metadata с source grounding
+        - Gracefully degrades если API недоступен
 
         Args:
             text: Исходный текст для обработки
@@ -204,6 +250,18 @@ class AdvancedDescriptionExtractor:
         for description in complete_descriptions:
             score_breakdown = self.confidence_scorer.score(description)
             scored_descriptions.append((description, score_breakdown))
+
+        # Этап 3.5: Применить LLM обогащение (опционально)
+        # Обогащаем только описания с score > 0.6 для экономии API вызовов
+        if self.enricher and self.enricher.is_available():
+            for description, score in scored_descriptions:
+                if score.overall_score >= 0.6:
+                    enrichment_data = self._enrich_description(description, score)
+                    if enrichment_data:
+                        # Добавить обогащенные данные в metadata описания
+                        if not hasattr(description, "enrichment_metadata"):
+                            description.enrichment_metadata = {}
+                        description.enrichment_metadata.update(enrichment_data)
 
         # Этап 4: Фильтрация по порогу confidence
         if min_confidence is not None:
@@ -319,6 +377,11 @@ class AdvancedDescriptionExtractor:
                 "paragraphs": {"total": 0},
                 "descriptions": {"total": 0},
                 "scores": {},
+                "enrichment": {
+                    "enabled": self.enricher is not None,
+                    "total_enriched": 0,
+                    "avg_enrichment_time": 0,
+                },
             },
             processing_time=processing_time,
             metadata=metadata or {},
@@ -355,6 +418,66 @@ class AdvancedDescriptionExtractor:
 
         # Объединить: сначала приоритетные
         return priority_descs + other_descs
+
+    def _enrich_description(
+        self, description: CompleteDescription, score: ConfidenceScoreBreakdown
+    ) -> Dict[str, Any]:
+        """
+        Применить LLM обогащение к описанию.
+
+        Использует LangExtract для извлечения структурированной информации
+        из описания (entities, attributes, semantic data).
+
+        Args:
+            description: Полное описание для обогащения
+            score: Оценка качества с типом описания
+
+        Returns:
+            Словарь с обогащенными данными или пустой словарь при ошибке
+        """
+        if not self.enricher or not self.enricher.is_available():
+            return {}
+
+        try:
+            enrichment_start = time.time()
+
+            # Выбрать метод обогащения по типу описания
+            enriched = None
+            if score.description_type == DescriptionType.LOCATION:
+                enriched = self.enricher.enrich_location_description(description.text)
+            elif score.description_type == DescriptionType.CHARACTER:
+                enriched = self.enricher.enrich_character_description(description.text)
+            elif score.description_type == DescriptionType.ATMOSPHERE:
+                enriched = self.enricher.enrich_atmosphere_description(description.text)
+            else:
+                logger.warning(f"Unknown description type: {score.description_type}")
+                return {}
+
+            # Обновить статистику времени обогащения
+            enrichment_time = time.time() - enrichment_start
+            self.total_enrichment_time += enrichment_time
+
+            if enriched:
+                self.total_enrichments += 1
+                logger.debug(
+                    f"✅ Enriched {score.description_type.value} description "
+                    f"in {enrichment_time:.2f}s (confidence: {enriched.confidence:.2f})"
+                )
+                return {
+                    "llm_enriched": True,
+                    "extracted_entities": enriched.extracted_entities,
+                    "attributes": enriched.attributes,
+                    "confidence": enriched.confidence,
+                    "source_spans": enriched.source_spans or [],
+                    "enrichment_time": enrichment_time,
+                }
+            else:
+                logger.debug("Enrichment returned None (no data extracted)")
+                return {}
+
+        except Exception as e:
+            logger.warning(f"Enrichment failed for description: {e}")
+            return {}
 
     def _collect_statistics(
         self,
@@ -404,10 +527,27 @@ class AdvancedDescriptionExtractor:
             elif 100 <= desc.char_length < 500:
                 length_distribution["short (100-500)"] += 1
 
+        # Статистика обогащения
+        enrichment_stats = {
+            "enabled": self.enricher is not None,
+            "total_enriched": sum(
+                1
+                for desc, _ in filtered_descriptions
+                if hasattr(desc, "enrichment_metadata")
+                and desc.enrichment_metadata.get("llm_enriched", False)
+            ),
+            "avg_enrichment_time": (
+                self.total_enrichment_time / self.total_enrichments
+                if self.total_enrichments > 0
+                else 0
+            ),
+        }
+
         return {
             "paragraphs": para_stats,
             "descriptions": boundary_stats,
             "scores": score_stats,
+            "enrichment": enrichment_stats,
             "filtered": {
                 "total": len(filtered_descriptions),
                 "length_distribution": length_distribution,
@@ -435,6 +575,17 @@ class AdvancedDescriptionExtractor:
                 if self.total_extractions > 0
                 else 0
             ),
+            "enrichment": {
+                "enabled": self.enricher is not None,
+                "available": self.enricher.is_available() if self.enricher else False,
+                "total_enrichments": self.total_enrichments,
+                "total_enrichment_time": self.total_enrichment_time,
+                "avg_enrichment_time": (
+                    self.total_enrichment_time / self.total_enrichments
+                    if self.total_enrichments > 0
+                    else 0
+                ),
+            },
             "config": {
                 "min_char_length": self.config.min_char_length,
                 "max_char_length": self.config.max_char_length,
@@ -447,3 +598,5 @@ class AdvancedDescriptionExtractor:
         """Сбросить глобальную статистику."""
         self.total_extractions = 0
         self.total_processing_time = 0.0
+        self.total_enrichments = 0
+        self.total_enrichment_time = 0.0

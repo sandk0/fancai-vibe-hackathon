@@ -1,24 +1,18 @@
 """
 Улучшенный Natasha процессор для русскоязычной литературы.
 Natasha особенно эффективна для русского языка и может найти описания, которые пропускает spaCy.
+
+Note: Natasha is imported dynamically to support lite deployments
+that use only LangExtract for parsing.
 """
 
-from natasha import (
-    Segmenter,
-    MorphVocab,
-    NewsEmbedding,
-    NewsMorphTagger,
-    NewsNERTagger,
-    NewsSyntaxParser,
-    Doc,
-    PER,
-    LOC,
-    ORG,
-)
 import re
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import logging
+
+# Dynamic imports - will be loaded lazily
+natasha_components = None  # Dict with all natasha components
 
 from .enhanced_nlp_system import EnhancedNLPProcessor, ProcessorConfig, NLPProcessorType
 from ..models.description import DescriptionType
@@ -82,29 +76,63 @@ class EnhancedNatashaProcessor(EnhancedNLPProcessor):
 
     async def load_model(self):
         """Загружает компоненты Natasha."""
+        global natasha_components
+
         try:
             logger.info("Loading Natasha components...")
 
+            # Dynamic import of natasha
+            if natasha_components is None:
+                try:
+                    from natasha import (
+                        Segmenter,
+                        MorphVocab,
+                        NewsEmbedding,
+                        NewsMorphTagger,
+                        NewsNERTagger,
+                        NewsSyntaxParser,
+                        Doc,
+                        PER,
+                        LOC,
+                        ORG,
+                    )
+                    natasha_components = {
+                        'Segmenter': Segmenter,
+                        'MorphVocab': MorphVocab,
+                        'NewsEmbedding': NewsEmbedding,
+                        'NewsMorphTagger': NewsMorphTagger,
+                        'NewsNERTagger': NewsNERTagger,
+                        'NewsSyntaxParser': NewsSyntaxParser,
+                        'Doc': Doc,
+                        'PER': PER,
+                        'LOC': LOC,
+                        'ORG': ORG,
+                    }
+                except ImportError:
+                    logger.warning("Natasha not installed - NatashaProcessor unavailable")
+                    self.loaded = False
+                    return
+
             # Базовые компоненты
-            self.segmenter = Segmenter()
-            self.morph_vocab = MorphVocab()
+            self.segmenter = natasha_components['Segmenter']()
+            self.morph_vocab = natasha_components['MorphVocab']()
 
             # Embeddings и теггеры
             if self.natasha_config.get("enable_morphology", True):
-                self.emb = NewsEmbedding()
-                self.morph_tagger = NewsMorphTagger(self.emb)
+                self.emb = natasha_components['NewsEmbedding']()
+                self.morph_tagger = natasha_components['NewsMorphTagger'](self.emb)
 
             if self.natasha_config.get("enable_syntax", True):
                 if not self.emb:  # Syntax parser also uses NewsEmbedding
-                    self.emb = NewsEmbedding()
-                self.syntax_parser = NewsSyntaxParser(self.emb)
+                    self.emb = natasha_components['NewsEmbedding']()
+                self.syntax_parser = natasha_components['NewsSyntaxParser'](self.emb)
 
             if self.natasha_config.get("enable_ner", True):
                 if (
                     not self.emb
                 ):  # Если морфология отключена, всё равно нужны embeddings для NER
-                    self.emb = NewsEmbedding()
-                self.ner_tagger = NewsNERTagger(self.emb)
+                    self.emb = natasha_components['NewsEmbedding']()
+                self.ner_tagger = natasha_components['NewsNERTagger'](self.emb)
 
             # Устанавливаем model для базового класса
             self.model = self.segmenter  # Используем segmenter как индикатор загрузки
@@ -119,14 +147,16 @@ class EnhancedNatashaProcessor(EnhancedNLPProcessor):
         self, text: str, chapter_id: str = None
     ) -> List[Dict[str, Any]]:
         """Извлекает описания используя Natasha анализ."""
+        global natasha_components
+
         start_time = datetime.now()
 
-        if not self.is_available():
+        if not self.is_available() or natasha_components is None:
             return []
 
         try:
             cleaned_text = self._clean_text(text)
-            doc = Doc(cleaned_text)
+            doc = natasha_components['Doc'](cleaned_text)
 
             # Сегментация на предложения и токены
             doc.segment(self.segmenter)
@@ -175,10 +205,19 @@ class EnhancedNatashaProcessor(EnhancedNLPProcessor):
 
     async def _extract_ner_descriptions(self, doc) -> List[Dict[str, Any]]:
         """Извлекает описания на основе именованных сущностей Natasha."""
+        global natasha_components
+
         descriptions = []
+
+        if natasha_components is None:
+            return descriptions
 
         # Запускаем NER
         doc.tag_ner(self.ner_tagger)
+
+        PER = natasha_components['PER']
+        LOC = natasha_components['LOC']
+        ORG = natasha_components['ORG']
 
         for span in doc.spans:
             if span.type not in [PER, LOC, ORG]:

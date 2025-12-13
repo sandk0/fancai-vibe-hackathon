@@ -1,6 +1,9 @@
 """
 NLP Model Cache Manager
 Optimizes memory usage by sharing models between processes
+
+Note: spaCy is imported dynamically to support lite deployments
+that use only LangExtract for parsing.
 """
 
 import gc
@@ -8,10 +11,12 @@ import logging
 import tempfile
 import time
 from pathlib import Path
-from typing import Optional, Dict, Any
-import spacy
-from spacy.language import Language
+from typing import Optional, Dict, Any, TYPE_CHECKING
 import threading
+
+# Dynamic import for spacy - not required in lite mode
+spacy = None
+Language = None  # Type alias, will be set dynamically
 
 logger = logging.getLogger(__name__)
 
@@ -34,19 +39,34 @@ class NLPModelCache:
 
     def __init__(self):
         if not hasattr(self, "initialized"):
-            self.models: Dict[str, Language] = {}
+            self.models: Dict[str, Any] = {}  # Language type when spacy is loaded
             self.model_stats: Dict[str, Dict[str, Any]] = {}
             self.cache_dir = Path(tempfile.gettempdir()) / "nlp_cache"
             self.cache_dir.mkdir(exist_ok=True)
             self.max_models = 3  # Max models in memory
             self.model_ttl = 3600  # 1 hour TTL
             self.initialized = True
+            self._spacy_available = None  # Lazy check
             logger.info("✅ NLP Model Cache initialized")
 
-    def get_model(self, model_name: str = "ru_core_news_lg") -> Language:
+    def get_model(self, model_name: str = "ru_core_news_lg") -> Any:
         """
-        Get or load a spaCy model with caching
+        Get or load a spaCy model with caching.
+        Returns None if spaCy is not available.
         """
+        global spacy
+
+        # Dynamic import of spacy
+        if spacy is None:
+            try:
+                import spacy as _spacy
+                spacy = _spacy
+                self._spacy_available = True
+            except ImportError:
+                logger.warning("spaCy not installed - NLP cache unavailable")
+                self._spacy_available = False
+                return None
+
         # Check if model is already loaded
         if model_name in self.models:
             self._update_stats(model_name, "hit")
@@ -202,7 +222,7 @@ class NLPModelCache:
         elif event == "evict":
             stats["evictions"] += 1
 
-    def _save_to_disk_cache(self, model_name: str, model: Language):
+    def _save_to_disk_cache(self, model_name: str, model: Any):
         """
         Save model to disk cache (not implemented for spaCy models)
         spaCy models are already cached by the library
@@ -211,7 +231,7 @@ class NLPModelCache:
         # This is a placeholder for future optimization
         pass
 
-    def _load_from_disk_cache(self, model_name: str) -> Optional[Language]:
+    def _load_from_disk_cache(self, model_name: str) -> Optional[Any]:
         """
         Load model from disk cache (not implemented for spaCy models)
         """

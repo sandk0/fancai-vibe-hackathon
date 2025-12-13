@@ -18,17 +18,18 @@ from ...core.exceptions import ParsingStartException, ParsingStatusException
 from ...models.user import User
 from ...models.book import Book
 from ...core.tasks import process_book_task
+from ...schemas.responses import BookProcessingResponse, ParsingStatusResponse
 
 
 router = APIRouter()
 
 
-@router.post("/{book_id}/process")
+@router.post("/{book_id}/process", response_model=BookProcessingResponse)
 async def process_book_descriptions(
     book: Book = Depends(get_user_book),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
+) -> BookProcessingResponse:
     """
     Запускает обработку книги для извлечения описаний.
 
@@ -129,12 +130,12 @@ async def process_book_descriptions(
         raise ParsingStartException(str(e))
 
 
-@router.get("/{book_id}/parsing-status")
+@router.get("/{book_id}/parsing-status", response_model=ParsingStatusResponse)
 async def get_parsing_status(
     book: Book = Depends(get_user_book),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
+) -> ParsingStatusResponse:
     """
     Получает статус парсинга книги.
 

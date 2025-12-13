@@ -20,6 +20,15 @@ from ..models.book import Book
 from ..models.chapter import Chapter
 from ..models.description import Description, DescriptionType
 from ..models.image import GeneratedImage
+from ..schemas.responses.images import (
+    ImageGenerationStatusResponse,
+    UserImageStatsResponse,
+    ImageGenerationSuccessResponse,
+    QueueStats,
+    UserGenerationInfo,
+    APIProviderInfo,
+)
+from ..schemas.responses import ImageGenerationTaskResponse
 
 
 router = APIRouter()
@@ -44,55 +53,87 @@ class BatchGenerationRequest(BaseModel):
     description_types: Optional[List[DescriptionType]] = None
 
 
-@router.get("/images/generation/status")
+@router.get(
+    "/images/generation/status",
+    response_model=ImageGenerationStatusResponse,
+    summary="Get image generation service status",
+    description="Returns current status of image generation service including queue stats, user quota, and API info"
+)
 async def get_generation_status(
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> ImageGenerationStatusResponse:
     """
     Получение статуса системы генерации изображений.
 
+    Включает:
+    - Статус сервиса (operational, degraded, down)
+    - Статистику очереди генерации
+    - Информацию о квоте пользователя
+    - Информацию об API провайдере
+
+    Args:
+        current_user: Текущий авторизованный пользователь
+
     Returns:
-        Информация о статусе генерации и очереди
+        ImageGenerationStatusResponse: Полная информация о статусе генерации
     """
     stats = await image_generator_service.get_generation_stats()
 
-    return {
-        "status": "operational",
-        "queue_stats": stats,
-        "user_info": {
-            "id": str(current_user.id),
-            "can_generate": current_user.is_active,
-        },
-        "api_info": {
-            "provider": "pollinations.ai",
-            "supported_formats": ["PNG"],
-            "max_resolution": "1024x768",
-            "estimated_time_per_image": "10-30 seconds",
-        },
-    }
+    # Map service stats to QueueStats
+    queue_stats = QueueStats(
+        pending_tasks=stats.get("queue_size", 0),
+        processing_tasks=1 if stats.get("is_processing", False) else 0,
+        completed_today=0,  # TODO: implement tracking
+        failed_today=0,  # TODO: implement tracking
+    )
+
+    # User generation info
+    user_info = UserGenerationInfo(
+        id=current_user.id,
+        can_generate=current_user.is_active,
+        remaining_quota=None,  # None = unlimited for now
+    )
+
+    # API provider info
+    api_info = APIProviderInfo(
+        provider="pollinations.ai",
+        supported_formats=["PNG"],
+        max_resolution="1024x768",
+        estimated_time_per_image="10-30 seconds",
+    )
+
+    return ImageGenerationStatusResponse(
+        status="operational",
+        queue_stats=queue_stats,
+        user_info=user_info,
+        api_info=api_info,
+    )
 
 
-@router.get("/images/user/stats")
+@router.get(
+    "/images/user/stats",
+    response_model=UserImageStatsResponse,
+    summary="Get user's image generation statistics",
+    description="Returns statistics about generated images and found descriptions for the current user"
+)
 async def get_user_images_stats(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
+) -> UserImageStatsResponse:
     """
     Получение статистики изображений и описаний пользователя.
 
     Подсчитывает:
     - Реальное количество сгенерированных изображений
     - Общее количество найденных описаний
+    - Распределение изображений по типам описаний
 
     Args:
         current_user: Текущий пользователь
         db: Сессия базы данных
 
     Returns:
-        {
-            "total_images_generated": 42,
-            "total_descriptions_found": 156
-        }
+        UserImageStatsResponse: Статистика генерации изображений пользователя
     """
     # Подсчитываем реальное количество сгенерированных изображений
     images_count_query = await db.execute(
@@ -113,32 +154,62 @@ async def get_user_images_stats(
     )
     total_descriptions = descriptions_count_query.scalar() or 0
 
-    return {
-        "total_images_generated": total_images,
-        "total_descriptions_found": total_descriptions,
+    # Подсчитываем изображения по типам описаний
+    images_by_type_query = await db.execute(
+        select(Description.type, func.count(GeneratedImage.id))
+        .join(GeneratedImage, GeneratedImage.description_id == Description.id)
+        .join(Chapter, Description.chapter_id == Chapter.id)
+        .join(Book, Chapter.book_id == Book.id)
+        .where(Book.user_id == current_user.id)
+        .group_by(Description.type)
+    )
+
+    images_by_type = {
+        desc_type.value: count
+        for desc_type, count in images_by_type_query.fetchall()
     }
 
+    return UserImageStatsResponse(
+        total_images_generated=total_images,
+        total_descriptions_found=total_descriptions,
+        images_by_type=images_by_type,
+    )
 
-@router.post("/images/generate/description/{description_id}")
+
+@router.post(
+    "/images/generate/description/{description_id}",
+    response_model=ImageGenerationSuccessResponse,
+    status_code=201,
+    summary="Generate image for description",
+    description="Generates an AI image for a specific book description"
+)
 async def generate_image_for_description(
     description_id: UUID,
     params: ImageGenerationParams,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
+) -> ImageGenerationSuccessResponse:
     """
     Генерирует изображение для конкретного описания.
 
+    Синхронно генерирует изображение через pollinations.ai и
+    сохраняет результат в базу данных.
+
     Args:
         description_id: ID описания из базы данных
-        params: Параметры генерации
+        params: Параметры генерации (style_prompt, width, height, etc.)
         background_tasks: Фоновые задачи для асинхронной обработки
         current_user: Текущий пользователь
         db: Сессия базы данных
 
     Returns:
-        Информация о запущенной генерации
+        ImageGenerationSuccessResponse: Информация о сгенерированном изображении
+
+    Raises:
+        HTTPException 404: Description not found or access denied
+        HTTPException 409: Image already exists for this description
+        HTTPException 500: Image generation failed
     """
     # Получаем описание
     description_result = await db.execute(
@@ -207,15 +278,15 @@ async def generate_image_for_description(
         await db.commit()
         await db.refresh(generated_image)
 
-        return {
-            "image_id": str(generated_image.id),
-            "description_id": str(description.id),
-            "image_url": result.image_url,
-            "generation_time": result.generation_time_seconds,
-            "status": "completed",
-            "created_at": generated_image.created_at.isoformat(),
-            "message": "Image generated successfully",
-        }
+        return ImageGenerationSuccessResponse(
+            image_id=generated_image.id,
+            description_id=description.id,
+            image_url=result.image_url,
+            generation_time=result.generation_time_seconds,
+            status="completed",
+            created_at=generated_image.created_at.isoformat(),
+            message="Image generated successfully",
+        )
 
     except HTTPException:
         raise

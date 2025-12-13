@@ -10,6 +10,12 @@ import redis.asyncio as redis
 
 from ...core.auth import get_current_admin_user
 from ...models.user import User
+from ...schemas.responses.admin import (
+    ParsingSettingsUpdateResponse,
+    ParsingQueueStatusResponse,
+    ClearQueueResponse,
+    UnlockParsingResponse,
+)
 
 router = APIRouter()
 
@@ -54,10 +60,10 @@ async def get_parsing_settings(admin_user: User = Depends(get_current_admin_user
     )
 
 
-@router.put("/parsing-settings")
+@router.put("/parsing-settings", response_model=ParsingSettingsUpdateResponse)
 async def update_parsing_settings(
     settings: ParsingSettings, admin_user: User = Depends(get_current_admin_user)
-):
+) -> ParsingSettingsUpdateResponse:
     """Update parsing queue configuration."""
 
     # Validate settings
@@ -93,11 +99,14 @@ async def update_parsing_settings(
         "parsing", "retry_attempts", settings.retry_attempts
     )
 
-    return {"message": "Parsing settings updated successfully", "settings": settings}
+    return ParsingSettingsUpdateResponse(
+        message="Parsing settings updated successfully",
+        settings=settings.model_dump()
+    )
 
 
-@router.get("/queue-status")
-async def get_queue_status(admin_user: User = Depends(get_current_admin_user)):
+@router.get("/queue-status", response_model=ParsingQueueStatusResponse)
+async def get_queue_status(admin_user: User = Depends(get_current_admin_user)) -> ParsingQueueStatusResponse:
     """Get detailed parsing queue status."""
 
     try:
@@ -111,24 +120,24 @@ async def get_queue_status(admin_user: User = Depends(get_current_admin_user)):
 
         await redis_client.close()
 
-        return {
-            "is_parsing_active": lock_data is not None,
-            "current_parsing": lock_data,
-            "queue_size": len(queue_items),
-            "queue_items": queue_items[:10],  # Show first 10 items
-        }
+        return ParsingQueueStatusResponse(
+            is_parsing_active=lock_data is not None,
+            current_parsing=lock_data,
+            queue_size=len(queue_items),
+            queue_items=queue_items[:10],  # Show first 10 items
+        )
     except Exception as e:
-        return {
-            "is_parsing_active": False,
-            "current_parsing": None,
-            "queue_size": 0,
-            "queue_items": [],
-            "error": str(e),
-        }
+        return ParsingQueueStatusResponse(
+            is_parsing_active=False,
+            current_parsing=None,
+            queue_size=0,
+            queue_items=[],
+            error=str(e),
+        )
 
 
-@router.post("/clear-queue")
-async def clear_parsing_queue(admin_user: User = Depends(get_current_admin_user)):
+@router.post("/clear-queue", response_model=ClearQueueResponse)
+async def clear_parsing_queue(admin_user: User = Depends(get_current_admin_user)) -> ClearQueueResponse:
     """Clear all items from parsing queue (emergency function)."""
 
     try:
@@ -139,13 +148,13 @@ async def clear_parsing_queue(admin_user: User = Depends(get_current_admin_user)
 
         await redis_client.close()
 
-        return {"message": "Parsing queue cleared successfully"}
+        return ClearQueueResponse(message="Parsing queue cleared successfully")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to clear queue: {str(e)}")
 
 
-@router.post("/unlock-parsing")
-async def unlock_parsing(admin_user: User = Depends(get_current_admin_user)):
+@router.post("/unlock-parsing", response_model=UnlockParsingResponse)
+async def unlock_parsing(admin_user: User = Depends(get_current_admin_user)) -> UnlockParsingResponse:
     """Force unlock parsing (emergency function)."""
 
     try:
@@ -156,7 +165,7 @@ async def unlock_parsing(admin_user: User = Depends(get_current_admin_user)):
 
         await redis_client.close()
 
-        return {"message": "Parsing lock removed successfully"}
+        return UnlockParsingResponse(message="Parsing lock removed successfully")
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to unlock parsing: {str(e)}"

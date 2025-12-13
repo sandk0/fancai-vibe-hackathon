@@ -93,6 +93,23 @@ def sample_deeppavlov_settings():
 
 
 @pytest.fixture
+def sample_gliner_settings():
+    """Sample GLiNER configuration из settings manager."""
+    return {
+        "enabled": True,
+        "weight": 1.0,
+        "confidence_threshold": 0.3,
+        "min_description_length": 50,
+        "max_description_length": 1000,
+        "min_word_count": 10,
+        "model_name": "urchade/gliner_medium-v2.1",
+        "threshold": 0.3,
+        "max_length": 384,
+        "batch_size": 8
+    }
+
+
+@pytest.fixture
 def sample_global_settings():
     """Sample глобальных NLP settings."""
     return {
@@ -452,6 +469,7 @@ class TestConfigLoaderIntegrationScenarios:
         self, config_loader, mock_settings_manager,
         sample_spacy_settings, sample_natasha_settings,
         sample_stanza_settings, sample_deeppavlov_settings,
+        sample_gliner_settings,
         sample_global_settings
     ):
         """Тест полного pipeline loading processor и global configs."""
@@ -463,6 +481,7 @@ class TestConfigLoaderIntegrationScenarios:
                 "nlp_natasha": sample_natasha_settings,
                 "nlp_stanza": sample_stanza_settings,
                 "nlp_deeppavlov": sample_deeppavlov_settings,
+                "nlp_gliner": sample_gliner_settings,
                 "nlp_global": sample_global_settings
             }
             return settings_map.get(category, {})
@@ -474,7 +493,7 @@ class TestConfigLoaderIntegrationScenarios:
         global_settings = await config_loader.load_global_settings()
 
         # Verify both loaded
-        assert len(processor_configs) == 4
+        assert len(processor_configs) == 5  # spacy, natasha, stanza, deeppavlov, gliner
         assert global_settings["ensemble_voting_threshold"] == 0.6
 
     @pytest.mark.asyncio

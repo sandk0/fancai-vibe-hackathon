@@ -15,30 +15,39 @@ from pathlib import Path
 
 from ...services.book_parser import book_parser
 from ...services.nlp_processor import nlp_processor
+from ...schemas.responses.books_validation import (
+    ParserStatusResponse,
+    BookFileValidationResponse,
+    BookParsePreviewResponse,
+    ValidationResult,
+    ChapterPreview,
+    BookMetadataPreview,
+    BookStatisticsPreview,
+)
 
 
 router = APIRouter()
 
 
-@router.get("/parser-status")
-async def get_parser_status() -> Dict[str, Any]:
+@router.get("/parser-status", response_model=ParserStatusResponse)
+async def get_parser_status() -> ParserStatusResponse:
     """
     Проверяет статус парсера книг.
 
     Returns:
         Информация о поддерживаемых форматах и доступности парсера
     """
-    return {
-        "supported_formats": book_parser.get_supported_formats(),
-        "nlp_available": nlp_processor.is_available(),
-        "parser_ready": len(book_parser.get_supported_formats()) > 0,
-        "max_file_size_mb": 50,
-        "message": f"Book parser supports: {', '.join(book_parser.get_supported_formats())}",
-    }
+    return ParserStatusResponse(
+        supported_formats=book_parser.get_supported_formats(),
+        nlp_available=nlp_processor.is_available(),
+        parser_ready=len(book_parser.get_supported_formats()) > 0,
+        max_file_size_mb=50,
+        message=f"Book parser supports: {', '.join(book_parser.get_supported_formats())}",
+    )
 
 
-@router.post("/validate-file")
-async def validate_book_file(file: UploadFile = File(...)) -> Dict[str, Any]:
+@router.post("/validate-file", response_model=BookFileValidationResponse)
+async def validate_book_file(file: UploadFile = File(...)) -> BookFileValidationResponse:
     """
     Валидирует загруженный файл книги без сохранения.
 
@@ -81,17 +90,17 @@ async def validate_book_file(file: UploadFile = File(...)) -> Dict[str, Any]:
         # Валидируем файл
         validation_result = book_parser.validate_book_file(temp_file_path)
 
-        return {
-            "filename": file.filename,
-            "file_size_bytes": file_size,
-            "file_size_mb": round(file_size / (1024 * 1024), 2),
-            "validation": validation_result,
-            "message": (
+        return BookFileValidationResponse(
+            filename=file.filename,
+            file_size_bytes=file_size,
+            file_size_mb=round(file_size / (1024 * 1024), 2),
+            validation=ValidationResult(**validation_result),
+            message=(
                 "File validated successfully"
                 if validation_result["is_valid"]
                 else "File validation failed"
             ),
-        }
+        )
 
     finally:
         # Удаляем временный файл
@@ -101,8 +110,8 @@ async def validate_book_file(file: UploadFile = File(...)) -> Dict[str, Any]:
             pass
 
 
-@router.post("/parse-preview")
-async def parse_book_preview(file: UploadFile = File(...)) -> Dict[str, Any]:
+@router.post("/parse-preview", response_model=BookParsePreviewResponse)
+async def parse_book_preview(file: UploadFile = File(...)) -> BookParsePreviewResponse:
     """
     Парсит книгу и возвращает предварительный просмотр без сохранения в БД.
 
@@ -149,42 +158,42 @@ async def parse_book_preview(file: UploadFile = File(...)) -> Dict[str, Any]:
                 else chapter.content
             )
             chapters_preview.append(
-                {
-                    "number": chapter.number,
-                    "title": chapter.title,
-                    "content_preview": preview_text,
-                    "word_count": chapter.word_count,
-                    "estimated_reading_time_minutes": max(1, chapter.word_count // 200),
-                }
+                ChapterPreview(
+                    number=chapter.number,
+                    title=chapter.title,
+                    content_preview=preview_text,
+                    word_count=chapter.word_count,
+                    estimated_reading_time_minutes=max(1, chapter.word_count // 200),
+                )
             )
 
-        return {
-            "metadata": {
-                "title": parsed_book.metadata.title,
-                "author": parsed_book.metadata.author,
-                "language": parsed_book.metadata.language,
-                "genre": parsed_book.metadata.genre,
-                "description": (
+        return BookParsePreviewResponse(
+            metadata=BookMetadataPreview(
+                title=parsed_book.metadata.title,
+                author=parsed_book.metadata.author,
+                language=parsed_book.metadata.language,
+                genre=parsed_book.metadata.genre,
+                description=(
                     parsed_book.metadata.description[:1000] + "..."
                     if len(parsed_book.metadata.description) > 1000
                     else parsed_book.metadata.description
                 ),
-                "publisher": parsed_book.metadata.publisher,
-                "publish_date": parsed_book.metadata.publish_date,
-                "has_cover": parsed_book.metadata.cover_image_data is not None,
-            },
-            "statistics": {
-                "total_chapters": len(parsed_book.chapters),
-                "total_pages": parsed_book.total_pages,
-                "estimated_reading_time_hours": round(
+                publisher=parsed_book.metadata.publisher,
+                publish_date=parsed_book.metadata.publish_date,
+                has_cover=parsed_book.metadata.cover_image_data is not None,
+            ),
+            statistics=BookStatisticsPreview(
+                total_chapters=len(parsed_book.chapters),
+                total_pages=parsed_book.total_pages,
+                estimated_reading_time_hours=round(
                     parsed_book.estimated_reading_time / 60, 1
                 ),
-                "file_format": parsed_book.file_format,
-                "file_size_mb": round(file_size / (1024 * 1024), 2),
-            },
-            "chapters_preview": chapters_preview,
-            "message": f"Book parsed successfully: {len(parsed_book.chapters)} chapters found",
-        }
+                file_format=parsed_book.file_format,
+                file_size_mb=round(file_size / (1024 * 1024), 2),
+            ),
+            chapters_preview=chapters_preview,
+            message=f"Book parsed successfully: {len(parsed_book.chapters)} chapters found",
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error parsing book: {str(e)}")

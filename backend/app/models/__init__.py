@@ -10,6 +10,7 @@ from .chapter import Chapter
 from .description import Description
 from .image import GeneratedImage
 from .reading_session import ReadingSession
+from .reading_goal import ReadingGoal, GoalType, GoalPeriod
 from .feature_flag import FeatureFlag, FeatureFlagCategory
 
 __all__ = [
@@ -21,6 +22,9 @@ __all__ = [
     "Description",
     "GeneratedImage",
     "ReadingSession",
+    "ReadingGoal",
+    "GoalType",
+    "GoalPeriod",
     "FeatureFlag",
     "FeatureFlagCategory",
 ]

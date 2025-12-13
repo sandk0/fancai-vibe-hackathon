@@ -46,11 +46,16 @@ class ConfigLoader:
             deeppavlov_settings = await self._get_processor_settings("deeppavlov")
             deeppavlov_config = self._build_deeppavlov_config(deeppavlov_settings)
 
+            # GLiNER configuration (DeepPavlov replacement, zero-shot NER)
+            gliner_settings = await self._get_processor_settings("gliner")
+            gliner_config = self._build_gliner_config(gliner_settings)
+
             configs = {
                 "spacy": spacy_config,
                 "natasha": natasha_config,
                 "stanza": stanza_config,
-                "deeppavlov": deeppavlov_config,  # NEW!
+                "deeppavlov": deeppavlov_config,  # Blocked by dependency conflicts
+                "gliner": gliner_config,  # NEW! DeepPavlov replacement
             }
 
             logger.info(
@@ -136,7 +141,7 @@ class ConfigLoader:
         stanza_specific.update(settings.get("stanza_specific", {}))
 
         return ProcessorConfig(
-            enabled=settings.get("enabled", False),  # Disabled by default
+            enabled=settings.get("enabled", True),  # ✅ ACTIVATED (Session 6, 2025-11-23)
             weight=settings.get("weight", 0.8),
             confidence_threshold=settings.get("confidence_threshold", 0.5),
             custom_settings={"stanza": stanza_specific},
@@ -159,6 +164,32 @@ class ConfigLoader:
             max_description_length=settings.get("max_description_length", 1000),
             min_word_count=settings.get("min_word_count", 10),
             custom_settings={"deeppavlov": deeppavlov_specific},
+        )
+
+    def _build_gliner_config(self, settings: Dict[str, Any]) -> ProcessorConfig:
+        """Build GLiNER processor configuration (DeepPavlov replacement)."""
+        gliner_specific = {
+            "model_name": settings.get("model_name", "urchade/gliner_medium-v2.1"),
+            "threshold": settings.get("threshold", 0.3),
+            "max_length": settings.get("max_length", 384),
+            "batch_size": settings.get("batch_size", 8),
+            "zero_shot_mode": settings.get("zero_shot_mode", True),
+            "entity_types": settings.get("entity_types", [
+                "person", "location", "organization",
+                "object", "building", "place",
+                "character", "atmosphere"
+            ]),
+        }
+        gliner_specific.update(settings.get("gliner_specific", {}))
+
+        return ProcessorConfig(
+            enabled=settings.get("enabled", True),  # Enabled by default
+            weight=settings.get("weight", 1.0),  # Balanced weight (F1 0.90-0.95)
+            confidence_threshold=settings.get("confidence_threshold", 0.3),
+            min_description_length=settings.get("min_description_length", 50),
+            max_description_length=settings.get("max_description_length", 1000),
+            min_word_count=settings.get("min_word_count", 10),
+            custom_settings={"gliner": gliner_specific},
         )
 
     def _get_default_configs(self) -> Dict[str, ProcessorConfig]:
@@ -200,7 +231,9 @@ class ConfigLoader:
                 },
             ),
             "stanza": ProcessorConfig(
-                enabled=False, weight=0.8, custom_settings={"stanza": {}}
+                enabled=True,  # ✅ ACTIVATED (Session 6, 2025-11-23)
+                weight=0.8,
+                custom_settings={"stanza": {}}
             ),
             "deeppavlov": ProcessorConfig(
                 enabled=True,
@@ -210,6 +243,24 @@ class ConfigLoader:
                         "model_name": "ner_ontonotes_bert_mult",
                         "use_gpu": False,
                         "lazy_init": True,
+                    }
+                },
+            ),
+            "gliner": ProcessorConfig(
+                enabled=True,  # Enabled by default (DeepPavlov replacement)
+                weight=1.0,  # Balanced weight (F1 0.90-0.95)
+                custom_settings={
+                    "gliner": {
+                        "model_name": "urchade/gliner_medium-v2.1",
+                        "threshold": 0.3,
+                        "max_length": 384,
+                        "batch_size": 8,
+                        "zero_shot_mode": True,
+                        "entity_types": [
+                            "person", "location", "organization",
+                            "object", "building", "place",
+                            "character", "atmosphere"
+                        ],
                     }
                 },
             ),

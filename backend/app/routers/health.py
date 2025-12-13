@@ -413,7 +413,8 @@ async def deep_health_check(
     "/metrics",
     summary="Prometheus metrics endpoint",
     description="Экспортирует все метрики в формате Prometheus для scraping.",
-    response_class=Response,
+    response_class=Response,  # NOTE: Returns plain text, not JSON
+    tags=["prometheus", "metrics"],
 )
 async def metrics_endpoint(db: AsyncSession = Depends(get_database_session)):
     """

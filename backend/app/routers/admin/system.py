@@ -8,6 +8,10 @@ from pydantic import BaseModel
 from ...core.auth import get_current_admin_user
 from ...models.user import User
 from ...services.settings_manager import settings_manager
+from ...schemas.responses.admin import (
+    SystemSettingsUpdateResponse,
+    InitializeSettingsResponse,
+)
 
 router = APIRouter()
 
@@ -44,10 +48,10 @@ async def get_system_settings(admin_user: User = Depends(get_current_admin_user)
         )
 
 
-@router.put("/system-settings")
+@router.put("/system-settings", response_model=SystemSettingsUpdateResponse)
 async def update_system_settings(
     settings: SystemSettings, admin_user: User = Depends(get_current_admin_user)
-):
+) -> SystemSettingsUpdateResponse:
     """Update system settings."""
 
     try:
@@ -64,25 +68,28 @@ async def update_system_settings(
             "system", "enable_debug_mode", settings.enable_debug_mode
         )
 
-        return {"message": "System settings saved successfully", "settings": settings}
+        return SystemSettingsUpdateResponse(
+            message="System settings saved successfully",
+            settings=settings.model_dump()
+        )
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to update system settings: {str(e)}"
         )
 
 
-@router.post("/initialize-settings")
+@router.post("/initialize-settings", response_model=InitializeSettingsResponse)
 async def initialize_default_settings(
     admin_user: User = Depends(get_current_admin_user),
-):
+) -> InitializeSettingsResponse:
     """Initialize default settings in database."""
 
     try:
         success = await settings_manager.initialize_default_settings(force=False)
         if success:
-            return {"message": "Default settings initialized successfully"}
+            return InitializeSettingsResponse(message="Default settings initialized successfully")
         else:
-            return {"message": "Settings already exist, no changes made"}
+            return InitializeSettingsResponse(message="Settings already exist, no changes made")
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to initialize settings: {str(e)}"

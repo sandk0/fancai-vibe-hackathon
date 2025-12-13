@@ -510,6 +510,119 @@ class ValidationErrorResponse(BaseModel):
 
 
 # ============================================================================
+# IMPORTS FROM SUBMODULES (Phase 1.1-1.4 Type Safety)
+# ============================================================================
+
+# Progress responses
+from .progress import ReadingProgressDetailResponse
+
+# Chapter responses
+from .chapters import NavigationInfo, BookMinimalInfo, ChapterDetailResponse
+
+# Image responses (Phase 1.2)
+from .images import (
+    QueueStats,
+    UserGenerationInfo,
+    APIProviderInfo,
+    ImageGenerationStatusResponse,
+    UserImageStatsResponse,
+    ImageGenerationSuccessResponse,
+)
+
+# Description responses (Phase 1.2)
+from .descriptions import (
+    ChapterMinimalInfo,
+    NLPAnalysisResult,
+    ChapterDescriptionsResponse,
+    ChapterAnalysisPreview,
+    ChapterAnalysisResponse,
+)
+
+# Processing responses (Phase 1.3)
+from .processing import (
+    BookProcessingResponse,
+    ParsingStatusResponse,
+)
+
+# NLP Testing responses (Phase 1.3)
+from .nlp import (
+    ProcessorTestResult,
+    NLPTestChapterResponse,
+    NLPTestBookResponse,
+    NLPLibraryStatus,
+    NLPLibrariesTestResponse,
+)
+
+# Admin responses (Phase 1.3 + 1.4)
+from .admin import (
+    CacheStatsResponse,
+    CacheClearResponse,
+    QueueInfo,
+    QueueStatusResponse,
+    ParsingSettingsResponse,
+    CacheWarmResponse,
+    FeatureFlagBulkUpdateResponse,
+    # Phase 1.4 - NLP Settings
+    MultiNLPSettingsUpdateResponse,
+    NLPProcessorStatusResponse,
+    NLPProcessorTestResponse,
+    NLPProcessorInfoResponse,
+    # Phase 1.4 - Parsing Queue
+    ParsingSettingsUpdateResponse,
+    ParsingQueueStatusResponse,
+    ClearQueueResponse,
+    UnlockParsingResponse,
+    # Phase 1.4 - System Settings
+    SystemSettingsUpdateResponse,
+    InitializeSettingsResponse,
+)
+
+# Auth responses (Phase 1.1 + 1.4)
+from .auth import (
+    LogoutResponse,
+    # Phase 1.4 - Additional auth endpoints
+    CurrentUserResponse,
+    ProfileUpdateResponse,
+    AccountDeactivationResponse,
+)
+
+# User responses (Phase 1.1 + 1.4)
+from .users import (
+    UserStatistics,
+    UserProfileResponse,
+    UserUpdateResponse,
+    UsageInfo,
+    LimitsInfo,
+    WithinLimitsInfo,
+    SubscriptionDetailResponse,
+    # Phase 1.4 - Admin user endpoints
+    DatabaseTestResponse,
+    UserListItem,
+    PaginationInfo,
+    AdminUsersListResponse,
+    SystemHealth,
+    AdminStatisticsResponse,
+    ReadingStatisticsResponse,
+)
+
+# Books Validation responses (Phase 1.4)
+from .books_validation import (
+    ParserStatusResponse,
+    ValidationResult,
+    BookFileValidationResponse,
+    ChapterPreview,
+    BookMetadataPreview,
+    BookStatisticsPreview,
+    BookParsePreviewResponse,
+)
+
+# Health responses (Phase 1.4)
+from .health import (
+    PrometheusMetricsResponse,
+)
+
+
+# ============================================================================
 # EXPORTS
 # ============================================================================
 
@@ -552,4 +665,85 @@ __all__ = [
     # Errors
     "ErrorResponse",
     "ValidationErrorResponse",
+    # NEW: Phase 1.1 Type Safety - User schemas
+    "UserStatistics",
+    "UserProfileResponse",
+    "UserUpdateResponse",
+    "UsageInfo",
+    "LimitsInfo",
+    "WithinLimitsInfo",
+    "SubscriptionDetailResponse",
+    # NEW: Phase 1.1 Type Safety - Auth schemas
+    "LogoutResponse",
+    # NEW: Phase 1.1 Type Safety - Progress schemas
+    "ReadingProgressDetailResponse",
+    # NEW: Phase 1.1 Type Safety - Chapter schemas
+    "NavigationInfo",
+    "BookMinimalInfo",
+    "ChapterDetailResponse",
+    # NEW: Phase 1.2 Type Safety - Image schemas
+    "QueueStats",
+    "UserGenerationInfo",
+    "APIProviderInfo",
+    "ImageGenerationStatusResponse",
+    "UserImageStatsResponse",
+    "ImageGenerationSuccessResponse",
+    # NEW: Phase 1.2 Type Safety - Description schemas
+    "ChapterMinimalInfo",
+    "NLPAnalysisResult",
+    "ChapterDescriptionsResponse",
+    "ChapterAnalysisPreview",
+    "ChapterAnalysisResponse",
+    # NEW: Phase 1.3 Type Safety - Processing schemas
+    "BookProcessingResponse",
+    "ParsingStatusResponse",
+    # NEW: Phase 1.3 Type Safety - NLP Testing schemas
+    "ProcessorTestResult",
+    "NLPTestChapterResponse",
+    "NLPTestBookResponse",
+    "NLPLibraryStatus",
+    "NLPLibrariesTestResponse",
+    # NEW: Phase 1.3 Type Safety - Admin schemas
+    "CacheStatsResponse",
+    "CacheClearResponse",
+    "QueueInfo",
+    "QueueStatusResponse",
+    "ParsingSettingsResponse",
+    "CacheWarmResponse",
+    "FeatureFlagBulkUpdateResponse",
+    # NEW: Phase 1.4 Type Safety - NLP Settings
+    "MultiNLPSettingsUpdateResponse",
+    "NLPProcessorStatusResponse",
+    "NLPProcessorTestResponse",
+    "NLPProcessorInfoResponse",
+    # NEW: Phase 1.4 Type Safety - Parsing Queue
+    "ParsingSettingsUpdateResponse",
+    "ParsingQueueStatusResponse",
+    "ClearQueueResponse",
+    "UnlockParsingResponse",
+    # NEW: Phase 1.4 Type Safety - System Settings
+    "SystemSettingsUpdateResponse",
+    "InitializeSettingsResponse",
+    # NEW: Phase 1.4 Type Safety - Auth
+    "CurrentUserResponse",
+    "ProfileUpdateResponse",
+    "AccountDeactivationResponse",
+    # NEW: Phase 1.4 Type Safety - Users/Admin
+    "DatabaseTestResponse",
+    "UserListItem",
+    "PaginationInfo",
+    "AdminUsersListResponse",
+    "SystemHealth",
+    "AdminStatisticsResponse",
+    "ReadingStatisticsResponse",
+    # NEW: Phase 1.4 Type Safety - Books Validation
+    "ParserStatusResponse",
+    "ValidationResult",
+    "BookFileValidationResponse",
+    "ChapterPreview",
+    "BookMetadataPreview",
+    "BookStatisticsPreview",
+    "BookParsePreviewResponse",
+    # NEW: Phase 1.4 Type Safety - Health
+    "PrometheusMetricsResponse",
 ]

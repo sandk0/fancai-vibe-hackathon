@@ -10,6 +10,12 @@ import logging
 
 from ...core.auth import get_current_admin_user
 from ...models.user import User
+from ...schemas.responses.admin import (
+    MultiNLPSettingsUpdateResponse,
+    NLPProcessorStatusResponse,
+    NLPProcessorTestResponse,
+    NLPProcessorInfoResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -237,10 +243,10 @@ async def get_multi_nlp_settings(admin_user: User = Depends(get_current_admin_us
         return MultiNLPSettings()
 
 
-@router.put("/multi-nlp-settings")
+@router.put("/multi-nlp-settings", response_model=MultiNLPSettingsUpdateResponse)
 async def update_multi_nlp_settings(
     settings: MultiNLPSettings, admin_user: User = Depends(get_current_admin_user)
-):
+) -> MultiNLPSettingsUpdateResponse:
     """Update comprehensive multi-processor NLP configuration settings."""
 
     from ...services.settings_manager import settings_manager
@@ -369,8 +375,8 @@ async def update_multi_nlp_settings(
         )
 
 
-@router.get("/nlp-processor-status")
-async def get_nlp_processor_status(admin_user: User = Depends(get_current_admin_user)):
+@router.get("/nlp-processor-status", response_model=NLPProcessorStatusResponse)
+async def get_nlp_processor_status(admin_user: User = Depends(get_current_admin_user)) -> NLPProcessorStatusResponse:
     """Get detailed status of all NLP processors."""
 
     from ...services.multi_nlp_manager import multi_nlp_manager
@@ -389,11 +395,11 @@ async def get_nlp_processor_status(admin_user: User = Depends(get_current_admin_
         )
 
 
-@router.post("/nlp-processor-test")
+@router.post("/nlp-processor-test", response_model=NLPProcessorTestResponse)
 async def test_nlp_processors(
     request: dict,  # {"text": "...", "processors": ["spacy", "natasha"], "mode": "parallel"}
     admin_user: User = Depends(get_current_admin_user),
-):
+) -> NLPProcessorTestResponse:
     """Test NLP processors with sample text and compare results."""
 
     from ...services.multi_nlp_manager import multi_nlp_manager, ProcessingMode
@@ -443,8 +449,8 @@ async def test_nlp_processors(
         )
 
 
-@router.get("/nlp-processor-info")
-async def get_nlp_processor_info(admin_user: User = Depends(get_current_admin_user)):
+@router.get("/nlp-processor-info", response_model=NLPProcessorInfoResponse)
+async def get_nlp_processor_info(admin_user: User = Depends(get_current_admin_user)) -> NLPProcessorInfoResponse:
     """Get current NLP processor information."""
 
     from ...services.multi_nlp_manager import multi_nlp_manager

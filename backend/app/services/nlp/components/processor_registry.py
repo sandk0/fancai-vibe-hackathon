@@ -60,7 +60,21 @@ class ProcessorRegistry:
 
     async def _initialize_processors(self):
         """Initialize all enabled processors."""
+        import os
+
+        # Check if NLP processors are disabled (lite mode - LangExtract only)
+        use_nlp_processors = os.getenv("USE_NLP_PROCESSORS", "true").lower() == "true"
+        use_langextract = os.getenv("USE_LANGEXTRACT_PRIMARY", "false").lower() == "true"
+
+        if not use_nlp_processors or use_langextract:
+            logger.info(
+                f"⏭️  NLP processors disabled (USE_NLP_PROCESSORS={use_nlp_processors}, "
+                f"USE_LANGEXTRACT_PRIMARY={use_langextract}). Using LangExtract only."
+            )
+            return
+
         # Import here to avoid circular dependencies
+        # These imports are safe now because NLP libraries use dynamic imports
         from ...enhanced_nlp_system import EnhancedSpacyProcessor
         from ...natasha_processor import EnhancedNatashaProcessor
         from ...stanza_processor import EnhancedStanzaProcessor
@@ -163,18 +177,24 @@ class ProcessorRegistry:
         )
 
         if len(self.processors) < 2:
-            error_msg = (
-                f"❌ CRITICAL: Only {len(self.processors)} processor(s) loaded - "
-                f"need at least 2 for ensemble voting. "
-                f"Available: {list(self.processors.keys())}. "
-                f"Check processor installations and configurations."
+            # In lite mode (USE_LANGEXTRACT_PRIMARY=true), this is expected - no NLP processors
+            if use_langextract:
+                logger.info(
+                    f"ℹ️  No NLP processors loaded (lite mode). Using LangExtract as primary parser."
+                )
+            else:
+                error_msg = (
+                    f"❌ CRITICAL: Only {len(self.processors)} processor(s) loaded - "
+                    f"need at least 2 for ensemble voting. "
+                    f"Available: {list(self.processors.keys())}. "
+                    f"Check processor installations and configurations."
+                )
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
+        else:
+            logger.info(
+                f"✅ Sufficient processors loaded: {list(self.processors.keys())}"
             )
-            logger.error(error_msg)
-            raise RuntimeError(error_msg)
-
-        logger.info(
-            f"✅ Sufficient processors loaded: {list(self.processors.keys())}"
-        )
 
     def get_processor(self, name: str) -> Optional[Any]:
         """Get processor by name."""

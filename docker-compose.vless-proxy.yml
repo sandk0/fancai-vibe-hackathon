@@ -1,0 +1,103 @@
+# Docker Compose configuration for VLESS Proxy integration
+# Использование: docker-compose -f docker-compose.yml -f docker-compose.vless-proxy.yml up -d
+
+version: '3.8'
+
+services:
+  # VLESS Proxy контейнер (Xray-core)
+  vless-proxy:
+    image: samuelhbne/proxy-xray:latest
+    container_name: bookreader-vless-proxy
+    restart: unless-stopped
+
+    # Команда запуска с VLESS-TCP-REALITY-XTLS конфигурацией
+    # Формат: --ltrx UUID@SERVER:PORT,d=FAKE_DOMAIN,pub=PUBLIC_KEY
+    command: >
+      --cn-direct
+      --dns-local-cn
+      --ltrx ${VLESS_UUID}@${VLESS_SERVER}:${VLESS_PORT:-443},d=${VLESS_FAKE_DOMAIN:-yahoo.com},pub=${VLESS_PUBLIC_KEY}
+
+    # Порты прокси (bind только на localhost для безопасности)
+    ports:
+      - "127.0.0.1:1080:1080"       # SOCKS5 proxy
+      - "127.0.0.1:1080:1080/udp"   # SOCKS5 UDP
+      - "127.0.0.1:8123:8123"       # HTTP proxy
+      - "127.0.0.1:5353:53/udp"     # DNS server (опционально)
+
+    # Health check для мониторинга доступности прокси
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -f -x socks5h://127.0.0.1:1080 https://www.google.com || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    # Ограничения ресурсов
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+    # Сеть для взаимодействия с backend
+    networks:
+      - backend-network
+
+    # Логирование
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Backend с поддержкой прокси
+  backend:
+    environment:
+      # HTTP прокси для всех исходящих запросов
+      - HTTP_PROXY=http://vless-proxy:8123
+      - HTTPS_PROXY=http://vless-proxy:8123
+
+      # Альтернатива: SOCKS5 прокси
+      # - ALL_PROXY=socks5://vless-proxy:1080
+
+      # Опционально: исключения для локальных адресов
+      - NO_PROXY=localhost,127.0.0.1,postgres,redis
+
+      # Feature flag для включения/выключения прокси
+      - USE_VLESS_PROXY=${USE_VLESS_PROXY:-true}
+
+      # Домены, требующие прокси (через запятую)
+      - PROXY_REQUIRED_DOMAINS=pollinations.ai,api.openai.com
+
+    # Зависимость от vless-proxy
+    depends_on:
+      vless-proxy:
+        condition: service_healthy
+
+networks:
+  backend-network:
+    driver: bridge
+
+# Примечания:
+# 1. Настройте переменные окружения в .env.production:
+#    VLESS_UUID=your-uuid-here
+#    VLESS_SERVER=your-server.example.com
+#    VLESS_PORT=443
+#    VLESS_FAKE_DOMAIN=yahoo.com
+#    VLESS_PUBLIC_KEY=your-public-key-here
+#    USE_VLESS_PROXY=true
+#
+# 2. Тестирование прокси:
+#    docker exec -it bookreader-vless-proxy /qrcode  # Показать QR код конфигурации
+#    curl -x socks5h://127.0.0.1:1080 https://checkip.amazonaws.com
+#    curl -x http://127.0.0.1:8123 https://checkip.amazonaws.com
+#
+# 3. Логи прокси:
+#    docker-compose -f docker-compose.yml -f docker-compose.vless-proxy.yml logs -f vless-proxy
+#
+# 4. Мониторинг:
+#    docker-compose -f docker-compose.yml -f docker-compose.vless-proxy.yml ps
+#    docker stats bookreader-vless-proxy

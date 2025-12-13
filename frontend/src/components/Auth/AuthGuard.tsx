@@ -10,20 +10,19 @@ interface AuthGuardProps {
   redirectTo?: string;
 }
 
-const AuthGuard: React.FC<AuthGuardProps> = ({ 
-  children, 
+const AuthGuard: React.FC<AuthGuardProps> = ({
+  children,
   requireAuth = true,
-  redirectTo = '/login' 
+  redirectTo = '/login'
 }) => {
-  const { isAuthenticated, isLoading, user, loadUserFromStorage } = useAuthStore();
+  const { isAuthenticated, isLoading, user } = useAuthStore();
   const location = useLocation();
 
   useEffect(() => {
     console.log('🛡️ AuthGuard mounted:', { isAuthenticated, isLoading, userEmail: user?.email });
-    
-    // Always call loadUserFromStorage on mount to ensure we check localStorage
-    loadUserFromStorage();
-  }, [loadUserFromStorage]); // eslint-disable-line react-hooks/exhaustive-deps
+    // ✅ FIX: Don't call loadUserFromStorage here - it's already called in onRehydrateStorage
+    // This was causing infinite re-renders
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Show loading spinner while checking authentication
   if (isLoading) {

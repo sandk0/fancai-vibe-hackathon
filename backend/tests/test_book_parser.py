@@ -83,6 +83,7 @@ def sample_epub_file():
                     <dc:publisher>Test Publisher</dc:publisher>
                     <dc:date>2025-10-25</dc:date>
                     <dc:description>Test book description for testing.</dc:description>
+                    <dc:subject>Fantasy</dc:subject>
                 </metadata>
                 <manifest>
                     <item id="chapter1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
@@ -399,6 +400,7 @@ class TestEPUBParsing:
         assert metadata.publisher == "Test Publisher"
         assert metadata.publish_date == "2025-10-25"
         assert metadata.description == "Test book description for testing."
+        assert metadata.genre == "Fantasy"  # NEW: Genre extracted from dc:subject
         # ISBN извлекается только из dc:identifier с атрибутом opf:scheme="ISBN"
         # Для простого теста проверяем, что isbn это строка (может быть пустой)
         assert isinstance(metadata.isbn, str)
@@ -449,6 +451,220 @@ class TestEPUBParsing:
         # HTML контент должен быть сохранен отдельно
         assert chapter1.html_content != ""
         assert "<" in chapter1.html_content or len(chapter1.html_content) > 0
+
+    def test_parse_epub_genre_from_dc_type_fallback(self, book_parser):
+        """Тест извлечения жанра из dc:type когда dc:subject отсутствует."""
+        # Создаем EPUB с dc:type вместо dc:subject
+        epub_content = {
+            "mimetype": b"application/epub+zip",
+            "META-INF/container.xml": b"""<?xml version="1.0" encoding="UTF-8"?>
+                <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+                    <rootfiles>
+                        <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+                    </rootfiles>
+                </container>""",
+            "OEBPS/content.opf": b"""<?xml version="1.0" encoding="UTF-8"?>
+                <package xmlns="http://www.idpf.org/2007/opf" unique-identifier="bookid" version="2.0">
+                    <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+                        <dc:title>Test Book</dc:title>
+                        <dc:creator>Test Author</dc:creator>
+                        <dc:language>en</dc:language>
+                        <dc:type>Science Fiction</dc:type>
+                    </metadata>
+                    <manifest>
+                        <item id="chapter1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
+                    </manifest>
+                    <spine><itemref idref="chapter1"/></spine>
+                </package>""",
+            "OEBPS/chapter1.xhtml": b"""<?xml version="1.0" encoding="UTF-8"?>
+                <html xmlns="http://www.w3.org/1999/xhtml">
+                    <body><p>Test content</p></body>
+                </html>""",
+        }
+
+        temp_file = tempfile.NamedTemporaryFile(suffix=".epub", delete=False)
+        with zipfile.ZipFile(temp_file.name, "w", zipfile.ZIP_DEFLATED) as epub_zip:
+            for file_path, content in epub_content.items():
+                epub_zip.writestr(file_path, content)
+
+        result = book_parser.parse_book(temp_file.name)
+        Path(temp_file.name).unlink(missing_ok=True)
+
+        assert result.metadata.genre == "Science Fiction"
+
+    def test_parse_epub_no_genre_defaults_to_none(self, book_parser):
+        """Тест что отсутствие жанра не ломает парсинг."""
+        # Создаем EPUB без dc:subject и dc:type
+        epub_content = {
+            "mimetype": b"application/epub+zip",
+            "META-INF/container.xml": b"""<?xml version="1.0" encoding="UTF-8"?>
+                <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+                    <rootfiles>
+                        <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+                    </rootfiles>
+                </container>""",
+            "OEBPS/content.opf": b"""<?xml version="1.0" encoding="UTF-8"?>
+                <package xmlns="http://www.idpf.org/2007/opf" unique-identifier="bookid" version="2.0">
+                    <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+                        <dc:title>Test Book</dc:title>
+                        <dc:creator>Test Author</dc:creator>
+                        <dc:language>en</dc:language>
+                    </metadata>
+                    <manifest>
+                        <item id="chapter1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
+                    </manifest>
+                    <spine><itemref idref="chapter1"/></spine>
+                </package>""",
+            "OEBPS/chapter1.xhtml": b"""<?xml version="1.0" encoding="UTF-8"?>
+                <html xmlns="http://www.w3.org/1999/xhtml">
+                    <body><p>Test content</p></body>
+                </html>""",
+        }
+
+        temp_file = tempfile.NamedTemporaryFile(suffix=".epub", delete=False)
+        with zipfile.ZipFile(temp_file.name, "w", zipfile.ZIP_DEFLATED) as epub_zip:
+            for file_path, content in epub_content.items():
+                epub_zip.writestr(file_path, content)
+
+        result = book_parser.parse_book(temp_file.name)
+        Path(temp_file.name).unlink(missing_ok=True)
+
+        # Должно default к "other" когда жанр не найден (это правильное поведение)
+        assert result.metadata.genre == "other"
+
+    def test_parse_epub_multiple_subjects_uses_first(self, book_parser):
+        """Тест что при нескольких dc:subject используется первый."""
+        # Создаем EPUB с несколькими dc:subject
+        epub_content = {
+            "mimetype": b"application/epub+zip",
+            "META-INF/container.xml": b"""<?xml version="1.0" encoding="UTF-8"?>
+                <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+                    <rootfiles>
+                        <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+                    </rootfiles>
+                </container>""",
+            "OEBPS/content.opf": b"""<?xml version="1.0" encoding="UTF-8"?>
+                <package xmlns="http://www.idpf.org/2007/opf" unique-identifier="bookid" version="2.0">
+                    <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+                        <dc:title>Test Book</dc:title>
+                        <dc:creator>Test Author</dc:creator>
+                        <dc:language>en</dc:language>
+                        <dc:subject>Mystery</dc:subject>
+                        <dc:subject>Thriller</dc:subject>
+                        <dc:subject>Crime</dc:subject>
+                    </metadata>
+                    <manifest>
+                        <item id="chapter1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
+                    </manifest>
+                    <spine><itemref idref="chapter1"/></spine>
+                </package>""",
+            "OEBPS/chapter1.xhtml": b"""<?xml version="1.0" encoding="UTF-8"?>
+                <html xmlns="http://www.w3.org/1999/xhtml">
+                    <body><p>Test content</p></body>
+                </html>""",
+        }
+
+        temp_file = tempfile.NamedTemporaryFile(suffix=".epub", delete=False)
+        with zipfile.ZipFile(temp_file.name, "w", zipfile.ZIP_DEFLATED) as epub_zip:
+            for file_path, content in epub_content.items():
+                epub_zip.writestr(file_path, content)
+
+        result = book_parser.parse_book(temp_file.name)
+        Path(temp_file.name).unlink(missing_ok=True)
+
+        # Должен использоваться первый subject
+        assert result.metadata.genre == "Mystery"
+
+    def test_parse_epub_genre_heuristic_fantasy(self, book_parser):
+        """Тест определения жанра фэнтези по ключевым словам (для Witcher)."""
+        container_xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+            <rootfiles>
+                <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+            </rootfiles>
+        </container>"""
+
+        metadata_content = """<?xml version="1.0" encoding="UTF-8"?>
+        <package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookID" version="2.0">
+            <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+                <dc:title>Ведьмак. Перекресток воронов</dc:title>
+                <dc:creator>Анджей Сапковский</dc:creator>
+                <dc:language>ru</dc:language>
+            </metadata>
+            <manifest>
+                <item id="chapter1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
+            </manifest>
+            <spine>
+                <itemref idref="chapter1"/>
+            </spine>
+        </package>"""
+
+        chapter_content = """<?xml version="1.0" encoding="UTF-8"?>
+        <html xmlns="http://www.w3.org/1999/xhtml">
+            <head><title>Глава 1</title></head>
+            <body><h1>Глава 1</h1><p>Герой книги.</p></body>
+        </html>"""
+
+        with tempfile.NamedTemporaryFile(suffix=".epub", delete=False) as temp_file:
+            with zipfile.ZipFile(temp_file.name, "w") as epub_zip:
+                epub_zip.writestr("mimetype", "application/epub+zip")
+                epub_zip.writestr("META-INF/container.xml", container_xml)
+                epub_zip.writestr("OEBPS/content.opf", metadata_content)
+
+                for file_path, content in [("OEBPS/chapter1.xhtml", chapter_content)]:
+                    epub_zip.writestr(file_path, content)
+
+        result = book_parser.parse_book(temp_file.name)
+        Path(temp_file.name).unlink(missing_ok=True)
+
+        # Должен определиться как fantasy по ключевому слову "ведьмак"
+        assert result.metadata.genre == "fantasy"
+
+    def test_parse_epub_genre_heuristic_scifi(self, book_parser):
+        """Тест определения жанра sci-fi по ключевым словам."""
+        container_xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+            <rootfiles>
+                <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+            </rootfiles>
+        </container>"""
+
+        metadata_content = """<?xml version="1.0" encoding="UTF-8"?>
+        <package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookID" version="2.0">
+            <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+                <dc:title>Космическая станция</dc:title>
+                <dc:creator>Иван Иванов</dc:creator>
+                <dc:language>ru</dc:language>
+                <dc:description>Захватывающая история о космосе и звездах</dc:description>
+            </metadata>
+            <manifest>
+                <item id="chapter1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
+            </manifest>
+            <spine>
+                <itemref idref="chapter1"/>
+            </spine>
+        </package>"""
+
+        chapter_content = """<?xml version="1.0" encoding="UTF-8"?>
+        <html xmlns="http://www.w3.org/1999/xhtml">
+            <head><title>Глава 1</title></head>
+            <body><h1>Глава 1</h1><p>Содержание.</p></body>
+        </html>"""
+
+        with tempfile.NamedTemporaryFile(suffix=".epub", delete=False) as temp_file:
+            with zipfile.ZipFile(temp_file.name, "w") as epub_zip:
+                epub_zip.writestr("mimetype", "application/epub+zip")
+                epub_zip.writestr("META-INF/container.xml", container_xml)
+                epub_zip.writestr("OEBPS/content.opf", metadata_content)
+
+                for file_path, content in [("OEBPS/chapter1.xhtml", chapter_content)]:
+                    epub_zip.writestr(file_path, content)
+
+        result = book_parser.parse_book(temp_file.name)
+        Path(temp_file.name).unlink(missing_ok=True)
+
+        # Должен определиться как science_fiction по ключевым словам "космос" и "звезд"
+        assert result.metadata.genre == "science_fiction"
 
 
 # ============================================================================

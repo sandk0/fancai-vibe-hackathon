@@ -1,12 +1,17 @@
 """
 Улучшенный Stanza процессор для комплексного синтаксического анализа русскоязычной литературы.
 Stanza обеспечивает глубокий синтаксический анализ и может найти сложные описательные конструкции.
+
+Note: Stanza is imported dynamically to support lite deployments
+that use only LangExtract for parsing.
 """
 
-import stanza
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import logging
+
+# Dynamic import for stanza - not required in lite mode
+stanza = None  # Will be imported lazily when needed
 
 from .enhanced_nlp_system import EnhancedNLPProcessor, ProcessorConfig, NLPProcessorType
 from ..models.description import DescriptionType
@@ -54,8 +59,20 @@ class EnhancedStanzaProcessor(EnhancedNLPProcessor):
 
     async def load_model(self):
         """Загружает Stanza модель с компонентами для литературного анализа."""
+        global stanza
+
         try:
             logger.info("Loading Stanza model...")
+
+            # Dynamic import of stanza
+            if stanza is None:
+                try:
+                    import stanza as _stanza
+                    stanza = _stanza
+                except ImportError:
+                    logger.warning("Stanza not installed - StanzaProcessor unavailable")
+                    self.loaded = False
+                    return
 
             model_name = self.stanza_config.get("model_name", "ru")
             processors = self.stanza_config.get(

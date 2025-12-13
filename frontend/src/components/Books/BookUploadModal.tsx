@@ -93,7 +93,7 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
     },
     onSuccess: async (data, file) => {
       console.log('✅ [MUTATION] onSuccess called with data:', data);
-      notify.success(t('upload.uploadComplete'), t('upload.uploadSuccess').replace('{title}', data.title));
+      notify.success(t('upload.uploadComplete'), t('upload.uploadSuccess').replace('{title}', data.book.title));
       setUploadProgress(prev => {
         const newProgress = { ...prev };
         delete newProgress[file.name];
@@ -110,8 +110,8 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
       }
 
       // Парсинг автоматически запускается на backend после загрузки
-      if (data.is_processing) {
-        notify.info(t('upload.processingStarted'), t('upload.analyzingContent').replace('{title}', data.title));
+      if (data.task_id) {
+        notify.info(t('upload.processingStarted'), t('upload.analyzingContent').replace('{title}', data.book.title));
       }
     },
     onError: (error: Error | { response?: { data?: { detail?: string } } }, file) => {

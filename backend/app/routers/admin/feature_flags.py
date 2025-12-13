@@ -24,6 +24,7 @@ from ...core.database import get_database_session
 from ...models.user import User
 from ...models.feature_flag import FeatureFlag, FeatureFlagCategory
 from ...services.feature_flag_manager import FeatureFlagManager
+from ...schemas.responses import FeatureFlagBulkUpdateResponse
 
 
 router = APIRouter(prefix="/feature-flags", tags=["admin", "feature-flags"])
@@ -275,12 +276,12 @@ async def create_feature_flag(
     )
 
 
-@router.post("/bulk-update")
+@router.post("/bulk-update", response_model=FeatureFlagBulkUpdateResponse)
 async def bulk_update_feature_flags(
     bulk_request: BulkUpdateRequest,
     current_user: User = Depends(get_current_admin_user),
     db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
+) -> FeatureFlagBulkUpdateResponse:
     """
     Массовое обновление feature flags.
 

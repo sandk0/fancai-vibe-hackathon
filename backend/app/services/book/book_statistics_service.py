@@ -20,6 +20,7 @@ from sqlalchemy import select, func
 from ...models.book import Book, ReadingProgress
 from ...models.chapter import Chapter
 from ...models.description import Description
+from ...models.reading_session import ReadingSession
 
 if TYPE_CHECKING:
     from .book_service import BookService
@@ -73,9 +74,14 @@ class BookStatisticsService:
             Словарь со статистикой:
             - total_books: Общее количество книг
             - total_pages_read: Общее количество прочитанных страниц
-            - total_reading_time_hours: Общее время чтения в часах
+            - total_reading_time_hours: Общее время чтения в часах (из ReadingSession)
             - descriptions_extracted: Всего извлечено описаний
             - descriptions_by_type: Распределение описаний по типам
+
+        Note:
+            ИСПРАВЛЕНО P0-2: total_reading_time_hours теперь рассчитывается из
+            ReadingSession.duration_minutes (завершенные сессии), а не из
+            устаревшего ReadingProgress.reading_time_minutes.
 
         Example:
             >>> stats = await stats_service.get_book_statistics(db, user_id)
@@ -95,10 +101,12 @@ class BookStatisticsService:
         )
         pages_read = total_pages_read.scalar() or 0
 
-        # Общее время чтения
+        # Общее время чтения (из завершенных ReadingSession)
+        # ИСПРАВЛЕНО P0-2: Используем ReadingSession.duration_minutes вместо устаревшего ReadingProgress.reading_time_minutes
         total_reading_time = await db.execute(
-            select(func.sum(ReadingProgress.reading_time_minutes)).where(
-                ReadingProgress.user_id == user_id
+            select(func.sum(ReadingSession.duration_minutes)).where(
+                ReadingSession.user_id == user_id,
+                ReadingSession.is_active == False,  # noqa: E712
             )
         )
         reading_time = total_reading_time.scalar() or 0

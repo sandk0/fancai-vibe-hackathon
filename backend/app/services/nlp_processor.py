@@ -1,12 +1,17 @@
 """
 Улучшенный NLP процессор с поддержкой различных движков и настроек.
 Поддерживает spaCy, Natasha и гибридный режим.
+
+Note: NLP libraries (spacy, natasha) are imported dynamically to support
+lite deployments that use only LangExtract for parsing.
 """
 
-import spacy
 import re
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, TYPE_CHECKING
 from enum import Enum
+
+# Dynamic import for spacy - not required in lite mode
+spacy = None  # Will be imported lazily when needed
 
 from ..models.description import DescriptionType
 from .nlp.utils.text_cleaner import clean_text
@@ -87,11 +92,24 @@ class SpacyProcessor(BaseNLPProcessor):
 
     async def load_model(self, model_name: str = None):
         """Загружает spaCy модель."""
+        global spacy
+
         if self._model_loading:
             return
 
         self._model_loading = True
         try:
+            # Dynamic import of spacy
+            if spacy is None:
+                try:
+                    import spacy as _spacy
+                    spacy = _spacy
+                except ImportError:
+                    print("⚠️ spaCy not installed - NLP processor unavailable")
+                    self.loaded = False
+                    self._model_loading = False
+                    return
+
             # Загружаем настройки из БД
             await self.load_settings()
 

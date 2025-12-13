@@ -8,14 +8,19 @@
 - NLTK для базового анализа
 - PyMorphy3 для морфологии
 - Гибридные режимы для максимального качества
+
+Note: NLP libraries are imported dynamically to support lite deployments
+that use only LangExtract for parsing.
 """
 
-import spacy
 from typing import List, Dict, Any, Optional, Tuple
 from enum import Enum
 from dataclasses import dataclass
 import logging
 from datetime import datetime
+
+# Dynamic import for spacy - not required in lite mode
+spacy = None  # Will be imported lazily when needed
 
 from ..models.description import DescriptionType
 from .nlp.utils.text_cleaner import clean_text
@@ -154,7 +159,19 @@ class EnhancedSpacyProcessor(EnhancedNLPProcessor):
 
     async def load_model(self):
         """Загружает spaCy модель с оптимизациями для русской литературы."""
+        global spacy
+
         try:
+            # Dynamic import of spacy
+            if spacy is None:
+                try:
+                    import spacy as _spacy
+                    spacy = _spacy
+                except ImportError:
+                    logger.warning("spaCy not installed - EnhancedSpacyProcessor unavailable")
+                    self.loaded = False
+                    return
+
             model_name = self.spacy_config.get("model_name", "ru_core_news_lg")
             disable = self.spacy_config.get("disable_components", [])
 
@@ -193,6 +210,11 @@ class EnhancedSpacyProcessor(EnhancedNLPProcessor):
 
     async def _add_literary_patterns(self):
         """Добавляет паттерны для анализа художественной литературы."""
+        global spacy
+
+        if spacy is None:
+            return
+
         from spacy.matcher import Matcher
 
         matcher = Matcher(self.nlp.vocab)

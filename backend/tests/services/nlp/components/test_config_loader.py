@@ -146,7 +146,7 @@ async def test_load_processor_configs_success(
     configs = await config_loader.load_processor_configs()
 
     # Assert
-    assert len(configs) == 4
+    assert len(configs) == 5  # spacy, natasha, stanza, deeppavlov, gliner
     assert "spacy" in configs
     assert "natasha" in configs
     assert "stanza" in configs
@@ -300,7 +300,7 @@ async def test_load_processor_configs_defaults_on_empty(
     configs = await config_loader.load_processor_configs()
 
     # Assert
-    assert len(configs) == 4
+    assert len(configs) == 5  # spacy, natasha, stanza, deeppavlov, gliner
 
     # SpaCy defaults
     spacy_config = configs["spacy"]
@@ -331,7 +331,7 @@ async def test_load_processor_configs_defaults_on_exception(
 
     # Assert
     # Должны вернуться default configs
-    assert len(configs) == 4
+    assert len(configs) == 5  # spacy, natasha, stanza, deeppavlov, gliner
     assert all(isinstance(c, ProcessorConfig) for c in configs.values())
 
 
@@ -342,7 +342,7 @@ async def test_get_default_configs_structure(config_loader):
     configs = config_loader._get_default_configs()
 
     # Assert
-    assert len(configs) == 4
+    assert len(configs) == 5  # spacy, natasha, stanza, deeppavlov, gliner
     assert "spacy" in configs
     assert "natasha" in configs
     assert "stanza" in configs
@@ -487,7 +487,7 @@ async def test_load_processor_configs_partial_failure(
 
     # Assert
     # Должны вернуться default configs (из-за exception в load_processor_configs)
-    assert len(configs) == 4
+    assert len(configs) == 5  # spacy, natasha, stanza, deeppavlov, gliner
     assert all(isinstance(c, ProcessorConfig) for c in configs.values())
 
 

@@ -131,17 +131,9 @@ export interface BookDetail extends Book {
 }
 
 export interface BookUploadResponse {
-  book_id: string;
-  title: string;
-  author: string;
-  chapters_count: number;
-  total_pages: number;
-  estimated_reading_time_hours: number;
-  file_size_mb: number;
-  has_cover: boolean;
-  created_at: string;
+  book: BookDetail;
+  task_id: string | null;
   message: string;
-  is_processing?: boolean;
 }
 
 // Description Types

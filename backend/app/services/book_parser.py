@@ -280,6 +280,26 @@ class EPUBParser:
             if descriptions:
                 metadata.description = descriptions[0][0]
 
+            # Жанр (Genre)
+            # Пробуем извлечь из dc:subject (основной источник)
+            subjects = book.get_metadata("DC", "subject")
+            if subjects:
+                metadata.genre = subjects[0][0]
+
+            # Fallback: пробуем dc:type если subject не найден
+            if not metadata.genre or metadata.genre == "other":
+                types = book.get_metadata("DC", "type")
+                if types:
+                    metadata.genre = types[0][0]
+
+            # Fallback 2: эвристика по ключевым словам (если метаданных нет)
+            if not metadata.genre or metadata.genre == "other":
+                metadata.genre = self._guess_genre_from_text(
+                    title=metadata.title or "",
+                    description=metadata.description or "",
+                    author=metadata.author or ""
+                )
+
             # ISBN
             identifiers = book.get_metadata("DC", "identifier")
             for identifier in identifiers:
@@ -327,6 +347,77 @@ class EPUBParser:
         if images:
             metadata.cover_image_data = images[0].get_content()
             metadata.cover_image_type = images[0].media_type or "image/jpeg"
+
+    def _guess_genre_from_text(self, title: str, description: str, author: str) -> str:
+        """
+        Определяет жанр книги по ключевым словам в названии, описании и авторе.
+
+        Args:
+            title: Название книги
+            description: Описание книги
+            author: Автор книги
+
+        Returns:
+            Предполагаемый жанр или "other" если не удалось определить
+        """
+        # Объединяем весь текст для анализа
+        text = f"{title} {description} {author}".lower()
+
+        # Словарь ключевых слов для каждого жанра (русский + английский)
+        genre_keywords = {
+            "fantasy": [
+                "фантаз", "fantasy", "магия", "magic", "волшебн", "ведьмак", "witcher",
+                "дракон", "dragon", "эльф", "elf", "гном", "dwarf", "орк", "orc",
+                "маг", "wizard", "колдун", "sorcerer", "заклинание", "spell"
+            ],
+            "science_fiction": [
+                "фантасти", "science fiction", "sci-fi", "космос", "space", "робот", "robot",
+                "киберпанк", "cyberpunk", "будущее", "future", "звезд", "star",
+                "галактик", "galactic", "андроид", "android", "космическ", "cosmic"
+            ],
+            "detective": [
+                "детектив", "detective", "расследован", "investigation", "убийство", "murder",
+                "преступлен", "crime", "полиц", "police", "инспектор", "inspector",
+                "тайна", "mystery", "загадк", "puzzle", "следствие", "inquiry"
+            ],
+            "romance": [
+                "роман", "romance", "любов", "love", "страст", "passion", "сердце", "heart",
+                "чувств", "feeling", "отношен", "relationship", "свадьб", "wedding"
+            ],
+            "thriller": [
+                "триллер", "thriller", "саспенс", "suspense", "напряжен", "tension",
+                "опасност", "danger", "погон", "chase", "шпион", "spy"
+            ],
+            "horror": [
+                "ужас", "horror", "страх", "fear", "кошмар", "nightmare", "монстр", "monster",
+                "вампир", "vampire", "зомби", "zombie", "призрак", "ghost"
+            ],
+            "historical": [
+                "истори", "historical", "век", "century", "война", "war", "империя", "empire",
+                "королев", "king", "царь", "tsar", "рыцар", "knight"
+            ],
+            "adventure": [
+                "приключен", "adventure", "путешеств", "journey", "поход", "expedition",
+                "остров", "island", "сокровищ", "treasure", "пират", "pirate"
+            ]
+        }
+
+        # Подсчитываем совпадения для каждого жанра
+        genre_scores = {}
+        for genre, keywords in genre_keywords.items():
+            score = sum(1 for keyword in keywords if keyword in text)
+            if score > 0:
+                genre_scores[genre] = score
+
+        # Возвращаем жанр с максимальным score
+        if genre_scores:
+            best_genre = max(genre_scores, key=genre_scores.get)
+            logger.info(f"Detected genre '{best_genre}' from text analysis (score: {genre_scores[best_genre]})")
+            return best_genre
+
+        # Если ничего не нашли - возвращаем "other"
+        logger.info("Could not detect genre from text, defaulting to 'other'")
+        return "other"
 
     def _extract_chapters(self, book) -> List[BookChapter]:
         """

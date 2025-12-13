@@ -142,21 +142,28 @@ class UserStatisticsService:
 
         Алгоритм:
         1. Получить все уникальные даты чтения (DATE(started_at))
-        2. Отсортировать по убыванию от сегодня
-        3. Считать подряд идущие дни начиная с сегодня
-        4. Вернуть количество дней
+        2. Отсортировать по убыванию от последнего дня
+        3. Проверить: streak активен (последний день = сегодня ИЛИ вчера)?
+        4. Если НЕТ - streak = 0 (прерван)
+        5. Если ДА - считать последовательные дни назад от последнего дня
 
-        Пример:
-        - Если читал 26, 25, 24 октября → streak = 3
-        - Если НЕ читал сегодня, но читал вчера → streak = 0
-        - Если читал сегодня, но не читал вчера → streak = 1
+        Примеры:
+        - Читал [1,2,3,4,5,6,7], сегодня день 8 (не читал) → streak = 7 дней
+        - Читал [1,2,3,5,6,7], сегодня день 8 (не читал) → streak = 3 дня
+        - Читал [1,2,3,4,5], сегодня день 8 (не читал 3 дня) → streak = 0
+        - Читал сегодня, но не читал вчера → streak = 1
+        - Читал вчера, но не сегодня → streak сохраняется
+
+        ИСПРАВЛЕНО P1-4: Streak НЕ сбрасывается в 0, если пользователь не читал
+        только сегодня, но читал вчера. Streak сбрасывается только если
+        последний день чтения был > 1 дня назад.
 
         Args:
             db: Асинхронная сессия БД
             user_id: UUID пользователя
 
         Returns:
-            Количество дней подряд чтения (начиная с сегодня)
+            Количество последовательных дней чтения (активный streak)
         """
         # Получаем все уникальные даты чтения пользователя
         query = (
@@ -174,17 +181,19 @@ class UserStatisticsService:
             # Нет завершенных сессий
             return 0
 
-        # Получаем сегодняшнюю дату (без времени)
+        # Получаем сегодняшнюю дату и вчера (без времени)
         today = datetime.now(timezone.utc).date()
+        yesterday = today - timedelta(days=1)
+        last_reading_date = reading_dates[0]
 
-        # Streak считается ТОЛЬКО если читал сегодня
-        # Если не читал сегодня - streak = 0
-        if reading_dates[0] != today:
+        # Streak активен, если последний день чтения = сегодня ИЛИ вчера
+        # Если не читал 2+ дней - streak прерван
+        if last_reading_date not in [today, yesterday]:
             return 0
 
-        # Считаем последовательные дни
-        streak = 1  # Сегодня читал
-        expected_date = today - timedelta(days=1)
+        # Считаем последовательные дни от последнего дня чтения
+        streak = 1  # Последний день считается
+        expected_date = last_reading_date - timedelta(days=1)
 
         for reading_date in reading_dates[1:]:
             if reading_date == expected_date:
@@ -256,9 +265,14 @@ class UserStatisticsService:
         - completed: Прочитанные книги
 
         Логика:
-        - completed: Если reading_progress.current_position >= 95
-        - in_progress: Если есть reading_progress и current_position < 95
+        - completed: Если Book.get_reading_progress_percent() >= 95 (CFI-aware расчет)
+        - in_progress: Если есть reading_progress и прогресс < 95%
         - total: Общее количество книг
+
+        ИСПРАВЛЕНО P0-3: Используется метод Book.get_reading_progress_percent(),
+        который правильно обрабатывает CFI (EPUB) и legacy форматы.
+        Старая логика `current_position >= 95` некорректна, так как для legacy формата
+        current_position - это % в ГЛАВЕ, а не общий прогресс по книге.
 
         Args:
             db: Асинхронная сессия БД
@@ -267,29 +281,36 @@ class UserStatisticsService:
         Returns:
             Словарь с количествами книг по статусам
         """
+        from sqlalchemy.orm import selectinload
+
         # Общее количество книг
         total_query = select(func.count(Book.id)).where(Book.user_id == user_id)
         total_result = await db.execute(total_query)
         total_books = total_result.scalar() or 0
 
-        # Прочитанные книги (прогресс >= 95%)
-        completed_query = (
-            select(func.count(ReadingProgress.book_id.distinct()))
+        # Получаем все книги с reading_progress для точного расчета
+        books_query = (
+            select(Book)
+            .options(selectinload(Book.reading_progress))
+            .join(ReadingProgress, ReadingProgress.book_id == Book.id)
+            .where(Book.user_id == user_id)
             .where(ReadingProgress.user_id == user_id)
-            .where(ReadingProgress.current_position >= 95)
         )
-        completed_result = await db.execute(completed_query)
-        completed_books = completed_result.scalar() or 0
+        books_result = await db.execute(books_query)
+        books_with_progress = books_result.scalars().unique().all()
 
-        # Книги в процессе чтения (есть прогресс и < 95%)
-        in_progress_query = (
-            select(func.count(ReadingProgress.book_id.distinct()))
-            .where(ReadingProgress.user_id == user_id)
-            .where(ReadingProgress.current_position < 95)
-            .where(ReadingProgress.current_position > 0)
-        )
-        in_progress_result = await db.execute(in_progress_query)
-        in_progress_books = in_progress_result.scalar() or 0
+        # Считаем прочитанные и в процессе книги используя CFI-aware метод
+        completed_books = 0
+        in_progress_books = 0
+
+        for book in books_with_progress:
+            # Используем метод Book.get_reading_progress_percent() для точного расчета
+            progress_percent = await book.get_reading_progress_percent(db, user_id)
+
+            if progress_percent >= 95.0:
+                completed_books += 1
+            elif progress_percent > 0.0:
+                in_progress_books += 1
 
         return {
             "total": total_books,

@@ -20,6 +20,12 @@ from ..schemas.responses import (
     LoginResponse,
     RegisterResponse,
     RefreshTokenResponse,
+    LogoutResponse,
+)
+from ..schemas.responses.auth import (
+    CurrentUserResponse,
+    ProfileUpdateResponse,
+    AccountDeactivationResponse,
 )
 
 
@@ -186,10 +192,10 @@ async def login_user(
     }
 
 
-@router.post("/auth/refresh")
+@router.post("/auth/refresh", response_model=RefreshTokenResponse)
 async def refresh_token(
     request: TokenRefreshRequest, db: AsyncSession = Depends(get_database_session)
-) -> Dict[str, Any]:
+) -> RefreshTokenResponse:
     """
     Обновление access токена с помощью refresh токена.
 
@@ -198,10 +204,17 @@ async def refresh_token(
         db: Сессия базы данных
 
     Returns:
-        Новые токены
+        Новый access токен
 
     Raises:
         HTTPException: Если refresh токен недействительный
+
+    Example:
+        ```bash
+        curl -X POST http://localhost:8000/api/v1/auth/refresh \\
+             -H "Content-Type: application/json" \\
+             -d '{"refresh_token": "<refresh_token>"}'
+        ```
     """
     tokens = await auth_service.refresh_access_token(db, request.refresh_token)
 
@@ -212,13 +225,15 @@ async def refresh_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    return {"tokens": tokens, "message": "Token refreshed successfully"}
+    return RefreshTokenResponse(
+        access_token=tokens["access_token"], token_type=tokens["token_type"]
+    )
 
 
-@router.get("/auth/me")
+@router.get("/auth/me", response_model=CurrentUserResponse)
 async def get_current_user_info(
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> CurrentUserResponse:
     """
     Получение информации о текущем пользователе.
 
@@ -228,8 +243,8 @@ async def get_current_user_info(
     Returns:
         Информация о пользователе
     """
-    return {
-        "user": {
+    return CurrentUserResponse(
+        user={
             "id": str(current_user.id),
             "email": current_user.email,
             "full_name": current_user.full_name,
@@ -242,15 +257,15 @@ async def get_current_user_info(
                 current_user.last_login.isoformat() if current_user.last_login else None
             ),
         }
-    }
+    )
 
 
-@router.put("/auth/profile")
+@router.put("/auth/profile", response_model=ProfileUpdateResponse)
 async def update_user_profile(
     request: UserProfileUpdateRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
+) -> ProfileUpdateResponse:
     """
     Обновление профиля пользователя.
 
@@ -297,13 +312,13 @@ async def update_user_profile(
             detail="Failed to update profile. Check your current password.",
         )
 
-    return {"message": "Profile updated successfully"}
+    return ProfileUpdateResponse(message="Profile updated successfully")
 
 
-@router.post("/auth/logout")
+@router.post("/auth/logout", response_model=LogoutResponse)
 async def logout_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> Dict[str, str]:
+) -> LogoutResponse:
     """
     Выход пользователя из системы.
 
@@ -314,19 +329,25 @@ async def logout_user(
         credentials: JWT токен для валидации
 
     Returns:
-        Сообщение об успешном выходе
+        Сообщение об успешном выходе с timestamp
+
+    Example:
+        ```bash
+        curl -X POST http://localhost:8000/api/v1/auth/logout \\
+             -H "Authorization: Bearer <token>"
+        ```
     """
     # В текущей реализации JWT токены stateless,
     # поэтому просто возвращаем сообщение
     # В будущем можно добавить Redis blacklist для токенов
-    return {"message": "Logout successful"}
+    return LogoutResponse()
 
 
-@router.delete("/auth/deactivate")
+@router.delete("/auth/deactivate", response_model=AccountDeactivationResponse)
 async def deactivate_account(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, str]:
+) -> AccountDeactivationResponse:
     """
     Деактивация аккаунта пользователя.
 
@@ -348,4 +369,4 @@ async def deactivate_account(
             detail="Failed to deactivate account",
         )
 
-    return {"message": "Account deactivated successfully"}
+    return AccountDeactivationResponse(message="Account deactivated successfully")

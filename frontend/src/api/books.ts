@@ -162,7 +162,7 @@ export const booksAPI = {
       reading_streak_days: number;
     };
   }> {
-    return apiClient.get('/books/statistics');
+    return apiClient.get('/users/reading-statistics');
   },
 
   // Detailed reading statistics with weekly activity

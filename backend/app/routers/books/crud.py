@@ -123,13 +123,16 @@ async def upload_book(
             original_filename=file.filename,
             parsed_book=parsed_book,
         )
+        await db.refresh(book)  # ✅ FIX: Refresh object to avoid greenlet_spawn error
         print(f"[UPLOAD] Book created in database with ID: {book.id}")
 
         # Запускаем асинхронную обработку книги для извлечения описаний
+        task_id = None
         try:
             print(f"[CELERY] Starting background processing for book {book.id}")
-            process_book_task.delay(str(book.id))
-            print("[CELERY] Background task started successfully")
+            task = process_book_task.delay(str(book.id))
+            task_id = task.id if task else None
+            print(f"[CELERY] Background task started successfully (task_id: {task_id})")
         except Exception as e:
             print(f"[CELERY ERROR] Failed to start background task: {str(e)}")
             # Не прерываем процесс, если Celery недоступен
@@ -149,21 +152,39 @@ async def upload_book(
             print(f"[CACHE ERROR] Failed to invalidate cache: {str(e)}")
             # Не критичная ошибка, продолжаем
 
-        return {
-            "book_id": str(book.id),
-            "title": book.title,
-            "author": book.author,
-            "chapters_count": len(parsed_book.chapters),
-            "total_pages": book.total_pages,
-            "estimated_reading_time_hours": round(book.estimated_reading_time / 60, 1),
-            "file_size_mb": round(file_size / (1024 * 1024), 2),
-            "has_cover": bool(book.cover_image),
-            "created_at": book.created_at.isoformat(),
-            "is_parsed": book.is_parsed,
-            "parsing_progress": book.parsing_progress,
-            "is_processing": True,
-            "message": f"Book '{book.title}' uploaded successfully. Processing descriptions in background...",
-        }
+        # Создаем ответ в правильном формате согласно BookUploadResponse схеме
+        book_response = BookDetailResponse(
+            id=book.id,
+            user_id=book.user_id,
+            title=book.title,
+            author=book.author,
+            genre=book.genre,
+            language=book.language,
+            file_path=book.file_path,
+            file_format=book.file_format,
+            file_size=book.file_size,
+            cover_image=book.cover_image,
+            description=book.description,
+            book_metadata=book.book_metadata,
+            total_pages=book.total_pages,
+            estimated_reading_time=book.estimated_reading_time,
+            is_parsed=book.is_parsed,
+            parsing_progress=book.parsing_progress,
+            parsing_error=book.parsing_error,
+            created_at=book.created_at,
+            updated_at=book.updated_at,
+            last_accessed=book.last_accessed,
+            # Computed fields для frontend
+            estimated_reading_time_hours=round(book.estimated_reading_time / 60, 1),
+            file_size_mb=round(file_size / (1024 * 1024), 2),
+            has_cover=bool(book.cover_image),
+        )
+
+        return BookUploadResponse(
+            book=book_response,
+            task_id=task_id,
+            message=f"Book '{book.title}' uploaded successfully. Processing descriptions in background...",
+        )
 
     except Exception as e:
         print(f"[UPLOAD ERROR] Processing failed: {str(e)}")

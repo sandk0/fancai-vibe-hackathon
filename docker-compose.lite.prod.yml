@@ -1,0 +1,323 @@
+# =============================================================================
+# Production Docker Compose for BookReader AI - Lite Version (LangExtract only)
+# =============================================================================
+# Production deployment without NLP libraries.
+# Uses LangExtract (Google Gemini API) for description parsing.
+#
+# Requirements:
+# - LANGEXTRACT_API_KEY in .env file
+# - SSL certificates in ./nginx/ssl/
+# - Server in supported region (US, EU, etc.)
+#
+# Memory requirements (total ~3GB for production):
+# - Nginx: 128MB
+# - PostgreSQL: 768MB
+# - Redis: 384MB
+# - Backend: 768MB
+# - Celery: 384MB
+# - Frontend (nginx): 128MB
+#
+# Usage:
+#   docker-compose -f docker-compose.lite.prod.yml up -d
+#   docker-compose -f docker-compose.lite.prod.yml up -d --build
+# =============================================================================
+
+services:
+  # Nginx Reverse Proxy with SSL
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: bookreader_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN_NAME=${DOMAIN_NAME:-localhost}
+    volumes:
+      - ./nginx/nginx.prod.conf.template:/etc/nginx/nginx.conf.template:ro
+      - ./nginx/docker-entrypoint.sh:/docker-entrypoint.d/00-envsubst.sh:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./backend/storage:/var/www/storage:ro
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - bookreader_network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 128M
+        reservations:
+          memory: 64M
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend Production Build (nginx serving static files)
+  frontend:
+    image: bookreader-frontend:lite
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        - VITE_API_URL=${DOMAIN_URL:-http://localhost}/api/v1
+        - VITE_WS_URL=${DOMAIN_URL:-http://localhost}/ws
+        - VITE_APP_NAME=BookReader AI
+    container_name: bookreader_frontend
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    networks:
+      - bookreader_network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+        reservations:
+          memory: 64M
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Backend API (Lite - LangExtract only)
+  backend:
+    image: bookreader-backend:lite
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.lite.prod
+    container_name: bookreader_backend
+    environment:
+      # Database
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      # Redis
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/2
+      # Security
+      - SECRET_KEY=${SECRET_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      - JWT_REFRESH_TOKEN_EXPIRE_DAYS=${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      # Environment
+      - DEBUG=false
+      - ENVIRONMENT=production
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      # CORS and Domain
+      - CORS_ORIGINS=${DOMAIN_URL:-http://localhost}
+      - ALLOWED_HOSTS=${DOMAIN_NAME:-localhost},localhost,127.0.0.1
+      # LangExtract (PRIMARY PARSER)
+      - USE_LANGEXTRACT_PRIMARY=true
+      - LANGEXTRACT_API_KEY=${LANGEXTRACT_API_KEY:?LANGEXTRACT_API_KEY is required}
+      # Disable NLP processors
+      - USE_ADVANCED_PARSER=false
+      - USE_NLP_PROCESSORS=false
+      # Image generation
+      - POLLINATIONS_ENABLED=${POLLINATIONS_ENABLED:-true}
+      # Performance
+      - WORKERS_COUNT=${WORKERS_COUNT:-2}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-52428800}
+    volumes:
+      - ./backend/storage:/app/storage
+      - /dev/shm:/dev/shm
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - bookreader_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 768M
+        reservations:
+          memory: 384M
+
+  # Celery Worker (Lite)
+  celery-worker:
+    image: bookreader-backend:lite
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.lite.prod
+    container_name: bookreader_celery
+    command: >
+      celery -A app.core.celery_app worker
+      --loglevel=${LOG_LEVEL:-info}
+      --concurrency=${CELERY_CONCURRENCY:-2}
+      --max-tasks-per-child=100
+      --max-memory-per-child=300000
+      --prefetch-multiplier=1
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/2
+      - SECRET_KEY=${SECRET_KEY}
+      - ENVIRONMENT=production
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      # LangExtract
+      - USE_LANGEXTRACT_PRIMARY=true
+      - LANGEXTRACT_API_KEY=${LANGEXTRACT_API_KEY}
+      - USE_ADVANCED_PARSER=false
+      - USE_NLP_PROCESSORS=false
+      # Image generation
+      - POLLINATIONS_ENABLED=${POLLINATIONS_ENABLED:-true}
+    volumes:
+      - ./backend/storage:/app/storage
+    depends_on:
+      backend:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - bookreader_network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 384M
+        reservations:
+          memory: 192M
+
+  # Celery Beat Scheduler
+  celery-beat:
+    image: bookreader-backend:lite
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.lite.prod
+    container_name: bookreader_beat
+    command: >
+      celery -A app.core.celery_app beat
+      --loglevel=${LOG_LEVEL:-info}
+      --schedule=/tmp/celerybeat-schedule
+      --pidfile=/tmp/celerybeat.pid
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/2
+      - SECRET_KEY=${SECRET_KEY}
+      - ENVIRONMENT=production
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - beat_schedule:/tmp
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - bookreader_network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
+        reservations:
+          memory: 64M
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: bookreader_postgres
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF8 --locale=C
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    command: >
+      postgres
+      -c shared_buffers=256MB
+      -c effective_cache_size=512MB
+      -c work_mem=4MB
+      -c maintenance_work_mem=64MB
+      -c max_connections=100
+      -c random_page_cost=1.1
+      -c log_min_duration_statement=1000
+      -c log_checkpoints=on
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    restart: unless-stopped
+    networks:
+      - bookreader_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 768M
+        reservations:
+          memory: 384M
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: bookreader_redis
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+      --maxmemory 384mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1 300 10 60 10000
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - bookreader_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 384M
+        reservations:
+          memory: 192M
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  beat_schedule:
+    driver: local
+
+networks:
+  bookreader_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16
+    driver_opts:
+      com.docker.network.bridge.name: br-bookreader-lite

@@ -19,17 +19,22 @@ from ..core.cache import cache_manager, cache_key, CACHE_TTL
 from ..services.book import book_service, book_progress_service
 from ..models.user import User
 from ..models.book import ReadingProgress
+from ..schemas.responses import (
+    ReadingProgressDetailResponse,
+    ReadingProgressResponse,
+    ReadingProgressUpdateResponse,
+)
 
 
 router = APIRouter()
 
 
-@router.get("/{book_id}/progress")
+@router.get("/{book_id}/progress", response_model=ReadingProgressDetailResponse)
 async def get_reading_progress(
     book_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
+) -> ReadingProgressDetailResponse:
     """
     Получает прогресс чтения книги пользователем.
 
@@ -47,6 +52,12 @@ async def get_reading_progress(
     Cache:
         TTL: 5 minutes (frequently updated)
         Key: user:{user_id}:progress:{book_id}
+
+    Example:
+        ```bash
+        curl -X GET http://localhost:8000/api/v1/books/{book_id}/progress \\
+             -H "Authorization: Bearer <token>"
+        ```
     """
     # Try to get from cache
     cache_key_str = cache_key("user", current_user.id, "progress", book_id)
@@ -73,38 +84,12 @@ async def get_reading_progress(
         progress_result = await db.execute(progress_query)
         progress = progress_result.scalar_one_or_none()
 
-        response = {
-            "progress": (
-                {
-                    "id": str(progress.id) if progress else None,
-                    "current_chapter": progress.current_chapter if progress else 1,
-                    "current_page": progress.current_page if progress else 1,
-                    "current_position": progress.current_position if progress else 0,
-                    "current_position_percent": (
-                        progress.current_position if progress else 0
-                    ),  # Процент для EPUB reader (совпадает с current_position)
-                    "reading_location_cfi": (
-                        progress.reading_location_cfi if progress else None
-                    ),
-                    "scroll_offset_percent": (
-                        progress.scroll_offset_percent if progress else 0.0
-                    ),  # Точный % скролла внутри страницы
-                    "reading_time_minutes": (
-                        progress.reading_time_minutes if progress else 0
-                    ),
-                    "reading_speed_wpm": (
-                        progress.reading_speed_wpm if progress else 0.0
-                    ),
-                    "last_read_at": (
-                        progress.last_read_at.isoformat()
-                        if progress and progress.last_read_at
-                        else None
-                    ),
-                }
-                if progress
-                else None
-            )
-        }
+        # Создаем response object
+        progress_response = None
+        if progress:
+            progress_response = ReadingProgressResponse.model_validate(progress)
+
+        response = ReadingProgressDetailResponse(progress=progress_response)
 
         # Cache the result (5 minutes TTL for progress data)
         await cache_manager.set(cache_key_str, response, ttl=CACHE_TTL["user_progress"])

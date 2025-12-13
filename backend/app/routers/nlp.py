@@ -7,6 +7,11 @@ from pydantic import BaseModel
 from typing import Dict, Any
 
 from ..services.nlp_processor import nlp_processor
+from ..schemas.responses import (
+    NLPLibrariesTestResponse,
+    NLPTestChapterResponse,
+    NLPTestBookResponse,
+)
 
 
 router = APIRouter()
@@ -19,8 +24,8 @@ class TextAnalysisRequest(BaseModel):
     chapter_id: str = None
 
 
-@router.get("/nlp/test-libraries")
-async def test_nlp_libraries() -> Dict[str, Any]:
+@router.get("/nlp/test-libraries", response_model=NLPLibrariesTestResponse)
+async def test_nlp_libraries() -> NLPLibrariesTestResponse:
     """
     Тестовый endpoint для проверки загрузки NLP библиотек.
 
@@ -207,8 +212,8 @@ async def test_nlp_simple() -> Dict[str, Any]:
     }
 
 
-@router.post("/nlp/extract-descriptions")
-async def extract_descriptions(request: TextAnalysisRequest) -> Dict[str, Any]:
+@router.post("/nlp/extract-descriptions", response_model=NLPTestChapterResponse)
+async def extract_descriptions(request: TextAnalysisRequest) -> NLPTestChapterResponse:
     """
     Извлекает описания из предоставленного текста с помощью NLP.
 
@@ -280,8 +285,8 @@ async def extract_descriptions(request: TextAnalysisRequest) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Error processing text: {str(e)}")
 
 
-@router.get("/nlp/test-book-sample")
-async def test_book_sample() -> Dict[str, Any]:
+@router.get("/nlp/test-book-sample", response_model=NLPTestBookResponse)
+async def test_book_sample() -> NLPTestBookResponse:
     """
     Тестирует извлечение описаний на примере текста книги.
 

@@ -12,17 +12,36 @@ from ..core.auth import get_current_active_user, get_current_admin_user
 from ..models.user import User, Subscription
 from ..models.book import Book
 from ..models.description import Description
+from ..models.image import GeneratedImage
 from ..services.user_statistics_service import UserStatisticsService
-from ..schemas.responses import UserResponse
+from ..schemas.responses import (
+    UserResponse,
+    SubscriptionResponse,
+    UserProfileResponse,
+    UserStatistics,
+    SubscriptionDetailResponse,
+    UsageInfo,
+    LimitsInfo,
+    WithinLimitsInfo,
+)
+from ..schemas.responses.users import (
+    DatabaseTestResponse,
+    AdminUsersListResponse,
+    AdminStatisticsResponse,
+    ReadingStatisticsResponse,
+    UserListItem,
+    PaginationInfo,
+    SystemHealth,
+)
 
 
 router = APIRouter()
 
 
-@router.get("/users/test-db")
+@router.get("/users/test-db", response_model=DatabaseTestResponse)
 async def test_database_connection(
     db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
+) -> DatabaseTestResponse:
     """
     Тестовый endpoint для проверки подключения к базе данных.
 
@@ -58,17 +77,17 @@ async def test_database_connection(
         table_count_row = result.fetchone()
         table_count = table_count_row[0] if table_count_row else 0
 
-        return {
-            "status": "connected",
-            "database_info": {
+        return DatabaseTestResponse(
+            status="connected",
+            database_info={
                 "version": version,
                 "database": database,
                 "user": user,
                 "tables_found": table_count,
                 "expected_tables": 5,
             },
-            "message": "Database connection successful",
-        }
+            message="Database connection successful",
+        )
 
     except Exception as e:
         raise HTTPException(
@@ -77,11 +96,11 @@ async def test_database_connection(
         )
 
 
-@router.get("/users/profile")
+@router.get("/users/profile", response_model=UserProfileResponse)
 async def get_user_profile(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
+) -> UserProfileResponse:
     """
     Получение подробного профиля текущего пользователя.
 
@@ -91,6 +110,12 @@ async def get_user_profile(
 
     Returns:
         Подробная информация о профиле пользователя
+
+    Example:
+        ```bash
+        curl -X GET http://localhost:8000/api/v1/users/profile \\
+             -H "Authorization: Bearer <token>"
+        ```
     """
     # Получаем подписку пользователя
     subscription_result = await db.execute(
@@ -113,44 +138,43 @@ async def get_user_profile(
     )
     total_descriptions = descriptions_count.scalar() or 0
 
-    return {
-        "user": {
-            "id": str(current_user.id),
-            "email": current_user.email,
-            "full_name": current_user.full_name,
-            "is_active": current_user.is_active,
-            "is_verified": current_user.is_verified,
-            "is_admin": current_user.is_admin,
-            "created_at": current_user.created_at.isoformat(),
-            "last_login": (
-                current_user.last_login.isoformat() if current_user.last_login else None
-            ),
-        },
-        "subscription": (
-            {
-                "plan": subscription.plan.value if subscription else "free",
-                "status": subscription.status.value if subscription else "active",
-                "books_uploaded": subscription.books_uploaded if subscription else 0,
-                "images_generated_month": (
-                    subscription.images_generated_month if subscription else 0
-                ),
-                "auto_renewal": subscription.auto_renewal if subscription else False,
-            }
-            if subscription
-            else None
-        ),
-        "statistics": {
-            "total_books": total_books,
-            "total_descriptions": total_descriptions,
-        },
-    }
+    # Общее количество изображений
+    images_count = await db.execute(
+        select(func.count(GeneratedImage.id)).where(
+            GeneratedImage.user_id == current_user.id
+        )
+    )
+    total_images = images_count.scalar() or 0
+
+    # Общее время чтения (через reading_sessions)
+    total_reading_time = await UserStatisticsService.get_total_reading_time(
+        db, current_user.id
+    )
+
+    # Создаем response objects
+    user_response = UserResponse.model_validate(current_user)
+
+    subscription_response = None
+    if subscription:
+        subscription_response = SubscriptionResponse.model_validate(subscription)
+
+    statistics = UserStatistics(
+        total_books=total_books,
+        total_descriptions=total_descriptions,
+        total_images=total_images,
+        total_reading_time_minutes=total_reading_time,
+    )
+
+    return UserProfileResponse(
+        user=user_response, subscription=subscription_response, statistics=statistics
+    )
 
 
-@router.get("/users/subscription")
+@router.get("/users/subscription", response_model=SubscriptionDetailResponse)
 async def get_user_subscription(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
+) -> SubscriptionDetailResponse:
     """
     Получение информации о подписке пользователя.
 
@@ -160,6 +184,15 @@ async def get_user_subscription(
 
     Returns:
         Информация о подписке и лимитах
+
+    Raises:
+        HTTPException: 404 если подписка не найдена
+
+    Example:
+        ```bash
+        curl -X GET http://localhost:8000/api/v1/users/subscription \\
+             -H "Authorization: Bearer <token>"
+        ```
     """
     subscription_result = await db.execute(
         select(Subscription).where(Subscription.user_id == current_user.id)
@@ -172,46 +205,53 @@ async def get_user_subscription(
         )
 
     # Определяем лимиты для разных планов
-    limits = {
+    limits_config = {
         "free": {"books": 3, "generations_month": 50},
         "premium": {"books": 50, "generations_month": 500},
         "ultimate": {"books": -1, "generations_month": -1},  # Unlimited
     }
 
-    plan_limits = limits.get(subscription.plan.value, limits["free"])
+    plan_limits = limits_config.get(subscription.plan.value, limits_config["free"])
 
-    return {
-        "subscription": {
-            "plan": subscription.plan.value,
-            "status": subscription.status.value,
-            "start_date": subscription.start_date.isoformat(),
-            "end_date": (
-                subscription.end_date.isoformat() if subscription.end_date else None
-            ),
-            "auto_renewal": subscription.auto_renewal,
-        },
-        "usage": {
-            "books_uploaded": subscription.books_uploaded,
-            "images_generated_month": subscription.images_generated_month,
-            "last_reset_date": subscription.last_reset_date.isoformat(),
-        },
-        "limits": plan_limits,
-        "within_limits": {
-            "books": plan_limits["books"] == -1
-            or subscription.books_uploaded < plan_limits["books"],
-            "generations": plan_limits["generations_month"] == -1
-            or subscription.images_generated_month < plan_limits["generations_month"],
-        },
-    }
+    # Создаем response objects
+    subscription_response = SubscriptionResponse.model_validate(subscription)
+
+    usage = UsageInfo(
+        books_uploaded=subscription.books_uploaded,
+        images_generated_month=subscription.images_generated_month,
+        last_reset_date=subscription.last_reset_date,
+    )
+
+    limits = LimitsInfo(
+        books=plan_limits["books"], generations_month=plan_limits["generations_month"]
+    )
+
+    within_limits = WithinLimitsInfo(
+        books=(
+            plan_limits["books"] == -1
+            or subscription.books_uploaded < plan_limits["books"]
+        ),
+        generations=(
+            plan_limits["generations_month"] == -1
+            or subscription.images_generated_month < plan_limits["generations_month"]
+        ),
+    )
+
+    return SubscriptionDetailResponse(
+        subscription=subscription_response,
+        usage=usage,
+        limits=limits,
+        within_limits=within_limits,
+    )
 
 
-@router.get("/users/admin/users")
+@router.get("/users/admin/users", response_model=AdminUsersListResponse)
 async def list_all_users(
     skip: int = 0,
     limit: int = 50,
     current_admin: User = Depends(get_current_admin_user),
     db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
+) -> AdminUsersListResponse:
     """
     Получение списка всех пользователей (только для администраторов).
 
@@ -250,38 +290,38 @@ async def list_all_users(
         total_books = books_count.scalar()
 
         users_data.append(
-            {
-                "id": str(user.id),
-                "email": user.email,
-                "full_name": user.full_name,
-                "is_active": user.is_active,
-                "is_verified": user.is_verified,
-                "is_admin": user.is_admin,
-                "created_at": user.created_at.isoformat(),
-                "last_login": user.last_login.isoformat() if user.last_login else None,
-                "subscription_plan": (
+            UserListItem(
+                id=str(user.id),
+                email=user.email,
+                full_name=user.full_name,
+                is_active=user.is_active,
+                is_verified=user.is_verified,
+                is_admin=user.is_admin,
+                created_at=user.created_at.isoformat(),
+                last_login=user.last_login.isoformat() if user.last_login else None,
+                subscription_plan=(
                     subscription.plan.value if subscription else "free"
                 ),
-                "total_books": total_books,
-            }
+                total_books=total_books,
+            )
         )
 
-    return {
-        "users": users_data,
-        "pagination": {
-            "total": total,
-            "skip": skip,
-            "limit": limit,
-            "has_more": skip + limit < total,
-        },
-    }
+    return AdminUsersListResponse(
+        users=users_data,
+        pagination=PaginationInfo(
+            total=total,
+            skip=skip,
+            limit=limit,
+            has_more=skip + limit < total,
+        ),
+    )
 
 
-@router.get("/users/admin/stats")
+@router.get("/users/admin/stats", response_model=AdminStatisticsResponse)
 async def get_admin_statistics(
     current_admin: User = Depends(get_current_admin_user),
     db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
+) -> AdminStatisticsResponse:
     """
     Получение общей статистики системы (только для администраторов).
 
@@ -320,34 +360,34 @@ async def get_admin_statistics(
     total_descriptions = await db.execute(select(func.count(Description.id)))
     total_descriptions_count = total_descriptions.scalar()
 
-    return {
-        "users": {
+    return AdminStatisticsResponse(
+        users={
             "total": total_users_count,
             "active": active_users_count,
             "inactive": total_users_count - active_users_count,
         },
-        "subscriptions": subscriptions_by_plan,
-        "content": {
+        subscriptions=subscriptions_by_plan,
+        content={
             "total_books": total_books_count,
             "total_descriptions": total_descriptions_count,
         },
-        "system_health": {
-            "status": "healthy",
-            "avg_books_per_user": round(
+        system_health=SystemHealth(
+            status="healthy",
+            avg_books_per_user=round(
                 total_books_count / max(total_users_count, 1), 2
             ),
-            "avg_descriptions_per_book": round(
+            avg_descriptions_per_book=round(
                 total_descriptions_count / max(total_books_count, 1), 2
             ),
-        },
-    }
+        ),
+    )
 
 
-@router.get("/users/reading-statistics")
+@router.get("/users/reading-statistics", response_model=ReadingStatisticsResponse)
 async def get_reading_statistics(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
+) -> ReadingStatisticsResponse:
     """
     Получает детальную статистику чтения пользователя.
 
@@ -430,8 +470,8 @@ async def get_reading_statistics(
         db, current_user.id
     )
 
-    return {
-        "statistics": {
+    return ReadingStatisticsResponse(
+        statistics={
             "total_books": books_stats["total"],
             "books_in_progress": books_stats["in_progress"],
             "books_completed": books_stats["completed"],
@@ -443,4 +483,4 @@ async def get_reading_statistics(
             "total_pages_read": total_pages,
             "total_chapters_read": total_chapters,
         }
-    }
+    )

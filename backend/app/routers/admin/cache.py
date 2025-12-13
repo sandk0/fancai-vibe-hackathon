@@ -13,15 +13,20 @@ from typing import Dict, Any
 from ...core.auth import get_current_admin_user
 from ...core.cache import cache_manager, CACHE_KEY_PATTERNS, CACHE_TTL
 from ...models.user import User
+from ...schemas.responses import (
+    CacheStatsResponse,
+    CacheClearResponse,
+    CacheWarmResponse,
+)
 
 
 router = APIRouter(prefix="/cache", tags=["admin", "cache"])
 
 
-@router.get("/stats")
+@router.get("/stats", response_model=CacheStatsResponse)
 async def get_cache_stats(
     current_user: User = Depends(get_current_admin_user),
-) -> Dict[str, Any]:
+) -> CacheStatsResponse:
     """
     Получает статистику Redis cache.
 
@@ -40,10 +45,10 @@ async def get_cache_stats(
     }
 
 
-@router.delete("/clear")
+@router.delete("/clear", response_model=CacheClearResponse)
 async def clear_all_cache(
     current_user: User = Depends(get_current_admin_user),
-) -> Dict[str, Any]:
+) -> CacheClearResponse:
     """
     Очищает весь Redis cache (ОПАСНО - использовать осторожно).
 
@@ -68,11 +73,11 @@ async def clear_all_cache(
     }
 
 
-@router.delete("/clear/{pattern}")
+@router.delete("/clear/{pattern}", response_model=CacheClearResponse)
 async def clear_cache_pattern(
     pattern: str,
     current_user: User = Depends(get_current_admin_user),
-) -> Dict[str, Any]:
+) -> CacheClearResponse:
     """
     Очищает cache по паттерну.
 
@@ -100,10 +105,10 @@ async def clear_cache_pattern(
     }
 
 
-@router.post("/warm")
+@router.post("/warm", response_model=CacheWarmResponse)
 async def warm_cache(
     current_user: User = Depends(get_current_admin_user),
-) -> Dict[str, Any]:
+) -> CacheWarmResponse:
     """
     Прогревает cache критическими данными (опционально).
 

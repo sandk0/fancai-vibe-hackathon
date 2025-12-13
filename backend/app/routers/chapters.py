@@ -23,6 +23,13 @@ from ..models.book import Book
 from ..models.chapter import Chapter
 from ..models.description import Description
 from ..models.image import GeneratedImage
+from ..schemas.responses import (
+    ChapterResponse,
+    ChapterDetailResponse,
+    NavigationInfo,
+    BookMinimalInfo,
+    DescriptionWithImageResponse,
+)
 
 
 router = APIRouter()
@@ -99,11 +106,11 @@ async def list_chapters(
         raise ChapterFetchException(str(e))
 
 
-@router.get("/{book_id}/chapters/{chapter_number}")
+@router.get("/{book_id}/chapters/{chapter_number}", response_model=ChapterDetailResponse)
 async def get_chapter(
     chapter: Chapter = Depends(get_chapter_by_number),
     db: AsyncSession = Depends(get_database_session),
-) -> Dict[str, Any]:
+) -> ChapterDetailResponse:
     """
     Получает содержимое конкретной главы книги.
 
@@ -122,6 +129,12 @@ async def get_chapter(
     Cache:
         TTL: 1 hour (content rarely changes)
         Key: book:{book_id}:chapter:{chapter_number}
+
+    Example:
+        ```bash
+        curl -X GET http://localhost:8000/api/v1/books/{book_id}/chapters/{chapter_number} \\
+             -H "Authorization: Bearer <token>"
+        ```
     """
     # Try to get from cache
     cache_key_str = cache_key(
@@ -149,25 +162,15 @@ async def get_chapter(
         descriptions_rows = descriptions_result.fetchall()
 
         for description, generated_image in descriptions_rows:
-            # Упрощенная структура данных для уменьшения потребления памяти
-            desc_data = {
-                "id": str(description.id),
-                "type": description.type.value,
-                "content": description.content,
-                "confidence_score": description.confidence_score,
-                "priority_score": description.priority_score,
-                "position_in_chapter": description.position_in_chapter,
-            }
+            # Создаем DescriptionWithImageResponse
+            desc_response = DescriptionWithImageResponse.model_validate(description)
 
             # Добавляем изображение только если оно есть
             if generated_image:
-                desc_data["generated_image"] = {
-                    "id": str(generated_image.id),
-                    "image_url": generated_image.image_url,
-                    "created_at": generated_image.created_at.isoformat(),
-                }
+                desc_response.image_url = generated_image.image_url
+                desc_response.image_id = generated_image.id
 
-            descriptions_data.append(desc_data)
+            descriptions_data.append(desc_response)
 
         # Навигационная информация
         has_previous = chapter.chapter_number > 1
@@ -175,30 +178,29 @@ async def get_chapter(
         previous_chapter = chapter.chapter_number - 1 if has_previous else None
         next_chapter = chapter.chapter_number + 1 if has_next else None
 
-        response = {
-            "chapter": {
-                "id": str(chapter.id),
-                "number": chapter.chapter_number,
-                "title": chapter.title,
-                "content": chapter.content,
-                "html_content": chapter.html_content,
-                "word_count": chapter.word_count,
-                "estimated_reading_time_minutes": chapter.estimated_reading_time,
-            },
-            "descriptions": descriptions_data,
-            "navigation": {
-                "has_previous": has_previous,
-                "has_next": has_next,
-                "previous_chapter": previous_chapter,
-                "next_chapter": next_chapter,
-            },
-            "book_info": {
-                "id": str(book.id),
-                "title": book.title,
-                "author": book.author,
-                "total_chapters": len(book.chapters),
-            },
-        }
+        # Создаем response objects
+        chapter_response = ChapterResponse.model_validate(chapter)
+
+        navigation = NavigationInfo(
+            has_previous=has_previous,
+            has_next=has_next,
+            previous_chapter=previous_chapter,
+            next_chapter=next_chapter,
+        )
+
+        book_info = BookMinimalInfo(
+            id=book.id,
+            title=book.title,
+            author=book.author,
+            total_chapters=len(book.chapters),
+        )
+
+        response = ChapterDetailResponse(
+            chapter=chapter_response,
+            descriptions=descriptions_data,
+            navigation=navigation,
+            book_info=book_info,
+        )
 
         # Cache the result (1 hour TTL for chapter content)
         await cache_manager.set(

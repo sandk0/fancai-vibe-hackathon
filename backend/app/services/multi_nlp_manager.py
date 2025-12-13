@@ -6,9 +6,17 @@ ARCHITECTURE:
 - ConfigLoader: Loads and validates configurations
 - EnsembleVoter: Weighted consensus voting
 - StrategyFactory: Creates processing strategies
-- MultiNLPManager: Orchestrates everything (< 300 lines)
+- LangExtractProcessor: LLM-based primary processor (NEW!)
+- MultiNLPManager: Orchestrates everything (< 350 lines)
 
-Target: 627 lines → <300 lines (52% reduction)
+PROCESSING MODES:
+- LLM: LangExtract as primary processor (recommended for quality)
+- SINGLE: One NLP processor
+- PARALLEL: Multiple processors in parallel
+- ENSEMBLE: Weighted voting between processors
+- ADAPTIVE: Automatic mode selection
+
+Target: 627 lines → <350 lines (45% reduction)
 """
 
 import asyncio
@@ -19,9 +27,27 @@ from datetime import datetime
 
 from .nlp.strategies import StrategyFactory, ProcessingMode, ProcessingResult
 from .nlp.components import ProcessorRegistry, EnsembleVoter, ConfigLoader
+from .nlp.adapters import AdvancedParserAdapter
 from .settings_manager import settings_manager
 
 logger = logging.getLogger(__name__)
+
+
+# LangExtract processor (lazy import to avoid circular dependencies)
+_langextract_processor = None
+
+
+def _get_langextract_processor():
+    """Lazy initialization of LangExtract processor."""
+    global _langextract_processor
+    if _langextract_processor is None:
+        try:
+            from .langextract_processor import get_langextract_processor
+            _langextract_processor = get_langextract_processor()
+        except ImportError as e:
+            logger.warning(f"LangExtract processor not available: {e}")
+            _langextract_processor = None
+    return _langextract_processor
 
 
 class MultiNLPManager:
@@ -35,6 +61,9 @@ class MultiNLPManager:
         self.config_loader = ConfigLoader(settings_manager)
         self.processor_registry = ProcessorRegistry()
         self.ensemble_voter = EnsembleVoter()
+
+        # Advanced Parser (optional, feature-flagged)
+        self.advanced_parser_adapter = None
 
         # Global settings
         self.processing_mode = ProcessingMode.SINGLE
@@ -138,14 +167,39 @@ class MultiNLPManager:
                 "ENABLE_PARALLEL_PROCESSING": self._is_feature_enabled("ENABLE_PARALLEL_PROCESSING", True),
                 "USE_ADVANCED_PARSER": self._is_feature_enabled("USE_ADVANCED_PARSER", False),
                 "USE_LLM_ENRICHMENT": self._is_feature_enabled("USE_LLM_ENRICHMENT", False),
+                "USE_LANGEXTRACT_PRIMARY": self._is_feature_enabled("USE_LANGEXTRACT_PRIMARY", False),
             }
             logger.info(f"Feature flags: {feature_flags_status}")
+
+            # Initialize LangExtract processor if enabled
+            if self._is_feature_enabled("USE_LANGEXTRACT_PRIMARY", False):
+                langextract = _get_langextract_processor()
+                if langextract and langextract.is_available():
+                    logger.info("LangExtract processor enabled as primary")
+                else:
+                    logger.warning(
+                        "USE_LANGEXTRACT_PRIMARY enabled but LangExtract not available. "
+                        "Set LANGEXTRACT_API_KEY environment variable."
+                    )
+
+            # Initialize Advanced Parser if enabled
+            if self._is_feature_enabled("USE_ADVANCED_PARSER", False):
+                try:
+                    enable_enrichment = self._is_feature_enabled("USE_LLM_ENRICHMENT", False)
+                    self.advanced_parser_adapter = AdvancedParserAdapter(
+                        enable_enrichment=enable_enrichment
+                    )
+                    logger.info(f"✅ Advanced Parser enabled (enrichment: {enable_enrichment})")
+                except Exception as e:
+                    logger.warning(f"Failed to initialize Advanced Parser: {e}")
+                    self.advanced_parser_adapter = None
 
             self._initialized = True
             logger.info(
                 f"✅ Multi-NLP Manager initialized "
                 f"(mode: {self.processing_mode.value}, "
-                f"processors: {len(self.processor_registry.processors)})"
+                f"processors: {len(self.processor_registry.processors)}, "
+                f"advanced_parser: {self.advanced_parser_adapter is not None})"
             )
 
     async def extract_descriptions(
@@ -154,6 +208,7 @@ class MultiNLPManager:
         chapter_id: str = None,
         processor_name: str = None,
         mode: ProcessingMode = None,
+        user_id: str = None,  # NEW: для canary deployment (optional)
     ) -> ProcessingResult:
         """
         Extract descriptions from text using specified processing mode.
@@ -163,11 +218,54 @@ class MultiNLPManager:
             chapter_id: Optional chapter identifier
             processor_name: Optional specific processor to use
             mode: Optional processing mode override
+            user_id: Optional user ID for canary deployment cohort assignment
 
         Returns:
             ProcessingResult with descriptions and metadata
+
+        Note:
+            Canary deployment integration point:
+            - user_id parameter added for future A/B testing
+            - Currently at 100% rollout (all users on new architecture)
+            - See nlp_canary.py for gradual rollout management
         """
         start_time = datetime.now()
+
+        # ========================================================================
+        # PROCESSING PRIORITY:
+        # 1. LangExtract (LLM-based) - if USE_LANGEXTRACT_PRIMARY=true
+        # 2. Advanced Parser - if USE_ADVANCED_PARSER=true and text >= 500 chars
+        # 3. Standard NLP processors (SpaCy, Natasha, GLiNER, Stanza)
+        # ========================================================================
+
+        # PRIORITY 1: LangExtract as primary processor (LLM-based)
+        if self._should_use_langextract(text):
+            logger.info("Using LangExtract (LLM) for extraction")
+            langextract = _get_langextract_processor()
+            result = await langextract.extract_descriptions(text, chapter_id)
+
+            # Update statistics
+            self.processing_statistics["total_processed"] += 1
+            self.processing_statistics.setdefault("processor_usage", {})
+            self.processing_statistics["processor_usage"]["langextract"] = (
+                self.processing_statistics["processor_usage"].get("langextract", 0) + 1
+            )
+
+            return result
+
+        # PRIORITY 2: Advanced Parser (feature-flagged)
+        if self._should_use_advanced_parser(text):
+            logger.info("Using Advanced Parser for extraction")
+            result = await self.advanced_parser_adapter.extract_descriptions(text, chapter_id)
+
+            # Update statistics
+            self.processing_statistics["total_processed"] += 1
+            self.processing_statistics.setdefault("processor_usage", {})
+            self.processing_statistics["processor_usage"]["advanced_parser"] = (
+                self.processing_statistics["processor_usage"].get("advanced_parser", 0) + 1
+            )
+
+            return result
 
         # Determine processing mode
         processing_mode = mode or self.processing_mode
@@ -222,6 +320,74 @@ class MultiNLPManager:
         )
 
         return result
+
+    def _should_use_langextract(self, text: str) -> bool:
+        """
+        Определить, следует ли использовать LangExtract (LLM) как основной процессор.
+
+        LangExtract рекомендуется когда:
+        - USE_LANGEXTRACT_PRIMARY=true
+        - API ключ доступен
+        - Текст достаточной длины (>500 символов)
+
+        Args:
+            text: Текст для обработки
+
+        Returns:
+            True если следует использовать LangExtract
+        """
+        # Feature flag check
+        if not self._is_feature_enabled("USE_LANGEXTRACT_PRIMARY", False):
+            return False
+
+        # Processor availability check
+        langextract = _get_langextract_processor()
+        if not langextract or not langextract.is_available():
+            return False
+
+        # Text length check (LangExtract efficient for longer texts)
+        if len(text) < 500:
+            logger.debug(
+                f"Text too short ({len(text)} chars) for LangExtract, using NLP processors"
+            )
+            return False
+
+        return True
+
+    def _should_use_advanced_parser(self, text: str) -> bool:
+        """
+        Определить, следует ли использовать Advanced Parser для этого текста.
+
+        Advanced Parser оптимизирован для:
+        - Длинных текстов (>500 символов)
+        - Извлечения многопараграфных описаний
+        - Качественной фильтрации (5-факторная оценка)
+
+        Args:
+            text: Текст для обработки
+
+        Returns:
+            True если следует использовать Advanced Parser
+        """
+        # Feature flag check
+        if not self._is_feature_enabled("USE_ADVANCED_PARSER", False):
+            return False
+
+        # Adapter availability check
+        if not self.advanced_parser_adapter:
+            return False
+
+        # Text length check (Advanced Parser optimized for longer texts)
+        if len(text) < 500:  # Too short for Advanced Parser benefits
+            logger.debug(
+                f"Text too short ({len(text)} chars) for Advanced Parser, using standard processors"
+            )
+            return False
+
+        logger.debug(
+            f"Text length {len(text)} chars suitable for Advanced Parser"
+        )
+        return True
 
     def _select_processors(
         self, text: str, processor_name: Optional[str], mode: ProcessingMode

@@ -281,7 +281,7 @@ describe('Books API', () => {
 
       const result = await booksAPI.getUserStatistics();
 
-      expect(apiClient.get).toHaveBeenCalledWith('/books/statistics');
+      expect(apiClient.get).toHaveBeenCalledWith('/users/reading-statistics');
       expect(result.statistics.total_books).toBe(25);
       expect(result.statistics.reading_streak_days).toBe(7);
     });
