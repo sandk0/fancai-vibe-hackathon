@@ -125,19 +125,26 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
         available_processors = multi_nlp_manager.processor_registry.processors
 
         # Check for LangExtract as alternative to NLP processors (lite mode)
+        # Use the same getter function used by multi_nlp_manager for consistency
         use_langextract = os.getenv("USE_LANGEXTRACT_PRIMARY", "false").lower() == "true"
         langextract_available = False
 
         if use_langextract:
             try:
-                from app.services.langextract_processor import get_langextract_processor
-                langextract = get_langextract_processor()
+                # Import the internal getter from multi_nlp_manager module
+                from app.services.multi_nlp_manager import _get_langextract_processor
+                langextract = _get_langextract_processor()
                 langextract_available = langextract is not None and langextract.is_available()
                 if langextract_available:
                     print("✅ [ASYNC TASK] LangExtract processor available as primary")
                     logger.info("LangExtract processor available as primary")
+                else:
+                    print("⚠️ [ASYNC TASK] LangExtract enabled but not available")
+                    logger.warning("LangExtract enabled but is_available() returned False")
             except ImportError as e:
                 logger.warning(f"LangExtract import failed: {e}")
+            except Exception as e:
+                logger.warning(f"LangExtract check failed: {e}")
 
         # Allow processing if EITHER NLP processors OR LangExtract is available
         if (not available_processors or len(available_processors) == 0) and not langextract_available:
