@@ -116,8 +116,14 @@ export const useImageModal = (): UseImageModalReturn => {
     } catch (error: any) {
       console.error('❌ [useImageModal] Image generation failed:', error);
 
-      // Handle 409 - image already exists
-      if (error.response?.status === 409) {
+      // Check for 409 - image already exists
+      // The API client transforms the error, so check both response.status and message
+      const isConflict =
+        error.response?.status === 409 ||
+        error.message?.includes('already exists') ||
+        error.details?.detail?.includes?.('already exists');
+
+      if (isConflict) {
         console.log('🔄 [useImageModal] Image already exists, fetching...');
 
         try {
@@ -139,7 +145,7 @@ export const useImageModal = (): UseImageModalReturn => {
         }
       } else {
         // Handle other errors
-        const errorMessage = error.response?.data?.detail || 'Не удалось создать изображение';
+        const errorMessage = error.message || error.response?.data?.detail || 'Не удалось создать изображение';
         setGenerationError(errorMessage);
         setGenerationStatus('error');
         notify.error('Ошибка генерации', errorMessage);
