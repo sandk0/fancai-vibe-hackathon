@@ -65,10 +65,12 @@ async def get_generated_image_file(filename: str):
             detail="Image not found"
         )
 
+    # Use content_disposition_type="inline" to display image in browser
+    # instead of forcing download (which happens with filename parameter)
     return FileResponse(
         path=str(file_path),
         media_type="image/png",
-        filename=filename
+        content_disposition_type="inline"
     )
 
 
