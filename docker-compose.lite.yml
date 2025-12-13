@@ -94,8 +94,11 @@ services:
       # Security
       - SECRET_KEY=${SECRET_KEY:?SECRET_KEY is required}
       - DEBUG=${DEBUG:-false}
-      # CORS
-      - "CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000}"
+      # CORS - use DOMAIN_URL for production or localhost for dev
+      - "CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://localhost:8000}"
+      # Domain configuration
+      - DOMAIN_NAME=${DOMAIN_NAME:-localhost}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
       # LangExtract Configuration (PRIMARY PARSER)
       - USE_LANGEXTRACT_PRIMARY=true
       - LANGEXTRACT_API_KEY=${LANGEXTRACT_API_KEY:?LANGEXTRACT_API_KEY is required for lite version}
@@ -212,9 +215,10 @@ services:
       dockerfile: Dockerfile
     container_name: bookreader_frontend_lite
     environment:
-      - VITE_API_URL=http://localhost:8000/api/v1
-      - VITE_API_BASE_URL=http://localhost:8000
-      - VITE_WS_URL=ws://localhost:8000
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8000/api/v1}
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8000}
+      - VITE_WS_URL=${VITE_WS_URL:-ws://localhost:8000}
+      - VITE_APP_NAME=${VITE_APP_NAME:-FanCai - AI Читалка}
       - VITE_DEBUG=${DEBUG:-false}
       - VITE_ENVIRONMENT=${ENVIRONMENT:-development}
     volumes:
