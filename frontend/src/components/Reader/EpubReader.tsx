@@ -164,7 +164,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     descriptionPreview,
     cancelGeneration,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    isCached, // For future UI indicator
+    isCached: _isCached, // For future UI indicator
   } = useImageModal({ bookId: book.id });
 
   // Hook 8: Keyboard navigation (disabled when modal is open)
@@ -458,10 +458,10 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
 
       {/* Loading Overlay */}
       {(isLoading || isGenerating || isRestoringPosition) && (
-        <div className={`absolute inset-0 flex items-center justify-center ${getBackgroundColor()} z-10`}>
+        <div className={`absolute inset-0 flex items-center justify-center ${getBackgroundColor()} z-10`} data-testid="loading-overlay">
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-            <p className={theme === 'light' ? 'text-gray-700' : 'text-gray-300'}>
+            <p className={theme === 'light' ? 'text-gray-700' : 'text-gray-300'} data-testid="loading-text">
               {isRestoringPosition ? 'Восстановление позиции...' : isGenerating ? 'Подготовка книги...' : 'Загрузка книги...'}
             </p>
           </div>

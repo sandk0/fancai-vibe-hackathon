@@ -38,9 +38,33 @@ interface CacheStats {
   newestCacheDate: Date | null;
 }
 
+/**
+ * Metadata for tracking Object URLs
+ */
+interface ObjectURLTracker {
+  url: string;
+  createdAt: number; // Timestamp for cleanup
+}
+
 class ImageCacheService {
   private db: IDBDatabase | null = null;
   private dbPromise: Promise<IDBDatabase> | null = null;
+
+  /**
+   * Map для tracking созданных Object URLs
+   * Key: descriptionId, Value: ObjectURLTracker
+   */
+  private objectURLs: Map<string, ObjectURLTracker> = new Map();
+
+  /**
+   * Interval ID для автоматической очистки
+   */
+  private cleanupIntervalId: number | null = null;
+
+  /**
+   * Максимальный возраст Object URL в миллисекундах (30 минут)
+   */
+  private readonly MAX_OBJECT_URL_AGE_MS = 30 * 60 * 1000;
 
   /**
    * Initialize IndexedDB connection
@@ -120,9 +144,19 @@ class ImageCacheService {
   /**
    * Get cached image as object URL
    * Returns null if not cached or expired
+   *
+   * ВАЖНО: Полученный URL необходимо освободить через release() когда он больше не нужен,
+   * иначе будет memory leak!
    */
   async get(descriptionId: string): Promise<string | null> {
     try {
+      // Проверяем, есть ли уже созданный Object URL
+      const existing = this.objectURLs.get(descriptionId);
+      if (existing) {
+        console.log('♻️ [ImageCache] Reusing existing Object URL for:', descriptionId);
+        return existing.url;
+      }
+
       const db = await this.getDB();
       return new Promise((resolve) => {
         const transaction = db.transaction(STORE_NAME, 'readonly');
@@ -142,7 +176,14 @@ class ImageCacheService {
             } else {
               // Create object URL from blob
               const objectUrl = URL.createObjectURL(cached.blob);
-              console.log('✅ [ImageCache] Cache hit for:', descriptionId);
+
+              // Track Object URL для последующего освобождения
+              this.objectURLs.set(descriptionId, {
+                url: objectUrl,
+                createdAt: Date.now(),
+              });
+
+              console.log('✅ [ImageCache] Cache hit for:', descriptionId, `(tracked: ${this.objectURLs.size} URLs)`);
               resolve(objectUrl);
             }
           } else {
@@ -160,6 +201,40 @@ class ImageCacheService {
       console.warn('⚠️ [ImageCache] IndexedDB not available:', err);
       return null;
     }
+  }
+
+  /**
+   * Освобождает Object URL для указанного descriptionId
+   * Должен вызываться когда изображение больше не нужно (например, при unmount компонента)
+   *
+   * @param descriptionId - ID описания для освобождения URL
+   * @returns true если URL был освобождён, false если URL не найден
+   */
+  release(descriptionId: string): boolean {
+    const tracker = this.objectURLs.get(descriptionId);
+    if (tracker) {
+      URL.revokeObjectURL(tracker.url);
+      this.objectURLs.delete(descriptionId);
+      console.log('🧹 [ImageCache] Released Object URL for:', descriptionId, `(tracked: ${this.objectURLs.size} URLs)`);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Освобождает несколько Object URLs
+   *
+   * @param descriptionIds - Массив ID описаний для освобождения
+   * @returns Количество освобождённых URLs
+   */
+  releaseMany(descriptionIds: string[]): number {
+    let releasedCount = 0;
+    for (const id of descriptionIds) {
+      if (this.release(id)) {
+        releasedCount++;
+      }
+    }
+    return releasedCount;
   }
 
   /**
@@ -226,9 +301,13 @@ class ImageCacheService {
 
   /**
    * Delete cached image
+   * Также освобождает соответствующий Object URL если он существует
    */
   async delete(descriptionId: string): Promise<boolean> {
     try {
+      // Освобождаем Object URL если он существует
+      this.release(descriptionId);
+
       const db = await this.getDB();
       return new Promise((resolve) => {
         const transaction = db.transaction(STORE_NAME, 'readwrite');
@@ -262,6 +341,7 @@ class ImageCacheService {
 
   /**
    * Clear all cached images for a book
+   * Также освобождает все связанные Object URLs
    */
   async clearBook(bookId: string): Promise<number> {
     try {
@@ -272,14 +352,21 @@ class ImageCacheService {
         const index = store.index('bookId');
         const request = index.openCursor(IDBKeyRange.only(bookId));
         let deletedCount = 0;
+        const descriptionIds: string[] = [];
 
         request.onsuccess = () => {
           const cursor = request.result;
           if (cursor) {
+            const cached = cursor.value as CachedImage;
+            descriptionIds.push(cached.descriptionId);
             cursor.delete();
             deletedCount++;
             cursor.continue();
           } else {
+            // Освобождаем все Object URLs для этой книги
+            if (descriptionIds.length > 0) {
+              this.releaseMany(descriptionIds);
+            }
             console.log('🗑️ [ImageCache] Cleared book cache:', bookId, deletedCount);
             resolve(deletedCount);
           }
@@ -473,10 +560,109 @@ class ImageCacheService {
       // Ignore errors
     }
   }
+
+  /**
+   * Очистка старых Object URLs (старше MAX_OBJECT_URL_AGE_MS)
+   * Автоматически вызывается каждые 5 минут
+   *
+   * @returns Количество освобождённых URLs
+   */
+  private cleanupStaleObjectURLs(): number {
+    const now = Date.now();
+    const staleIds: string[] = [];
+
+    // Используем Array.from для совместимости с TypeScript target
+    Array.from(this.objectURLs.entries()).forEach(([id, tracker]) => {
+      if (now - tracker.createdAt > this.MAX_OBJECT_URL_AGE_MS) {
+        staleIds.push(id);
+      }
+    });
+
+    if (staleIds.length > 0) {
+      console.log('🧹 [ImageCache] Cleaning up stale Object URLs:', staleIds.length);
+      const released = this.releaseMany(staleIds);
+      return released;
+    }
+
+    return 0;
+  }
+
+  /**
+   * Запускает автоматическую очистку старых Object URLs каждые 5 минут
+   * Автоматически вызывается при первом использовании сервиса
+   */
+  startAutoCleanup(): void {
+    if (this.cleanupIntervalId !== null) {
+      console.warn('⚠️ [ImageCache] Auto-cleanup already started');
+      return;
+    }
+
+    // Запускаем очистку каждые 5 минут
+    this.cleanupIntervalId = window.setInterval(() => {
+      this.cleanupStaleObjectURLs();
+    }, 5 * 60 * 1000);
+
+    console.log('✅ [ImageCache] Auto-cleanup started (interval: 5 minutes)');
+  }
+
+  /**
+   * Останавливает автоматическую очистку
+   */
+  stopAutoCleanup(): void {
+    if (this.cleanupIntervalId !== null) {
+      clearInterval(this.cleanupIntervalId);
+      this.cleanupIntervalId = null;
+      console.log('🛑 [ImageCache] Auto-cleanup stopped');
+    }
+  }
+
+  /**
+   * Полная очистка всех ресурсов
+   * Должен вызываться при unmount приложения или компонента
+   *
+   * Освобождает:
+   * - Все Object URLs
+   * - Останавливает auto-cleanup interval
+   * - Закрывает IndexedDB соединение
+   */
+  destroy(): void {
+    console.log('🗑️ [ImageCache] Destroying service...');
+
+    // Освобождаем все Object URLs
+    const urlCount = this.objectURLs.size;
+    Array.from(this.objectURLs.entries()).forEach(([, tracker]) => {
+      URL.revokeObjectURL(tracker.url);
+    });
+    this.objectURLs.clear();
+
+    // Останавливаем auto-cleanup
+    this.stopAutoCleanup();
+
+    // Закрываем IndexedDB соединение
+    if (this.db) {
+      this.db.close();
+      this.db = null;
+      this.dbPromise = null;
+    }
+
+    console.log('✅ [ImageCache] Service destroyed', {
+      releasedURLs: urlCount,
+    });
+  }
+
+  /**
+   * Получить количество активных Object URLs
+   */
+  getActiveURLCount(): number {
+    return this.objectURLs.size;
+  }
 }
 
 // Singleton instance
 export const imageCache = new ImageCacheService();
 
+// Автоматически запускаем очистку при инициализации
+imageCache.startAutoCleanup();
+
 // Export types
-export type { CachedImage, CacheStats };
+export type { CachedImage, CacheStats, ObjectURLTracker };

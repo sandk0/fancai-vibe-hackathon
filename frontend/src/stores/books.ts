@@ -5,6 +5,8 @@ import { create } from 'zustand';
 import { booksAPI } from '@/api/books';
 import type { BooksState } from '@/types/state';
 import { getErrorMessage } from '@/utils/errors';
+import { chapterCache } from '@/services/chapterCache';
+import { imageCache } from '@/services/imageCache';
 
 export const useBooksStore = create<BooksState>((set, get) => ({
   // Initial state
@@ -146,18 +148,19 @@ export const useBooksStore = create<BooksState>((set, get) => ({
       set({ isLoading: false });
 
       // Convert BookUploadResponse to Book format
+      const { book } = response;
       return {
-        id: response.book_id,
-        title: response.title,
-        author: response.author,
-        chapters_count: response.chapters_count,
-        total_pages: response.total_pages,
-        estimated_reading_time_hours: response.estimated_reading_time_hours,
-        has_cover: response.has_cover,
-        created_at: response.created_at,
-        reading_progress_percent: 0,
-        is_parsed: false,
-        is_processing: response.is_processing,
+        id: book.id,
+        title: book.title,
+        author: book.author,
+        chapters_count: book.chapters_count,
+        total_pages: book.total_pages,
+        estimated_reading_time_hours: book.estimated_reading_time_hours,
+        has_cover: book.has_cover,
+        created_at: book.created_at,
+        reading_progress_percent: book.reading_progress_percent || 0,
+        is_parsed: book.is_parsed,
+        is_processing: book.is_processing,
       };
     } catch (error) {
       set({
@@ -173,6 +176,15 @@ export const useBooksStore = create<BooksState>((set, get) => ({
 
     try {
       await booksAPI.deleteBook(bookId);
+
+      // Очистка кэшей для удаляемой книги
+      console.log('🗑️ [BooksStore] Clearing caches for deleted book:', bookId);
+      await Promise.all([
+        chapterCache.clearBook(bookId),
+        imageCache.clearBook(bookId),
+      ]).catch((err) => {
+        console.warn('⚠️ [BooksStore] Error clearing caches:', err);
+      });
 
       // Remove book from current list
       const { books } = get();

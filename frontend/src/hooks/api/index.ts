@@ -1,0 +1,71 @@
+/**
+ * React Query Hooks - Barrel Export
+ *
+ * Централизованный экспорт всех React Query хуков для BookReader AI.
+ *
+ * Использование:
+ * ```tsx
+ * import { useBooks, useBook, useGenerateImage } from '@/hooks/api';
+ * ```
+ *
+ * @module hooks/api
+ */
+
+// Query Keys
+export {
+  bookKeys,
+  chapterKeys,
+  descriptionKeys,
+  imageKeys,
+  queryKeyUtils,
+} from './queryKeys';
+
+// Books Hooks
+export {
+  useBooks,
+  useBooksInfinite,
+  useBook,
+  useReadingProgress,
+  useUserStatistics,
+  useUploadBook,
+  useDeleteBook,
+  useUpdateReadingProgress,
+  useBookFileUrl,
+} from './useBooks';
+
+// Chapter Hooks
+export {
+  useChapter,
+  useChapterContent,
+  useChapterNavigation,
+  usePrefetchChapter,
+} from './useChapter';
+
+// Description Hooks
+export {
+  useChapterDescriptions,
+  useDescriptionsList,
+  useDescriptionsByType,
+  useNLPAnalysis,
+  useBookDescriptions,
+  useReextractDescriptions,
+} from './useDescriptions';
+
+// Image Hooks
+export {
+  useBookImages,
+  useImageForDescription,
+  useGenerateImage,
+  useBatchGenerateImages,
+  useDeleteImage,
+  useRegenerateImage,
+  useGenerationStatus,
+  useImageUserStats,
+} from './useImages';
+
+/**
+ * Type exports для использования в компонентах
+ */
+export type {
+  // Можно добавить custom типы если нужно
+} from '@/types/api';

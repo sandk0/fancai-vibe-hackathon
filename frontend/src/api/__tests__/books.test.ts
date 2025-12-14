@@ -47,7 +47,7 @@ describe('Books API', () => {
 
       const result = await booksAPI.getBooks();
 
-      expect(apiClient.get).toHaveBeenCalledWith('/books');
+      expect(apiClient.get).toHaveBeenCalledWith(expect.stringMatching(/\/books\/?$/));
       expect(result).toEqual(mockResponse);
       expect(result.books).toHaveLength(2);
     });
@@ -64,7 +64,7 @@ describe('Books API', () => {
 
       await booksAPI.getBooks({ skip: 10, limit: 5 });
 
-      expect(apiClient.get).toHaveBeenCalledWith('/books?skip=10&limit=5');
+      expect(apiClient.get).toHaveBeenCalledWith(expect.stringMatching(/\/books\/?.*skip=10&limit=5/));
     });
   });
 

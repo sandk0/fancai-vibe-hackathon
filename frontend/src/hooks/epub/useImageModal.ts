@@ -257,10 +257,18 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
 
   /**
    * Close modal and reset state
+   * ВАЖНО: Освобождает Object URL если изображение было из кеша
    */
   const closeModal = useCallback(() => {
     console.log('❌ [useImageModal] Closing modal');
     setIsOpen(false);
+
+    // Освобождаем Object URL если изображение из кеша
+    if (isCached && selectedDescription) {
+      console.log('🧹 [useImageModal] Releasing cached Object URL for:', selectedDescription.id);
+      imageCache.release(selectedDescription.id);
+    }
+
     // Don't clear selectedImage immediately - allow animation
     setTimeout(() => {
       setSelectedImage(null);
@@ -270,7 +278,7 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
       setIsCached(false);
       // Don't reset status to idle - keep it for status bar to show completion
     }, 300);
-  }, []);
+  }, [isCached, selectedDescription]);
 
   /**
    * Cancel ongoing generation

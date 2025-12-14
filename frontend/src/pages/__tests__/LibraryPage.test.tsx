@@ -20,7 +20,7 @@ import type { Book } from '@/types/api';
 // Mock dependencies
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
   return {
     ...actual,
     useNavigate: () => mockNavigate,
@@ -74,6 +74,7 @@ const createMockBook = (overrides?: Partial<Book>): Book => ({
   genre: 'Fiction',
   language: 'ru',
   total_pages: 100,
+  chapters_count: 10,
   estimated_reading_time_hours: 5,
   reading_progress_percent: 0,
   has_cover: true,

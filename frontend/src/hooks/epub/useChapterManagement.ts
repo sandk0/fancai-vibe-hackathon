@@ -28,6 +28,7 @@ import type { Book, Rendition, Location } from '@/types/epub';
 import { booksAPI } from '@/api/books';
 import { imagesAPI } from '@/api/images';
 import type { Description, GeneratedImage } from '@/types/api';
+import { chapterCache } from '@/services/chapterCache';
 
 interface UseChapterManagementOptions {
   book: Book | null;
@@ -107,6 +108,7 @@ export const useChapterManagement = ({
 
   /**
    * Load descriptions and images for current chapter
+   * ОПТИМИЗАЦИЯ: Использует IndexedDB кэш для избежания повторных API запросов
    */
   const loadChapterData = useCallback(async (chapter: number) => {
     if (!bookId || chapter <= 0) return;
@@ -114,6 +116,26 @@ export const useChapterManagement = ({
     try {
       setIsLoadingChapter(true);
       console.log('📚 [useChapterManagement] Loading data for chapter:', chapter);
+
+      // Проверяем кэш
+      const cachedData = await chapterCache.get(bookId, chapter);
+
+      if (cachedData) {
+        // Используем кэшированные данные
+        console.log('✅ [useChapterManagement] Using cached chapter data:', {
+          chapter,
+          descriptionsCount: cachedData.descriptions.length,
+          imagesCount: cachedData.images.length,
+        });
+
+        setDescriptions(cachedData.descriptions);
+        setImages(cachedData.images);
+        setIsLoadingChapter(false);
+        return;
+      }
+
+      // Кэша нет - загружаем с API
+      console.log('📡 [useChapterManagement] Cache miss, fetching from API...');
 
       // Load descriptions
       const descriptionsResponse = await booksAPI.getChapterDescriptions(
@@ -132,7 +154,6 @@ export const useChapterManagement = ({
           contentLength: loadedDescriptions[0].content?.length || 0,
         } : null,
       });
-      setDescriptions(loadedDescriptions);
 
       // Load images
       const imagesResponse = await imagesAPI.getBookImages(bookId, chapter);
@@ -144,8 +165,14 @@ export const useChapterManagement = ({
           hasUrl: !!imagesResponse.images[0].image_url,
         } : null,
       });
-      setImages(imagesResponse.images);
 
+      const loadedImages = imagesResponse.images;
+
+      // Сохраняем в кэш
+      await chapterCache.set(bookId, chapter, loadedDescriptions, loadedImages);
+
+      setDescriptions(loadedDescriptions);
+      setImages(loadedImages);
       setIsLoadingChapter(false);
     } catch (error) {
       console.error('❌ [useChapterManagement] Error loading chapter data:', error);
@@ -202,6 +229,17 @@ export const useChapterManagement = ({
       loadChapterData(currentChapter);
     }
   }, [currentChapter, loadChapterData]);
+
+  /**
+   * Периодическая очистка устаревших записей кэша
+   * Запускается при монтировании компонента (1 раз при открытии книги)
+   */
+  useEffect(() => {
+    // Запускаем maintenance асинхронно, не блокируя UI
+    chapterCache.performMaintenance().catch((err) => {
+      console.warn('⚠️ [useChapterManagement] Cache maintenance failed:', err);
+    });
+  }, []); // Только при монтировании
 
   return {
     currentChapter,

@@ -272,7 +272,10 @@ describe('EpubReader Component', () => {
       renderEpubReader();
 
       await waitFor(() => {
-        expect(screen.getByText('Загрузка книги...')).toBeInTheDocument();
+        expect(screen.getByTestId('loading-overlay')).toBeInTheDocument();
+        // Match any of the loading messages
+        const loadingText = screen.getByTestId('loading-text');
+        expect(loadingText.textContent).toMatch(/Загрузка книги|Восстановление позиции|Подготовка книги/);
       });
     });
 
@@ -569,6 +572,8 @@ describe('EpubReader Component', () => {
       vi.mocked(useEpubNavigation).mockReturnValue({
         nextPage: mockNextPage,
         prevPage: vi.fn(),
+        canGoNext: true,
+        canGoPrev: true,
       });
 
       renderEpubReader();
@@ -585,6 +590,8 @@ describe('EpubReader Component', () => {
       vi.mocked(useEpubNavigation).mockReturnValue({
         nextPage: vi.fn(),
         prevPage: mockPrevPage,
+        canGoNext: true,
+        canGoPrev: true,
       });
 
       renderEpubReader();
@@ -823,6 +830,7 @@ describe('EpubReader Component', () => {
         generationStatus: 'idle',
         generationError: null,
         descriptionPreview: null,
+        isCached: false,
         openModal: mockOpenModal,
         closeModal: vi.fn(),
         updateImage: vi.fn(),
@@ -859,6 +867,8 @@ describe('EpubReader Component', () => {
       vi.mocked(useEpubNavigation).mockReturnValue({
         nextPage: mockNextPage,
         prevPage: vi.fn(),
+        canGoNext: true,
+        canGoPrev: true,
       });
 
       renderEpubReader();
@@ -896,6 +906,8 @@ describe('EpubReader Component', () => {
       vi.mocked(useEpubNavigation).mockReturnValue({
         nextPage: vi.fn(),
         prevPage: mockPrevPage,
+        canGoNext: true,
+        canGoPrev: true,
       });
 
       renderEpubReader();
