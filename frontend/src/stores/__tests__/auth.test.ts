@@ -137,6 +137,9 @@ describe('Auth Store', () => {
     });
 
     it('should set loading state during login', async () => {
+      // Use fake timers to control async flow and prevent state leakage
+      vi.useFakeTimers();
+
       vi.mocked(authAPI.login).mockImplementation(
         () => new Promise<AuthResponse>((resolve) => setTimeout(() => resolve({
           user: {
@@ -149,8 +152,8 @@ describe('Auth Store', () => {
             created_at: new Date().toISOString(),
           },
           tokens: {
-            access_token: 'token',
-            refresh_token: 'refresh',
+            access_token: 'loading-test-token',
+            refresh_token: 'loading-test-refresh',
             token_type: 'bearer',
             expires_in: 3600,
           },
@@ -165,6 +168,14 @@ describe('Auth Store', () => {
       });
 
       expect(result.current.isLoading).toBe(true);
+
+      // Advance timers and wait for promise to complete to avoid state leakage
+      await act(async () => {
+        vi.advanceTimersByTime(150);
+        await Promise.resolve();
+      });
+
+      vi.useRealTimers();
     });
   });
 
