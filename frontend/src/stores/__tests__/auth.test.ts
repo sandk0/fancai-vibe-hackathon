@@ -23,6 +23,8 @@ vi.mock('@/api/auth', () => ({
 
 describe('Auth Store', () => {
   beforeEach(() => {
+    // Use fake timers to prevent Zustand persist middleware setTimeout from interfering
+    vi.useFakeTimers();
     vi.clearAllMocks();
     localStorage.clear();
     // Reset store
@@ -34,6 +36,10 @@ describe('Auth Store', () => {
       isLoading: false,
       tokens: null,
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe('Initial State', () => {
@@ -87,9 +93,6 @@ describe('Auth Store', () => {
     });
 
     it('should save tokens to localStorage on login', async () => {
-      // Use fake timers to prevent post-rehydration loadUserFromStorage from running
-      vi.useFakeTimers();
-
       const mockResponse = {
         user: {
           id: '1',
@@ -121,8 +124,6 @@ describe('Auth Store', () => {
       // We primarily verify the store state is updated correctly
       expect(result.current.accessToken).toBe('access-123');
       expect(result.current.refreshToken).toBe('refresh-123');
-
-      vi.useRealTimers();
     });
 
     it('should handle login error', async () => {
@@ -142,9 +143,6 @@ describe('Auth Store', () => {
     });
 
     it('should set loading state during login', async () => {
-      // Use fake timers to control async flow and prevent state leakage
-      vi.useFakeTimers();
-
       vi.mocked(authAPI.login).mockImplementation(
         () => new Promise<AuthResponse>((resolve) => setTimeout(() => resolve({
           user: {
@@ -179,8 +177,6 @@ describe('Auth Store', () => {
         vi.advanceTimersByTime(150);
         await Promise.resolve();
       });
-
-      vi.useRealTimers();
     });
   });
 
