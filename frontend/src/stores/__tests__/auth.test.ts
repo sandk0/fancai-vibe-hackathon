@@ -92,39 +92,8 @@ describe('Auth Store', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    it('should save tokens to localStorage on login', async () => {
-      const mockResponse = {
-        user: {
-          id: '1',
-          email: 'test@example.com',
-          full_name: 'Test',
-          is_active: true,
-          is_verified: true,
-          is_admin: false,
-          created_at: new Date().toISOString(),
-        },
-        tokens: {
-          access_token: 'access-123',
-          refresh_token: 'refresh-123',
-          token_type: 'bearer',
-          expires_in: 3600,
-        },
-        message: 'Login successful',
-      };
-
-      vi.mocked(authAPI.login).mockResolvedValue(mockResponse);
-
-      const { result } = renderHook(() => useAuthStore());
-
-      await act(async () => {
-        await result.current.login('test@example.com', 'password');
-      });
-
-      // Note: Zustand persist middleware may handle localStorage differently
-      // We primarily verify the store state is updated correctly
-      expect(result.current.accessToken).toBe('access-123');
-      expect(result.current.refreshToken).toBe('refresh-123');
-    });
+    // Note: Token localStorage test removed - covered by 'should login successfully'
+    // which already verifies accessToken and refreshToken in store state
 
     it('should handle login error', async () => {
       vi.mocked(authAPI.login).mockRejectedValue(new Error('Invalid credentials'));
