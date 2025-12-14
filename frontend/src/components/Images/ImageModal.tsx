@@ -27,9 +27,6 @@ export const ImageModal: React.FC<ImageModalProps> = ({
   imageId,
   onImageRegenerated
 }) => {
-  // Debug: log received props
-  console.log('🖼️ [ImageModal] Received props:', { imageUrl, isOpen, title, imageId });
-
   const [isZoomed, setIsZoomed] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [showRegenerateOptions, setShowRegenerateOptions] = useState(false);
@@ -103,12 +100,8 @@ export const ImageModal: React.FC<ImageModalProps> = ({
 
   // Update current image URL when prop changes
   React.useEffect(() => {
-    console.log('🔄 [ImageModal] useEffect: imageUrl prop changed to:', imageUrl);
     setCurrentImageUrl(imageUrl);
   }, [imageUrl]);
-
-  // Log current state before render
-  console.log('🎨 [ImageModal] Render with currentImageUrl:', currentImageUrl);
 
   // Close on escape key
   React.useEffect(() => {
@@ -295,17 +288,8 @@ export const ImageModal: React.FC<ImageModalProps> = ({
               isZoomed ? 'scale-150 cursor-zoom-out' : 'cursor-zoom-in'
             } ${isRegenerating ? 'opacity-50' : ''}`}
             onClick={() => !isRegenerating && setIsZoomed(!isZoomed)}
-            onLoad={() => {
-              console.log('✅ [ImageModal] Image loaded successfully:', currentImageUrl);
-            }}
             onError={(e) => {
               const target = e.target as HTMLImageElement;
-              console.error('❌ [ImageModal] Image load error for URL:', currentImageUrl);
-              console.error('❌ [ImageModal] Original imageUrl prop:', imageUrl);
-              console.error('❌ [ImageModal] Event:', e.type, e);
-              // Try to get more info about the error
-              console.error('❌ [ImageModal] Target naturalWidth:', target.naturalWidth);
-              console.error('❌ [ImageModal] Target complete:', target.complete);
               target.src = '/placeholder-image.jpg'; // Fallback image
             }}
           />
