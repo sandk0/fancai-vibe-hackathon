@@ -87,6 +87,9 @@ describe('Auth Store', () => {
     });
 
     it('should save tokens to localStorage on login', async () => {
+      // Use fake timers to prevent post-rehydration loadUserFromStorage from running
+      vi.useFakeTimers();
+
       const mockResponse = {
         user: {
           id: '1',
@@ -118,6 +121,8 @@ describe('Auth Store', () => {
       // We primarily verify the store state is updated correctly
       expect(result.current.accessToken).toBe('access-123');
       expect(result.current.refreshToken).toBe('refresh-123');
+
+      vi.useRealTimers();
     });
 
     it('should handle login error', async () => {
