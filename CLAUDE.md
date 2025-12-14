@@ -71,13 +71,38 @@ Admin API: `GET/POST/PUT/DELETE /api/v1/admin/feature-flags`
 | `app/services/gemini_extractor.py` | 612 | Direct Gemini API (newest) |
 | `app/services/nlp/` | ~3000 | Strategy pattern NLP framework |
 
-### Frontend Components
+### Frontend Components (December 2025)
 | File | Lines | Purpose |
 |------|-------|---------|
-| `src/components/Reader/EpubReader.tsx` | 573 | epub.js EPUB reader |
-| `src/pages/LibraryPage.tsx` | 739 | Book library + upload |
-| `src/services/imageCache.ts` | 482 | IndexedDB offline image cache |
+| `src/components/Reader/EpubReader.tsx` | 573 | epub.js EPUB reader with CFI navigation |
+| `src/pages/LibraryPage.tsx` | 739 | Book library + upload management |
 | `src/hooks/epub/useDescriptionHighlighting.ts` | 566 | 9 search strategies for highlighting |
+
+### Frontend Caching Services (NEW - December 2025)
+| File | Lines | Purpose |
+|------|-------|---------|
+| `src/services/chapterCache.ts` | ~200 | IndexedDB кэш для глав (descriptions + images), auto-sync |
+| `src/services/imageCache.ts` | 482 | IndexedDB offline image cache с auto-cleanup каждые 5 минут |
+
+### TanStack Query Hooks (NEW - December 2025, src/hooks/api/)
+| File | Purpose |
+|------|---------|
+| `queryKeys.ts` | Централизованное управление ключами кэша для всех запросов |
+| `useBooks.ts` | Хуки для работы с книгами (list, get, upload) с prefetching |
+| `useChapter.ts` | Хуки для глав с интеграцией IndexedDB и offline support |
+| `useDescriptions.ts` | Хуки для описаний и NLP результатов с кэшированием |
+| `useImages.ts` | Хуки для генерации и управления изображениями |
+
+### Модульные Компоненты (NEW - December 2025)
+| Directory | Компоненты | Purpose |
+|-----------|-----------|---------|
+| `src/components/Library/` | Header, Stats, Search, BookCard, BookGrid, Pagination | Модульные компоненты библиотеки книг |
+| `src/components/Admin/` | Header, Stats, TabNavigation, MultiNLPSettings, ParsingSettings | Модульные компоненты админ-панели |
+
+### Library Hooks (NEW - December 2025)
+| File | Purpose |
+|------|---------|
+| `src/hooks/library/useLibraryFilters.ts` | Фильтрация и статистика книг (сортировка, поиск, пагинация) |
 
 ### Core Models
 | Model | Key Fields |
@@ -195,15 +220,21 @@ Types: feat, fix, docs, style, refactor, test, chore
 - Frontend: TypeScript strict mode
 - Pre-commit hooks: mypy, ruff, black, eslint
 
-## File Structure (Simplified)
+## File Structure (Simplified, Updated December 2025)
 
 ```
 fancai-vibe-hackathon/
 ├── frontend/
-│   ├── src/components/Reader/    # EPUB reader components
-│   ├── src/hooks/epub/           # Reading hooks (CFI, progress)
-│   ├── src/services/             # API clients, imageCache
-│   └── src/pages/                # Page components
+│   ├── src/components/
+│   │   ├── Reader/               # EPUB reader components (EpubReader, etc.)
+│   │   ├── Library/              # Модульные компоненты библиотеки (6 файлов)
+│   │   └── Admin/                # Модульные компоненты админ-панели (5 файлов)
+│   ├── src/hooks/
+│   │   ├── api/                  # TanStack Query хуки (queryKeys, useBooks, useChapter, useDescriptions, useImages)
+│   │   ├── epub/                 # EPUB reader hooks (CFI, progress, highlighting)
+│   │   └── library/              # Library hooks (useLibraryFilters)
+│   ├── src/services/             # API clients + caching (imageCache, chapterCache)
+│   └── src/pages/                # Page components (LibraryPage, ReaderPage, etc.)
 ├── backend/
 │   ├── app/core/                 # Config, DB, exceptions
 │   ├── app/models/               # SQLAlchemy models
@@ -213,7 +244,7 @@ fancai-vibe-hackathon/
 │   └── app/services/             # Business logic
 │       ├── nlp/                  # NLP strategies + components
 │       └── advanced_parser/      # Multi-stage parser
-├── docs/                         # Documentation (Diataxis)
+├── docs/                         # Documentation (Diataxis framework)
 │   ├── guides/                   # How-to guides
 │   ├── reference/                # API, DB schemas
 │   ├── explanations/             # Architecture
@@ -232,10 +263,65 @@ fancai-vibe-hackathon/
 
 ## Current Focus (December 2025)
 
+### Completed (December 2025)
+1. **Frontend Architecture Refactoring** - TanStack Query hooks (api/), modular components (Library/, Admin/), caching services
+   - chapterCache.ts - IndexedDB для описаний и изображений глав
+   - imageCache.ts - Auto-cleanup каждые 5 минут
+   - 5 TanStack Query хуков с полной типизацией
+   - 6 компонентов Library (Header, Stats, Search, BookCard, BookGrid, Pagination)
+   - 5 компонентов Admin (Header, Stats, TabNavigation, MultiNLPSettings, ParsingSettings)
+
+2. **Image URL Handling** - Fixed inline content-disposition for proper browser display
+   - Persistent storage для сгенерированных изображений
+   - Correct URL normalization (не срезать /api/v1 prefix)
+
+### In Progress
 1. **LLM Migration** - Evaluating Gemini-based parsing vs Multi-NLP
-2. **Image Caching** - IndexedDB for offline access
-3. **Description Highlighting** - 9-strategy search for accuracy
-4. **Reading Progress** - CFI + scroll offset for precise restoration
+2. **Description Highlighting** - 9-strategy search for accuracy (already implemented)
+3. **Reading Progress** - CFI + scroll offset for precise restoration
+4. **Offline Support** - Full offline reading with IndexedDB synchronization
+
+## Frontend Architecture Details (December 2025)
+
+### Caching Strategy
+- **TanStack Query (v5)** - Server state management с автоматическим кэшированием
+  - queryKeys.ts - Централизованный реестр всех ключей для type-safe кэша
+  - Stale-while-revalidate паттерн для оптимального UX
+  - Background refetch при фокусе окна
+
+- **IndexedDB** - Локальное хранилище для offline доступа
+  - chapterCache.ts - Кэширование содержимого глав и описаний
+  - imageCache.ts - Кэширование сгенерированных изображений
+  - Auto-cleanup - Удаление старых данных каждые 5 минут
+
+### Component Organization
+- **Library Components** - Модульная архитектура для страницы библиотеки
+  - Header - Поиск и сортировка
+  - Stats - Статистика по книгам (всего, в процессе, завершено)
+  - Search - Интеграция с useLibraryFilters
+  - BookCard - Карточка книги с метаданными
+  - BookGrid - Сетка книг с пагинацией
+  - Pagination - Навигация по страницам
+
+- **Admin Components** - Модульная архитектура для админ-панели
+  - Header - Название и описание раздела
+  - Stats - Системная статистика
+  - TabNavigation - Переключение между вкладками
+  - MultiNLPSettings - Настройки NLP процессоров
+  - ParsingSettings - Настройки парсинга и очереди
+
+### Data Flow (TanStack Query)
+```
+Component → useBooks/useChapter/useDescriptions/useImages
+    ↓
+TanStack Query (queryKeys for caching)
+    ↓
+IndexedDB (if offline) / API (online)
+    ↓
+Auto-refetch on focus/interval
+    ↓
+Automatic invalidation on mutations
+```
 
 ## Quick Links
 
