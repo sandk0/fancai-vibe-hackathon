@@ -3,6 +3,10 @@ Reusable FastAPI dependencies для BookReader AI.
 
 Этот модуль содержит зависимости, которые можно переиспользовать
 в различных endpoints для проверки доступа к ресурсам и их получения.
+
+NLP REMOVAL (December 2025):
+- Удалены Description-related dependencies
+- Описания извлекаются on-demand через LLM API
 """
 
 from uuid import UUID
@@ -18,15 +22,12 @@ from .exceptions import (
     BookAccessDeniedException,
     ChapterNotFoundException,
     ChapterAccessDeniedException,
-    DescriptionNotFoundException,
-    DescriptionAccessDeniedException,
     ImageNotFoundException,
     ImageAccessDeniedException,
 )
 from ..models.user import User
 from ..models.book import Book
 from ..models.chapter import Chapter
-from ..models.description import Description
 from ..models.image import GeneratedImage
 from ..services.book import book_service
 
@@ -191,57 +192,6 @@ async def get_chapter_by_number(
 
 
 # ============================================================================
-# Description Dependencies
-# ============================================================================
-
-
-async def get_user_description(
-    description_id: UUID,
-    db: AsyncSession = Depends(get_database_session),
-    current_user: User = Depends(get_current_active_user),
-) -> Description:
-    """
-    Dependency для получения описания с проверкой доступа пользователя.
-
-    Args:
-        description_id: ID описания
-        db: Сессия базы данных
-        current_user: Текущий аутентифицированный пользователь
-
-    Returns:
-        Описание из книги пользователя
-
-    Raises:
-        DescriptionNotFoundException: Если описание не найдено
-        DescriptionAccessDeniedException: Если пользователь не имеет доступа
-    """
-    result = await db.execute(
-        select(Description)
-        .join(Chapter)
-        .join(Book)
-        .where(Description.id == description_id)
-        .where(Book.user_id == current_user.id)
-    )
-    description = result.scalar_one_or_none()
-
-    if not description:
-        # Проверяем, существует ли описание вообще
-        result = await db.execute(
-            select(Description).where(Description.id == description_id)
-        )
-        existing_description = result.scalar_one_or_none()
-
-        if existing_description:
-            # Описание существует, но пользователь не имеет доступа
-            raise DescriptionAccessDeniedException(description_id)
-        else:
-            # Описание не существует
-            raise DescriptionNotFoundException(description_id)
-
-    return description
-
-
-# ============================================================================
 # Image Dependencies
 # ============================================================================
 
@@ -288,55 +238,6 @@ async def get_user_image(
             raise ImageNotFoundException(image_id)
 
     return image
-
-
-async def get_user_image_with_description(
-    image_id: UUID,
-    db: AsyncSession = Depends(get_database_session),
-    current_user: User = Depends(get_current_active_user),
-) -> tuple[GeneratedImage, Description]:
-    """
-    Dependency для получения изображения с его описанием.
-
-    Args:
-        image_id: ID изображения
-        db: Сессия базы данных
-        current_user: Текущий аутентифицированный пользователь
-
-    Returns:
-        Кортеж (изображение, описание)
-
-    Raises:
-        ImageNotFoundException: Если изображение не найдено
-        ImageAccessDeniedException: Если пользователь не имеет доступа
-    """
-    result = await db.execute(
-        select(GeneratedImage, Description)
-        .join(Description, GeneratedImage.description_id == Description.id)
-        .join(Chapter, Description.chapter_id == Chapter.id)
-        .join(Book, Chapter.book_id == Book.id)
-        .where(GeneratedImage.id == image_id)
-        .where(Book.user_id == current_user.id)
-    )
-
-    row = result.first()
-
-    if not row:
-        # Проверяем, существует ли изображение вообще
-        result = await db.execute(
-            select(GeneratedImage).where(GeneratedImage.id == image_id)
-        )
-        existing_image = result.scalar_one_or_none()
-
-        if existing_image:
-            # Изображение существует, но пользователь не имеет доступа
-            raise ImageAccessDeniedException(image_id)
-        else:
-            # Изображение не существует
-            raise ImageNotFoundException(image_id)
-
-    # Cast Row to tuple for type safety
-    return cast(tuple[GeneratedImage, Description], tuple(row))
 
 
 # ============================================================================

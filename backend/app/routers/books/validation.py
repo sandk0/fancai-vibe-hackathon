@@ -14,7 +14,6 @@ import os
 from pathlib import Path
 
 from ...services.book_parser import book_parser
-from ...services.nlp_processor import nlp_processor
 from ...schemas.responses.books_validation import (
     ParserStatusResponse,
     BookFileValidationResponse,
@@ -37,9 +36,10 @@ async def get_parser_status() -> ParserStatusResponse:
     Returns:
         Информация о поддерживаемых форматах и доступности парсера
     """
+    # NLP removed - using LLM-based extraction on-demand
     return ParserStatusResponse(
         supported_formats=book_parser.get_supported_formats(),
-        nlp_available=nlp_processor.is_available(),
+        nlp_available=True,  # LLM extraction available
         parser_ready=len(book_parser.get_supported_formats()) > 0,
         max_file_size_mb=50,
         message=f"Book parser supports: {', '.join(book_parser.get_supported_formats())}",

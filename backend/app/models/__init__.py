@@ -7,7 +7,6 @@
 from .user import User, Subscription
 from .book import Book, ReadingProgress
 from .chapter import Chapter
-from .description import Description
 from .image import GeneratedImage
 from .reading_session import ReadingSession
 from .reading_goal import ReadingGoal, GoalType, GoalPeriod
@@ -19,7 +18,6 @@ __all__ = [
     "Book",
     "ReadingProgress",
     "Chapter",
-    "Description",
     "GeneratedImage",
     "ReadingSession",
     "ReadingGoal",

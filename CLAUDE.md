@@ -6,7 +6,9 @@ Guidance for Claude Code when working with BookReader AI repository.
 
 **BookReader AI** - Web application for reading fiction with automatic image generation from book descriptions. Subscription-based monetization (FREE/PREMIUM/ULTIMATE).
 
-**Core Value:** NLP-powered extraction of visual descriptions + AI image generation.
+**Core Value:** LLM-powered extraction of visual descriptions + AI image generation.
+
+> **NLP REMOVAL (December 2025):** Multi-NLP system (SpaCy, Natasha, Stanza, GLiNER) removed for server optimization. Description extraction now via Google Gemini API (LangExtract). RAM: 10-12 GB → 2-3 GB (-75%), Docker: 2.5 GB → 800 MB (-68%).
 
 ## Technology Stack
 
@@ -29,30 +31,21 @@ Guidance for Claude Code when working with BookReader AI repository.
 | Celery | Background processing |
 | SQLAlchemy + Alembic | ORM + migrations |
 
-### NLP System (Description Extraction)
+### Description Extraction (UPDATED December 2025)
 
-**Current Architecture:** Multi-NLP Ensemble (4 processors)
-
-| Processor | Model | Weight | Specialization |
-|-----------|-------|--------|----------------|
-| SpaCy | ru_core_news_lg | 1.0 | Entity recognition |
-| Natasha | - | 1.2 | Russian morphology, NER |
-| GLiNER | gliner_medium-v2.1 | 1.0 | Zero-shot NER |
-| Stanza | ru | 0.8 | Dependency parsing |
-
-**Alternative (Experimental):** LLM-Only Mode via Google Gemini API
-- Feature flag: `USE_LANGEXTRACT_PRIMARY=true`
-- Lighter: ~500MB vs 2.2GB models
+**Current Architecture:** LLM-Only Mode via Google Gemini API (LangExtract)
+- Extracts descriptions on-demand when user opens chapter
+- Supports Russian → English translation for image prompts
 - Cost: ~$0.02/book
+- RAM: ~500 MB (vs 2.2 GB for NLP models)
 
-**Image Generation:** pollinations.ai (primary, free)
+> **DEPRECATED:** Multi-NLP Ensemble (SpaCy, Natasha, Stanza, GLiNER) removed December 2025.
+
+**Image Generation:** Google Imagen 4 (primary)
 
 ### Feature Flags
 Database-backed feature control. Key flags:
 ```
-USE_NEW_NLP_ARCHITECTURE = True   # Multi-NLP ensemble
-USE_LANGEXTRACT_PRIMARY = False   # LLM parsing (experimental)
-USE_ADVANCED_PARSER = False       # Advanced multi-stage parser
 ENABLE_IMAGE_CACHING = True       # Image generation cache
 ```
 Admin API: `GET/POST/PUT/DELETE /api/v1/admin/feature-flags`
@@ -63,13 +56,12 @@ Admin API: `GET/POST/PUT/DELETE /api/v1/admin/feature-flags`
 | File | Lines | Purpose |
 |------|-------|---------|
 | `app/services/book_parser.py` | 925 | EPUB/FB2 parsing + CFI generation |
-| `app/services/multi_nlp_manager.py` | 514 | NLP orchestration (4 processors) |
-| `app/services/image_generator.py` | 435 | pollinations.ai integration |
-| `app/services/parsing_manager.py` | ~300 | Queue + prioritization |
+| `app/services/langextract_processor.py` | 811 | LLM-based description extraction |
+| `app/services/imagen_generator.py` | ~300 | Google Imagen 4 image generation |
+| `app/services/image_generator.py` | 301 | Image generation orchestration |
 | `app/services/feature_flag_manager.py` | 422 | Feature control |
-| `app/services/langextract_processor.py` | 811 | LLM-based extraction (experimental) |
-| `app/services/gemini_extractor.py` | 612 | Direct Gemini API (newest) |
-| `app/services/nlp/` | ~3000 | Strategy pattern NLP framework |
+
+> **REMOVED December 2025:** `multi_nlp_manager.py`, `nlp/` directory, NLP processors
 
 ### Frontend Components (December 2025)
 | File | Lines | Purpose |
@@ -90,7 +82,7 @@ Admin API: `GET/POST/PUT/DELETE /api/v1/admin/feature-flags`
 | `queryKeys.ts` | Централизованное управление ключами кэша для всех запросов |
 | `useBooks.ts` | Хуки для работы с книгами (list, get, upload) с prefetching |
 | `useChapter.ts` | Хуки для глав с интеграцией IndexedDB и offline support |
-| `useDescriptions.ts` | Хуки для описаний и NLP результатов с кэшированием |
+| `useDescriptions.ts` | Хуки для описаний с кэшированием (LLM extraction) |
 | `useImages.ts` | Хуки для генерации и управления изображениями |
 
 ### Модульные Компоненты (NEW - December 2025)

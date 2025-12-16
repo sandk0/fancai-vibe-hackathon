@@ -15,12 +15,10 @@ from typing import Dict, Any
 
 from .routers import (
     users,
-    nlp,
     auth,
     images,
     chapters,
     reading_progress,
-    descriptions,
     reading_sessions_router,
     health_router,
 )
@@ -30,7 +28,6 @@ from .core.config import settings
 from .core.cache import cache_manager
 from .core.secrets import startup_secrets_check
 from .services.settings_manager import settings_manager
-from .services.multi_nlp_manager import multi_nlp_manager
 from .middleware.security_headers import SecurityHeadersMiddleware
 from .middleware.rate_limit import rate_limiter, rate_limit
 
@@ -137,7 +134,6 @@ async def general_exception_handler(request: Request, exc: Exception):
 # Подключение роутеров
 app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(users.router, prefix="/api/v1", tags=["users"])
-app.include_router(nlp.router, prefix="/api/v1", tags=["nlp"])
 app.include_router(images.router, prefix="/api/v1", tags=["images"])
 app.include_router(admin_router, prefix="/api/v1")
 
@@ -147,7 +143,6 @@ app.include_router(chapters.router, prefix="/api/v1/books", tags=["chapters"])
 app.include_router(
     reading_progress.router, prefix="/api/v1/books", tags=["reading_progress"]
 )
-app.include_router(descriptions.router, prefix="/api/v1/books", tags=["descriptions"])
 
 # Reading Sessions router
 app.include_router(reading_sessions_router, prefix="/api/v1", tags=["reading-sessions"])
@@ -209,12 +204,6 @@ async def startup_event():
     except Exception as e:
         print(f"⚠️ Failed to initialize settings: {e}")
 
-    # Инициализация Multi-NLP Manager
-    try:
-        await multi_nlp_manager.initialize()
-        print("✅ Multi-NLP Manager initialized")
-    except Exception as e:
-        print(f"⚠️ Failed to initialize Multi-NLP Manager: {e}")
 
 
 @app.on_event("shutdown")
@@ -293,7 +282,7 @@ async def api_info() -> Dict[str, Any]:
             "book_upload",
             "epub_parsing",
             "fb2_parsing",
-            "nlp_description_extraction",
+            "llm_description_extraction",
             "ai_image_generation",
             "user_authentication",
             "subscription_management",

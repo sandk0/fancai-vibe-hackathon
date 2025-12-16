@@ -5,12 +5,16 @@ API роуты для работы с главами книг в BookReader AI.
 - Получение списка глав
 - Получение содержимого конкретной главы
 - Навигация между главами
+
+NLP REMOVAL (December 2025):
+- Description model removed - descriptions extracted on-demand via LLM
+- GeneratedImage linked directly to chapters (description_id deprecated)
 """
 
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 from ..core.database import get_database_session
 from ..core.auth import get_current_active_user
@@ -21,14 +25,12 @@ from ..services.book import book_service
 from ..models.user import User
 from ..models.book import Book
 from ..models.chapter import Chapter
-from ..models.description import Description
 from ..models.image import GeneratedImage
 from ..schemas.responses import (
     ChapterResponse,
     ChapterDetailResponse,
     NavigationInfo,
     BookMinimalInfo,
-    DescriptionWithImageResponse,
 )
 
 
@@ -149,28 +151,25 @@ async def get_chapter(
         book_result = await db.execute(select(Book).where(Book.id == chapter.book_id))
         book = book_result.scalar_one()
 
-        # Получаем описания для этой главы с изображениями (лимитируем до 50)
-        descriptions_result = await db.execute(
-            select(Description, GeneratedImage)
-            .outerjoin(GeneratedImage, Description.id == GeneratedImage.description_id)
-            .where(Description.chapter_id == chapter.id)
-            .order_by(Description.priority_score.desc())
-            .limit(50)  # Лимитируем для предотвращения проблем с памятью
+        # NLP REMOVAL: Descriptions are now extracted on-demand via LLM API
+        # Get images for this chapter (images now linked to chapters, not descriptions)
+        images_result = await db.execute(
+            select(GeneratedImage)
+            .where(GeneratedImage.chapter_id == chapter.id)
+            .limit(50)
         )
+        images = images_result.scalars().all()
 
-        descriptions_data = []
-        descriptions_rows = descriptions_result.fetchall()
-
-        for description, generated_image in descriptions_rows:
-            # Создаем DescriptionWithImageResponse
-            desc_response = DescriptionWithImageResponse.model_validate(description)
-
-            # Добавляем изображение только если оно есть
-            if generated_image:
-                desc_response.image_url = generated_image.image_url
-                desc_response.image_id = generated_image.id
-
-            descriptions_data.append(desc_response)
+        # Convert images to dict format for response
+        images_data: List[Dict[str, Any]] = []
+        for img in images:
+            images_data.append({
+                "id": str(img.id),
+                "image_url": img.image_url,
+                "description_text": img.description_text,
+                "description_type": img.description_type,
+                "status": img.status,
+            })
 
         # Навигационная информация
         has_previous = chapter.chapter_number > 1
@@ -197,9 +196,10 @@ async def get_chapter(
 
         response = ChapterDetailResponse(
             chapter=chapter_response,
-            descriptions=descriptions_data,
+            descriptions=[],  # Descriptions extracted on-demand via /descriptions endpoint
             navigation=navigation,
             book_info=book_info,
+            images=images_data,  # Images linked directly to chapter
         )
 
         # Cache the result (1 hour TTL for chapter content)

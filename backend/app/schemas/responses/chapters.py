@@ -3,13 +3,17 @@ Response schemas для chapter endpoints в BookReader AI.
 
 Этот модуль содержит type-safe response schemas для endpoints
 работы с главами книг, включая навигацию и метаданные.
+
+NLP REMOVAL (December 2025):
+- DescriptionWithImageResponse replaced with images field
+- Descriptions extracted on-demand via LLM API
 """
 
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from uuid import UUID
 
-from . import ChapterResponse, DescriptionWithImageResponse
+from . import ChapterResponse
 
 
 # ============================================================================
@@ -57,11 +61,17 @@ class ChapterDetailResponse(BaseModel):
 
     Используется в GET /api/v1/books/{book_id}/chapters/{chapter_number}.
 
+    NLP REMOVAL (December 2025):
+    - descriptions field deprecated (empty list for backwards compatibility)
+    - images field added for generated images linked to chapter
+    - Descriptions extracted on-demand via /descriptions endpoint
+
     Attributes:
         chapter: Информация о главе с содержимым
-        descriptions: Список описаний с изображениями
+        descriptions: DEPRECATED - always empty list
         navigation: Навигационная информация
         book_info: Минимальная информация о книге
+        images: Список сгенерированных изображений для главы
 
     Example:
         {
@@ -72,7 +82,15 @@ class ChapterDetailResponse(BaseModel):
                 "content": "...",
                 "word_count": 3500
             },
-            "descriptions": [...],
+            "descriptions": [],
+            "images": [
+                {
+                    "id": "uuid",
+                    "image_url": "/images/...",
+                    "description_text": "A dark forest...",
+                    "description_type": "location"
+                }
+            ],
             "navigation": {
                 "has_previous": true,
                 "has_next": true,
@@ -89,11 +107,14 @@ class ChapterDetailResponse(BaseModel):
     """
 
     chapter: ChapterResponse
-    descriptions: List[DescriptionWithImageResponse] = Field(
-        default_factory=list, description="Descriptions with generated images"
+    descriptions: List[Dict[str, Any]] = Field(
+        default_factory=list, description="DEPRECATED - use /descriptions endpoint"
     )
     navigation: NavigationInfo
     book_info: BookMinimalInfo
+    images: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Generated images for this chapter"
+    )
 
 
 # ============================================================================

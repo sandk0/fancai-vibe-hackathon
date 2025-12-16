@@ -26,8 +26,16 @@ from uuid import UUID
 # Импортируем Enum классы из моделей для консистентности
 from app.models.user import SubscriptionPlan, SubscriptionStatus
 from app.models.book import BookGenre, BookFormat
-from app.models.description import DescriptionType
 from app.models.image import ImageStatus, ImageService
+
+# DescriptionType определен локально после удаления NLP системы
+from enum import Enum
+
+class DescriptionType(str, Enum):
+    """Типы описаний (for backwards compatibility)."""
+    LOCATION = "location"
+    CHARACTER = "character"
+    ATMOSPHERE = "atmosphere"
 
 
 # ============================================================================
@@ -544,14 +552,7 @@ from .processing import (
     ParsingStatusResponse,
 )
 
-# NLP Testing responses (Phase 1.3)
-from .nlp import (
-    ProcessorTestResult,
-    NLPTestChapterResponse,
-    NLPTestBookResponse,
-    NLPLibraryStatus,
-    NLPLibrariesTestResponse,
-)
+# NLP Testing responses removed (December 2025 - NLP system removed)
 
 # Admin responses (Phase 1.3 + 1.4)
 from .admin import (
@@ -697,12 +698,7 @@ __all__ = [
     # NEW: Phase 1.3 Type Safety - Processing schemas
     "BookProcessingResponse",
     "ParsingStatusResponse",
-    # NEW: Phase 1.3 Type Safety - NLP Testing schemas
-    "ProcessorTestResult",
-    "NLPTestChapterResponse",
-    "NLPTestBookResponse",
-    "NLPLibraryStatus",
-    "NLPLibrariesTestResponse",
+    # NLP Testing schemas removed (December 2025 - NLP system removed)
     # NEW: Phase 1.3 Type Safety - Admin schemas
     "CacheStatsResponse",
     "CacheClearResponse",

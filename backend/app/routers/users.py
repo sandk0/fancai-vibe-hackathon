@@ -11,7 +11,6 @@ from ..core.database import get_database_session
 from ..core.auth import get_current_active_user, get_current_admin_user
 from ..models.user import User, Subscription
 from ..models.book import Book
-from ..models.description import Description
 from ..models.image import GeneratedImage
 from ..services.user_statistics_service import UserStatisticsService
 from ..schemas.responses import (
@@ -129,14 +128,8 @@ async def get_user_profile(
     )
     total_books = books_count.scalar()
 
-    # Общее количество описаний
-    descriptions_count = await db.execute(
-        select(func.count(Description.id))
-        .select_from(Description)
-        .join(Book.chapters)
-        .where(Book.user_id == current_user.id)
-    )
-    total_descriptions = descriptions_count.scalar() or 0
+    # NLP REMOVAL: Descriptions extracted on-demand, not stored
+    total_descriptions = 0
 
     # Общее количество изображений
     images_count = await db.execute(
@@ -356,9 +349,10 @@ async def get_admin_statistics(
     total_books = await db.execute(select(func.count(Book.id)))
     total_books_count = total_books.scalar()
 
-    # Общее количество описаний
-    total_descriptions = await db.execute(select(func.count(Description.id)))
-    total_descriptions_count = total_descriptions.scalar()
+    # NLP REMOVAL: Descriptions extracted on-demand, not stored
+    # Count generated images instead
+    total_images = await db.execute(select(func.count(GeneratedImage.id)))
+    total_images_count = total_images.scalar()
 
     return AdminStatisticsResponse(
         users={
@@ -369,16 +363,15 @@ async def get_admin_statistics(
         subscriptions=subscriptions_by_plan,
         content={
             "total_books": total_books_count,
-            "total_descriptions": total_descriptions_count,
+            "total_descriptions": 0,  # DEPRECATED - descriptions on-demand
+            "total_images": total_images_count,
         },
         system_health=SystemHealth(
             status="healthy",
             avg_books_per_user=round(
                 total_books_count / max(total_users_count, 1), 2
             ),
-            avg_descriptions_per_book=round(
-                total_descriptions_count / max(total_books_count, 1), 2
-            ),
+            avg_descriptions_per_book=0,  # DEPRECATED
         ),
     )
 

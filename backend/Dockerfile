@@ -1,4 +1,5 @@
-# Development Dockerfile for Backend
+# Lightweight Backend Dockerfile
+# NLP REMOVAL (December 2025): SpaCy, NLTK, Stanza removed
 # syntax=docker/dockerfile:1.4
 FROM python:3.11-slim
 
@@ -7,9 +8,7 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=0 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PYTHONPATH=/app \
-    NLTK_DATA=/root/nltk_data \
-    STANZA_RESOURCES_DIR=/root/stanza_resources
+    PYTHONPATH=/app
 
 # Install system dependencies (rarely changes - cached)
 RUN apt-get update && apt-get install -y \
@@ -26,37 +25,21 @@ WORKDIR /app
 # Copy requirements first for better layer caching (changes occasionally)
 COPY requirements.txt .
 
-# Install nltk first and download data BEFORE other dependencies
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade pip && \
-    pip install nltk && \
-    python -m nltk.downloader -d /root/nltk_data punkt stopwords wordnet averaged_perceptron_tagger && \
-    echo "✅ NLTK and data downloaded"
-
 # Install Python dependencies with BuildKit cache mount for pip
 # Cache persists across rebuilds - no redownload!
+# NLP REMOVAL: No SpaCy, NLTK, Stanza models needed anymore
 RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip && \
     pip install -r requirements.txt
 
-# Download NLP models with separate cache mounts
-# Models download to volumes - persist across rebuilds!
-# SpaCy models - install directly from GitHub release
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install https://github.com/explosion/spacy-models/releases/download/ru_core_news_lg-3.7.0/ru_core_news_lg-3.7.0-py3-none-any.whl && \
-    echo "✅ SpaCy ru_core_news_lg-3.7.0 downloaded"
-
-# Stanza models
-RUN python -c "import stanza; stanza.download('ru', model_dir='/root/stanza_resources', verbose=False)" && \
-    echo "✅ Stanza ru model downloaded"
-
 # Final verification
-RUN echo "✅ All NLP models downloaded successfully"
+RUN echo "✅ Dependencies installed (NLP models removed for optimization)"
 
 # Copy source code
 COPY . .
 
 # Create necessary directories
-RUN mkdir -p /app/uploads /app/logs /app/storage
+RUN mkdir -p /app/uploads /app/logs /app/storage /app/storage/generated_images
 
 # Create non-root user for development
 RUN groupadd -r appuser && useradd -r -g appuser appuser && \
@@ -69,7 +52,7 @@ USER appuser
 EXPOSE 8000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD curl -f http://localhost:8000/health || exit 1
 
 # Default command (runs as appuser)

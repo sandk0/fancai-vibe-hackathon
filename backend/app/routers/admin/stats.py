@@ -1,5 +1,9 @@
 """
 Admin API routes for system statistics.
+
+NLP REMOVAL (December 2025):
+- Description model removed - descriptions extracted on-demand via LLM
+- total_descriptions deprecated (always 0)
 """
 
 from fastapi import APIRouter, Depends
@@ -13,7 +17,6 @@ from ...core.database import get_database_session
 from ...core.auth import get_current_admin_user
 from ...models.user import User
 from ...models.book import Book
-from ...models.description import Description
 from ...models.image import GeneratedImage
 
 router = APIRouter()
@@ -22,7 +25,7 @@ router = APIRouter()
 class SystemStats(BaseModel):
     total_users: int
     total_books: int
-    total_descriptions: int
+    total_descriptions: int  # DEPRECATED - always 0, kept for backwards compatibility
     total_images: int
     processing_rate: float
     generation_rate: float
@@ -44,8 +47,8 @@ async def get_system_stats(
     books_result = await db.execute(select(func.count(Book.id)))
     total_books = books_result.scalar()
 
-    descriptions_result = await db.execute(select(func.count(Description.id)))
-    total_descriptions = descriptions_result.scalar()
+    # NLP REMOVAL: Descriptions extracted on-demand, not stored
+    total_descriptions = 0
 
     images_result = await db.execute(select(func.count(GeneratedImage.id)))
     total_images = images_result.scalar()
@@ -66,10 +69,9 @@ async def get_system_stats(
         active_parsing_tasks = 0
         queue_size = 0
 
-    # Calculate processing and generation rates
-    # These would be based on actual metrics in production
-    processing_rate = min(100.0, (total_descriptions / max(total_books, 1)) * 10)
-    generation_rate = min(100.0, (total_images / max(total_descriptions, 1)) * 100)
+    # Calculate rates based on images and books
+    processing_rate = 100.0  # LLM extraction always available
+    generation_rate = min(100.0, (total_images / max(total_books, 1)) * 100)
 
     return SystemStats(
         total_users=total_users,

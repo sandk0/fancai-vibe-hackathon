@@ -10,14 +10,25 @@ Features:
 - Genre-aware styling
 - Batch generation support
 - Queue management
+
+NLP REMOVAL (December 2025):
+- Description model removed - using Dict-based descriptions
+- DescriptionType enum defined locally
 """
 
 import asyncio
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 import logging
+from enum import Enum
 
-from ..models.description import Description, DescriptionType
+# DescriptionType defined locally after NLP removal
+class DescriptionType(str, Enum):
+    """Types of descriptions for image generation."""
+    LOCATION = "location"
+    CHARACTER = "character"
+    ATMOSPHERE = "atmosphere"
+
 from .imagen_generator import (
     get_imagen_service,
     ImageGenerationResult as ImagenResult,
@@ -83,16 +94,16 @@ class ImageGeneratorService:
 
     async def generate_image_for_description(
         self,
-        description: Description,
+        description: Dict[str, Any],
         user_id: str,
         book_genre: Optional[str] = None,
         custom_style: Optional[str] = None
     ) -> ImageGenerationResult:
         """
-        Generate image for a description from the database.
+        Generate image for a description (Dict format after NLP removal).
 
         Args:
-            description: Description model from database
+            description: Dict with 'content' and 'type' keys
             user_id: ID of requesting user
             book_genre: Genre for style adaptation
             custom_style: Additional style instructions
@@ -106,16 +117,22 @@ class ImageGeneratorService:
                 error_message="Image generation service not available. Check GOOGLE_API_KEY."
             )
 
+        # Extract content and type from dict
+        content = description.get("content", "")
+        desc_type = description.get("type", "location")
+        if hasattr(desc_type, 'value'):
+            desc_type = desc_type.value
+
         # Generate using Imagen
         result = await self.imagen_service.generate_image(
-            description=description.content,
-            description_type=description.type.value if hasattr(description.type, 'value') else str(description.type),
+            description=content,
+            description_type=desc_type,
             genre=book_genre,
             custom_style=custom_style,
         )
 
         logger.info(
-            f"Image generation for description {description.id}: success={result.success}"
+            f"Image generation for description: success={result.success}"
         )
 
         return ImageGenerationResult.from_imagen_result(result)
@@ -156,7 +173,7 @@ class ImageGeneratorService:
 
     async def batch_generate_for_chapter(
         self,
-        descriptions: List[Description],
+        descriptions: List[Dict[str, Any]],
         user_id: str,
         book_genre: Optional[str] = None,
         max_images: int = 5
@@ -165,7 +182,7 @@ class ImageGeneratorService:
         Generate images for a list of descriptions from a chapter.
 
         Args:
-            descriptions: List of descriptions to generate images for
+            descriptions: List of description dicts to generate images for
             user_id: ID of requesting user
             book_genre: Genre for style adaptation
             max_images: Maximum number of images to generate
@@ -176,7 +193,7 @@ class ImageGeneratorService:
         # Sort by priority and take top N
         sorted_descriptions = sorted(
             descriptions,
-            key=lambda d: d.priority_score if hasattr(d, 'priority_score') else 0,
+            key=lambda d: d.get('priority_score', 0),
             reverse=True
         )[:max_images]
 
@@ -194,7 +211,7 @@ class ImageGeneratorService:
                     await asyncio.sleep(1)
 
             except Exception as e:
-                logger.error(f"Error generating image for description {desc.id}: {e}")
+                logger.error(f"Error generating image for description: {e}")
                 results.append(ImageGenerationResult(
                     success=False,
                     error_message=f"Generation error: {str(e)}"

@@ -2,6 +2,10 @@
 Модель глав книг для BookReader AI.
 
 Содержит структуру глав и их контент для парсинга описаний.
+
+NLP REMOVAL (December 2025):
+- Description relationship deprecated (descriptions extracted on-demand)
+- Added generated_images relationship for direct image linking
 """
 
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey
@@ -68,8 +72,13 @@ class Chapter(Base):
 
     # Отношения
     book = relationship("Book", back_populates="chapters")
-    descriptions = relationship(
-        "Description", back_populates="chapter", cascade="all, delete-orphan"
+    # NLP REMOVAL: descriptions relationship deprecated
+    # descriptions = relationship(
+    #     "Description", back_populates="chapter", cascade="all, delete-orphan"
+    # )
+    # NEW: Direct image linking
+    generated_images = relationship(
+        "GeneratedImage", back_populates="chapter", cascade="all, delete-orphan"
     )
 
     def __repr__(self):

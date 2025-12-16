@@ -1,6 +1,12 @@
 """
 Background tasks for BookReader AI.
 Фоновые задачи для BookReader AI.
+
+NLP REMOVAL (December 2025):
+- Удален multi_nlp_manager (требовал 10-12 ГБ RAM)
+- Используется langextract_processor (LLM-based, ~500 МБ)
+- Описания извлекаются on-demand, не сохраняются в БД
+- Задачи обработки книг упрощены
 """
 
 from app.core.celery_app import celery_app
@@ -15,27 +21,7 @@ from sqlalchemy import select
 from app.core.database import AsyncSessionLocal
 from app.models.book import Book
 from app.models.chapter import Chapter
-from app.models.description import Description, DescriptionType
-
-# Lazy import to avoid loading spaCy model at startup
-# from app.services.nlp_processor import nlp_processor
 from app.services.image_generator import image_generator_service
-
-# Optional imports for optimization (graceful fallback)
-try:
-    import psutil  # noqa: F401
-    import gc  # noqa: F401
-
-    HAS_PSUTIL = True
-except ImportError:
-    HAS_PSUTIL = False
-
-try:
-    from app.services.optimized_parser import optimized_parser  # noqa: F401
-
-    USE_OPTIMIZED_PARSER = True
-except ImportError:
-    USE_OPTIMIZED_PARSER = False
 
 logger = logging.getLogger(__name__)
 
@@ -66,13 +52,18 @@ def _run_async_task(coro):
 @celery_app.task(name="process_book", bind=True, max_retries=3, default_retry_delay=60)
 def process_book_task(self, book_id_str: str) -> Dict[str, Any]:
     """
-    Асинхронная обработка книги: парсинг глав и извлечение описаний.
+    Асинхронная обработка книги: валидация и подготовка к on-demand извлечению.
+
+    После удаления NLP системы эта задача только:
+    - Валидирует книгу и главы
+    - Проверяет доступность LLM
+    - Помечает книгу как готовую к обработке
 
     Args:
         book_id_str: String ID книги для обработки (UUID)
 
     Returns:
-        Результат обработки с количеством найденных описаний
+        Результат обработки
     """
     try:
         print(f"🚀 [CELERY TASK] Starting book processing for book_id={book_id_str}")
@@ -98,78 +89,23 @@ def process_book_task(self, book_id_str: str) -> Dict[str, Any]:
 
 
 async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
-    """Асинхронная функция обработки книги."""
+    """
+    Асинхронная функция обработки книги.
+
+    После удаления NLP: просто помечает книгу как готовую.
+    Извлечение описаний происходит on-demand через LLM API.
+    """
     async with AsyncSessionLocal() as db:
         print(f"🔍 [ASYNC TASK] Starting async processing for book {book_id}")
 
-        # КРИТИЧЕСКАЯ ВАЛИДАЦИЯ: Проверяем наличие NLP процессоров
-        from app.services.multi_nlp_manager import multi_nlp_manager
+        # Проверяем доступность LLM
+        from app.services.langextract_processor import LangExtractProcessor
+        processor = LangExtractProcessor()
+        llm_available = processor.is_available()
 
-        # Инициализируем если нужно
-        if (
-            not hasattr(multi_nlp_manager, "_initialized")
-            or not multi_nlp_manager._initialized
-        ):
-            print("🧠 [ASYNC TASK] Initializing multi NLP manager...")
-            await multi_nlp_manager.initialize()
-
-        # Проверяем что процессоры загружены
-        if not hasattr(multi_nlp_manager, "processor_registry"):
-            error_msg = "❌ CRITICAL: multi_nlp_manager.processor_registry не существует!"
-            print(f"[ASYNC TASK] {error_msg}")
-            logger.error(error_msg)
-            raise RuntimeError(
-                "Cannot process book - multi_nlp_manager.processor_registry not initialized"
-            )
-
-        available_processors = multi_nlp_manager.processor_registry.processors
-
-        # Check for LangExtract as alternative to NLP processors (lite mode)
-        # Use the same getter function used by multi_nlp_manager for consistency
-        use_langextract = os.getenv("USE_LANGEXTRACT_PRIMARY", "false").lower() == "true"
-        langextract_available = False
-
-        if use_langextract:
-            try:
-                # Import the internal getter from multi_nlp_manager module
-                from app.services.multi_nlp_manager import _get_langextract_processor
-                langextract = _get_langextract_processor()
-                langextract_available = langextract is not None and langextract.is_available()
-                if langextract_available:
-                    print("✅ [ASYNC TASK] LangExtract processor available as primary")
-                    logger.info("LangExtract processor available as primary")
-                else:
-                    print("⚠️ [ASYNC TASK] LangExtract enabled but not available")
-                    logger.warning("LangExtract enabled but is_available() returned False")
-            except ImportError as e:
-                logger.warning(f"LangExtract import failed: {e}")
-            except Exception as e:
-                logger.warning(f"LangExtract check failed: {e}")
-
-        # Allow processing if EITHER NLP processors OR LangExtract is available
-        if (not available_processors or len(available_processors) == 0) and not langextract_available:
-            error_msg = "❌ CRITICAL: No processors available! Cannot process book."
-            print(f"[ASYNC TASK] {error_msg}")
-            logger.error(error_msg)
-            raise RuntimeError(
-                "Cannot process book - no processors loaded. "
-                "Either enable NLP processors (SpaCy, Natasha, Stanza) or "
-                "set USE_LANGEXTRACT_PRIMARY=true with a valid LANGEXTRACT_API_KEY."
-            )
-
-        # Логируем успешную проверку
-        if available_processors and len(available_processors) > 0:
-            processor_names = list(available_processors.keys())
-            print(
-                f"✅ [ASYNC TASK] NLP processors validation passed: "
-                f"{len(available_processors)} processors available: {processor_names}"
-            )
-            logger.info(
-                f"Processing book with {len(available_processors)} NLP processors: {processor_names}"
-            )
-        elif langextract_available:
-            print("✅ [ASYNC TASK] Using LangExtract as primary processor (lite mode)")
-            logger.info("Processing book with LangExtract as primary processor (lite mode)")
+        if not llm_available:
+            print("⚠️ [ASYNC TASK] LangExtract not available - checking API key")
+            logger.warning("LangExtract processor not available")
 
         # Получаем книгу
         book_result = await db.execute(select(Book).where(Book.id == book_id))
@@ -182,7 +118,7 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
 
         print(f"📚 [ASYNC TASK] Found book: {book.title} by {book.author}")
 
-        # Получаем главы для обработки
+        # Получаем главы
         chapters_result = await db.execute(
             select(Chapter)
             .where(Chapter.book_id == book_id)
@@ -190,344 +126,132 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
         )
         chapters = chapters_result.scalars().all()
 
-        print(f"📖 [ASYNC TASK] Found {len(chapters)} chapters to process")
+        print(f"📖 [ASYNC TASK] Found {len(chapters)} chapters")
 
-        total_descriptions = 0
-        processed_chapters = 0
-
-        # Обрабатываем каждую главу
-        for chapter in chapters:
-            try:
-                print(
-                    f"🔄 [ASYNC TASK] Processing chapter {chapter.chapter_number}: {chapter.title}"
-                )
-                logger.info(
-                    f"Processing chapter {chapter.chapter_number} of book {book_id}"
-                )
-
-                # Извлекаем описания из текста главы
-                print(
-                    f"📝 [ASYNC TASK] Chapter content length: {len(chapter.content)} chars"
-                )
-
-                # Извлекаем описания
-                result = await multi_nlp_manager.extract_descriptions(
-                    text=chapter.content,
-                    chapter_id=str(chapter.id),
-                    processor_name=None,  # Используем настройки по умолчанию
-                )
-                descriptions = result.descriptions
-
-                print(f"🔍 [ASYNC TASK] NLP extracted {len(descriptions)} descriptions")
-                if descriptions:
-                    print(
-                        f"🔍 [ASYNC TASK] First description sample: {descriptions[0]}"
-                    )
-
-                # Сохраняем описания в базе данных
-                for i, desc_data in enumerate(descriptions):
-                    print(
-                        f"💾 [ASYNC TASK] Saving description {i+1}/{len(descriptions)}: type={desc_data['type']}"
-                    )
-
-                    # Конвертируем строку типа в enum
-                    try:
-                        desc_type = DescriptionType(desc_data["type"])
-                    except ValueError:
-                        print(
-                            f"⚠️ [ASYNC TASK] Invalid description type '{desc_data['type']}', skipping"
-                        )
-                        continue
-
-                    description = Description(
-                        chapter_id=chapter.id,
-                        type=desc_type,  # Используем enum вместо строки
-                        content=desc_data["content"],
-                        context=desc_data.get("context", ""),
-                        confidence_score=desc_data["confidence_score"],
-                        position_in_chapter=desc_data.get("position_in_chapter", 0),
-                        word_count=desc_data.get(
-                            "word_count", len(desc_data["content"].split())
-                        ),
-                        priority_score=desc_data["priority_score"],
-                        entities_mentioned=(
-                            ", ".join(desc_data["entities_mentioned"])
-                            if desc_data.get("entities_mentioned")
-                            else ""
-                        ),
-                    )
-                    db.add(description)
-                    print(
-                        f"✅ [ASYNC TASK] Added description to session: {description.content[:50]}..."
-                    )
-
-                print(
-                    f"💾 [ASYNC TASK] Committing {len(descriptions)} descriptions to database..."
-                )
-                await db.commit()
-                print("✅ [ASYNC TASK] Successfully committed descriptions")
-
-                total_descriptions += len(descriptions)
-                processed_chapters += 1
-
-                # Обновляем прогресс парсинга главы
-                chapter.is_description_parsed = True
-                chapter.descriptions_found = len(descriptions)
-                chapter.parsing_progress = 100.0
-
-                # Обновляем прогресс парсинга книги
-                book.parsing_progress = int((processed_chapters / len(chapters)) * 100)
-                await db.commit()
-
-                print(
-                    f"✅ [ASYNC TASK] Chapter {chapter.chapter_number} completed: {len(descriptions)} descriptions"
-                )
-                logger.info(
-                    f"Found {len(descriptions)} descriptions in chapter {chapter.chapter_number}"
-                )
-
-            except Exception as e:
-                error_msg = (
-                    f"Error processing chapter {chapter.chapter_number}: {str(e)}"
-                )
-                print(f"❌ [ASYNC TASK] {error_msg}")
-                logger.error(error_msg)
-                import traceback
-
-                print(
-                    f"🔍 [ASYNC TASK] Chapter error traceback: {traceback.format_exc()}"
-                )
-                # Продолжаем обработку других глав
-                continue
-
-        # Помечаем книгу как обработанную
-        print(
-            f"🏁 [ASYNC TASK] Marking book as parsed: {total_descriptions} total descriptions"
-        )
-        book.is_parsed = True
-        book.parsing_progress = 100
+        # Помечаем книгу как готовую
+        # is_parsed теперь означает "ready for on-demand extraction"
+        book.is_processing = False
         await db.commit()
 
-        # КРИТИЧЕСКИ ВАЖНО: Инвалидируем кэш списка книг пользователя
-        # чтобы frontend получил актуальный is_processing=False
+        # Инвалидируем кэш
         try:
             from app.core.cache import cache_manager
-
             print(f"[CACHE] Invalidating book list cache for user {book.user_id}")
-            # Используем pattern-based deletion для удаления ВСЕХ вариантов пагинации
-            # Это намного эффективнее чем цикл с 30 итерациями
             pattern = f"user:{book.user_id}:books:*"
             deleted_count = await cache_manager.delete_pattern(pattern)
-            print(
-                f"[CACHE] Book list cache invalidated successfully after parsing completion ({deleted_count} keys deleted)"
-            )
+            print(f"[CACHE] Cache invalidated ({deleted_count} keys deleted)")
         except Exception as e:
             print(f"[CACHE ERROR] Failed to invalidate cache: {str(e)}")
-            # Не критичная ошибка, продолжаем
 
         result = {
             "book_id": str(book_id),
             "status": "completed",
-            "descriptions_found": total_descriptions,
-            "chapters_processed": processed_chapters,
-            "total_chapters": len(chapters),
+            "chapters_count": len(chapters),
+            "llm_available": llm_available,
+            "extraction_mode": "on_demand",
+            "message": "Book ready for on-demand description extraction via LLM"
         }
 
         print(f"🎉 [ASYNC TASK] Final result: {result}")
         return result
 
 
-@celery_app.task(name="generate_images")
-def generate_images_task(
-    description_ids: List[str], user_id_str: str
+@celery_app.task(name="generate_image_for_text")
+def generate_image_for_text_task(
+    text: str,
+    chapter_id_str: str,
+    user_id_str: str,
+    description_type: str = "location"
 ) -> Dict[str, Any]:
     """
-    Генерация изображений для списка описаний.
+    Генерация изображения для текстового описания.
+
+    После удаления NLP: изображения генерируются напрямую из текста,
+    без сохранения в таблицу descriptions.
 
     Args:
-        description_ids: Список string ID описаний для генерации
+        text: Текст описания для генерации
+        chapter_id_str: String ID главы
         user_id_str: String ID пользователя
+        description_type: Тип описания (location, character, atmosphere)
 
     Returns:
-        Результат генерации с количеством созданных изображений
+        Результат генерации
     """
     try:
-        logger.info(
-            f"Starting image generation for {len(description_ids)} descriptions"
-        )
-
-        result = _run_async_task(_generate_images_async(description_ids, user_id_str))
-
-        logger.info(
-            f"Image generation completed for {len(description_ids)} descriptions"
-        )
-        return result
-
-    except Exception as e:
-        logger.error(f"Error generating images: {str(e)}")
-        return {"description_ids": description_ids, "status": "failed", "error": str(e)}
-
-
-async def _generate_images_async(
-    description_ids: List[str], user_id_str: str
-) -> Dict[str, Any]:
-    """Асинхронная функция генерации изображений."""
-    async with AsyncSessionLocal() as db:
-        user_id = UUID(user_id_str)
-        images_generated = 0
-        failed_generations = 0
-        generated_images = []
-
-        for desc_id_str in description_ids:
-            try:
-                desc_id = UUID(desc_id_str)
-
-                # Получаем описание
-                desc_result = await db.execute(
-                    select(Description).where(Description.id == desc_id)
-                )
-                description = desc_result.scalar_one_or_none()
-
-                if not description:
-                    logger.warning(f"Description {desc_id} not found")
-                    failed_generations += 1
-                    continue
-
-                logger.info(
-                    f"Generating image for description {desc_id}: {description.type.value}"
-                )
-
-                # Генерируем изображение через сервис
-                generation_result = (
-                    await image_generator_service.generate_image_for_description(
-                        description=description,
-                        user_id=str(user_id),
-                        custom_style=None,  # Используем стиль по умолчанию
-                    )
-                )
-
-                if generation_result.success:
-                    # Сохраняем результат в базе данных
-                    from app.models.image import GeneratedImage
-
-                    generated_image = GeneratedImage(
-                        description_id=description.id,
-                        user_id=user_id,
-                        image_url=generation_result.image_url,
-                        local_path=generation_result.local_path,
-                        generation_prompt="auto-generated",
-                        generation_time_seconds=generation_result.generation_time_seconds,
-                    )
-
-                    db.add(generated_image)
-                    await db.commit()
-                    await db.refresh(generated_image)
-
-                    generated_images.append(
-                        {
-                            "id": str(generated_image.id),
-                            "description_id": str(description.id),
-                            "image_url": generation_result.image_url,
-                            "generation_time": generation_result.generation_time_seconds,
-                        }
-                    )
-
-                    images_generated += 1
-                    logger.info(
-                        f"Successfully generated image for description {desc_id}"
-                    )
-
-                    # Обновляем флаг генерации в описании
-                    description.image_generated = True
-                    await db.commit()
-
-                else:
-                    failed_generations += 1
-                    logger.error(
-                        f"Failed to generate image for description {desc_id}: {generation_result.error_message}"
-                    )
-
-            except Exception as e:
-                failed_generations += 1
-                logger.error(f"Error processing description {desc_id_str}: {str(e)}")
-                continue
-
-        return {
-            "description_ids": description_ids,
-            "user_id": user_id_str,
-            "status": "completed",
-            "images_generated": images_generated,
-            "failed_generations": failed_generations,
-            "generated_images": generated_images,
-            "total_processed": len(description_ids),
-        }
-
-
-@celery_app.task(name="batch_generate_for_book")
-def batch_generate_for_book_task(
-    book_id_str: str, user_id_str: str, max_images: int = 10
-) -> Dict[str, Any]:
-    """
-    Пакетная генерация изображений для всех подходящих описаний книги.
-
-    Args:
-        book_id_str: String ID книги
-        user_id_str: String ID пользователя
-        max_images: Максимальное количество изображений для генерации
-
-    Returns:
-        Результат пакетной генерации
-    """
-    try:
-        logger.info(
-            f"Starting batch generation for book {book_id_str}, max_images={max_images}"
-        )
+        logger.info(f"Starting image generation for chapter {chapter_id_str}")
 
         result = _run_async_task(
-            _batch_generate_for_book_async(book_id_str, user_id_str, max_images)
+            _generate_image_for_text_async(text, chapter_id_str, user_id_str, description_type)
         )
 
-        logger.info(f"Batch generation completed for book {book_id_str}")
+        logger.info(f"Image generation completed for chapter {chapter_id_str}")
         return result
 
     except Exception as e:
-        logger.error(f"Error in batch generation for book {book_id_str}: {str(e)}")
-        return {"book_id": book_id_str, "status": "failed", "error": str(e)}
+        logger.error(f"Error generating image: {str(e)}")
+        return {"chapter_id": chapter_id_str, "status": "failed", "error": str(e)}
 
 
-async def _batch_generate_for_book_async(
-    book_id_str: str, user_id_str: str, max_images: int
+async def _generate_image_for_text_async(
+    text: str,
+    chapter_id_str: str,
+    user_id_str: str,
+    description_type: str
 ) -> Dict[str, Any]:
-    """Асинхронная функция пакетной генерации для книги."""
+    """Асинхронная функция генерации изображения из текста."""
     async with AsyncSessionLocal() as db:
-        book_id = UUID(book_id_str)
+        user_id = UUID(user_id_str)
+        chapter_id = UUID(chapter_id_str)
 
-        # Получаем топ описания по приоритету, исключая уже сгенерированные
-        descriptions_query = (
-            select(Description)
-            .join(Chapter)
-            .where(Chapter.book_id == book_id)
-            .where(Description.is_suitable_for_generation is True)
-            .where(Description.image_generated is False)
-            .order_by(Description.priority_score.desc())
-            .limit(max_images)
-        )
+        try:
+            # Генерируем изображение напрямую
+            generation_result = await image_generator_service.generate_image_from_text(
+                text=text,
+                description_type=description_type,
+                user_id=str(user_id),
+            )
 
-        descriptions_result = await db.execute(descriptions_query)
-        descriptions = descriptions_result.scalars().all()
+            if generation_result.success:
+                # Сохраняем результат
+                from app.models.image import GeneratedImage
 
-        if not descriptions:
+                generated_image = GeneratedImage(
+                    chapter_id=chapter_id,
+                    user_id=user_id,
+                    image_url=generation_result.image_url,
+                    local_path=generation_result.local_path,
+                    generation_prompt=text[:500],  # Сохраняем начало текста
+                    description_text=text,  # Денормализованное поле
+                    description_type=description_type,
+                    generation_time_seconds=generation_result.generation_time_seconds,
+                )
+
+                db.add(generated_image)
+                await db.commit()
+                await db.refresh(generated_image)
+
+                return {
+                    "id": str(generated_image.id),
+                    "chapter_id": chapter_id_str,
+                    "image_url": generation_result.image_url,
+                    "generation_time": generation_result.generation_time_seconds,
+                    "status": "success"
+                }
+            else:
+                return {
+                    "chapter_id": chapter_id_str,
+                    "status": "failed",
+                    "error": generation_result.error_message
+                }
+
+        except Exception as e:
+            logger.error(f"Error generating image for chapter {chapter_id_str}: {str(e)}")
             return {
-                "book_id": book_id_str,
-                "status": "completed",
-                "message": "No suitable descriptions found for generation",
-                "images_generated": 0,
+                "chapter_id": chapter_id_str,
+                "status": "failed",
+                "error": str(e)
             }
-
-        # Запускаем генерацию для найденных описаний
-        description_ids = [str(d.id) for d in descriptions]
-
-        return await _generate_images_async(description_ids, user_id_str)
 
 
 @celery_app.task(name="cleanup_old_images")
@@ -556,12 +280,11 @@ def cleanup_old_images_task(days_old: int = 30) -> Dict[str, Any]:
 
 async def _cleanup_old_images_async(days_old: int) -> Dict[str, Any]:
     """Асинхронная функция очистки старых изображений."""
-    from datetime import datetime, timedelta, timezone
+    from datetime import timedelta
     import os
     from app.models.image import GeneratedImage
 
     async with AsyncSessionLocal() as db:
-        # Находим старые изображения
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_old)
 
         old_images_result = await db.execute(
@@ -574,12 +297,10 @@ async def _cleanup_old_images_async(days_old: int) -> Dict[str, Any]:
 
         for image in old_images:
             try:
-                # Удаляем локальный файл если существует
                 if image.local_path and os.path.exists(image.local_path):
                     os.unlink(image.local_path)
                     deleted_files += 1
 
-                # Удаляем запись из БД
                 await db.delete(image)
                 deleted_records += 1
 
@@ -625,35 +346,25 @@ async def _get_system_stats_async() -> Dict[str, Any]:
         books_count = await db.execute(select(func.count(Book.id)))
         total_books = books_count.scalar()
 
-        # Общее количество описаний
-        descriptions_count = await db.execute(select(func.count(Description.id)))
-        total_descriptions = descriptions_count.scalar()
+        # Общее количество глав
+        chapters_count = await db.execute(select(func.count(Chapter.id)))
+        total_chapters = chapters_count.scalar()
 
         # Общее количество сгенерированных изображений
         images_count = await db.execute(select(func.count(GeneratedImage.id)))
         total_images = images_count.scalar()
 
-        # Количество обработанных книг
-        processed_books_count = await db.execute(
-            select(func.count(Book.id)).where(Book.is_parsed is True)
-        )
-        processed_books = processed_books_count.scalar()
+        # Проверяем LLM
+        from app.services.langextract_processor import LangExtractProcessor
+        processor = LangExtractProcessor()
+        llm_available = processor.is_available()
 
         return {
             "status": "operational",
             "total_books": total_books,
-            "processed_books": processed_books,
-            "total_descriptions": total_descriptions,
+            "total_chapters": total_chapters,
             "total_images": total_images,
-            "processing_rate": (
-                round((processed_books / total_books * 100), 2)
-                if total_books > 0
-                else 0.0
-            ),
-            "generation_rate": (
-                round((total_images / total_descriptions * 100), 2)
-                if total_descriptions > 0
-                else 0.0
-            ),
+            "llm_available": llm_available,
+            "extraction_mode": "on_demand",
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }

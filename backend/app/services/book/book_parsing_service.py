@@ -1,34 +1,40 @@
 """
-Сервис для управления парсингом книг и NLP обработкой.
+Сервис для управления парсингом книг и LLM обработкой.
 
 Ответственности:
-- Извлечение описаний из глав с помощью NLP
+- Извлечение описаний из глав с помощью LLM (LangExtract/Gemini)
 - Управление прогрессом парсинга
 - Маппинг жанров (перенесено из BookService)
 - Интеграция с Celery tasks для асинхронного парсинга
 
 Single Responsibility Principle:
-Сервис отвечает ТОЛЬКО за парсинг и NLP обработку.
+Сервис отвечает ТОЛЬКО за парсинг и LLM обработку.
 Не занимается CRUD операциями книг или статистикой.
+
+NLP REMOVAL (December 2025):
+- Удален multi_nlp_manager (требовал 10-12 ГБ RAM)
+- Используется langextract_processor (LLM-based, ~500 МБ)
+- Описания больше не хранятся в отдельной таблице
+- Извлечение происходит on-demand через LLM API
 """
 
-from typing import List, Optional, TYPE_CHECKING
+from typing import List, Optional, Dict, Any, TYPE_CHECKING
 from uuid import UUID
-from datetime import datetime, timezone
+import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from ...models.book import Book
 from ...models.chapter import Chapter
-from ...models.description import Description, DescriptionType
-from ...services.multi_nlp_manager import multi_nlp_manager
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from .book_service import BookService
 
 
 class BookParsingService:
-    """Сервис для управления парсингом и NLP обработкой книг."""
+    """Сервис для управления парсингом и LLM обработкой книг."""
 
     def __init__(self, book_service: Optional["BookService"] = None):
         """
@@ -47,168 +53,131 @@ class BookParsingService:
 
     async def extract_chapter_descriptions(
         self, db: AsyncSession, chapter_id: UUID
-    ) -> List[Description]:
+    ) -> List[Dict[str, Any]]:
         """
-        Извлекает описания из главы с помощью NLP и сохраняет в БД.
+        Извлекает описания из главы с помощью LLM (on-demand).
+
+        После удаления NLP системы описания не сохраняются в БД,
+        а извлекаются по запросу через LangExtract/Gemini API.
 
         Args:
             db: Сессия базы данных
             chapter_id: ID главы
 
         Returns:
-            Список извлеченных описаний
+            Список словарей с описаниями (не модели Description)
 
         Raises:
             ValueError: Если глава не найдена
-
-        Example:
-            >>> descriptions = await parsing_service.extract_chapter_descriptions(db, chapter_id)
-            >>> print(f"Найдено {len(descriptions)} описаний")
         """
+        from ...services.langextract_processor import LangExtractProcessor
+
         # Получаем главу
         result = await db.execute(select(Chapter).where(Chapter.id == chapter_id))
         chapter = result.scalar_one_or_none()
         if not chapter:
             raise ValueError(f"Chapter {chapter_id} not found")
 
-        # Проверяем, не обработана ли уже глава
-        if chapter.is_description_parsed:
-            existing_descriptions = await db.execute(
-                select(Description).where(Description.chapter_id == chapter_id)
+        # Извлекаем описания с помощью LLM
+        processor = LangExtractProcessor()
+        if not processor.is_available():
+            logger.warning("LangExtract processor not available, returning empty list")
+            return []
+
+        try:
+            result = await processor.extract_descriptions(
+                text=chapter.content,
+                chapter_id=str(chapter_id)
             )
-            return existing_descriptions.scalars().all()
-
-        # Извлекаем описания с помощью NLP
-        result = await multi_nlp_manager.extract_descriptions(
-            text=chapter.content, chapter_id=str(chapter_id)
-        )
-        nlp_descriptions = result.descriptions
-
-        # Сохраняем описания в базу данных
-        saved_descriptions = []
-        for desc_data in nlp_descriptions:
-            # Адаптируем поля под новую структуру multi_nlp_manager
-            entities_list = desc_data.get("entities_mentioned", [])
-            if isinstance(entities_list, str):
-                entities_str = entities_list
-            elif isinstance(entities_list, list):
-                entities_str = ", ".join(entities_list)
-            else:
-                entities_str = ""
-
-            description = Description(
-                chapter_id=chapter_id,
-                type=desc_data["type"],
-                content=desc_data["content"],
-                context=desc_data.get("context", ""),
-                confidence_score=desc_data["confidence_score"],
-                position_in_chapter=desc_data.get("position", 0),
-                word_count=desc_data["word_count"],
-                priority_score=desc_data["priority_score"],
-                entities_mentioned=entities_str,
-                is_suitable_for_generation=desc_data["confidence_score"]
-                > 0.3,  # Минимальный порог
-            )
-
-            db.add(description)
-            saved_descriptions.append(description)
-
-        # Обновляем статус главы
-        chapter.is_description_parsed = True
-        chapter.descriptions_found = len(saved_descriptions)
-        chapter.parsing_progress = 100
-        chapter.parsed_at = datetime.now(timezone.utc)
-
-        await db.commit()
-        return saved_descriptions
+            return result.descriptions
+        except Exception as e:
+            logger.error(f"Error extracting descriptions for chapter {chapter_id}: {e}")
+            return []
 
     async def get_book_descriptions(
         self,
         db: AsyncSession,
         book_id: UUID,
-        description_type: Optional[DescriptionType] = None,
+        description_type: Optional[str] = None,
         limit: int = 100,
-    ) -> List[Description]:
+    ) -> List[Dict[str, Any]]:
         """
-        Получает описания из всех глав книги.
+        Получает описания из всех глав книги (on-demand через LLM).
+
+        После удаления NLP системы описания извлекаются по запросу.
 
         Args:
             db: Сессия базы данных
             book_id: ID книги
-            description_type: Фильтр по типу описания
+            description_type: Фильтр по типу описания (location, character, atmosphere)
             limit: Максимальное количество описаний
 
         Returns:
-            Список описаний, отсортированных по приоритету
+            Список описаний в виде словарей
         """
-        from sqlalchemy import desc
+        from ...services.langextract_processor import LangExtractProcessor
 
-        query = (
-            select(Description)
-            .join(Chapter)
+        # Получаем главы книги
+        chapters_result = await db.execute(
+            select(Chapter)
             .where(Chapter.book_id == book_id)
-            .order_by(desc(Description.priority_score))
-            .limit(limit)
+            .order_by(Chapter.order)
         )
+        chapters = chapters_result.scalars().all()
 
-        if description_type:
-            query = query.where(Description.type == description_type)
+        if not chapters:
+            return []
 
-        result = await db.execute(query)
-        return result.scalars().all()
+        processor = LangExtractProcessor()
+        if not processor.is_available():
+            logger.warning("LangExtract processor not available")
+            return []
 
-    async def update_parsing_progress(
-        self, db: AsyncSession, book_id: UUID, progress_percent: int
-    ) -> Book:
-        """
-        Обновляет прогресс парсинга книги.
+        all_descriptions = []
+        for chapter in chapters:
+            if len(all_descriptions) >= limit:
+                break
 
-        Args:
-            db: Сессия базы данных
-            book_id: ID книги
-            progress_percent: Процент выполнения парсинга (0-100)
+            try:
+                result = await processor.extract_descriptions(
+                    text=chapter.content,
+                    chapter_id=str(chapter.id)
+                )
 
-        Returns:
-            Обновленный объект Book
+                for desc in result.descriptions:
+                    if description_type and desc.get("type") != description_type:
+                        continue
+                    all_descriptions.append(desc)
+                    if len(all_descriptions) >= limit:
+                        break
+            except Exception as e:
+                logger.error(f"Error extracting descriptions for chapter {chapter.id}: {e}")
+                continue
 
-        Raises:
-            ValueError: Если книга не найдена
-        """
-        result = await db.execute(select(Book).where(Book.id == book_id))
-        book = result.scalar_one_or_none()
-
-        if not book:
-            raise ValueError(f"Book with id {book_id} not found")
-
-        book.parsing_progress = max(0, min(100, progress_percent))
-
-        # Если парсинг завершен, обновляем флаг
-        if progress_percent >= 100:
-            book.is_parsed = True
-
-        await db.commit()
-        return book
+        # Сортируем по priority_score
+        all_descriptions.sort(key=lambda x: x.get("priority_score", 0), reverse=True)
+        return all_descriptions[:limit]
 
     async def get_parsing_status(self, db: AsyncSession, book_id: UUID) -> dict:
         """
         Получает статус парсинга книги.
 
+        После удаления NLP системы возвращает упрощенный статус.
+
         Args:
             db: Сессия базы данных
             book_id: ID книги
 
         Returns:
-            Словарь со статусом парсинга:
-            - is_parsed: Завершен ли парсинг
-            - parsing_progress: Прогресс в процентах
+            Словарь со статусом:
             - total_chapters: Всего глав
-            - parsed_chapters: Обработано глав
-            - total_descriptions: Всего найдено описаний
+            - llm_available: Доступен ли LLM процессор
 
         Raises:
             ValueError: Если книга не найдена
         """
         from sqlalchemy import func
+        from ...services.langextract_processor import LangExtractProcessor
 
         result = await db.execute(select(Book).where(Book.id == book_id))
         book = result.scalar_one_or_none()
@@ -222,28 +191,15 @@ class BookParsingService:
         )
         total_chapters = total_chapters_result.scalar() or 0
 
-        # Подсчитываем обработанные главы
-        parsed_chapters_result = await db.execute(
-            select(func.count(Chapter.id))
-            .where(Chapter.book_id == book_id)
-            .where(Chapter.is_description_parsed.is_(True))
-        )
-        parsed_chapters = parsed_chapters_result.scalar() or 0
-
-        # Подсчитываем описания
-        total_descriptions_result = await db.execute(
-            select(func.count(Description.id))
-            .join(Chapter)
-            .where(Chapter.book_id == book_id)
-        )
-        total_descriptions = total_descriptions_result.scalar() or 0
+        # Проверяем доступность LLM
+        processor = LangExtractProcessor()
+        llm_available = processor.is_available()
 
         return {
-            "is_parsed": book.is_parsed,
-            "parsing_progress": book.parsing_progress,
             "total_chapters": total_chapters,
-            "parsed_chapters": parsed_chapters,
-            "total_descriptions": total_descriptions,
+            "llm_available": llm_available,
+            "extraction_mode": "on_demand",
+            "message": "Descriptions are extracted on-demand via LLM API"
         }
 
 
