@@ -71,9 +71,10 @@ def upgrade() -> None:
     # Step 3: For existing images, we need to create placeholder descriptions
     # This is necessary because description_id will be NOT NULL
     # We'll migrate existing data from description_text/description_type columns
+    # Using DISTINCT ON to handle duplicate description_ids
     op.execute("""
         INSERT INTO descriptions (id, chapter_id, type, content, confidence_score, position_in_chapter, word_count, is_suitable_for_generation, priority_score, image_generated)
-        SELECT
+        SELECT DISTINCT ON (gi.description_id)
             gi.description_id,
             gi.chapter_id,
             COALESCE(gi.description_type, 'LOCATION')::descriptiontype,
@@ -87,7 +88,7 @@ def upgrade() -> None:
         FROM generated_images gi
         WHERE gi.description_id IS NOT NULL
           AND gi.chapter_id IS NOT NULL
-          AND NOT EXISTS (SELECT 1 FROM descriptions d WHERE d.id = gi.description_id)
+        ORDER BY gi.description_id, gi.created_at DESC
     """)
 
     # Step 4: Create FK constraint from generated_images to descriptions
