@@ -167,7 +167,12 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
     abortControllerRef.current = new AbortController();
 
     try {
-      const result = await imagesAPI.generateImageForDescription(description.id);
+      // NLP REMOVAL (December 2025): Use text-based generation instead of description ID
+      const result = await imagesAPI.generateImageFromText(
+        description.content,
+        description.type,
+        description.chapter_id,  // Pass chapter_id if available
+      );
 
       console.log('✅ [useImageModal] Image generated:', result);
       console.log('✅ [useImageModal] Image URL:', result.image_url);
