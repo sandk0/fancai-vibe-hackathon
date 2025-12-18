@@ -2,11 +2,6 @@
 Модель сгенерированных изображений для BookReader AI.
 
 Содержит информацию о изображениях, созданных AI-сервисами.
-
-NLP REMOVAL (December 2025):
-- description_id deprecated (nullable, for backwards compatibility)
-- Added chapter_id for direct chapter linking
-- Added description_text and description_type for storing extracted description
 """
 
 from sqlalchemy import (
@@ -52,17 +47,9 @@ class GeneratedImage(Base):
     """
     Модель сгенерированного изображения.
 
-    NLP REMOVAL (December 2025):
-    - description_id deprecated (nullable)
-    - chapter_id added for direct chapter linking
-    - description_text/description_type store extracted description data
-
     Attributes:
         id: Уникальный идентификатор изображения
-        description_id: DEPRECATED - ID описания (nullable for backwards compatibility)
-        chapter_id: ID главы, к которой привязано изображение
-        description_text: Текст описания, использованный для генерации
-        description_type: Тип описания (location, character, atmosphere)
+        description_id: ID описания (внешний ключ)
         service_used: AI сервис, использованный для генерации
         status: Статус генерации
         image_url: URL сгенерированного изображения
@@ -82,12 +69,11 @@ class GeneratedImage(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
 
-    # DEPRECATED: description_id - nullable for backwards compatibility
     description_id = Column(
-        UUID(as_uuid=True), nullable=True, index=True
+        UUID(as_uuid=True), ForeignKey("descriptions.id"), nullable=False, index=True
     )
 
-    # NEW: Direct chapter linking (NLP removal)
+    # Direct chapter linking (для быстрого доступа)
     chapter_id = Column(
         UUID(as_uuid=True), ForeignKey("chapters.id"), nullable=True, index=True
     )
@@ -95,10 +81,6 @@ class GeneratedImage(Base):
     user_id = Column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
     )
-
-    # NEW: Store description data directly (NLP removal)
-    description_text = Column(Text, nullable=True)  # The text that was used for generation
-    description_type = Column(String(50), nullable=True)  # location, character, atmosphere
 
     # Информация о генерации
     service_used = Column(
@@ -154,7 +136,7 @@ class GeneratedImage(Base):
     generated_at = Column(DateTime(timezone=True), nullable=True)
 
     # Отношения
-    # NLP REMOVAL: Description relationship removed
+    description = relationship("Description", back_populates="generated_images")
     chapter = relationship("Chapter", back_populates="generated_images")
     user = relationship("User", back_populates="generated_images")
 

@@ -148,7 +148,6 @@ export interface Description {
   priority_score: number;
   entities_mentioned: string[];
   generated_image?: GeneratedImage;
-  chapter_id?: string;  // NLP REMOVAL: Added for text-based image generation
 }
 
 export interface NLPAnalysis {

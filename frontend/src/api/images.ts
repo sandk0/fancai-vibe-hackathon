@@ -63,50 +63,7 @@ export const imagesAPI = {
     return apiClient.get('/images/user/stats');
   },
 
-  /**
-   * Generate image from text description.
-   * NLP REMOVAL (December 2025): New method replacing generateImageForDescription.
-   * Now generates images from text directly without Description model.
-   */
-  async generateImageFromText(
-    descriptionText: string,
-    descriptionType: DescriptionType = 'location',
-    chapterId?: string,
-    stylePrompt?: string
-  ): Promise<{
-    image_id: string;
-    description_id: string | null;
-    image_url: string;
-    generation_time: number;
-    status: string;
-    created_at: string;
-    message: string;
-  }> {
-    const response = await apiClient.post('/images/generate/text', {
-      description_text: descriptionText,
-      description_type: descriptionType,
-      chapter_id: chapterId,
-      style_prompt: stylePrompt,
-    }) as {
-      image_id: string;
-      description_id: string | null;
-      image_url: string;
-      generation_time: number;
-      status: string;
-      created_at: string;
-      message: string;
-    };
-    // Normalize image URL
-    if (response.image_url) {
-      response.image_url = normalizeImageUrl(response.image_url);
-    }
-    return response;
-  },
-
-  /**
-   * @deprecated Use generateImageFromText instead.
-   * NLP REMOVAL: Description model removed, this method no longer works.
-   */
+  // Image generation
   async generateImageForDescription(
     descriptionId: string,
     params: ImageGenerationParams = {}
@@ -119,8 +76,6 @@ export const imagesAPI = {
     created_at: string;
     message: string;
   }> {
-    console.warn('[DEPRECATED] generateImageForDescription is deprecated. Use generateImageFromText instead.');
-    // Try to call the old endpoint (will fail with 404)
     const response = await apiClient.post(`/images/generate/description/${descriptionId}`, params) as {
       image_id: string;
       description_id: string;

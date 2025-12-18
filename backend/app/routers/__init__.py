@@ -2,6 +2,7 @@
 
 from .books import books_router
 from .chapters import router as chapters_router
+from .descriptions import router as descriptions_router
 from .reading_progress import router as reading_progress_router
 from .users import router as users_router
 from .auth import router as auth_router
@@ -13,6 +14,7 @@ from .health import router as health_router
 __all__ = [
     "books_router",
     "chapters_router",
+    "descriptions_router",
     "reading_progress_router",
     "users_router",
     "auth_router",

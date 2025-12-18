@@ -27,15 +27,7 @@ from uuid import UUID
 from app.models.user import SubscriptionPlan, SubscriptionStatus
 from app.models.book import BookGenre, BookFormat
 from app.models.image import ImageStatus, ImageService
-
-# DescriptionType определен локально после удаления NLP системы
-from enum import Enum
-
-class DescriptionType(str, Enum):
-    """Типы описаний (for backwards compatibility)."""
-    LOCATION = "location"
-    CHARACTER = "character"
-    ATMOSPHERE = "atmosphere"
+from app.models.description import DescriptionType
 
 
 # ============================================================================

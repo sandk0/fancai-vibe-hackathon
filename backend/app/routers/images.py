@@ -3,11 +3,6 @@ API роуты для генерации изображений в BookReader AI
 
 Содержит endpoints для генерации изображений по описаниям из книг
 с использованием AI и управления очередью генерации.
-
-NLP REMOVAL (December 2025):
-- Description model removed
-- Images generated from text descriptions extracted on-demand via LLM
-- GeneratedImage linked to chapters with description_text field
 """
 
 from fastapi import APIRouter, HTTPException, Depends, status, BackgroundTasks
@@ -18,7 +13,7 @@ from typing import Dict, Any, List, Optional
 from uuid import UUID
 from pydantic import BaseModel
 from pathlib import Path
-from enum import Enum
+import tempfile
 import os
 
 from ..core.database import get_database_session
@@ -27,6 +22,7 @@ from ..services.image_generator import image_generator_service
 from ..models.user import User
 from ..models.book import Book
 from ..models.chapter import Chapter
+from ..models.description import Description, DescriptionType
 from ..models.image import GeneratedImage
 from ..schemas.responses.images import (
     ImageGenerationStatusResponse,
@@ -37,14 +33,6 @@ from ..schemas.responses.images import (
     APIProviderInfo,
 )
 from ..schemas.responses import ImageGenerationTaskResponse
-
-
-# DescriptionType enum defined locally after NLP removal
-class DescriptionType(str, Enum):
-    """Types of descriptions for image generation."""
-    LOCATION = "location"
-    CHARACTER = "character"
-    ATMOSPHERE = "atmosphere"
 
 
 router = APIRouter()
@@ -94,15 +82,6 @@ class ImageGenerationParams(BaseModel):
     negative_prompt: Optional[str] = None
     width: Optional[int] = 1024
     height: Optional[int] = 768
-
-
-class TextImageGenerationRequest(BaseModel):
-    """Request for generating image from text description."""
-
-    description_text: str
-    description_type: DescriptionType = DescriptionType.LOCATION
-    chapter_id: Optional[UUID] = None
-    style_prompt: Optional[str] = None
 
 
 class BatchGenerationRequest(BaseModel):
@@ -175,16 +154,19 @@ async def get_generation_status(
     "/images/user/stats",
     response_model=UserImageStatsResponse,
     summary="Get user's image generation statistics",
-    description="Returns statistics about generated images for the current user"
+    description="Returns statistics about generated images and found descriptions for the current user"
 )
 async def get_user_images_stats(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
 ) -> UserImageStatsResponse:
     """
-    Получение статистики изображений пользователя.
+    Получение статистики изображений и описаний пользователя.
 
-    NLP REMOVAL: total_descriptions_found is now 0 (descriptions extracted on-demand)
+    Подсчитывает:
+    - Реальное количество сгенерированных изображений
+    - Общее количество найденных описаний
+    - Распределение изображений по типам описаний
 
     Args:
         current_user: Текущий пользователь
@@ -196,23 +178,34 @@ async def get_user_images_stats(
     # Подсчитываем реальное количество сгенерированных изображений
     images_count_query = await db.execute(
         select(func.count(GeneratedImage.id))
-        .where(GeneratedImage.user_id == current_user.id)
+        .join(Description, GeneratedImage.description_id == Description.id)
+        .join(Chapter, Description.chapter_id == Chapter.id)
+        .join(Book, Chapter.book_id == Book.id)
+        .where(Book.user_id == current_user.id)
     )
     total_images = images_count_query.scalar() or 0
 
-    # NLP REMOVAL: Descriptions extracted on-demand
-    total_descriptions = 0
+    # Подсчитываем общее количество найденных описаний
+    descriptions_count_query = await db.execute(
+        select(func.count(Description.id))
+        .join(Chapter, Description.chapter_id == Chapter.id)
+        .join(Book, Chapter.book_id == Book.id)
+        .where(Book.user_id == current_user.id)
+    )
+    total_descriptions = descriptions_count_query.scalar() or 0
 
     # Подсчитываем изображения по типам описаний
     images_by_type_query = await db.execute(
-        select(GeneratedImage.description_type, func.count(GeneratedImage.id))
-        .where(GeneratedImage.user_id == current_user.id)
-        .where(GeneratedImage.description_type.is_not(None))
-        .group_by(GeneratedImage.description_type)
+        select(Description.type, func.count(GeneratedImage.id))
+        .join(GeneratedImage, GeneratedImage.description_id == Description.id)
+        .join(Chapter, Description.chapter_id == Chapter.id)
+        .join(Book, Chapter.book_id == Book.id)
+        .where(Book.user_id == current_user.id)
+        .group_by(Description.type)
     )
 
     images_by_type = {
-        desc_type: count
+        desc_type.value: count
         for desc_type, count in images_by_type_query.fetchall()
     }
 
@@ -224,53 +217,75 @@ async def get_user_images_stats(
 
 
 @router.post(
-    "/images/generate/text",
+    "/images/generate/description/{description_id}",
     response_model=ImageGenerationSuccessResponse,
     status_code=201,
-    summary="Generate image from text description",
-    description="Generates an AI image from a text description"
+    summary="Generate image for description",
+    description="Generates an AI image for a specific book description"
 )
-async def generate_image_from_text(
-    request: TextImageGenerationRequest,
+async def generate_image_for_description(
+    description_id: UUID,
+    params: ImageGenerationParams,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
 ) -> ImageGenerationSuccessResponse:
     """
-    Генерирует изображение по текстовому описанию.
+    Генерирует изображение для конкретного описания.
 
-    NLP REMOVAL: New endpoint that generates images from text directly,
-    without requiring Description model.
+    Синхронно генерирует изображение через Google Imagen 4 API и
+    сохраняет результат в базу данных.
 
     Args:
-        request: Параметры генерации (text, type, chapter_id, style)
+        description_id: ID описания из базы данных
+        params: Параметры генерации (style_prompt, width, height, etc.)
+        background_tasks: Фоновые задачи для асинхронной обработки
         current_user: Текущий пользователь
         db: Сессия базы данных
 
     Returns:
         ImageGenerationSuccessResponse: Информация о сгенерированном изображении
+
+    Raises:
+        HTTPException 404: Description not found or access denied
+        HTTPException 409: Image already exists for this description
+        HTTPException 500: Image generation failed
     """
-    # If chapter_id provided, verify access
-    chapter = None
-    if request.chapter_id:
-        chapter_result = await db.execute(
-            select(Chapter)
-            .join(Book)
-            .where(Chapter.id == request.chapter_id)
-            .where(Book.user_id == current_user.id)
+    # Получаем описание
+    description_result = await db.execute(
+        select(Description)
+        .join(Chapter)
+        .join(Book)
+        .where(Description.id == description_id)
+        .where(
+            Book.user_id == current_user.id
+        )  # Проверяем что книга принадлежит пользователю
+    )
+    description = description_result.scalar_one_or_none()
+
+    if not description:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Description not found or access denied",
         )
-        chapter = chapter_result.scalar_one_or_none()
-        if not chapter:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Chapter not found or access denied",
-            )
+
+    # Проверяем, не сгенерировано ли уже изображение для этого описания
+    existing_image_result = await db.execute(
+        select(GeneratedImage).where(GeneratedImage.description_id == description_id)
+    )
+    existing_image = existing_image_result.scalar_one_or_none()
+    if existing_image:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Image already exists for this description",
+        )
 
     try:
-        # Generate image from text
-        result = await image_generator_service.generate_image_from_text(
-            text=request.description_text,
-            description_type=request.description_type.value,
-            custom_style=request.style_prompt,
+        # Генерируем изображение
+        result = await image_generator_service.generate_image_for_description(
+            description=description,
+            user_id=str(current_user.id),
+            custom_style=params.style_prompt,
         )
 
         if not result.success:
@@ -283,17 +298,15 @@ async def generate_image_from_text(
         filename = os.path.basename(result.local_path) if result.local_path else None
         http_url = f"/api/v1/images/file/{filename}" if filename else None
 
-        # Save to database
+        # Сохраняем результат в базе данных
         generated_image = GeneratedImage(
+            description_id=description.id,
             user_id=current_user.id,
-            chapter_id=request.chapter_id,
-            description_text=request.description_text,
-            description_type=request.description_type.value,
             service_used="imagen",
             status="completed",
-            image_url=http_url,
+            image_url=http_url,  # Store HTTP URL instead of data URL
             local_path=result.local_path,
-            prompt_used=result.prompt_used or request.style_prompt or "default",
+            prompt_used=result.prompt_used or params.style_prompt or "default",
             generation_time_seconds=result.generation_time_seconds,
         )
 
@@ -303,7 +316,7 @@ async def generate_image_from_text(
 
         return ImageGenerationSuccessResponse(
             image_id=generated_image.id,
-            description_id=None,  # No description model anymore
+            description_id=description.id,
             image_url=http_url or result.image_url,
             generation_time=result.generation_time_seconds,
             status="completed",
@@ -329,10 +342,7 @@ async def generate_images_for_chapter(
     db: AsyncSession = Depends(get_database_session),
 ) -> Dict[str, Any]:
     """
-    Extracts descriptions from chapter via LLM and generates images.
-
-    NLP REMOVAL: Now uses LangExtract to get descriptions on-demand,
-    then generates images for the extracted descriptions.
+    Генерирует изображения для всех подходящих описаний в главе.
 
     Args:
         chapter_id: ID главы
@@ -344,7 +354,7 @@ async def generate_images_for_chapter(
     Returns:
         Информация о запущенной пакетной генерации
     """
-    # Verify chapter access
+    # Проверяем, что глава принадлежит пользователю
     chapter_result = await db.execute(
         select(Chapter)
         .join(Book)
@@ -359,74 +369,72 @@ async def generate_images_for_chapter(
             detail="Chapter not found or access denied",
         )
 
-    # Get book for genre info
-    book_result = await db.execute(select(Book).where(Book.id == chapter.book_id))
-    book = book_result.scalar_one()
+    # Получаем описания для генерации
+    descriptions_query = select(Description).where(Description.chapter_id == chapter_id)
 
-    # Use LangExtract to get descriptions on-demand
-    try:
-        from ..services.langextract_processor import LangExtractProcessor
-
-        processor = LangExtractProcessor()
-        if not processor.is_available():
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="LLM extraction service not available. Check GOOGLE_API_KEY.",
-            )
-
-        # Extract descriptions from chapter content
-        extraction_result = await processor.extract_descriptions(
-            text=chapter.content,
-            chapter_id=str(chapter_id)
+    # Фильтруем по типам описаний если указано
+    if request.description_types:
+        descriptions_query = descriptions_query.where(
+            Description.type.in_(request.description_types)
         )
 
-        descriptions = extraction_result.descriptions[:request.max_images]
+    descriptions_result = await db.execute(
+        descriptions_query.order_by(Description.priority_score.desc())
+    )
+    all_descriptions = descriptions_result.scalars().all()
 
-    except HTTPException:
-        raise
-    except Exception as e:
+    if not all_descriptions:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to extract descriptions: {str(e)}",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No descriptions found in this chapter",
         )
 
-    if not descriptions:
+    # Исключаем описания, для которых уже есть изображения
+    existing_images = await db.execute(
+        select(GeneratedImage.description_id).where(
+            GeneratedImage.description_id.in_([d.id for d in all_descriptions])
+        )
+    )
+    existing_desc_ids = set(img_id for img_id, in existing_images.fetchall())
+
+    descriptions_to_process = [
+        d for d in all_descriptions if d.id not in existing_desc_ids
+    ][: request.max_images]
+
+    if not descriptions_to_process:
         return {
-            "message": "No descriptions found in this chapter",
+            "message": "All suitable descriptions already have images",
             "chapter_id": str(chapter_id),
             "processed": 0,
-            "skipped": 0,
+            "skipped": len(all_descriptions),
         }
 
-    # Generate images for extracted descriptions
+    # Запускаем пакетную генерацию
     try:
         results = await image_generator_service.batch_generate_for_chapter(
-            descriptions=descriptions,
+            descriptions=descriptions_to_process,
             user_id=str(current_user.id),
-            book_genre=book.genre,
             max_images=request.max_images,
         )
 
-        # Save results to database
+        # Сохраняем результаты в базе данных
         generated_images = []
         successful_generations = 0
 
         for i, result in enumerate(results):
-            if result.success and i < len(descriptions):
-                desc = descriptions[i]
+            if result.success and i < len(descriptions_to_process):
+                description = descriptions_to_process[i]
 
                 # Create HTTP URL from local_path
                 filename = os.path.basename(result.local_path) if result.local_path else None
                 http_url = f"/api/v1/images/file/{filename}" if filename else None
 
                 generated_image = GeneratedImage(
+                    description_id=description.id,
                     user_id=current_user.id,
-                    chapter_id=chapter_id,
-                    description_text=desc.get("content", ""),
-                    description_type=desc.get("type", "location"),
                     service_used="imagen",
                     status="completed",
-                    image_url=http_url,
+                    image_url=http_url,  # Store HTTP URL instead of data URL
                     local_path=result.local_path,
                     prompt_used=result.prompt_used or request.style_prompt or "default",
                     generation_time_seconds=result.generation_time_seconds,
@@ -435,8 +443,8 @@ async def generate_images_for_chapter(
                 db.add(generated_image)
                 generated_images.append(
                     {
-                        "description_text": desc.get("content", "")[:100] + "...",
-                        "description_type": desc.get("type", "location"),
+                        "description_id": str(description.id),
+                        "description_type": description.type.value,
                         "image_url": http_url or result.image_url,
                         "generation_time": result.generation_time_seconds,
                     }
@@ -447,10 +455,10 @@ async def generate_images_for_chapter(
 
         return {
             "chapter_id": str(chapter_id),
-            "total_descriptions": len(descriptions),
-            "processed": len(descriptions),
+            "total_descriptions": len(all_descriptions),
+            "processed": len(descriptions_to_process),
             "successful": successful_generations,
-            "failed": len(descriptions) - successful_generations,
+            "failed": len(descriptions_to_process) - successful_generations,
             "images": generated_images,
             "message": f"Generated {successful_generations} images for chapter",
         }
@@ -463,66 +471,74 @@ async def generate_images_for_chapter(
         )
 
 
-@router.get("/images/{image_id}")
-async def get_image(
-    image_id: UUID,
+@router.get("/images/description/{description_id}")
+async def get_image_for_description(
+    description_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
 ) -> Dict[str, Any]:
     """
-    Get image details by ID.
+    Получает изображение для конкретного описания.
 
     Args:
-        image_id: ID изображения
+        description_id: ID описания
         current_user: Текущий пользователь
         db: Сессия базы данных
 
     Returns:
-        Image details
+        Данные изображения или 404 если не найдено
+
+    Raises:
+        HTTPException 404: Описание или изображение не найдено
     """
-    # Get image with access check
+    # Получаем изображение с описанием и главой
     query = (
-        select(GeneratedImage)
-        .where(GeneratedImage.id == image_id)
-        .where(GeneratedImage.user_id == current_user.id)
+        select(GeneratedImage, Description, Chapter)
+        .join(Description, GeneratedImage.description_id == Description.id)
+        .join(Chapter, Description.chapter_id == Chapter.id)
+        .join(Book, Chapter.book_id == Book.id)
+        .where(Description.id == description_id)
+        .where(Book.user_id == current_user.id)
     )
 
     result = await db.execute(query)
-    image = result.scalar_one_or_none()
+    row = result.first()
 
-    if not image:
+    if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Image not found or access denied",
+            detail="Image not found for this description",
         )
 
-    # Get chapter info if linked
-    chapter_info = None
-    if image.chapter_id:
-        chapter_result = await db.execute(
-            select(Chapter).where(Chapter.id == image.chapter_id)
-        )
-        chapter = chapter_result.scalar_one_or_none()
-        if chapter:
-            chapter_info = {
-                "id": str(chapter.id),
-                "number": chapter.chapter_number,
-                "title": chapter.title,
-            }
+    generated_image, description, chapter = row
 
     return {
-        "id": str(image.id),
-        "image_url": image.image_url,
-        "created_at": image.created_at.isoformat(),
-        "generation_time_seconds": image.generation_time_seconds,
-        "service_used": image.service_used or "imagen",
-        "status": image.status or "completed",
-        "is_moderated": image.is_moderated or False,
-        "view_count": image.view_count or 0,
-        "download_count": image.download_count or 0,
-        "description_text": image.description_text,
-        "description_type": image.description_type,
-        "chapter": chapter_info,
+        "id": str(generated_image.id),
+        "image_url": generated_image.image_url,
+        "created_at": generated_image.created_at.isoformat(),
+        "generation_time_seconds": generated_image.generation_time_seconds,
+        "service_used": generated_image.service_used or "imagen",
+        "status": generated_image.status or "completed",
+        "is_moderated": generated_image.is_moderated or False,
+        "view_count": generated_image.view_count or 0,
+        "download_count": generated_image.download_count or 0,
+        "description": {
+            "id": str(description.id),
+            "type": description.type.value,
+            "text": description.content,
+            "content": (
+                description.content[:100] + "..."
+                if len(description.content) > 100
+                else description.content
+            ),
+            "confidence_score": description.confidence_score,
+            "priority_score": description.priority_score,
+        },
+        "chapter": {
+            "id": str(chapter.id),
+            "number": chapter.chapter_number,
+            "title": chapter.title,
+        },
     }
 
 
@@ -547,7 +563,7 @@ async def get_book_images(
     Returns:
         Список изображений книги
     """
-    # Check book access
+    # Проверяем доступ к книге
     book_result = await db.execute(
         select(Book).where(Book.id == book_id).where(Book.user_id == current_user.id)
     )
@@ -559,12 +575,13 @@ async def get_book_images(
             detail="Book not found or access denied",
         )
 
-    # Get images linked to book's chapters
+    # Получаем изображения
     images_query = (
-        select(GeneratedImage, Chapter)
-        .join(Chapter, GeneratedImage.chapter_id == Chapter.id)
+        select(GeneratedImage, Description, Chapter)
+        .join(Description, GeneratedImage.description_id == Description.id)
+        .join(Chapter, Description.chapter_id == Chapter.id)
         .where(Chapter.book_id == book_id)
-        .order_by(Chapter.chapter_number)
+        .order_by(Chapter.chapter_number, Description.priority_score.desc())
         .offset(skip)
         .limit(limit)
     )
@@ -572,15 +589,26 @@ async def get_book_images(
     images_result = await db.execute(images_query)
     images_data = []
 
-    for generated_image, chapter in images_result.fetchall():
+    for generated_image, description, chapter in images_result.fetchall():
         images_data.append(
             {
                 "id": str(generated_image.id),
                 "image_url": generated_image.image_url,
                 "created_at": generated_image.created_at.isoformat(),
                 "generation_time_seconds": generated_image.generation_time_seconds,
-                "description_text": generated_image.description_text,
-                "description_type": generated_image.description_type,
+                "description": {
+                    "id": str(description.id),
+                    "type": description.type.value,
+                    "text": description.content,  # Полный текст
+                    "content": (
+                        description.content[:100] + "..."
+                        if len(description.content) > 100
+                        else description.content
+                    ),  # Сокращенный для превью
+                    "confidence_score": description.confidence_score,
+                    "priority_score": description.priority_score,
+                    "entities_mentioned": description.entities_mentioned,
+                },
                 "chapter": {
                     "id": str(chapter.id),
                     "number": chapter.chapter_number,
@@ -614,7 +642,7 @@ async def delete_generated_image(
     Returns:
         Сообщение об успешном удалении
     """
-    # Check access
+    # Проверяем, что изображение принадлежит пользователю
     image_result = await db.execute(
         select(GeneratedImage).where(
             GeneratedImage.id == image_id, GeneratedImage.user_id == current_user.id
@@ -629,14 +657,16 @@ async def delete_generated_image(
         )
 
     try:
-        # Delete local file if exists
+        # Удаляем локальный файл если он существует
         if image.local_path:
+            import os
+
             try:
                 os.unlink(image.local_path)
             except OSError:
-                pass  # File already deleted or inaccessible
+                pass  # Файл уже удален или недоступен
 
-        # Delete from database
+        # Удаляем запись из базы данных
         await db.delete(image)
         await db.commit()
 
@@ -669,33 +699,42 @@ async def regenerate_image(
     Returns:
         Информация о новом сгенерированном изображении
     """
-    # Get existing image with access check
+    # Получаем существующее изображение с проверкой прав доступа
     existing_image_result = await db.execute(
-        select(GeneratedImage)
+        select(GeneratedImage, Description)
+        .join(Description, GeneratedImage.description_id == Description.id)
+        .join(Chapter, Description.chapter_id == Chapter.id)
+        .join(Book, Chapter.book_id == Book.id)
         .where(GeneratedImage.id == image_id)
-        .where(GeneratedImage.user_id == current_user.id)
+        .where(Book.user_id == current_user.id)
     )
 
-    existing_image = existing_image_result.scalar_one_or_none()
-    if not existing_image:
+    result_row = existing_image_result.first()
+    if not result_row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Image not found or access denied",
         )
 
+    existing_image, description = result_row
+
     try:
-        # Delete old local file if exists
+        # Удаляем старый локальный файл если существует
         if existing_image.local_path:
+            import os
+
             try:
                 os.unlink(existing_image.local_path)
             except OSError:
-                pass
+                pass  # Файл уже удален или недоступен
 
-        # Generate new image
-        generation_result = await image_generator_service.generate_image_from_text(
-            text=existing_image.description_text or "",
-            description_type=existing_image.description_type or "location",
-            custom_style=params.style_prompt,
+        # Генерируем новое изображение
+        generation_result = (
+            await image_generator_service.generate_image_for_description(
+                description=description,
+                user_id=str(current_user.id),
+                custom_style=params.style_prompt,
+            )
         )
 
         if not generation_result.success:
@@ -704,28 +743,36 @@ async def regenerate_image(
                 detail=f"Image regeneration failed: {generation_result.error_message}",
             )
 
-        # Create HTTP URL from local_path
-        filename = os.path.basename(generation_result.local_path) if generation_result.local_path else None
-        http_url = f"/api/v1/images/file/{filename}" if filename else None
-
-        # Update existing record
-        existing_image.image_url = http_url or generation_result.image_url
+        # Обновляем существующую запись в базе данных
+        existing_image.image_url = generation_result.image_url
         existing_image.local_path = generation_result.local_path
         existing_image.prompt_used = params.style_prompt or "default"
-        existing_image.generation_time_seconds = generation_result.generation_time_seconds
+        existing_image.generation_time_seconds = (
+            generation_result.generation_time_seconds
+        )
+        existing_image.updated_at = func.now()  # Обновляем время изменения
 
         await db.commit()
         await db.refresh(existing_image)
 
         return {
             "image_id": str(existing_image.id),
-            "image_url": existing_image.image_url,
+            "description_id": str(description.id),
+            "image_url": generation_result.image_url,
             "generation_time": generation_result.generation_time_seconds,
             "status": "regenerated",
-            "updated_at": existing_image.updated_at.isoformat() if existing_image.updated_at else None,
+            "updated_at": existing_image.updated_at.isoformat(),
             "message": "Image regenerated successfully",
-            "description_text": existing_image.description_text,
-            "description_type": existing_image.description_type,
+            "description": {
+                "id": str(description.id),
+                "type": description.type.value,
+                "text": description.content,
+                "content": (
+                    description.content[:100] + "..."
+                    if len(description.content) > 100
+                    else description.content
+                ),
+            },
         }
 
     except HTTPException:
@@ -753,20 +800,22 @@ async def get_admin_image_stats(
     Returns:
         Подробная статистика системы генерации
     """
-    # Total generated images
+    from sqlalchemy import func
+
+    # Общее количество сгенерированных изображений
     total_images = await db.execute(select(func.count(GeneratedImage.id)))
     total_count = total_images.scalar()
 
-    # Stats by description type
+    # Статистика по типам описаний
     type_stats = await db.execute(
-        select(GeneratedImage.description_type, func.count(GeneratedImage.id).label("count"))
-        .where(GeneratedImage.description_type.is_not(None))
-        .group_by(GeneratedImage.description_type)
+        select(Description.type, func.count(GeneratedImage.id).label("count"))
+        .join(GeneratedImage, GeneratedImage.description_id == Description.id)
+        .group_by(Description.type)
     )
 
-    type_distribution = {row.description_type: row.count for row in type_stats.fetchall()}
+    type_distribution = {row.type.value: row.count for row in type_stats.fetchall()}
 
-    # Average generation time
+    # Среднее время генерации
     avg_time = await db.execute(
         select(func.avg(GeneratedImage.generation_time_seconds)).where(
             GeneratedImage.generation_time_seconds.is_not(None)
@@ -774,7 +823,7 @@ async def get_admin_image_stats(
     )
     average_generation_time = avg_time.scalar() or 0
 
-    # Get service stats
+    # Получаем статистику сервиса
     service_stats = await image_generator_service.get_generation_stats()
 
     return {

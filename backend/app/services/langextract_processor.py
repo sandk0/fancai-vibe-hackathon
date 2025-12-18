@@ -809,3 +809,7 @@ async def extract_descriptions_with_langextract(
     """
     processor = get_langextract_processor()
     return await processor.extract_descriptions(text, chapter_id)
+
+
+# Singleton instance for easy import
+langextract_processor = get_langextract_processor()
