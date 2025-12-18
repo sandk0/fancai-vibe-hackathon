@@ -31,12 +31,15 @@ def upgrade() -> None:
     4. Make description_id NOT NULL again
     """
 
+    # Step 0: Create enum type if not exists
+    op.execute("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'descriptiontype') THEN CREATE TYPE descriptiontype AS ENUM ('LOCATION', 'CHARACTER', 'ATMOSPHERE', 'OBJECT', 'ACTION'); END IF; END $$;")
+
     # Step 1: Create descriptions table
     op.create_table(
         'descriptions',
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('chapter_id', postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column('type', sa.Enum('LOCATION', 'CHARACTER', 'ATMOSPHERE', 'OBJECT', 'ACTION', name='descriptiontype'), nullable=False),
+        sa.Column('type', sa.Enum('LOCATION', 'CHARACTER', 'ATMOSPHERE', 'OBJECT', 'ACTION', name='descriptiontype', create_type=False), nullable=False),
         sa.Column('content', sa.Text(), nullable=False),
         sa.Column('context', sa.Text(), nullable=True),
         sa.Column('confidence_score', sa.Float(), nullable=False, default=0.0),
