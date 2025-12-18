@@ -31,32 +31,36 @@ def upgrade() -> None:
     4. Make description_id NOT NULL again
     """
 
-    # Step 0: Create enum type if not exists
-    op.execute("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'descriptiontype') THEN CREATE TYPE descriptiontype AS ENUM ('LOCATION', 'CHARACTER', 'ATMOSPHERE', 'OBJECT', 'ACTION'); END IF; END $$;")
+    # Step 0: Check if enum type exists and create if not
+    # Using raw SQL to avoid SQLAlchemy trying to create the type
+    from sqlalchemy import text
+    bind = op.get_bind()
+    result = bind.execute(text("SELECT 1 FROM pg_type WHERE typname = 'descriptiontype'"))
+    if result.fetchone() is None:
+        op.execute("CREATE TYPE descriptiontype AS ENUM ('LOCATION', 'CHARACTER', 'ATMOSPHERE', 'OBJECT', 'ACTION')")
 
-    # Step 1: Create descriptions table
-    op.create_table(
-        'descriptions',
-        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column('chapter_id', postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column('type', sa.Enum('LOCATION', 'CHARACTER', 'ATMOSPHERE', 'OBJECT', 'ACTION', name='descriptiontype', create_type=False), nullable=False),
-        sa.Column('content', sa.Text(), nullable=False),
-        sa.Column('context', sa.Text(), nullable=True),
-        sa.Column('confidence_score', sa.Float(), nullable=False, default=0.0),
-        sa.Column('position_in_chapter', sa.Integer(), nullable=False),
-        sa.Column('word_count', sa.Integer(), nullable=False, default=0),
-        sa.Column('is_suitable_for_generation', sa.Boolean(), nullable=False, default=True),
-        sa.Column('priority_score', sa.Float(), nullable=False, default=0.0),
-        sa.Column('entities_mentioned', sa.Text(), nullable=True),
-        sa.Column('emotional_tone', sa.String(50), nullable=True),
-        sa.Column('complexity_level', sa.String(20), nullable=True),
-        sa.Column('image_generated', sa.Boolean(), nullable=False, default=False),
-        sa.Column('generation_requested', sa.Boolean(), nullable=False, default=False),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.PrimaryKeyConstraint('id'),
-        sa.ForeignKeyConstraint(['chapter_id'], ['chapters.id'], ondelete='CASCADE'),
-    )
+    # Step 1: Create descriptions table using raw SQL to avoid enum creation issues
+    op.execute("""
+        CREATE TABLE descriptions (
+            id UUID NOT NULL PRIMARY KEY,
+            chapter_id UUID NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+            type descriptiontype NOT NULL,
+            content TEXT NOT NULL,
+            context TEXT,
+            confidence_score FLOAT NOT NULL DEFAULT 0.0,
+            position_in_chapter INTEGER NOT NULL,
+            word_count INTEGER NOT NULL DEFAULT 0,
+            is_suitable_for_generation BOOLEAN NOT NULL DEFAULT true,
+            priority_score FLOAT NOT NULL DEFAULT 0.0,
+            entities_mentioned TEXT,
+            emotional_tone VARCHAR(50),
+            complexity_level VARCHAR(20),
+            image_generated BOOLEAN NOT NULL DEFAULT false,
+            generation_requested BOOLEAN NOT NULL DEFAULT false,
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        )
+    """)
 
     # Step 2: Create indexes
     op.create_index('ix_descriptions_id', 'descriptions', ['id'])
