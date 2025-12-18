@@ -198,6 +198,7 @@ async def upload_book(
         raise BookProcessingException(str(e))
 
 
+@router.get("", response_model=BookListResponse)
 @router.get("/", response_model=BookListResponse)
 async def get_user_books(
     skip: int = 0,
