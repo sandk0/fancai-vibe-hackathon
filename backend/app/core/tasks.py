@@ -131,6 +131,8 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
         # Помечаем книгу как готовую
         # is_parsed теперь означает "ready for on-demand extraction"
         book.is_processing = False
+        book.is_parsed = True
+        book.parsing_progress = 100
         await db.commit()
 
         # Инвалидируем кэш
