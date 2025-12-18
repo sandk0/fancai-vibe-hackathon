@@ -33,11 +33,13 @@ export const booksAPI = {
     limit: number;
   }> {
     const searchParams = new URLSearchParams();
-    if (params?.skip) searchParams.append('skip', params.skip.toString());
-    if (params?.limit) searchParams.append('limit', params.limit.toString());
+    if (params?.skip !== undefined) searchParams.append('skip', params.skip.toString());
+    if (params?.limit !== undefined) searchParams.append('limit', params.limit.toString());
     if (params?.sort_by) searchParams.append('sort_by', params.sort_by);
 
-    const url = `/books/${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    // Always use trailing slash - backend has redirect_slashes=False
+    const queryString = searchParams.toString();
+    const url = `/books/${queryString ? '?' + queryString : ''}`;
     return apiClient.get(url);
   },
 
