@@ -174,7 +174,16 @@ class ApiClient {
 
   // Generic request methods
   async get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response: AxiosResponse<T> = await this.client.get(url, config);
+    // Add cache-busting headers to prevent browser caching API responses
+    const response: AxiosResponse<T> = await this.client.get(url, {
+      ...config,
+      headers: {
+        ...config?.headers,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    });
     return response.data;
   }
 
