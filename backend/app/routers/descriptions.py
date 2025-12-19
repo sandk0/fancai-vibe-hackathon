@@ -108,10 +108,8 @@ async def get_chapter_descriptions(
         # Извлекаем описания из контента главы через LLM
         result = await langextract_processor.extract_descriptions(chapter.content)
 
-        if result.success:
-            descriptions_data = result.descriptions
-        else:
-            descriptions_data = []
+        # ProcessingResult has 'descriptions' list directly, not 'success' attr
+        descriptions_data = result.descriptions if result.descriptions else []
 
         # Сохраняем новые описания в базе
         position = 0
