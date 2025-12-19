@@ -157,31 +157,35 @@ async def get_chapter_descriptions(
     # Формируем ответ
     chapter_info = ChapterMinimalInfo(
         id=chapter.id,
-        chapter_number=chapter.chapter_number,
+        number=chapter.chapter_number,  # Field name is 'number', not 'chapter_number'
         title=chapter.title or f"Глава {chapter.chapter_number}",
         word_count=chapter.word_count,
     )
 
     # Группируем по типам
     by_type: Dict[str, int] = {}
-    desc_responses: List[Dict[str, Any]] = []
+    desc_responses: List[DescriptionResponse] = []
 
     for desc in descriptions:
         type_value = desc.type.value if desc.type else "location"
         by_type[type_value] = by_type.get(type_value, 0) + 1
 
-        desc_responses.append({
-            "id": str(desc.id),
-            "type": type_value,
-            "content": desc.content,
-            "confidence_score": desc.confidence_score,
-            "priority_score": desc.priority_score,
-            "position_in_chapter": desc.position_in_chapter,
-            "word_count": desc.word_count,
-            "is_suitable_for_generation": desc.is_suitable_for_generation,
-            "image_generated": desc.image_generated,
-            "entities_mentioned": desc.entities_mentioned or "",
-        })
+        desc_responses.append(DescriptionResponse(
+            id=desc.id,
+            chapter_id=desc.chapter_id,
+            type=desc.type,
+            content=desc.content,
+            context=desc.context or "",
+            confidence_score=desc.confidence_score,
+            priority_score=desc.priority_score,
+            position_in_chapter=desc.position_in_chapter,
+            word_count=desc.word_count,
+            is_suitable_for_generation=desc.is_suitable_for_generation,
+            image_generated=desc.image_generated,
+            entities_mentioned=desc.entities_mentioned or "",
+            created_at=desc.created_at,
+            updated_at=desc.updated_at,
+        ))
 
     analysis_result = NLPAnalysisResult(
         total_descriptions=len(descriptions),
@@ -190,10 +194,8 @@ async def get_chapter_descriptions(
     )
 
     return ChapterDescriptionsResponse(
-        chapter=chapter_info,
-        analysis=analysis_result,
-        extracted_at=chapter.parsed_at,
-        processor_used="langextract",
+        chapter_info=chapter_info,  # Fixed: was 'chapter'
+        nlp_analysis=analysis_result,  # Fixed: was 'analysis'
     )
 
 
