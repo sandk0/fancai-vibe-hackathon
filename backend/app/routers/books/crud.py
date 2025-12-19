@@ -169,6 +169,7 @@ async def upload_book(
             total_pages=book.total_pages,
             estimated_reading_time=book.estimated_reading_time,
             is_parsed=book.is_parsed,
+            is_processing=book.is_processing if hasattr(book, 'is_processing') else True,
             parsing_progress=book.parsing_progress,
             parsing_error=book.parsing_error,
             created_at=book.created_at,
@@ -285,7 +286,7 @@ async def get_user_books(
                         "has_cover": bool(book.cover_image),
                         "is_parsed": book.is_parsed,
                         "parsing_progress": book.parsing_progress,
-                        "is_processing": not book.is_parsed,
+                        "is_processing": book.is_processing if hasattr(book, 'is_processing') else not book.is_parsed,
                         "created_at": (
                             book.created_at.isoformat() if book.created_at else None
                         ),

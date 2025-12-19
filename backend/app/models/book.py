@@ -104,6 +104,7 @@ class Book(Base):
 
     # Статус обработки
     is_parsed = Column(Boolean, default=False, nullable=False)
+    is_processing = Column(Boolean, default=True, nullable=False)  # True while Celery task is running
     parsing_progress = Column(Integer, default=0, nullable=False)  # 0-100%
     parsing_error = Column(Text, nullable=True)
 

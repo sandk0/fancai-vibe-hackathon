@@ -205,6 +205,7 @@ class BookDetailResponse(BaseResponse):
     total_pages: int = Field(ge=0)
     estimated_reading_time: int = Field(ge=0)
     is_parsed: bool
+    is_processing: bool = False  # True while Celery task is running
     parsing_progress: int = Field(ge=0, le=100)
     parsing_error: Optional[str] = None
     created_at: datetime
