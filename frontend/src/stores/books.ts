@@ -24,19 +24,31 @@ export const useBooksStore = create<BooksState>((set, get) => ({
   // Actions
   refreshBooks: async () => {
     // Refresh without changing sort order (don't pass sortBy to preserve current)
-    return get().fetchBooks(get().currentPage, get().booksPerPage);
+    console.log('📚 [BOOKS STORE] refreshBooks() called, currentPage:', get().currentPage, 'booksPerPage:', get().booksPerPage);
+    try {
+      const result = await get().fetchBooks(get().currentPage, get().booksPerPage);
+      console.log('📚 [BOOKS STORE] refreshBooks() completed successfully');
+      return result;
+    } catch (error) {
+      console.error('📚 [BOOKS STORE] refreshBooks() failed:', error);
+      throw error;
+    }
   },
   fetchBooks: async (page = 1, limit = 10, sortBy?: string) => {
+    console.log('📚 [BOOKS STORE] fetchBooks() called with page:', page, 'limit:', limit, 'sortBy:', sortBy);
     set({ isLoading: true, error: null });
 
     try {
       const skip = (page - 1) * limit;
+      console.log('📚 [BOOKS STORE] Calculated skip:', skip);
       // Only include sort_by if explicitly provided
       const params: { skip: number; limit: number; sort_by?: string } = { skip, limit };
       if (sortBy) {
         params.sort_by = sortBy;
       }
+      console.log('📚 [BOOKS STORE] Calling booksAPI.getBooks with params:', params);
       const response = await booksAPI.getBooks(params);
+      console.log('📚 [BOOKS STORE] booksAPI.getBooks response:', response);
 
       // Pagination logic: page 1 replaces, page > 1 appends (infinite scroll)
       const currentBooks = get().books;

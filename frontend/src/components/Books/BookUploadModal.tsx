@@ -102,11 +102,19 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
       setFiles(prev => prev.filter(f => f.name !== file.name));
 
       // Обновляем список книг через Zustand store
-      await refreshBooks();
+      console.log('📚 [MUTATION] Calling refreshBooks()...');
+      try {
+        await refreshBooks();
+        console.log('📚 [MUTATION] refreshBooks() completed successfully');
+      } catch (refreshError) {
+        console.error('📚 [MUTATION] refreshBooks() failed:', refreshError);
+      }
 
       // Call the success callback if provided
+      console.log('📚 [MUTATION] Calling onUploadSuccess callback...');
       if (onUploadSuccess) {
         onUploadSuccess();
+        console.log('📚 [MUTATION] onUploadSuccess callback completed');
       }
 
       // Парсинг автоматически запускается на backend после загрузки
