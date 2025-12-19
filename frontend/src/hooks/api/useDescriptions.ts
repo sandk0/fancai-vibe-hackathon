@@ -106,17 +106,32 @@ export function useChapterDescriptions(
         };
       }
 
-      // 2. Загружаем с API
+      // 2. Загружаем с API (сначала проверяем существующие)
       console.log(
         `📡 [useChapterDescriptions] Descriptions not in cache, fetching from API`
       );
-      const response = await booksAPI.getChapterDescriptions(
+      let response = await booksAPI.getChapterDescriptions(
         bookId,
         chapterNumber,
-        false // extract_new = false, используем существующие
+        false // extract_new = false, сначала проверяем существующие
       );
 
-      // 3. Сохраняем в кэш
+      // 3. Если описаний нет - извлекаем через LLM (on-demand extraction)
+      if (response.nlp_analysis.descriptions.length === 0) {
+        console.log(
+          `🔄 [useChapterDescriptions] No descriptions found, extracting via LLM...`
+        );
+        response = await booksAPI.getChapterDescriptions(
+          bookId,
+          chapterNumber,
+          true // extract_new = true, запускаем LLM extraction
+        );
+        console.log(
+          `✅ [useChapterDescriptions] LLM extracted ${response.nlp_analysis.descriptions.length} descriptions`
+        );
+      }
+
+      // 4. Сохраняем в кэш
       if (response.nlp_analysis.descriptions.length > 0) {
         await chapterCache
           .set(bookId, chapterNumber, response.nlp_analysis.descriptions, [])
@@ -168,16 +183,26 @@ export function useDescriptionsList(
         descriptionKeys.byChapter(bookId, chapterNumber)
       );
 
-      if (cachedData) {
+      if (cachedData && cachedData.nlp_analysis.descriptions.length > 0) {
         return cachedData.nlp_analysis.descriptions;
       }
 
       // Иначе загружаем
-      const response = await booksAPI.getChapterDescriptions(
+      let response = await booksAPI.getChapterDescriptions(
         bookId,
         chapterNumber,
         false
       );
+
+      // Если пусто - извлекаем через LLM
+      if (response.nlp_analysis.descriptions.length === 0) {
+        response = await booksAPI.getChapterDescriptions(
+          bookId,
+          chapterNumber,
+          true // extract_new = true
+        );
+      }
+
       return response.nlp_analysis.descriptions;
     },
     staleTime: 15 * 60 * 1000,
