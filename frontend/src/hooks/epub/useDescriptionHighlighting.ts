@@ -552,8 +552,10 @@ export const useDescriptionHighlighting = ({
               span.addEventListener('mouseleave', handleMouseLeave);
 
               // Click handler (use memoized image lookup)
+              // NOTE: We don't call stopPropagation/preventDefault to allow
+              // epub.js navigation to continue working
               span.addEventListener('click', (event: MouseEvent) => {
-                event.stopPropagation();
+                // Only prevent default, allow propagation for epub.js navigation
                 event.preventDefault();
 
                 console.log('🖱️ [useDescriptionHighlighting] Description clicked:', {
