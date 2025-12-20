@@ -42,6 +42,7 @@ interface UseChapterManagementReturn {
   descriptions: Description[];
   images: GeneratedImage[];
   isLoadingChapter: boolean;
+  isExtractingDescriptions: boolean; // LLM extraction in progress
 }
 
 export const useChapterManagement = ({
@@ -54,6 +55,7 @@ export const useChapterManagement = ({
   const [descriptions, setDescriptions] = useState<Description[]>([]);
   const [images, setImages] = useState<GeneratedImage[]>([]);
   const [isLoadingChapter, setIsLoadingChapter] = useState(false);
+  const [isExtractingDescriptions, setIsExtractingDescriptions] = useState(false);
 
   /**
    * Extract chapter number from EPUB location
@@ -150,6 +152,7 @@ export const useChapterManagement = ({
       // Если описаний нет - запускаем LLM extraction (on-demand)
       if (loadedDescriptions.length === 0) {
         console.log('🔄 [useChapterManagement] No descriptions found, triggering LLM extraction...');
+        setIsExtractingDescriptions(true);
         try {
           descriptionsResponse = await booksAPI.getChapterDescriptions(
             bookId,
@@ -161,6 +164,8 @@ export const useChapterManagement = ({
         } catch (extractError) {
           console.warn('⚠️ [useChapterManagement] LLM extraction failed:', extractError);
           // Продолжаем с пустыми описаниями
+        } finally {
+          setIsExtractingDescriptions(false);
         }
       }
       console.log('✅ [useChapterManagement] Descriptions loaded:', {
@@ -192,11 +197,68 @@ export const useChapterManagement = ({
       setDescriptions(loadedDescriptions);
       setImages(loadedImages);
       setIsLoadingChapter(false);
+
+      // Prefetch следующей главы в фоне (для плавного UX)
+      prefetchNextChapter(chapter + 1);
     } catch (error) {
       console.error('❌ [useChapterManagement] Error loading chapter data:', error);
       setDescriptions([]);
       setImages([]);
       setIsLoadingChapter(false);
+    }
+  }, [bookId]);
+
+  /**
+   * Prefetch следующей главы в фоне
+   * Загружает описания и изображения заранее для плавного перехода
+   */
+  const prefetchNextChapter = useCallback(async (nextChapter: number) => {
+    if (!bookId || nextChapter <= 0) return;
+
+    try {
+      // Проверяем, есть ли уже в кэше
+      const cachedData = await chapterCache.get(bookId, nextChapter);
+      if (cachedData && cachedData.descriptions.length > 0) {
+        console.log(`📦 [useChapterManagement] Next chapter ${nextChapter} already cached`);
+        return;
+      }
+
+      console.log(`🔮 [useChapterManagement] Prefetching next chapter ${nextChapter}...`);
+
+      // Загружаем описания (сначала существующие)
+      let descriptionsResponse = await booksAPI.getChapterDescriptions(
+        bookId,
+        nextChapter,
+        false
+      );
+
+      let loadedDescriptions = descriptionsResponse.nlp_analysis.descriptions || [];
+
+      // Если пусто - извлекаем через LLM
+      if (loadedDescriptions.length === 0) {
+        console.log(`🔮 [useChapterManagement] Prefetch: extracting via LLM for chapter ${nextChapter}...`);
+        try {
+          descriptionsResponse = await booksAPI.getChapterDescriptions(
+            bookId,
+            nextChapter,
+            true
+          );
+          loadedDescriptions = descriptionsResponse.nlp_analysis.descriptions || [];
+        } catch (extractError) {
+          console.warn(`⚠️ [useChapterManagement] Prefetch LLM extraction failed for chapter ${nextChapter}:`, extractError);
+        }
+      }
+
+      // Загружаем изображения
+      const imagesResponse = await imagesAPI.getBookImages(bookId, nextChapter);
+
+      // Сохраняем в кэш
+      await chapterCache.set(bookId, nextChapter, loadedDescriptions, imagesResponse.images);
+
+      console.log(`✅ [useChapterManagement] Prefetched chapter ${nextChapter}: ${loadedDescriptions.length} descriptions, ${imagesResponse.images.length} images`);
+    } catch (error) {
+      // Тихо игнорируем ошибки prefetch - это не критично
+      console.warn(`⚠️ [useChapterManagement] Prefetch failed for chapter ${nextChapter}:`, error);
     }
   }, [bookId]);
 
@@ -264,5 +326,6 @@ export const useChapterManagement = ({
     descriptions,
     images,
     isLoadingChapter,
+    isExtractingDescriptions,
   };
 };

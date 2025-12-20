@@ -122,7 +122,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   );
 
   // Hook 4: Manage chapter tracking and load descriptions/images
-  const { currentChapter, descriptions, images } = useChapterManagement({
+  const { currentChapter, descriptions, images, isExtractingDescriptions } = useChapterManagement({
     book: epubBook,
     rendition,
     bookId: book.id,
@@ -506,6 +506,22 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
             isOpen={isSettingsOpen}
             onOpenChange={setIsSettingsOpen}
           />
+        </div>
+      )}
+
+      {/* Description Extraction Indicator - Subtle top bar */}
+      {isExtractingDescriptions && (
+        <div className="fixed top-[70px] left-0 right-0 z-40">
+          <div className="h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 animate-pulse" />
+          <div
+            className={`text-xs py-1 px-4 text-center ${
+              theme === 'dark' ? 'bg-gray-800/90 text-gray-300' :
+              theme === 'sepia' ? 'bg-amber-100/90 text-amber-800' :
+              'bg-white/90 text-gray-600'
+            }`}
+          >
+            Анализ текста главы...
+          </div>
         </div>
       )}
 

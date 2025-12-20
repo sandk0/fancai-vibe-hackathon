@@ -114,6 +114,8 @@ vi.mock('@/hooks/epub', () => ({
     currentChapter: 1,
     descriptions: [],
     images: [],
+    isLoadingChapter: false,
+    isExtractingDescriptions: false,
   })),
   useChapterMapping: vi.fn(() => ({
     getChapterNumberByLocation: vi.fn(() => 1),
