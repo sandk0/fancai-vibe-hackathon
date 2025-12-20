@@ -61,6 +61,7 @@ export const useEpubLoader = ({
     }
 
     let isMounted = true;
+    const abortController = new AbortController();
 
     const loadEpub = async () => {
       try {
@@ -68,11 +69,12 @@ export const useEpubLoader = ({
         setIsLoading(true);
         setError('');
 
-        // Download EPUB file with authorization
+        // Download EPUB file with authorization and abort signal
         const response = await fetch(bookUrl, {
           headers: authToken ? {
             'Authorization': `Bearer ${authToken}`,
           } : {},
+          signal: abortController.signal,
         });
 
         if (!response.ok) {
@@ -116,6 +118,12 @@ export const useEpubLoader = ({
         }
 
       } catch (err) {
+        // Don't show error if request was aborted (component unmounted)
+        if (err instanceof Error && err.name === 'AbortError') {
+          console.log('ℹ️ [useEpubLoader] Request aborted (component unmounted)');
+          return;
+        }
+
         console.error('❌ [useEpubLoader] Error loading EPUB:', err);
         if (isMounted) {
           setError(err instanceof Error ? err.message : 'Error loading book');
@@ -129,6 +137,8 @@ export const useEpubLoader = ({
     // Cleanup function
     return () => {
       isMounted = false;
+      // Abort any pending fetch requests
+      abortController.abort();
       console.log('🧹 [useEpubLoader] Cleaning up...');
 
       // Cleanup rendition first
