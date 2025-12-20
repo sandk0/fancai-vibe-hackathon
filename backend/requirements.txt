@@ -60,7 +60,7 @@ ruff==0.8.4
 mypy==1.14.1
 
 # Type stubs для mypy
-types-redis==4.6.0.20241127
+types-redis==4.6.0.20241004
 types-requests==2.32.0.20241016
 types-aiofiles==24.1.0.20241221
 sqlalchemy[mypy]==2.0.45
