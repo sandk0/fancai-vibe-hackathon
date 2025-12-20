@@ -135,7 +135,7 @@ English translation (visual elements only, no explanations):"""
                     contents=prompt,
                     config={
                         "temperature": 0.3,
-                        "max_output_tokens": 500,
+                        # No max_output_tokens limit for translation
                     }
                 )
             )

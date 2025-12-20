@@ -504,7 +504,7 @@ class GeminiDirectExtractor:
                         config={
                             "temperature": 0.3,
                             "top_p": 0.95,
-                            "max_output_tokens": 4096,
+                            # No max_output_tokens limit - let model complete full response
                         }
                     )
                 )
