@@ -376,7 +376,8 @@ class GeminiDirectExtractor:
         self.chunker = RecursiveTextChunker(self.config)
         self.parser = JSONResponseParser()
 
-        self._model = None
+        self._client = None  # google-genai Client
+        self._model = None   # model ID string
         self._available = False
 
         # Статистика
@@ -392,30 +393,23 @@ class GeminiDirectExtractor:
         self._initialize()
 
     def _initialize(self):
-        """Инициализация Gemini API."""
+        """Инициализация Gemini API с новым google-genai SDK (December 2025)."""
         if not self.config.api_key:
             logger.warning("LANGEXTRACT_API_KEY not set. Gemini extractor disabled.")
             return
 
         try:
-            import google.generativeai as genai
+            from google import genai
 
-            genai.configure(api_key=self.config.api_key)
-
-            self._model = genai.GenerativeModel(
-                self.config.model_id,
-                generation_config={
-                    "temperature": 0.3,  # Низкая температура для консистентности
-                    "top_p": 0.95,
-                    "max_output_tokens": 4096,
-                }
-            )
+            # Создаём клиент с новым SDK
+            self._client = genai.Client(api_key=self.config.api_key)
+            self._model = self.config.model_id
 
             self._available = True
-            logger.info(f"Gemini extractor initialized (model: {self.config.model_id})")
+            logger.info(f"Gemini extractor initialized (model: {self.config.model_id}, SDK: google-genai)")
 
         except ImportError:
-            logger.error("google-generativeai not installed. Run: pip install google-generativeai")
+            logger.error("google-genai not installed. Run: pip install google-genai")
         except Exception as e:
             logger.error(f"Failed to initialize Gemini: {e}")
 
@@ -494,17 +488,25 @@ class GeminiDirectExtractor:
         chunk_text: str,
         offset: int
     ) -> List[ExtractedDescription]:
-        """Извлечь описания из одного чанка."""
+        """Извлечь описания из одного чанка с новым google-genai SDK."""
         self.stats["total_calls"] += 1
 
         prompt = self.EXTRACTION_PROMPT.format(text=chunk_text)
 
         for attempt in range(self.config.max_retries):
             try:
-                # Вызываем Gemini API
+                # Вызываем Gemini API с новым SDK (google-genai)
                 response = await asyncio.get_event_loop().run_in_executor(
                     None,
-                    lambda: self._model.generate_content(prompt)
+                    lambda: self._client.models.generate_content(
+                        model=self._model,
+                        contents=prompt,
+                        config={
+                            "temperature": 0.3,
+                            "top_p": 0.95,
+                            "max_output_tokens": 4096,
+                        }
+                    )
                 )
 
                 response_text = response.text

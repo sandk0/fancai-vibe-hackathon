@@ -39,10 +39,10 @@ WORKDIR /app
 COPY requirements.lite.txt .
 
 # Install Python dependencies (much faster without NLP)
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade pip && \
-    pip install -r requirements.lite.txt && \
-    echo "✅ Lite dependencies installed"
+# Note: --no-cache-dir forces fresh download, ensuring latest versions
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.lite.txt && \
+    echo "✅ Lite dependencies installed (December 2025)"
 
 # Copy source code
 COPY . .

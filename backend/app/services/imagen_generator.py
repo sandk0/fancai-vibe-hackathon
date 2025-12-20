@@ -91,23 +91,17 @@ English translation (visual elements only, no explanations):"""
 
     def __init__(self, api_key: str):
         self.api_key = api_key
-        self._model = None
+        self._client = None
+        self._model = "gemini-3.0-flash"  # Updated Dec 2025
         self._cache: Dict[str, str] = {}  # Simple in-memory cache
         self._initialize()
 
     def _initialize(self):
-        """Initialize Gemini for translation."""
+        """Initialize Gemini for translation with new google-genai SDK."""
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=self.api_key)
-            self._model = genai.GenerativeModel(
-                "gemini-3.0-flash",  # Updated Dec 2025
-                generation_config={
-                    "temperature": 0.3,
-                    "max_output_tokens": 500,
-                }
-            )
-            logger.info("PromptTranslator initialized with Gemini 3.0 Flash")
+            from google import genai
+            self._client = genai.Client(api_key=self.api_key)
+            logger.info("PromptTranslator initialized with Gemini 3.0 Flash (google-genai SDK)")
         except Exception as e:
             logger.error(f"Failed to initialize translator: {e}")
 
@@ -127,7 +121,7 @@ English translation (visual elements only, no explanations):"""
             logger.debug(f"Translation cache hit: {cache_key}")
             return self._cache[cache_key]
 
-        if not self._model:
+        if not self._client:
             logger.warning("Translator not available, returning original text")
             return russian_text
 
@@ -136,7 +130,14 @@ English translation (visual elements only, no explanations):"""
 
             response = await asyncio.get_event_loop().run_in_executor(
                 None,
-                lambda: self._model.generate_content(prompt)
+                lambda: self._client.models.generate_content(
+                    model=self._model,
+                    contents=prompt,
+                    config={
+                        "temperature": 0.3,
+                        "max_output_tokens": 500,
+                    }
+                )
             )
 
             translation = response.text.strip()
