@@ -92,16 +92,19 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
     """
     Асинхронная функция обработки книги.
 
-    После удаления NLP: просто помечает книгу как готовую.
-    Извлечение описаний происходит on-demand через LLM API.
+    После загрузки:
+    1. Валидирует книгу и главы
+    2. Парсит первые 2 главы с помощью LLM для предзагрузки
+    3. Помечает книгу как готовую
     """
+    from app.services.langextract_processor import langextract_processor
+    from app.models.description import Description, DescriptionType
+
     async with AsyncSessionLocal() as db:
         print(f"🔍 [ASYNC TASK] Starting async processing for book {book_id}")
 
         # Проверяем доступность LLM
-        from app.services.langextract_processor import LangExtractProcessor
-        processor = LangExtractProcessor()
-        llm_available = processor.is_available()
+        llm_available = langextract_processor.is_available()
 
         if not llm_available:
             print("⚠️ [ASYNC TASK] LangExtract not available - checking API key")
@@ -128,8 +131,98 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
 
         print(f"📖 [ASYNC TASK] Found {len(chapters)} chapters")
 
+        # Парсим первые 2 главы с помощью LLM
+        chapters_parsed = 0
+        total_descriptions = 0
+        CHAPTERS_TO_PREPARSE = 2
+
+        if llm_available and chapters:
+            for chapter in chapters[:CHAPTERS_TO_PREPARSE]:
+                try:
+                    print(f"🔄 [ASYNC TASK] Parsing chapter {chapter.chapter_number}: {chapter.title}")
+
+                    # Пропускаем служебные страницы
+                    SERVICE_PAGE_KEYWORDS = [
+                        "содержание", "оглавление", "table of contents", "contents",
+                        "от автора", "слово автора", "предисловие", "послесловие",
+                        "аннотация", "annotation", "synopsis",
+                        "эпиграф", "epigraph", "цитата",
+                        "посвящение", "dedication",
+                        "благодарности", "acknowledgments",
+                        "примечания", "notes", "сноски",
+                        "библиография", "bibliography", "references",
+                        "об авторе", "about the author", "биография",
+                        "copyright", "издательство", "publisher",
+                        "isbn", "все права защищены", "all rights reserved",
+                    ]
+
+                    chapter_title_lower = (chapter.title or "").lower()
+                    chapter_content_lower = (chapter.content or "")[:500].lower()
+
+                    is_service_page = any(
+                        keyword in chapter_title_lower or keyword in chapter_content_lower
+                        for keyword in SERVICE_PAGE_KEYWORDS
+                    )
+
+                    if chapter.word_count and chapter.word_count < 100:
+                        is_service_page = True
+
+                    if is_service_page:
+                        print(f"⏭️ [ASYNC TASK] Skipping service page: {chapter.title}")
+                        chapter.is_description_parsed = True
+                        chapter.parsed_at = datetime.now(timezone.utc)
+                        continue
+
+                    # Извлекаем описания через LLM
+                    result = await langextract_processor.extract_descriptions(chapter.content)
+                    descriptions_data = result.descriptions if result.descriptions else []
+
+                    print(f"✅ [ASYNC TASK] Extracted {len(descriptions_data)} descriptions from chapter {chapter.chapter_number}")
+
+                    # Сохраняем описания в базу
+                    position = 0
+                    for desc_data in descriptions_data:
+                        desc_dict = desc_data.to_dict() if hasattr(desc_data, 'to_dict') else desc_data
+
+                        # Map string type to enum
+                        type_str = desc_dict.get("type", "location")
+                        try:
+                            desc_type = DescriptionType(type_str)
+                        except ValueError:
+                            desc_type = DescriptionType.LOCATION
+
+                        new_description = Description(
+                            chapter_id=chapter.id,
+                            type=desc_type,
+                            content=desc_dict.get("content", ""),
+                            confidence_score=desc_dict.get("confidence_score", 0.8),
+                            priority_score=desc_dict.get("priority_score", 0.5),
+                            entities_mentioned=",".join(desc_dict.get("entities_mentioned", [])),
+                            position_in_chapter=position,
+                            word_count=desc_dict.get("word_count", len(desc_dict.get("content", "").split())),
+                        )
+                        position += 1
+                        db.add(new_description)
+                        total_descriptions += 1
+
+                    # Обновляем статус главы
+                    chapter.descriptions_found = len(descriptions_data)
+                    chapter.is_description_parsed = True
+                    chapter.parsed_at = datetime.now(timezone.utc)
+                    chapters_parsed += 1
+
+                    # Обновляем прогресс книги
+                    book.parsing_progress = int((chapters_parsed / CHAPTERS_TO_PREPARSE) * 100)
+                    await db.commit()
+
+                except Exception as e:
+                    print(f"❌ [ASYNC TASK] Error parsing chapter {chapter.chapter_number}: {str(e)}")
+                    import traceback
+                    print(f"🔍 [ASYNC TASK] Traceback: {traceback.format_exc()}")
+                    # Продолжаем с следующей главой
+                    continue
+
         # Помечаем книгу как готовую
-        # is_parsed теперь означает "ready for on-demand extraction"
         book.is_processing = False
         book.is_parsed = True
         book.parsing_progress = 100
@@ -149,9 +242,11 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
             "book_id": str(book_id),
             "status": "completed",
             "chapters_count": len(chapters),
+            "chapters_preparsed": chapters_parsed,
+            "descriptions_extracted": total_descriptions,
             "llm_available": llm_available,
-            "extraction_mode": "on_demand",
-            "message": "Book ready for on-demand description extraction via LLM"
+            "extraction_mode": "preparse_first_chapters",
+            "message": f"Book ready. Pre-parsed {chapters_parsed} chapters with {total_descriptions} descriptions."
         }
 
         print(f"🎉 [ASYNC TASK] Final result: {result}")
