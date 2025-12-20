@@ -65,10 +65,6 @@ async def get_chapter_descriptions(
     Returns:
         ChapterDescriptionsResponse: Анализ главы с описаниями
     """
-    import logging
-    logger = logging.getLogger(__name__)
-    logger.info(f"[get_chapter_descriptions] book_id={book_id}, chapter={chapter_number}, extract_new={extract_new}")
-
     # Получаем книгу
     book = await book_service.get_book_by_id(
         db=db, book_id=book_id, user_id=current_user.id
@@ -89,15 +85,7 @@ async def get_chapter_descriptions(
 
     # Если требуется извлечь новые описания
     if extract_new:
-        import logging
-        logger = logging.getLogger(__name__)
-
-        logger.info(f"[extract_new] Starting extraction for chapter {chapter_number}")
-        logger.info(f"[extract_new] LangExtract available: {langextract_processor.is_available()}")
-        logger.info(f"[extract_new] Chapter content length: {len(chapter.content)} chars")
-
         if not langextract_processor.is_available():
-            logger.error("[extract_new] LLM processor not available!")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="LLM processor unavailable. Check GOOGLE_API_KEY.",
@@ -113,16 +101,12 @@ async def get_chapter_descriptions(
             .scalars()
             .all()
         )
-        logger.info(f"[extract_new] Deleted {len(old_descriptions)} old descriptions")
 
         for old_desc in old_descriptions:
             await db.delete(old_desc)
 
         # Извлекаем описания из контента главы через LLM
-        logger.info("[extract_new] Calling langextract_processor.extract_descriptions...")
         result = await langextract_processor.extract_descriptions(chapter.content)
-        logger.info(f"[extract_new] Result: {len(result.descriptions)} descriptions extracted")
-        logger.info(f"[extract_new] Quality metrics: {result.quality_metrics}")
 
         # ProcessingResult has 'descriptions' list directly, not 'success' attr
         descriptions_data = result.descriptions if result.descriptions else []
