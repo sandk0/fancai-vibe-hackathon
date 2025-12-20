@@ -65,6 +65,10 @@ async def get_chapter_descriptions(
     Returns:
         ChapterDescriptionsResponse: Анализ главы с описаниями
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"[get_chapter_descriptions] book_id={book_id}, chapter={chapter_number}, extract_new={extract_new}")
+
     # Получаем книгу
     book = await book_service.get_book_by_id(
         db=db, book_id=book_id, user_id=current_user.id
