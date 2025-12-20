@@ -382,6 +382,7 @@ class GeminiDirectExtractor:
 
         self._client = None  # google-genai Client
         self._model = None   # model ID string
+        self._types = None   # google.genai.types module
         self._available = False
 
         # Статистика
@@ -404,10 +405,12 @@ class GeminiDirectExtractor:
 
         try:
             from google import genai
+            from google.genai import types
 
             # Создаём клиент с новым SDK
             self._client = genai.Client(api_key=self.config.api_key)
             self._model = self.config.model_id
+            self._types = types
 
             self._available = True
             logger.info(f"Gemini extractor initialized (model: {self.config.model_id}, SDK: google-genai)")
@@ -500,20 +503,23 @@ class GeminiDirectExtractor:
         for attempt in range(self.config.max_retries):
             try:
                 # Вызываем Gemini API с новым SDK (google-genai)
+                # Using types.GenerateContentConfig for proper configuration
+                config = self._types.GenerateContentConfig(
+                    temperature=0.3,
+                    top_p=0.95,
+                )
+
                 response = await asyncio.get_event_loop().run_in_executor(
                     None,
                     lambda: self._client.models.generate_content(
                         model=self._model,
                         contents=prompt,
-                        config={
-                            "temperature": 0.3,
-                            "top_p": 0.95,
-                            # No max_output_tokens limit - let model complete full response
-                        }
+                        config=config,
                     )
                 )
 
-                response_text = response.text
+                # Extract text from response - handle both string and list formats
+                response_text = response.text if hasattr(response, 'text') else str(response)
 
                 # Парсим JSON ответ
                 parsed = self.parser.parse(response_text)

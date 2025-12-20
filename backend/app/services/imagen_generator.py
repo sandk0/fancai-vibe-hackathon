@@ -100,10 +100,13 @@ English translation (visual elements only, no explanations):"""
         """Initialize Gemini for translation with new google-genai SDK."""
         try:
             from google import genai
+            from google.genai import types
             self._client = genai.Client(api_key=self.api_key)
+            self._types = types
             logger.info("PromptTranslator initialized with Gemini 3.0 Flash (google-genai SDK)")
         except Exception as e:
             logger.error(f"Failed to initialize translator: {e}")
+            self._types = None
 
     async def translate(self, russian_text: str) -> str:
         """
@@ -128,19 +131,22 @@ English translation (visual elements only, no explanations):"""
         try:
             prompt = self.TRANSLATION_PROMPT.format(text=russian_text)
 
+            # Use types.GenerateContentConfig for proper configuration
+            config = self._types.GenerateContentConfig(
+                temperature=0.3,
+            ) if self._types else None
+
             response = await asyncio.get_event_loop().run_in_executor(
                 None,
                 lambda: self._client.models.generate_content(
                     model=self._model,
                     contents=prompt,
-                    config={
-                        "temperature": 0.3,
-                        # No max_output_tokens limit for translation
-                    }
+                    config=config,
                 )
             )
 
-            translation = response.text.strip()
+            # Extract text from response
+            translation = (response.text if hasattr(response, 'text') else str(response)).strip()
 
             # Cache result
             self._cache[cache_key] = translation
