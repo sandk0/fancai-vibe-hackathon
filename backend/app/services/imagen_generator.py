@@ -92,7 +92,7 @@ English translation (visual elements only, no explanations):"""
     def __init__(self, api_key: str):
         self.api_key = api_key
         self._client = None
-        self._model = "gemini-3.0-flash"  # Updated Dec 2025
+        self._model = "gemini-3-flash-preview"  # Dec 2025: gemini-3-flash-preview
         self._cache: Dict[str, str] = {}  # Simple in-memory cache
         self._initialize()
 

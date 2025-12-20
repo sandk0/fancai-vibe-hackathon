@@ -50,7 +50,7 @@ class Settings(BaseSettings):
 
     # AI сервисы - Google Gemini & Imagen (December 2025)
     GOOGLE_API_KEY: Optional[str] = None  # Primary key for all Google services
-    GEMINI_MODEL: str = "gemini-3.0-flash"  # Latest: gemini-3.0-flash (Dec 2025), prev: gemini-2.0-flash
+    GEMINI_MODEL: str = "gemini-3-flash-preview"  # Dec 2025: gemini-3-flash-preview (not 3.0)
     IMAGEN_ENABLED: bool = True
     IMAGEN_MODEL: str = "imagen-4.0-generate-001"  # GA models: imagen-4.0-generate-001, imagen-4.0-fast-generate-001, imagen-4.0-ultra-generate-001
     IMAGEN_ASPECT_RATIO: str = "4:3"  # 1:1, 3:4, 4:3, 9:16, 16:9
