@@ -120,7 +120,8 @@ export const useChapterManagement = ({
       // Проверяем кэш
       const cachedData = await chapterCache.get(bookId, chapter);
 
-      if (cachedData) {
+      // Проверяем кэш ТОЛЬКО если там есть описания
+      if (cachedData && cachedData.descriptions.length > 0) {
         // Используем кэшированные данные
         console.log('✅ [useChapterManagement] Using cached chapter data:', {
           chapter,
@@ -134,17 +135,34 @@ export const useChapterManagement = ({
         return;
       }
 
-      // Кэша нет - загружаем с API
-      console.log('📡 [useChapterManagement] Cache miss, fetching from API...');
+      // Кэша нет или он пустой - загружаем с API
+      console.log('📡 [useChapterManagement] Cache miss or empty, fetching from API...');
 
-      // Load descriptions
-      const descriptionsResponse = await booksAPI.getChapterDescriptions(
+      // Load descriptions - сначала проверяем существующие (extract_new=false)
+      let descriptionsResponse = await booksAPI.getChapterDescriptions(
         bookId,
         chapter,
-        false // Use cache
+        false // Сначала проверяем существующие
       );
 
-      const loadedDescriptions = descriptionsResponse.nlp_analysis.descriptions || [];
+      let loadedDescriptions = descriptionsResponse.nlp_analysis.descriptions || [];
+
+      // Если описаний нет - запускаем LLM extraction (on-demand)
+      if (loadedDescriptions.length === 0) {
+        console.log('🔄 [useChapterManagement] No descriptions found, triggering LLM extraction...');
+        try {
+          descriptionsResponse = await booksAPI.getChapterDescriptions(
+            bookId,
+            chapter,
+            true // extract_new = true - запускаем LLM extraction
+          );
+          loadedDescriptions = descriptionsResponse.nlp_analysis.descriptions || [];
+          console.log(`✅ [useChapterManagement] LLM extracted ${loadedDescriptions.length} descriptions`);
+        } catch (extractError) {
+          console.warn('⚠️ [useChapterManagement] LLM extraction failed:', extractError);
+          // Продолжаем с пустыми описаниями
+        }
+      }
       console.log('✅ [useChapterManagement] Descriptions loaded:', {
         count: loadedDescriptions.length,
         sampleDescription: loadedDescriptions[0] ? {

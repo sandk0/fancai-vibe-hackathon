@@ -487,11 +487,52 @@ class ChapterCacheService {
   }
 
   /**
+   * Очистка записей с пустыми описаниями
+   * (Нужно при миграции на on-demand extraction)
+   */
+  async clearEmptyDescriptions(): Promise<number> {
+    try {
+      const db = await this.getDB();
+      return new Promise((resolve) => {
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.openCursor();
+        let deletedCount = 0;
+
+        request.onsuccess = () => {
+          const cursor = request.result;
+          if (cursor) {
+            const cached = cursor.value as CachedChapter;
+            // Удаляем записи с пустыми описаниями
+            if (!cached.descriptions || cached.descriptions.length === 0) {
+              cursor.delete();
+              deletedCount++;
+            }
+            cursor.continue();
+          } else {
+            console.log('🧹 [ChapterCache] Cleared empty description entries:', deletedCount);
+            resolve(deletedCount);
+          }
+        };
+
+        request.onerror = () => {
+          console.warn('⚠️ [ChapterCache] Error clearing empty:', request.error);
+          resolve(deletedCount);
+        };
+      });
+    } catch (err) {
+      console.warn('⚠️ [ChapterCache] Error clearing empty:', err);
+      return 0;
+    }
+  }
+
+  /**
    * Автоматическая очистка устаревших записей (вызывать периодически)
    */
   async performMaintenance(): Promise<void> {
     console.log('🔧 [ChapterCache] Performing maintenance...');
     await this.clearExpired();
+    await this.clearEmptyDescriptions(); // Также очищаем пустые записи
     const stats = await this.getStats();
     console.log('✅ [ChapterCache] Maintenance complete:', stats);
   }
