@@ -83,6 +83,50 @@ async def get_chapter_descriptions(
     if not chapter:
         raise ChapterNotFoundException(chapter_number, book_id)
 
+    # Проверка на служебные страницы (не парсим их)
+    SERVICE_PAGE_KEYWORDS = [
+        "содержание", "оглавление", "table of contents", "contents",
+        "от автора", "слово автора", "предисловие", "послесловие",
+        "аннотация", "annotation", "synopsis",
+        "эпиграф", "epigraph", "цитата",
+        "посвящение", "dedication",
+        "благодарности", "acknowledgments",
+        "примечания", "notes", "сноски",
+        "библиография", "bibliography", "references",
+        "об авторе", "about the author", "биография",
+        "copyright", "издательство", "publisher",
+        "isbn", "все права защищены", "all rights reserved",
+    ]
+
+    chapter_title_lower = (chapter.title or "").lower()
+    chapter_content_lower = (chapter.content or "")[:500].lower()  # Check first 500 chars
+
+    is_service_page = any(
+        keyword in chapter_title_lower or keyword in chapter_content_lower
+        for keyword in SERVICE_PAGE_KEYWORDS
+    )
+
+    # Also skip very short chapters (likely service pages)
+    if chapter.word_count and chapter.word_count < 100:
+        is_service_page = True
+
+    if is_service_page:
+        # Return empty result for service pages
+        chapter_info = ChapterMinimalInfo(
+            id=chapter.id,
+            number=chapter.chapter_number,
+            title=chapter.title or f"Глава {chapter.chapter_number}",
+            word_count=chapter.word_count,
+        )
+        return ChapterDescriptionsResponse(
+            chapter_info=chapter_info,
+            nlp_analysis=NLPAnalysisResult(
+                total_descriptions=0,
+                by_type={},
+                descriptions=[],
+            ),
+        )
+
     # Если требуется извлечь новые описания
     if extract_new:
         if not langextract_processor.is_available():

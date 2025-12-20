@@ -252,7 +252,10 @@ class JSONResponseParser:
         """
         # Стратегия 1: Прямой парсинг
         try:
-            return json.loads(response)
+            result = json.loads(response)
+            if isinstance(result, list):
+                return {"descriptions": result}
+            return result
         except json.JSONDecodeError:
             pass
 
@@ -266,7 +269,13 @@ class JSONResponseParser:
             cleaned = re.sub(r'\n?```\s*$', '', cleaned)
             try:
                 result = json.loads(cleaned)
-                logger.debug(f"Parsed via markdown cleanup: {len(result.get('descriptions', []))} descriptions")
+                # Handle both dict and list formats
+                if isinstance(result, list):
+                    logger.debug(f"Parsed via markdown cleanup: {len(result)} descriptions (list)")
+                    return {"descriptions": result}
+                elif isinstance(result, dict):
+                    logger.debug(f"Parsed via markdown cleanup: {len(result.get('descriptions', []))} descriptions")
+                    return result
                 return result
             except json.JSONDecodeError as e:
                 logger.debug(f"Markdown cleanup parse failed: {e}")
@@ -276,7 +285,10 @@ class JSONResponseParser:
         json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', response)
         if json_match:
             try:
-                return json.loads(json_match.group(1))
+                result = json.loads(json_match.group(1))
+                if isinstance(result, list):
+                    return {"descriptions": result}
+                return result
             except json.JSONDecodeError:
                 pass
 
@@ -544,13 +556,24 @@ class GeminiDirectExtractor:
 
     def _parse_descriptions(
         self,
-        parsed: Dict[str, Any],
+        parsed: Any,
         offset: int
     ) -> List[ExtractedDescription]:
         """Конвертация JSON в ExtractedDescription объекты."""
         descriptions = []
 
-        for item in parsed.get("descriptions", []):
+        # Handle different response formats
+        if isinstance(parsed, list):
+            # Direct list of descriptions
+            items = parsed
+        elif isinstance(parsed, dict):
+            # Dict with "descriptions" key
+            items = parsed.get("descriptions", [])
+        else:
+            logger.warning(f"Unexpected parsed type: {type(parsed)}")
+            return descriptions
+
+        for item in items:
             try:
                 content = item.get("content", "")
 
