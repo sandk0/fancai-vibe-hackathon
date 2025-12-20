@@ -256,7 +256,23 @@ class JSONResponseParser:
         except json.JSONDecodeError:
             pass
 
-        # Стратегия 2: Извлечение из markdown блока
+        # Стратегия 2: Извлечение из markdown блока (более агрессивная очистка)
+        # Сначала удаляем markdown код блоки
+        cleaned = response.strip()
+        if cleaned.startswith("```"):
+            # Удаляем открывающий блок (```json или ```)
+            cleaned = re.sub(r'^```(?:json)?\s*\n?', '', cleaned)
+            # Удаляем закрывающий блок
+            cleaned = re.sub(r'\n?```\s*$', '', cleaned)
+            try:
+                result = json.loads(cleaned)
+                logger.debug(f"Parsed via markdown cleanup: {len(result.get('descriptions', []))} descriptions")
+                return result
+            except json.JSONDecodeError as e:
+                logger.debug(f"Markdown cleanup parse failed: {e}")
+                pass
+
+        # Стратегия 2b: Стандартный regex для markdown блока
         json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', response)
         if json_match:
             try:
