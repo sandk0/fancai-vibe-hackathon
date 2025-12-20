@@ -124,8 +124,8 @@ class ProcessingResult:
 @dataclass
 class LangExtractConfig:
     """Конфигурация LangExtract процессора."""
-    # Модель (gemini-2.0-flash - бесплатная, высокая скорость)
-    model_id: str = "gemini-2.0-flash"
+    # Модель (gemini-3.0-flash - Dec 2025, 3x faster than 2.5 Pro)
+    model_id: str = "gemini-3.0-flash"
     api_key: Optional[str] = None
 
     # Чанкинг

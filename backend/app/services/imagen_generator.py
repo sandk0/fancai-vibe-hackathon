@@ -101,13 +101,13 @@ English translation (visual elements only, no explanations):"""
             import google.generativeai as genai
             genai.configure(api_key=self.api_key)
             self._model = genai.GenerativeModel(
-                "gemini-2.0-flash",
+                "gemini-3.0-flash",  # Updated Dec 2025
                 generation_config={
                     "temperature": 0.3,
                     "max_output_tokens": 500,
                 }
             )
-            logger.info("PromptTranslator initialized with Gemini")
+            logger.info("PromptTranslator initialized with Gemini 3.0 Flash")
         except Exception as e:
             logger.error(f"Failed to initialize translator: {e}")
 

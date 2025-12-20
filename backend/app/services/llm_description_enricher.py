@@ -65,7 +65,7 @@ class LLMDescriptionEnricher:
     - Structured output с валидацией
 
     Example:
-        >>> enricher = LLMDescriptionEnricher(model_id="gemini-2.5-flash")
+        >>> enricher = LLMDescriptionEnricher(model_id="gemini-3.0-flash")
         >>> if enricher.is_available():
         >>>     result = enricher.enrich_location_description(
         >>>         "Высокий темный замок возвышался на холме"
@@ -75,7 +75,7 @@ class LLMDescriptionEnricher:
 
     def __init__(
         self,
-        model_id: str = "gemini-2.5-flash",
+        model_id: str = "gemini-3.0-flash",  # Updated Dec 2025
         api_key: Optional[str] = None,
         use_ollama: bool = False,
     ):
@@ -83,7 +83,7 @@ class LLMDescriptionEnricher:
         Инициализация LLM enricher.
 
         Args:
-            model_id: ID модели ("gemini-2.5-flash", "gpt-4", "llama3")
+            model_id: ID модели ("gemini-3.0-flash", "gpt-4", "llama3")
             api_key: API ключ (опционально, можно через env)
             use_ollama: Использовать локальную Ollama вместо API
         """
@@ -395,7 +395,7 @@ _llm_enricher = None
 
 
 def get_llm_enricher(
-    model_id: str = "gemini-2.5-flash", use_ollama: bool = False
+    model_id: str = "gemini-3.0-flash", use_ollama: bool = False
 ) -> LLMDescriptionEnricher:
     """
     Получить singleton instance LLM enricher.

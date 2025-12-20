@@ -15,33 +15,33 @@ Guidance for Claude Code when working with BookReader AI repository.
 ### Frontend
 | Technology | Purpose |
 |------------|---------|
-| React 18 + TypeScript | UI framework |
+| React 19 + TypeScript 5.7 | UI framework |
 | epub.js 0.3.93 | EPUB rendering with CFI navigation |
-| Tailwind CSS | Styling |
-| TanStack Query | Server state management |
-| Zustand | Client state |
-| Vite | Build tool |
+| Tailwind CSS 3.4 | Styling |
+| TanStack Query 5.90 | Server state management |
+| Zustand 5 | Client state |
+| Vite 6 | Build tool |
 
 ### Backend
 | Technology | Purpose |
 |------------|---------|
-| FastAPI + Python 3.11 | API framework |
+| FastAPI 0.125 + Python 3.11 | API framework |
 | PostgreSQL 15 | Primary database |
-| Redis | Caching + task queue |
-| Celery | Background processing |
-| SQLAlchemy + Alembic | ORM + migrations |
+| Redis 5.2 | Caching + task queue |
+| Celery 5.4 | Background processing |
+| SQLAlchemy 2.0.45 + Alembic 1.14 | ORM + migrations |
 
 ### Description Extraction (UPDATED December 2025)
 
-**Current Architecture:** LLM-Only Mode via Google Gemini API (LangExtract)
+**Current Architecture:** LLM-Only Mode via Google Gemini 3.0 Flash API
 - Extracts descriptions on-demand when user opens chapter
 - Supports Russian → English translation for image prompts
-- Cost: ~$0.02/book
+- Cost: ~$0.02/book (Gemini 3.0 Flash: $0.50/1M input, $3/1M output tokens)
 - RAM: ~500 MB (vs 2.2 GB for NLP models)
 
 > **DEPRECATED:** Multi-NLP Ensemble (SpaCy, Natasha, Stanza, GLiNER) removed December 2025.
 
-**Image Generation:** Google Imagen 4 (primary)
+**Image Generation:** Google Imagen 4 GA (imagen-4.0-generate-001, $0.04/image)
 
 ### Feature Flags
 Database-backed feature control. Key flags:

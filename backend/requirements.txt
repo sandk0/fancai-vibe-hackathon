@@ -1,77 +1,70 @@
 # FastAPI и веб-фреймворк
-fastapi==0.120.1  # Updated from 0.115.5 for starlette 0.49+ support (security fixes)
-uvicorn[standard]==0.24.0
-gunicorn==22.0.0
-python-multipart==0.0.18
+fastapi==0.125.0  # Latest December 2025, Python 3.9+ required
+uvicorn[standard]==0.34.0
+gunicorn==23.0.0
+python-multipart==0.0.20
 python-jose[cryptography]==3.4.0
 passlib[bcrypt]==1.7.4
-# starlette>=0.40.0,<0.51.0 managed by fastapi 0.120.1
 
 # База данных
-sqlalchemy==2.0.23
-alembic==1.12.1
+sqlalchemy==2.0.45  # Latest December 2025
+alembic==1.14.0
 asyncpg==0.30.0
 
 # Redis и кэширование
-redis==5.0.1
-celery==5.3.4
-kombu==5.3.4
-psutil==5.9.6
+redis==5.2.1
+celery==5.4.0
+kombu==5.4.2
+psutil==6.1.1
 
 # Text processing (NLP REMOVED December 2025 for RAM optimization)
-# NLP libraries removed: spacy, nltk, stanza, natasha, pymorphy3, gliner
-# RAM reduction: 10-12 GB → 2-3 GB
-# Description extraction now via LLM API (LangExtract/Gemini)
-beautifulsoup4==4.12.2
-langextract==0.1.0  # LLM-based description extraction (replaces NLP)
-google-genai>=1.0.0  # Google Imagen 4 image generation API
+# Description extraction now via LLM API (Google Gemini 3.0 Flash)
+beautifulsoup4==4.12.3
+google-genai==1.56.0  # Latest Google GenAI SDK (Gemini 3.0 Flash + Imagen 4)
+# langextract removed - using google-genai directly
 
 # Парсинг книг
 ebooklib==0.19
-lxml==5.1.0
+lxml==5.3.0
 
 # HTTP клиенты и запросы
-httpx[socks]==0.25.2  # SOCKS5 proxy support for LangExtract via VLESS
-requests==2.32.4
-aiofiles==23.2.0
-aiohttp==3.12.14  # Updated from 3.9.1 (CVE-2024-52304, CVE-2024-42367, CVE-2024-30251, CVE-2024-27306, CVE-2024-23334, CVE-2024-23829, CVE-2023-49082)
-                  # WARNING: Cookie storage format changed in 3.12 - may need migration script for existing cookies
+httpx[socks]==0.28.1  # SOCKS5 proxy support
+requests==2.32.3
+aiofiles==24.1.0
+aiohttp==3.11.11  # Latest with security fixes
 
 # Валидация и настройки
-pydantic[email]==2.5.0
-pydantic-settings==2.0.3
+pydantic[email]==2.10.4
+pydantic-settings==2.7.1
 
 # Логирование и мониторинг
-loguru==0.7.2
-sentry-sdk[fastapi]==2.8.0  # Updated from 1.38.0 (CVE fixes, major version upgrade)
-                            # BREAKING CHANGES: Hub API deprecated - use isolation_scope() instead
-                            # Migration: https://docs.sentry.io/platforms/python/migration/1.x-to-2.x
-prometheus-client==0.19.0
-prometheus-fastapi-instrumentator==6.1.0
+loguru==0.7.3
+sentry-sdk[fastapi]==2.19.2  # Latest with isolation_scope() API
+prometheus-client==0.21.1
+prometheus-fastapi-instrumentator==7.0.0
 
 # Безопасность
 python-decouple==3.8
-cryptography==44.0.1  # Updated from 43.0.1 (fixes GHSA-79v4-65xg-pq4g)
-ecdsa>=0.19.0  # SECURITY NOTE: CVE-2024-23342 - No fix available yet. Accepted risk.
-               # Mitigation: Ensure usage is limited to non-critical signing operations
+cryptography==44.0.0  # Latest with security fixes
+ecdsa>=0.19.0
 
 # Тестирование
-pytest==7.4.3
-pytest-asyncio==0.21.1
-pytest-cov==4.1.0
-aiosqlite==0.19.0
+pytest==8.3.4
+pytest-asyncio==0.25.2
+pytest-cov==6.0.0
+aiosqlite==0.20.0
 
 # Форматирование и линтинг
-black==24.3.0  # Updated from 23.11.0 (CVE-2024-21503)
-ruff==0.1.6
-mypy==1.7.1
+black==24.10.0
+ruff==0.8.4
+mypy==1.14.1
 
 # Type stubs для mypy
-types-redis==4.6.0.10
+types-redis==4.6.0.20241127
 types-requests==2.32.0.20241016
-types-aiofiles==23.2.0.0
-sqlalchemy[mypy]==2.0.23
+types-aiofiles==24.1.0.20241221
+sqlalchemy[mypy]==2.0.45
 
 # Утилиты
-python-dateutil==2.8.2
-pillow>=10.3.0
+python-dateutil==2.9.0.post0
+pillow>=11.0.0

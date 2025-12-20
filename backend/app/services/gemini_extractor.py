@@ -91,7 +91,7 @@ class ExtractedDescription:
 @dataclass
 class GeminiConfig:
     """Конфигурация Gemini экстрактора."""
-    model_id: str = "gemini-2.0-flash"
+    model_id: str = "gemini-3.0-flash"  # Updated Dec 2025 from gemini-2.0-flash
     api_key: Optional[str] = None
 
     # Чанкинг
