@@ -101,15 +101,13 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
       setFiles(prev => prev.filter(f => f.name !== file.name));
 
       // Принудительно обновляем кэш TanStack Query
-      // 1. Сначала инвалидируем все book queries (marks as stale)
-      // 2. Затем refetch активных queries для немедленного обновления UI
-      console.log('📚 [MUTATION] Invalidating and refetching book queries...');
-      await queryClient.invalidateQueries({ queryKey: bookKeys.all });
-      await queryClient.refetchQueries({
+      // invalidateQueries с refetchType: 'all' сразу триггерит refetch всех matching queries
+      console.log('📚 [MUTATION] Invalidating book queries with immediate refetch...');
+      await queryClient.invalidateQueries({
         queryKey: bookKeys.all,
-        type: 'active',
+        refetchType: 'all', // Refetch все queries (не только active)
       });
-      console.log('📚 [MUTATION] Book queries refreshed');
+      console.log('📚 [MUTATION] Book queries invalidated and refetched');
 
       // Вызываем callback (LibraryPage использует его для сброса на первую страницу)
       if (onUploadSuccess) {
