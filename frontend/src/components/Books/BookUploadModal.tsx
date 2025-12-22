@@ -1,10 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { X, Upload, BookOpen, FileText, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { booksAPI } from '@/api/books';
 import { useUIStore } from '@/stores/ui';
-import { useBooksStore } from '@/stores/books';
+import { bookKeys } from '@/hooks/api/queryKeys';
 import { useTranslation } from '@/hooks/useTranslation';
 import { getErrorMessage } from '@/utils/errors';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
@@ -37,9 +37,8 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // const queryClient = useQueryClient(); // Not currently used
+  const queryClient = useQueryClient();
   const { notify } = useUIStore();
-  const { refreshBooks } = useBooksStore();
   const { t } = useTranslation();
 
   // Upload mutation
@@ -101,14 +100,10 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
       });
       setFiles(prev => prev.filter(f => f.name !== file.name));
 
-      // Обновляем список книг через Zustand store
-      console.log('📚 [MUTATION] Calling refreshBooks()...');
-      try {
-        await refreshBooks();
-        console.log('📚 [MUTATION] refreshBooks() completed successfully');
-      } catch (refreshError) {
-        console.error('📚 [MUTATION] refreshBooks() failed:', refreshError);
-      }
+      // Инвалидируем кэш TanStack Query для обновления списка книг
+      console.log('📚 [MUTATION] Invalidating book queries...');
+      await queryClient.invalidateQueries({ queryKey: bookKeys.all });
+      console.log('📚 [MUTATION] Book queries invalidated');
 
       // Call the success callback if provided
       console.log('📚 [MUTATION] Calling onUploadSuccess callback...');

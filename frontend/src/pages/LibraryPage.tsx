@@ -1,7 +1,12 @@
 /**
  * LibraryPage - Страница библиотеки книг
  *
- * Рефакторинг: Разбит на модульные компоненты
+ * Рефакторинг: Мигрировано на TanStack Query для правильного управления кэшем
+ * - Использует useBooks hook вместо Zustand store
+ * - Автоматическая инвалидация кэша при загрузке новых книг
+ * - Поллинг для книг в обработке через refetchInterval
+ *
+ * Модульные компоненты:
  * - LibraryHeader - Заголовок с кнопкой загрузки
  * - LibraryStats - Статистические карточки
  * - LibrarySearch - Поиск и фильтры
@@ -17,9 +22,11 @@
  * - Responsive design
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useBooksStore } from '@/stores/books';
+import { useQueryClient } from '@tanstack/react-query';
+import { useBooks } from '@/hooks/api/useBooks';
+import { bookKeys } from '@/hooks/api/queryKeys';
 import { BookUploadModal } from '@/components/Books/BookUploadModal';
 import { LibraryHeader } from '@/components/Library/LibraryHeader';
 import { LibraryStats } from '@/components/Library/LibraryStats';
@@ -28,66 +35,103 @@ import { BookGrid } from '@/components/Library/BookGrid';
 import { LibraryPagination } from '@/components/Library/LibraryPagination';
 import { useLibraryFilters } from '@/hooks/library/useLibraryFilters';
 
+const BOOKS_PER_PAGE = 10;
+
 const LibraryPage: React.FC = () => {
   const navigate = useNavigate();
-  const {
-    books,
-    isLoading,
-    fetchBooks,
-    error,
-    totalBooks,
-    currentPage,
-    booksPerPage,
-    sortBy,
-    setSortBy,
-    goToPage,
-    nextPage,
-    prevPage,
-  } = useBooksStore();
+  const queryClient = useQueryClient();
 
+  // Local state
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortBy, setSortBy] = useState('created_desc');
 
-  // Fetch books on mount
-  useEffect(() => {
-    fetchBooks();
-  }, [fetchBooks]);
+  // Calculate skip for pagination
+  const skip = (currentPage - 1) * BOOKS_PER_PAGE;
 
-  // Auto-refresh when there are processing books
-  useEffect(() => {
-    const processingCount = books.filter(b => b.is_processing).length;
-
-    if (processingCount > 0) {
-      console.log(`📊 [LIBRARY] Found ${processingCount} processing books, starting polling...`);
-
-      // Poll every 5 seconds to check if processing completed
-      const pollInterval = setInterval(() => {
-        console.log('🔄 [LIBRARY] Polling for book status updates...');
-        fetchBooks();
-      }, 5000);
-
-      return () => {
-        console.log('⏹️ [LIBRARY] Stopping polling');
-        clearInterval(pollInterval);
-      };
+  // Fetch books using TanStack Query
+  const {
+    data,
+    isLoading,
+    error,
+    refetch,
+  } = useBooks(
+    { skip, limit: BOOKS_PER_PAGE, sort_by: sortBy },
+    {
+      // Poll every 5 seconds if there are processing books
+      refetchInterval: (query) => {
+        const books = query.state.data?.books || [];
+        const hasProcessing = books.some(b => b.is_processing);
+        if (hasProcessing) {
+          console.log('📊 [LIBRARY] Found processing books, polling enabled');
+          return 5000;
+        }
+        return false;
+      },
     }
-  }, [books, fetchBooks]);
+  );
+
+  const books = data?.books || [];
+  const totalBooks = data?.total || 0;
 
   // Filter books and calculate stats
   const { filteredBooks, stats } = useLibraryFilters(books, searchQuery);
 
   // Calculate total pages for pagination
-  const totalPages = Math.ceil(totalBooks / booksPerPage);
+  const totalPages = useMemo(() =>
+    Math.ceil(totalBooks / BOOKS_PER_PAGE),
+    [totalBooks]
+  );
 
   // Handlers
   const handleUploadClick = () => setShowUploadModal(true);
   const handleBookClick = (bookId: string) => navigate(`/book/${bookId}`);
   const handleClearSearch = () => setSearchQuery('');
+
   const handleParsingComplete = () => {
-    console.log('[LibraryPage] Parsing completed, refreshing books...');
-    fetchBooks();
+    console.log('[LibraryPage] Parsing completed, invalidating cache...');
+    queryClient.invalidateQueries({ queryKey: bookKeys.all });
+  };
+
+  const handleSortChange = (newSort: string) => {
+    setSortBy(newSort);
+    setCurrentPage(1); // Reset to first page when sorting changes
+  };
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const nextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const prevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  // Handle successful upload - invalidate cache to show new book
+  const handleUploadSuccess = () => {
+    console.log('[LibraryPage] Book uploaded successfully, invalidating cache...');
+    // Invalidate all book-related queries to ensure fresh data
+    queryClient.invalidateQueries({ queryKey: bookKeys.all });
+    // Reset to first page to show the new book
+    setCurrentPage(1);
+  };
+
+  const handleModalClose = () => {
+    setShowUploadModal(false);
+    // Refetch to ensure we have latest data
+    refetch();
   };
 
   // Loading state
@@ -127,7 +171,7 @@ const LibraryPage: React.FC = () => {
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         sortBy={sortBy}
-        onSortChange={setSortBy}
+        onSortChange={handleSortChange}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(!showFilters)}
       />
@@ -150,7 +194,9 @@ const LibraryPage: React.FC = () => {
       {/* Error Message */}
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-2xl p-4 mb-6">
-          <p className="text-red-600 dark:text-red-400">{error}</p>
+          <p className="text-red-600 dark:text-red-400">
+            {error instanceof Error ? error.message : 'Ошибка загрузки книг'}
+          </p>
         </div>
       )}
 
@@ -181,14 +227,8 @@ const LibraryPage: React.FC = () => {
       {/* Upload Modal */}
       <BookUploadModal
         isOpen={showUploadModal}
-        onClose={() => {
-          setShowUploadModal(false);
-          fetchBooks();
-        }}
-        onUploadSuccess={() => {
-          console.log('[LibraryPage] Book uploaded successfully, refreshing list...');
-          fetchBooks();
-        }}
+        onClose={handleModalClose}
+        onUploadSuccess={handleUploadSuccess}
       />
     </div>
   );
