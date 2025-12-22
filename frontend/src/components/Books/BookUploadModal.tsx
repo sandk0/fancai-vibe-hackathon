@@ -100,16 +100,21 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
       });
       setFiles(prev => prev.filter(f => f.name !== file.name));
 
-      // Инвалидируем кэш TanStack Query для обновления списка книг
-      console.log('📚 [MUTATION] Invalidating book queries...');
+      // Принудительно обновляем кэш TanStack Query
+      // 1. Сначала инвалидируем все book queries (marks as stale)
+      // 2. Затем refetch активных queries для немедленного обновления UI
+      console.log('📚 [MUTATION] Invalidating and refetching book queries...');
       await queryClient.invalidateQueries({ queryKey: bookKeys.all });
-      console.log('📚 [MUTATION] Book queries invalidated');
+      await queryClient.refetchQueries({
+        queryKey: bookKeys.all,
+        type: 'active',
+      });
+      console.log('📚 [MUTATION] Book queries refreshed');
 
-      // Call the success callback if provided
-      console.log('📚 [MUTATION] Calling onUploadSuccess callback...');
+      // Вызываем callback (LibraryPage использует его для сброса на первую страницу)
       if (onUploadSuccess) {
+        console.log('📚 [MUTATION] Calling onUploadSuccess callback...');
         onUploadSuccess();
-        console.log('📚 [MUTATION] onUploadSuccess callback completed');
       }
 
       // Парсинг автоматически запускается на backend после загрузки

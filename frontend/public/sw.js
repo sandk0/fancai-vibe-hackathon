@@ -1,9 +1,9 @@
 // BookReader AI - Service Worker
-// Version 1.0.0
+// Version 1.1.0 - Fixed: exclude books list from SW cache (managed by TanStack Query)
 
-const CACHE_NAME = 'bookreader-ai-v1.0.0';
-const STATIC_CACHE_NAME = 'bookreader-static-v1.0.0';
-const DYNAMIC_CACHE_NAME = 'bookreader-dynamic-v1.0.0';
+const CACHE_NAME = 'bookreader-ai-v1.1.0';
+const STATIC_CACHE_NAME = 'bookreader-static-v1.1.0';
+const DYNAMIC_CACHE_NAME = 'bookreader-dynamic-v1.1.0';
 
 // Files to cache immediately
 const STATIC_ASSETS = [
@@ -17,11 +17,20 @@ const STATIC_ASSETS = [
   // Add critical CSS and JS files here when available
 ];
 
-// API endpoints to cache
+// API endpoints to cache (only specific book/chapter details, NOT lists)
+// Note: /api/v1/books (list) is explicitly excluded - managed by TanStack Query
 const API_CACHE_PATTERNS = [
-  /\/api\/v1\/books\/\w+$/,
-  /\/api\/v1\/books\/\w+\/chapters\/\d+$/,
-  /\/api\/v1\/images\/book\/\w+$/,
+  /\/api\/v1\/books\/[a-f0-9-]+$/,  // Only specific book by UUID, not list
+  /\/api\/v1\/books\/[a-f0-9-]+\/chapters\/\d+$/,
+  /\/api\/v1\/images\/book\/[a-f0-9-]+$/,
+];
+
+// API endpoints to NEVER cache (managed by TanStack Query)
+const API_NO_CACHE_PATTERNS = [
+  /\/api\/v1\/books$/,        // Books list
+  /\/api\/v1\/books\?/,       // Books list with query params
+  /\/api\/v1\/auth\//,        // Auth endpoints
+  /\/api\/v1\/admin\//,       // Admin endpoints
 ];
 
 // Image cache patterns
@@ -111,6 +120,9 @@ self.addEventListener('fetch', (event) => {
   // Handle different types of requests
   if (isStaticAsset(request)) {
     event.respondWith(handleStaticAsset(request));
+  } else if (isUncacheableAPIRequest(request)) {
+    // Pass-through to network without caching (for TanStack Query managed endpoints)
+    event.respondWith(fetch(request));
   } else if (isAPIRequest(request)) {
     event.respondWith(handleAPIRequest(request));
   } else if (isImageRequest(request)) {
@@ -129,11 +141,23 @@ function isStaticAsset(request) {
          url.pathname.match(/\.(js|css|ico|png|jpg|jpeg|svg|gif|webp|woff|woff2|ttf|eot)$/);
 }
 
-// Check if request is for API
+// Check if request is for API (cacheable)
 function isAPIRequest(request) {
   const url = new URL(request.url);
-  return url.pathname.startsWith('/api/') ||
-         API_CACHE_PATTERNS.some(pattern => pattern.test(url.pathname));
+  // First check if this endpoint should NEVER be cached
+  const fullPath = url.pathname + url.search;
+  if (API_NO_CACHE_PATTERNS.some(pattern => pattern.test(fullPath))) {
+    return false; // Will be handled as generic request (pass-through to network)
+  }
+  return API_CACHE_PATTERNS.some(pattern => pattern.test(url.pathname));
+}
+
+// Check if request is an API that should bypass SW cache entirely
+function isUncacheableAPIRequest(request) {
+  const url = new URL(request.url);
+  const fullPath = url.pathname + url.search;
+  return url.pathname.startsWith('/api/') &&
+         API_NO_CACHE_PATTERNS.some(pattern => pattern.test(fullPath));
 }
 
 // Check if request is for images

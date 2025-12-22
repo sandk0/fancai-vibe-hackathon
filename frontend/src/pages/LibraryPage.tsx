@@ -119,12 +119,11 @@ const LibraryPage: React.FC = () => {
     }
   };
 
-  // Handle successful upload - invalidate cache to show new book
+  // Handle successful upload - reset to first page to show new book
+  // Note: Cache invalidation/refetch is handled in BookUploadModal
   const handleUploadSuccess = () => {
-    console.log('[LibraryPage] Book uploaded successfully, invalidating cache...');
-    // Invalidate all book-related queries to ensure fresh data
-    queryClient.invalidateQueries({ queryKey: bookKeys.all });
-    // Reset to first page to show the new book
+    console.log('[LibraryPage] Book uploaded successfully, resetting to page 1...');
+    // Reset to first page to show the new book (cache already refreshed by modal)
     setCurrentPage(1);
   };
 
