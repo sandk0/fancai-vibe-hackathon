@@ -38,6 +38,7 @@ interface ReaderState {
   addHighlight: (bookId: string, chapter: number, text: string, color: string) => void;
   removeHighlight: (bookId: string, highlightId: string) => void;
   resetSettings: () => void;
+  reset: () => void; // Clear all data (for logout)
   getReadingProgress: (bookId: string) => ReadingProgress | null;
   getTotalReadingTime: () => number;
 }
@@ -196,6 +197,28 @@ export const useReaderStore = create<ReaderState>()(
           maxWidth: 800,
           margin: 40,
         });
+      },
+
+      // Full reset - clears all data (for logout)
+      reset: () => {
+        console.log('🧹 [ReaderStore] Resetting all data');
+        set({
+          // Reset settings to defaults
+          fontSize: 18,
+          fontFamily: 'Georgia, serif',
+          lineHeight: 1.6,
+          theme: 'light',
+          backgroundColor: '#ffffff',
+          textColor: '#1f2937',
+          maxWidth: 800,
+          margin: 40,
+          // Clear all user data
+          readingProgress: {},
+          bookmarks: {},
+          highlights: {},
+        });
+        // Also clear persisted storage
+        localStorage.removeItem('reader-storage');
       },
       
       getReadingProgress: (bookId: string) => {

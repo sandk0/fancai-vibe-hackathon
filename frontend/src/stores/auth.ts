@@ -5,6 +5,7 @@ import { persist } from 'zustand/middleware';
 import { authAPI } from '@/api/auth';
 import type { AuthState } from '@/types/state';
 import { STORAGE_KEYS } from '@/types/state';
+import { clearAllCaches } from '@/utils/cacheManager';
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -20,8 +21,12 @@ export const useAuthStore = create<AuthState>()(
       // Actions
       login: async (email: string, password: string) => {
         set({ isLoading: true });
-        
+
         try {
+          // Clear any stale caches from previous session BEFORE login
+          console.log('🧹 Clearing stale caches before login...');
+          await clearAllCaches();
+
           const response = await authAPI.login({ email, password });
           const { user, tokens } = response;
 
@@ -50,12 +55,16 @@ export const useAuthStore = create<AuthState>()(
 
       register: async (email: string, password: string, fullName?: string) => {
         set({ isLoading: true });
-        
+
         try {
-          const response = await authAPI.register({ 
-            email, 
-            password, 
-            full_name: fullName 
+          // Clear any stale caches from previous session BEFORE register
+          console.log('🧹 Clearing stale caches before registration...');
+          await clearAllCaches();
+
+          const response = await authAPI.register({
+            email,
+            password,
+            full_name: fullName
           });
           const { user, tokens } = response;
 
@@ -77,7 +86,9 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      logout: () => {
+      logout: async () => {
+        console.log('🚪 Logging out...');
+
         // Call logout API
         authAPI.logout().catch(console.error);
 
@@ -85,6 +96,15 @@ export const useAuthStore = create<AuthState>()(
         localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
         localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
         localStorage.removeItem(STORAGE_KEYS.USER_DATA);
+
+        // CRITICAL: Clear all caches to prevent data leakage to next user
+        console.log('🧹 Clearing all caches on logout...');
+        try {
+          await clearAllCaches();
+          console.log('✅ All caches cleared on logout');
+        } catch (error) {
+          console.error('❌ Failed to clear some caches on logout:', error);
+        }
 
         // Reset state
         set({

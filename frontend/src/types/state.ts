@@ -20,7 +20,7 @@ export interface AuthState {
   // Actions
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, fullName?: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshAccessToken: () => Promise<void>;
   updateUser: (user: User) => void;
   loadUserFromStorage: () => void;
