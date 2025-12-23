@@ -57,10 +57,12 @@ const LibraryPage: React.FC = () => {
     data,
     isLoading,
     error,
-    refetch,
   } = useBooks(
     { skip, limit: BOOKS_PER_PAGE, sort_by: sortBy },
     {
+      // CRITICAL: Always refetch when mounting to avoid stale data
+      // This ensures fresh data when navigating back to library
+      refetchOnMount: 'always',
       // Poll every 5 seconds if there are processing books
       refetchInterval: (query) => {
         const books = query.state.data?.books || [];
@@ -129,8 +131,9 @@ const LibraryPage: React.FC = () => {
 
   const handleModalClose = () => {
     setShowUploadModal(false);
-    // Refetch to ensure we have latest data
-    refetch();
+    // Note: Do NOT call refetch() here - it causes race condition with handleUploadSuccess
+    // The cache is already invalidated by BookUploadModal's onSuccess mutation handler
+    // Calling refetch() here would use stale query params (before setCurrentPage(1) re-render)
   };
 
   // Loading state
