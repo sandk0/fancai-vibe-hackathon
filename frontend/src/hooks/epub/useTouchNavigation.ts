@@ -78,32 +78,16 @@ export const useTouchNavigation = ({
     // Reset touch start
     touchStartRef.current = null;
 
-    // PRIORITY 1: Detect tap (quick touch with minimal movement)
+    // Detect tap (quick touch with minimal movement) - ignore taps, handled by overlay zones
     const isTap = deltaTime < TAP_MAX_DURATION && touchDistance < TAP_MAX_MOVEMENT;
 
     if (isTap) {
-      // Determine tap zone based on screen width
-      const screenWidth = window.innerWidth;
-      const relativeX = touchStartX / screenWidth;
-
-      if (relativeX < LEFT_ZONE_END) {
-        // Tap on left edge → Previous page
-        console.log('👈 [useTouchNavigation] Left edge tap detected, going to previous page');
-        prevPage();
-        return;
-      } else if (relativeX > RIGHT_ZONE_START) {
-        // Tap on right edge → Next page
-        console.log('👉 [useTouchNavigation] Right edge tap detected, going to next page');
-        nextPage();
-        return;
-      } else {
-        // Tap in center zone → ignored for now
-        console.log('⏸️ [useTouchNavigation] Center tap ignored');
-        return;
-      }
+      // Taps are handled by overlay tap zones in EpubReader.tsx
+      // This hook only handles swipe gestures
+      return;
     }
 
-    // PRIORITY 2: Check if this was a valid swipe
+    // Check if this was a valid swipe
     const absX = Math.abs(deltaX);
     const absY = Math.abs(deltaY);
 
