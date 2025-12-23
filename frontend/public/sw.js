@@ -1,9 +1,9 @@
 // BookReader AI - Service Worker
-// Version 1.1.0 - Fixed: exclude books list from SW cache (managed by TanStack Query)
+// Version 1.2.0 - Fixed: regex patterns now match trailing slashes for books list
 
-const CACHE_NAME = 'bookreader-ai-v1.1.0';
-const STATIC_CACHE_NAME = 'bookreader-static-v1.1.0';
-const DYNAMIC_CACHE_NAME = 'bookreader-dynamic-v1.1.0';
+const CACHE_NAME = 'bookreader-ai-v1.2.0';
+const STATIC_CACHE_NAME = 'bookreader-static-v1.2.0';
+const DYNAMIC_CACHE_NAME = 'bookreader-dynamic-v1.2.0';
 
 // Files to cache immediately
 const STATIC_ASSETS = [
@@ -26,11 +26,12 @@ const API_CACHE_PATTERNS = [
 ];
 
 // API endpoints to NEVER cache (managed by TanStack Query)
+// NOTE: Frontend uses trailing slashes (e.g., /books/ or /books/?skip=0)
 const API_NO_CACHE_PATTERNS = [
-  /\/api\/v1\/books$/,        // Books list
-  /\/api\/v1\/books\?/,       // Books list with query params
-  /\/api\/v1\/auth\//,        // Auth endpoints
-  /\/api\/v1\/admin\//,       // Admin endpoints
+  /\/api\/v1\/books\/?$/,      // Books list (with or without trailing slash)
+  /\/api\/v1\/books\/?\?/,     // Books list with query params (e.g., /books/?skip=0 or /books?skip=0)
+  /\/api\/v1\/auth\//,         // Auth endpoints
+  /\/api\/v1\/admin\//,        // Admin endpoints
 ];
 
 // Image cache patterns
