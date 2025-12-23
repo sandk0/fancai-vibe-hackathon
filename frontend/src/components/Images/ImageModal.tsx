@@ -134,6 +134,10 @@ export const ImageModal: React.FC<ImageModalProps> = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      style={{
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
       onClick={onClose}
     >
       <motion.div
@@ -145,11 +149,11 @@ export const ImageModal: React.FC<ImageModalProps> = ({
       >
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/50 to-transparent p-4">
-          <div className="flex items-center justify-between">
-            <div className="text-white">
-              {title && <h3 className="font-semibold">{title}</h3>}
+          <div className="flex items-start justify-between gap-2">
+            <div className="text-white flex-1 min-w-0 max-w-[60%] sm:max-w-[70%]">
+              {title && <h3 className="font-semibold truncate">{title}</h3>}
               {description && (
-                <p className="text-sm text-gray-300 mt-1">{description}</p>
+                <p className="text-sm text-gray-300 mt-1 line-clamp-2 sm:line-clamp-3">{description}</p>
               )}
             </div>
             
@@ -210,7 +214,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({
 
         {/* Regenerate Options */}
         {showRegenerateOptions && (
-          <div className="absolute top-16 left-4 right-4 z-20 bg-gray-900/95 backdrop-blur-sm rounded-lg p-4">
+          <div className="absolute top-14 sm:top-16 left-2 right-2 sm:left-4 sm:right-4 z-20 bg-gray-900/95 backdrop-blur-sm rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-white font-semibold flex items-center space-x-2">
                 <Wand2 className="h-5 w-5" />
@@ -287,6 +291,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({
             className={`max-w-full max-h-[90vh] object-contain transition-transform duration-300 ${
               isZoomed ? 'scale-150 cursor-zoom-out' : 'cursor-zoom-in'
             } ${isRegenerating ? 'opacity-50' : ''}`}
+            style={{ touchAction: 'manipulation' }}
             onClick={() => !isRegenerating && setIsZoomed(!isZoomed)}
             onError={(e) => {
               const target = e.target as HTMLImageElement;

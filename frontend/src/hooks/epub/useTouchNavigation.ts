@@ -2,10 +2,12 @@
 /**
  * useTouchNavigation - Touch and swipe gestures for EPUB navigation
  *
- * Provides mobile-friendly swipe navigation:
+ * Provides mobile-friendly touch navigation:
  * - Swipe left → Next page
  * - Swipe right → Previous page
- * - Configurable swipe threshold and deadzone
+ * - Tap left edge (25%) → Previous page
+ * - Tap right edge (25%) → Next page
+ * - Configurable swipe threshold and tap detection
  *
  * @param rendition - epub.js Rendition instance
  * @param nextPage - Function to go to next page
@@ -18,6 +20,12 @@
 
 import { useEffect, useCallback, useRef } from 'react';
 import type { Rendition } from '@/types/epub';
+
+// Tap detection constants
+const TAP_MAX_DURATION = 200; // ms - maximum duration to be considered a tap
+const TAP_MAX_MOVEMENT = 10; // px - maximum movement to be considered a tap
+const LEFT_ZONE_END = 0.25; // 25% from left edge
+const RIGHT_ZONE_START = 0.75; // 75% from left (25% from right)
 
 interface UseTouchNavigationOptions {
   rendition: Rendition | null;
@@ -62,11 +70,40 @@ export const useTouchNavigation = ({
     const deltaX = touchEnd.x - touchStartRef.current.x;
     const deltaY = touchEnd.y - touchStartRef.current.y;
     const deltaTime = touchEnd.time - touchStartRef.current.time;
+    const touchDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    // Store touch start position for tap detection
+    const touchStartX = touchStartRef.current.x;
 
     // Reset touch start
     touchStartRef.current = null;
 
-    // Check if this was a valid swipe
+    // PRIORITY 1: Detect tap (quick touch with minimal movement)
+    const isTap = deltaTime < TAP_MAX_DURATION && touchDistance < TAP_MAX_MOVEMENT;
+
+    if (isTap) {
+      // Determine tap zone based on screen width
+      const screenWidth = window.innerWidth;
+      const relativeX = touchStartX / screenWidth;
+
+      if (relativeX < LEFT_ZONE_END) {
+        // Tap on left edge → Previous page
+        console.log('👈 [useTouchNavigation] Left edge tap detected, going to previous page');
+        prevPage();
+        return;
+      } else if (relativeX > RIGHT_ZONE_START) {
+        // Tap on right edge → Next page
+        console.log('👉 [useTouchNavigation] Right edge tap detected, going to next page');
+        nextPage();
+        return;
+      } else {
+        // Tap in center zone → ignored for now
+        console.log('⏸️ [useTouchNavigation] Center tap ignored');
+        return;
+      }
+    }
+
+    // PRIORITY 2: Check if this was a valid swipe
     const absX = Math.abs(deltaX);
     const absY = Math.abs(deltaY);
 

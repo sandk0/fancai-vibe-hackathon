@@ -441,6 +441,19 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     }
   };
 
+  // Handle tap zones for mobile navigation
+  const handleTapZone = useCallback((zone: 'left' | 'right') => {
+    if (!renditionReady || isModalOpen || isTocOpen || isSettingsOpen || isBookInfoOpen) return;
+
+    if (zone === 'left') {
+      console.log('👈 [EpubReader] Left tap zone clicked, going to previous page');
+      prevPage();
+    } else {
+      console.log('👉 [EpubReader] Right tap zone clicked, going to next page');
+      nextPage();
+    }
+  }, [renditionReady, isModalOpen, isTocOpen, isSettingsOpen, isBookInfoOpen, prevPage, nextPage]);
+
   // Main render - viewerRef MUST stay in same DOM location to prevent rendition destruction
   return (
     <div className={`relative h-full w-full transition-colors ${getBackgroundColor()}`}>
@@ -455,6 +468,34 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
           paddingBottom: '0',      // No external padding
         }}
       />
+
+      {/* Mobile Tap Zones - invisible touch areas for page navigation */}
+      {renditionReady && !isLoading && !isGenerating && !isRestoringPosition && (
+        <>
+          {/* Left tap zone - previous page */}
+          <div
+            className="fixed left-0 top-[70px] bottom-0 w-[25%] z-[5] cursor-pointer md:hidden"
+            onClick={() => handleTapZone('left')}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              handleTapZone('left');
+            }}
+            aria-label="Previous page"
+            role="button"
+          />
+          {/* Right tap zone - next page */}
+          <div
+            className="fixed right-0 top-[70px] bottom-0 w-[25%] z-[5] cursor-pointer md:hidden"
+            onClick={() => handleTapZone('right')}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              handleTapZone('right');
+            }}
+            aria-label="Next page"
+            role="button"
+          />
+        </>
+      )}
 
       {/* Loading Overlay */}
       {(isLoading || isGenerating || isRestoringPosition) && (

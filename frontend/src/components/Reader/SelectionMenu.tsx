@@ -43,9 +43,9 @@ export const SelectionMenu: React.FC<SelectionMenuProps> = ({
   useEffect(() => {
     if (!selection) return;
 
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        console.log('🔘 [SelectionMenu] Click outside, closing');
+        console.log('🔘 [SelectionMenu] Click/Touch outside, closing');
         onClose();
       }
     };
@@ -53,11 +53,13 @@ export const SelectionMenu: React.FC<SelectionMenuProps> = ({
     // Add listener with slight delay to avoid immediate close
     const timeoutId = setTimeout(() => {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
     }, 100);
 
     return () => {
       clearTimeout(timeoutId);
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [selection, onClose]);
 

@@ -337,6 +337,58 @@ body {
   }
 }
 
+/* Reader touch handling */
+.reader-container {
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  -webkit-touch-callout: none;
+}
+
+.reader-tap-zone {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent accidental text selection in reader */
+.reader-no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Modal touch handling */
+.modal-scrollable {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Safe area utilities */
+.p-safe {
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Better touch targets */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Disable double-tap zoom on interactive elements */
+button, a, [role="button"] {
+  touch-action: manipulation;
+}
+
 /* Print styles */
 @media print {
   .no-print {

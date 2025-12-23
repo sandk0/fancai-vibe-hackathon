@@ -102,7 +102,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
         <DropdownMenuContent
           align="end"
           className={cn(
-            "w-80 backdrop-blur-md border p-0",
+            "w-[calc(100vw-2rem)] sm:w-80 max-w-80 backdrop-blur-md border p-0",
             colors.menuBg,
             colors.border
           )}
