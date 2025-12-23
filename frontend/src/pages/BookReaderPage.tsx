@@ -42,7 +42,7 @@ const BookReaderPage = () => {
   }
 
   return (
-    <div className="relative h-screen w-full">
+    <div className="relative h-screen w-full overflow-hidden bg-gray-900">
       {/* Reader with integrated header and error protection */}
       <ErrorBoundary
         level="page"

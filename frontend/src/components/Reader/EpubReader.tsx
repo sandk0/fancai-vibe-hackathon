@@ -474,7 +474,8 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
         <>
           {/* Left tap zone - previous page */}
           <div
-            className="fixed left-0 top-[70px] bottom-0 w-[25%] z-[5] cursor-pointer md:hidden"
+            className="fixed left-0 top-[70px] bottom-0 w-[25%] z-[5] md:hidden"
+            style={{ background: 'transparent', pointerEvents: 'auto' }}
             onClick={() => handleTapZone('left')}
             onTouchEnd={(e) => {
               e.preventDefault();
@@ -485,7 +486,8 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
           />
           {/* Right tap zone - next page */}
           <div
-            className="fixed right-0 top-[70px] bottom-0 w-[25%] z-[5] cursor-pointer md:hidden"
+            className="fixed right-0 top-[70px] bottom-0 w-[25%] z-[5] md:hidden"
+            style={{ background: 'transparent', pointerEvents: 'auto' }}
             onClick={() => handleTapZone('right')}
             onTouchEnd={(e) => {
               e.preventDefault();
