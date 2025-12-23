@@ -1,699 +1,374 @@
-# BookReader AI - Приложение для чтения с ИИ-генерацией изображений
+<div align="center">
 
-**BookReader AI** - это современное веб-приложение для чтения художественной литературы с автоматической генерацией изображений по описаниям из книг. Приложение использует передовые NLP технологии для извлечения описаний и AI-сервисы для создания визуализаций.
+# BookReader AI
 
-## 🚀 Быстрые ссылки
+**Transform your reading experience with AI-generated visualizations**
 
-**Новичок в BookReader AI?**
-- [Быстрый старт (5 минут)](docs/guides/getting-started/quick-start.md) - Запуск за несколько минут
-- [Ваша первая книга](docs/guides/getting-started/first-book.md) - Туториал по загрузке и чтению
-- [FAQ](FAQ.md) - Часто задаваемые вопросы
-- [Устранение неполадок](TROUBLESHOOTING.md) - Распространенные проблемы и решения
+[![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.125-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791?logo=postgresql&logoColor=white)](https://postgresql.org)
+[![Redis](https://img.shields.io/badge/Redis-7.4-DC382D?logo=redis&logoColor=white)](https://redis.io)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://docker.com)
+[![License](https://img.shields.io/badge/License-Proprietary-red)](LICENSE)
 
-**Для разработчиков:**
-- [Руководство по участию](CONTRIBUTING.md) - Как внести вклад
-- [Процесс разработки](docs/guides/development/workflow.md) - Workflow разработки
-- [Документация API](docs/reference/api/overview.md) - Справочник REST API
-- [Руководство по тестированию](docs/guides/testing/testing-guide.md) - Запуск тестов
+[Live Demo](https://fancai.ru) · [Documentation](docs/README.md) · [Report Bug](https://github.com/yourusername/bookreader-ai/issues) · [Request Feature](https://github.com/yourusername/bookreader-ai/issues)
 
-**Документация:**
-- [Индекс документации](docs/README.md) - Полный центр документации
-- [Обзор архитектуры](docs/explanations/architecture/system-architecture.md) - Дизайн системы
-- [Multi-NLP система](docs/reference/nlp/multi-nlp-system.md) - Детали NLP движка
-- [Руководство по развертыванию](docs/guides/deployment/production-deployment.md) - Production настройка
+---
 
-## 📋 Текущий статус проекта
+English | **[Русский](README-ru.md)**
 
-**Phase:** Week 20 ✅ ЗАВЕРШЕНО (100%) - Frontend & Backend Optimization Complete
-**Completion Date:** 14.12.2025
-**Last Update:** 14.12.2025
-**Status:** 🚀 Production Ready - High Performance + Security Hardened + E2E Tested + CI/CD Automated
-**Production Deployment:** ✅ Live на fancai.ru с SSL/HTTPS
+</div>
 
-## 🚀 Запуск проекта
+---
 
-### Разработка (Development)
+## About The Project
+
+BookReader AI is a modern web application for reading fiction with **automatic AI-generated images** based on scene descriptions. As you read, the app extracts visual descriptions from the text and generates stunning illustrations using state-of-the-art AI models.
+
+### How It Works
+
+```
+📖 Upload Book → 🔍 AI Extracts Descriptions → 🎨 Generate Images → ✨ Read with Visuals
+```
+
+1. **Upload** your EPUB or FB2 book
+2. **Read** with a beautiful, customizable reader
+3. **Discover** highlighted descriptions as you read
+4. **Generate** AI illustrations for any scene with one click
+5. **Save** your progress and reading position automatically
+
+### Key Features
+
+| Feature | Description |
+|---------|-------------|
+| 📚 **Multi-format Support** | EPUB and FB2 formats with full metadata extraction |
+| 🤖 **LLM-Powered Extraction** | Google Gemini identifies characters, scenes, and settings |
+| 🎨 **AI Image Generation** | Google Imagen 4 creates high-quality illustrations |
+| 📍 **Smart Position Tracking** | CFI-based reading position with pixel-perfect restoration |
+| 🌙 **Dark Mode** | Comfortable reading day and night |
+| 📱 **PWA Ready** | Install as an app, works offline |
+| 🔐 **Subscription Model** | FREE / PREMIUM / ULTIMATE tiers |
+
+<p align="right">(<a href="#bookreader-ai">back to top</a>)</p>
+
+---
+
+## Built With
+
+### Frontend
+[![React](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://typescriptlang.org)
+[![Vite](https://img.shields.io/badge/Vite-6.0-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind-3.4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![TanStack Query](https://img.shields.io/badge/TanStack_Query-5.90-FF4154?style=for-the-badge&logo=reactquery&logoColor=white)](https://tanstack.com/query)
+
+### Backend
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.125-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15.7-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://postgresql.org)
+[![Redis](https://img.shields.io/badge/Redis-7.4-DC382D?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io)
+[![Celery](https://img.shields.io/badge/Celery-5.4-37814A?style=for-the-badge&logo=celery&logoColor=white)](https://docs.celeryq.dev)
+
+### AI Services
+[![Google Gemini](https://img.shields.io/badge/Gemini-3.0_Flash-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev)
+[![Google Imagen](https://img.shields.io/badge/Imagen-4.0-EA4335?style=for-the-badge&logo=google&logoColor=white)](https://cloud.google.com/vertex-ai/docs/generative-ai/image/overview)
+
+<p align="right">(<a href="#bookreader-ai">back to top</a>)</p>
+
+---
+
+## Getting Started
+
+Get BookReader AI running locally in under 5 minutes.
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) and Docker Compose
+- [Git](https://git-scm.com/)
+- Google Cloud API key (for Gemini + Imagen) - [Get one here](https://ai.google.dev/)
+
+### Quick Start
+
 ```bash
-# Клонирование репозитория
-git clone <repository-url>
-cd fancai-vibe-hackathon
+# Clone the repository
+git clone https://github.com/yourusername/bookreader-ai.git
+cd bookreader-ai
 
-# Настройка переменных окружения
+# Copy environment template
 cp .env.example .env
 
-# Запуск с Docker в dev режиме
-docker-compose -f docker-compose.dev.yml up -d
+# Edit .env and add your API keys
+nano .env  # or use your preferred editor
+
+# Start all services
+docker-compose up -d
+
+# Open in browser
+open http://localhost:5173
 ```
 
-### Production деплой
-```bash
-# Настройка production окружения
-cp .env.production .env.production.local
-nano .env.production.local  # Настроить домен и пароли
+### Environment Variables
 
-# Деплой на сервер
-./scripts/deploy.sh init
-./scripts/deploy.sh ssl
-./scripts/deploy.sh deploy
+Create a `.env` file with these essential variables:
+
+```env
+# Required
+DB_PASSWORD=your_secure_password
+REDIS_PASSWORD=your_redis_password
+SECRET_KEY=your_jwt_secret_key
+
+# AI Services (required for image generation)
+GOOGLE_API_KEY=your_google_api_key
+
+# Optional
+DEBUG=true
+CORS_ORIGINS=http://localhost:5173
 ```
 
-### Детальная установка
-- **Development:** См. [Инструкции по настройке](docs/guides/getting-started/installation.md)
-- **Production:** См. [Production Deployment Guide](docs/guides/deployment/production-deployment.md)
+> **Note:** See [.env.example](.env.example) for all available options.
 
-## ✨ Запланированные функции
+<p align="right">(<a href="#bookreader-ai">back to top</a>)</p>
 
-### Phase 1 (MVP - ✅ ЗАВЕРШЁН 100% - 23.10.2025)
-- ✅ Регистрация и аутентификация пользователей
-- ✅ Загрузка и парсинг EPUB/FB2 книг
-- ✅ **CFI Reading System** - Canonical Fragment Identifier для точного позиционирования
-- ✅ **epub.js Integration** - профессиональная читалка с кастомным React компонентом
-- ✅ **Hybrid Restoration** - CFI + scroll offset для pixel-perfect восстановления позиции
-- ✅ React Frontend с полной интеграцией
-- ✅ Пользовательские настройки (темы, шрифты)
-- ✅ Multi-NLP парсер (SpaCy+Natasha+Stanza) - КРИТИЧЕСКИ ВАЖНО - 2171+ описаний найдено
-- ✅ **Ensemble Voting** - weighted consensus для максимального качества NLP
-- ✅ Генерация изображений через pollinations.ai
-- ✅ Smart Highlight System - автоматическое выделение описаний в тексте
-- ✅ Locations Generation - точный трекинг прогресса (0-100%)
-- ✅ Drag-and-drop загрузка книг
-- ✅ Галерея изображений с модальными окнами
-- ✅ Real-time WebSocket интеграция
-- ✅ PWA с Service Worker
-- ✅ Полная система тестирования
-- ✅ Production deployment конфигурация
-- ✅ Docker production setup с SSL/HTTPS
-- ✅ Nginx reverse proxy с security headers
-- ✅ Мониторинг (Grafana, Prometheus, Loki)
-- ✅ Автоматические скрипты деплоя
-- ✅ SSL сертификаты через Let's Encrypt
+---
 
-## 🚀 Улучшения производительности (Недели 15-20 - октябрь-декабрь 2025)
+## Architecture
 
-### Оптимизация Frontend (Декабрь 2025) ⚡
-- **On-demand chapter loading** - Динамическая загрузка глав только при необходимости
-  - Размер кэша в памяти: 50MB максимум
-  - Автоматическая очистка старых глав из кэша
-  - Улучшение TTI на 15% для больших книг
-- **Memory leak fixes** - Исправлены утечки памяти в EpubReader
-  - Cleanup при unmount всех слушателей событий
-  - Правильная работа с большими книгами (500+ глав)
-- **Highlighting optimization** - O(n²) → O(n) алгоритм поиска описаний
-  - Использование binarySearch для быстрого поиска текста
-  - Кэширование результатов поиска на уровне строк
-  - Улучшение производительности в 10+ раз на больших главах
-- **26 TanStack Query hooks** - Специализированные хуки для управления состоянием
-  - useBookLibrary, useChapter, useDescriptions, useImages и др.
-  - Automatic cache invalidation и synchronization
-  - Оптимальная работа памяти и переrendering
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                           Client (Browser)                          │
+│  ┌─────────────┐  ┌──────────────┐  ┌────────────────────────────┐  │
+│  │ React 19    │  │ epub.js      │  │ TanStack Query + IndexedDB │  │
+│  │ + TypeScript│  │ EPUB Renderer│  │ Caching Layer              │  │
+│  └─────────────┘  └──────────────┘  └────────────────────────────┘  │
+└────────────────────────────────┬────────────────────────────────────┘
+                                 │ REST API
+┌────────────────────────────────┴────────────────────────────────────┐
+│                        FastAPI Backend                              │
+│  ┌──────────────┐  ┌───────────────┐  ┌──────────────────────────┐  │
+│  │ Auth (JWT)   │  │ Book Parser   │  │ Description Extractor    │  │
+│  │              │  │ EPUB/FB2      │  │ (Google Gemini 3.0 Flash)│  │
+│  └──────────────┘  └───────────────┘  └──────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │              Image Generator (Google Imagen 4)               │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+└──────────────┬──────────────────────────────┬───────────────────────┘
+               │                              │
+    ┌──────────┴──────────┐        ┌─────────┴─────────┐
+    │   PostgreSQL 15     │        │     Redis 7.4     │
+    │   (Data Storage)    │        │ (Cache + Queue)   │
+    └─────────────────────┘        └───────────────────┘
+```
 
-### Рефакторинг компонентов (Ноябрь-Декабрь 2025) 🔨
-- **LibraryPage optimization** - 73% сокращение размера
-  - Выделение фильтрации в отдельные компоненты
-  - Мемоизация дорогостоящих операций
-  - Улучшение TTI при загрузке библиотеки
-- **AdminDashboard refactoring** - 72% сокращение размера
-  - Разделение на модули: stats, settings, monitoring
-  - Ленивая загрузка секций админ-панели
-  - Кэширование метрик через Redis
+### Core Services
 
-### Революция производительности базы данных (Неделя 17) ⚡
-- **В 100 раз быстрее запросы** - Миграция на JSONB + GIN индексы
-  - Время запроса: 500ms → <5ms для сложных поисков по метаданным
-  - База данных: PostgreSQL 15+ с JSONB колонками + GIN индексами
-  - Эффект: Пользовательский опыт в реальном времени, мгновенный поиск
-- **В 10 раз больше емкость** - Одновременные пользователи: 50 → 500+
-- **На 70% снижена нагрузка на БД** - Благодаря кэшированию + индексации
+| Service | Purpose | Lines of Code |
+|---------|---------|---------------|
+| `book_parser.py` | EPUB/FB2 parsing, chapter extraction, CFI generation | 925 |
+| `gemini_extractor.py` | LLM-based description extraction via Gemini API | 661 |
+| `imagen_generator.py` | AI image generation via Imagen 4 | 644 |
+| `reading_session_cache.py` | Redis-backed session caching | 454 |
+| `auth_service.py` | JWT authentication and authorization | 373 |
 
-### Оптимизация производительности API (Неделя 16) 🚀
-- **На 83% быстрее ответы API** - Реализация слоя кэширования Redis
-  - Время ответа: 200-500ms → <50ms (кэшированные endpoints)
-  - Процент попаданий в кэш: 85% для часто запрашиваемых данных
-  - TTL: 1 час для метаданных книг, пользовательских сессий
-- **Redis**: Высокопроизводительное кэширование в памяти с интеллектуальной инвалидацией
+> **Total Backend:** 15+ services, 7,757 lines of code
 
-### Ускорение Frontend (Неделя 16) ⚡
-- **На 66% быстрее Time to Interactive** - 3.5s → 1.2s
-  - Разделение кода с React.lazy() + Suspense
-  - Ленивая загрузка на основе роутов
-  - Динамические импорты для тяжелых компонентов
-- **На 29% меньше размер бандла** - 543KB → 386KB (gzipped)
-  - Оптимизации сборки Vite (terser, rollup)
-  - Tree shaking для неиспользуемого кода
-  - Очистка CSS (оптимизация Tailwind)
+<p align="right">(<a href="#bookreader-ai">back to top</a>)</p>
 
-### Усиление безопасности (Неделя 15) 🔐
-- **Rate limiting** - Защита от DDoS
-  - Auth endpoints: 5 req/min (защита от brute-force)
-  - Public endpoints: 20 req/min (защита от злоупотреблений)
-  - API endpoints: 100 req/min (нормальные операции)
-  - Тяжелые операции: 10 req/min (защита ресурсов)
-  - Реализация: На основе Redis со скользящим окном
-- **9 заголовков безопасности** - Production-grade безопасность
-  - HSTS, CSP, X-Frame-Options, X-Content-Type-Options
-  - Referrer-Policy, Permissions-Policy и другие
-- **Валидация секретов** - Проверки безопасности при запуске
-  - Валидация стойкости SECRET_KEY (32+ символов)
-  - Проверки production credentials
-  - Авто-генерация: `openssl rand -hex 32`
+---
 
-### Тестирование и CI/CD (Недели 15-16) 🧪
-- **47 E2E тестов** - Комплексный набор тестов Playwright
-  - Потоки аутентификации, управление книгами, интерфейс чтения
-  - Процессы генерации изображений, функциональность админ-панели
-- **GitHub Actions CI/CD** - Автоматизированные контрольные точки качества
-  - Backend тесты, frontend тесты, проверка типов
-  - Сканирование безопасности, автоматическое развертывание
-- **Pre-commit hooks** - Обеспечение качества перед каждым коммитом
+## API Reference
 
-### Сводка ключевых метрик 📊
-| Метрика | До | После | Улучшение |
-|---------|-----|-------|-----------|
-| Время запроса к БД | 500ms | <5ms | **В 100 раз быстрее** |
-| Время ответа API (кэш) | 200-500ms | <50ms | **На 83% быстрее** |
-| Frontend TTI | 3.5s | 1.2s | **На 66% быстрее** |
-| Размер бандла (gzipped) | 543KB | 386KB | **На 29% меньше** |
-| Highlighting алгоритм | O(n²) | O(n) | **10+ раз быстрее** |
-| Размер файлов компонентов | 904 строк | 485 строк | **На 46% меньше** |
-| Одновременные пользователи | 50 | 500+ | **В 10 раз больше** |
-| Процент попаданий в кэш | 0% | 85% | **Новая функция** |
+### Authentication
+```http
+POST /api/v1/auth/register    # Create account
+POST /api/v1/auth/login       # Get JWT token
+POST /api/v1/auth/refresh     # Refresh token
+```
 
-## 🆕 Latest Updates (декабрь 2025)
+### Books
+```http
+GET    /api/v1/books          # List user's books
+POST   /api/v1/books/upload   # Upload EPUB/FB2
+GET    /api/v1/books/{id}     # Get book details
+DELETE /api/v1/books/{id}     # Delete book
+```
 
-### Frontend Performance & Memory Optimization
-- ✅ **Memory leak fixes** - Исправлены утечки памяти в EpubReader компоненте
-  - Proper cleanup event listeners при unmount
-  - Оптимизация работы с большими документами (500+ глав)
-  - Тестировано на книгах объемом 2000+ страниц
-- ✅ **On-demand chapter caching** - Динамическая загрузка глав по мере надобности
-  - Maximum memory footprint: 50MB для кэша
-  - Автоматическое удаление старых глав из памяти
-  - TTI улучшение на 15% для больших книг
-- ✅ **Highlighting algorithm optimization** - O(n²) → O(n) поиск описаний в тексте
-  - Binary search для быстрого поиска позиций
-  - Row-level caching результатов
-  - 10+ раз улучшение производительности на больших главах
-- ✅ **TanStack Query ecosystem** - 26 специализированных хуков
-  - useBookLibrary, useChapter, useDescriptions, useImages и др.
-  - Автоматическое управление кэшем и синхронизацией
-  - Предотвращение дублирования запросов
+### Reading
+```http
+GET  /api/v1/chapters/{id}              # Get chapter content
+PUT  /api/v1/books/{id}/progress        # Update reading position
+GET  /api/v1/descriptions/{chapter_id}  # Get extracted descriptions
+```
 
-### Рефакторинг React компонентов
-- ✅ **LibraryPage refactoring** - Сокращение на 73% (739 → 195 строк)
-  - Выделение фильтрации в FilterBooks компонент
-  - Мемоизация с React.memo для дорогостоящих операций
-  - Ленивая загрузка модальных окон с React.lazy
-- ✅ **AdminDashboard refactoring** - Сокращение на 72%
-  - Разделение на модули: AdminStats, AdminSettings, AdminMonitoring
-  - Кэширование статистики через Redis
-  - Оптимизированное обновление UI при изменении данных
-- ✅ **Image handling** - Исправлена работа с URL изображений
-  - Inline content-disposition для отображения в браузере
-  - Persistent storage для сгенерированных изображений
-  - Нормализация путей URL для absolute paths
+### Images
+```http
+POST /api/v1/images/generate/{description_id}  # Generate image
+GET  /api/v1/images/{id}                       # Get generated image
+```
 
-### Testing & Quality Assurance
-- ✅ **116 тестов** - Полное покрытие функциональности
-  - Backend unit tests: 65+ тестов
-  - Frontend unit & integration tests: 35+ тестов
-  - E2E тесты: 16+ сценариев
-- ✅ **Code quality** - Type coverage 95%+
-  - MyPy strict mode включен
-  - TypeScript strict mode во frontend
-  - Pre-commit hooks для проверки типов
+> **Full API Documentation:** Available at `/docs` (Swagger UI) when running locally.
 
-### Production Deployment Updates
-- ✅ **fancai.ru production** - Live развертывание с SSL/HTTPS
-  - Health checks и monitoring
-  - Automatic failover и recovery
-  - Log aggregation через Loki
-- ✅ **Image caching** - IndexedDB для offline доступа
-  - Automatic sync при восстановлении соединения
-  - Storage optimization: 100MB limit
-  - Background sync для новых изображений
+<p align="right">(<a href="#bookreader-ai">back to top</a>)</p>
 
-### CFI Reading System & epub.js Integration
-- ✅ **Canonical Fragment Identifier (CFI)** - точное позиционирование в EPUB книгах
-- ✅ **epub.js 0.3.93** - профессиональный EPUB парсинг и рендеринг
-- ✅ **Custom EpubReader component** - собственный React wrapper (835 строк) с темной темой
-- ✅ **Hybrid Restoration** - комбинация CFI + scroll_offset_percent для pixel-perfect восстановления
-- ✅ **Smart Highlight System** - автоматическое выделение описаний в тексте
-- ✅ **Locations Generation** - точный трекинг прогресса чтения (0-100%)
-- ✅ **Database Migration** - добавлены поля `reading_location_cfi` и `scroll_offset_percent`
-- ✅ **Backward Compatibility** - полная совместимость со старыми данными
+---
 
-### Advanced Multi-NLP System (03.09.2025) ⭐ CRITICAL COMPONENT
+## Performance
 
-#### Multi-NLP Architecture Implementation
-- ✅ **Multi-NLP Manager**: 3 специализированных NLP процессора с интеллектуальной координацией
-  - **SpaCy** (ru_core_news_lg) - entity recognition, POS tagging, вес 1.0
-  - **Natasha** - русская морфология и NER, литературные паттерны, вес 1.2 (специализация)
-  - **Stanza** (ru) - dependency parsing, сложный синтаксис, вес 0.8
-- ✅ **5 режимов обработки**:
-  - **SINGLE** - один процессор (⚡⚡⚡⚡⚡ скорость, ⭐⭐⭐ качество)
-  - **PARALLEL** - параллельная обработка всех процессоров (максимальное покрытие)
-  - **SEQUENTIAL** - последовательная обработка (максимальная глубина)
-  - **ENSEMBLE** ⭐ - voting с weighted consensus (максимальное качество, рекомендуется)
-  - **ADAPTIVE** 🤖 - автоматический выбор на основе анализа текста (интеллектуально)
-- ✅ **Ensemble Voting Algorithm**:
-  - Weighted consensus: SpaCy (1.0), Natasha (1.2), Stanza (0.8)
-  - Consensus threshold: 0.6 (60% согласие процессоров)
-  - Context enrichment + deduplication
-  - Quality boost для high-consensus описаний
-- ✅ **Performance Breakthrough**:
-  - 2171 описаний извлечено за 4 секунды
-  - Качество >70% релевантных описаний (KPI достигнут ✅)
-  - SpaCy quality: 0.78, Natasha quality: 0.82 (лучший)
-- ✅ **Admin API**: 5 comprehensive endpoints для runtime configuration
-- 📚 **Documentation**: [Multi-NLP System Technical Guide](docs/reference/nlp/multi-nlp-system.md) (1,676 lines)
+### Benchmarks
 
-#### Технические исправления
-- ✅ **Celery enum fix**: Исправлена критическая ошибка enum descriptiontype в database
-- ✅ **SpaCy configuration**: Добавлены entity_types и литературные паттерны
-- ✅ **Admin Panel**: Полная миграция на multi-nlp-settings с тонкими настройками
-- ✅ **Parsing workflow**: Парсинг запускается сразу после импорта, не при открытии книги
+| Metric | Value | Improvement |
+|--------|-------|-------------|
+| Database Query Time | <5ms | 100x faster (vs 500ms) |
+| API Response (cached) | <50ms | 83% faster |
+| Frontend TTI | 1.2s | 66% faster |
+| Bundle Size | 386KB gzipped | 29% smaller |
+| Memory Usage | 2-3 GB RAM | 75% reduction |
+| Docker Image | 800 MB | 68% smaller |
 
-### Phase 2 (Улучшения - 6-8 недель)
-- ⏳ ML оптимизация Multi-NLP системы
-- ⏳ Дополнительные AI сервисы (DALL-E, Midjourney)
-- ✅ Полная админ-панель (завершено с multi-NLP настройками)
-- ⏳ PWA и мобильные оптимизации
+### Optimizations Applied
 
-## 🏗 Архитектура
+- **Database:** JSONB + GIN indexes for 100x faster queries
+- **Caching:** Redis with 85% cache hit rate
+- **Frontend:** TanStack Query with stale-while-revalidate pattern
+- **Offline:** IndexedDB caching for chapters and images
+- **Algorithms:** O(n) text highlighting (vs O(n²))
 
-### Технологический стек
+<p align="right">(<a href="#bookreader-ai">back to top</a>)</p>
 
-#### Frontend (Оптимизации Декабря 2025)
-- **React 18+** с **TypeScript** - Полная типобезопасность в strict mode
-- **epub.js 0.3.93** - Профессиональный движок рендеринга EPUB (кастомный React wrapper, 835 строк)
-- **Vite** - Ультра-быстрый build tool с разделением кода и ленивой загрузкой
-- **Tailwind CSS** - Utility-first CSS с оптимизацией очистки
-- **React Query/TanStack Query** - Server state с 26+ специализированными хуками
-- **Zustand** - Легковесное управление клиентским состоянием
-- **Playwright** - Framework E2E тестирования (47 комплексных тестов)
-- **Производительность:**
-  - Размер бандла: 386KB gzipped (на 29% меньше)
-  - Time to Interactive: 1.2s (на 66% быстрее)
-  - Highlighting алгоритм: O(n) с binary search
-  - Memory footprint: 50MB max (on-demand chapter loading)
-  - Разделение кода: Ленивая загрузка на основе роутов
+---
 
-#### Backend (Оптимизации Недель 15-17)
-- **Python 3.11+** с **FastAPI** - Async API framework с rate limiting
-- **PostgreSQL 15+** - Основная база данных с JSONB + GIN индексами
-  - **JSONB колонки:** book_metadata, generation_parameters, moderation_result
-  - **GIN индексы:** В 100 раз быстрее запросы (<5ms)
-  - **CHECK constraints:** Валидация целостности данных
-- **Redis** - Высокопроизводительное кэширование и очередь задач
-  - **Слой кэширования:** 85% hit rate, на 83% быстрее API
-  - **Rate limiter:** Скользящее окно с лимитами на endpoint
-  - **Session store:** Черный список JWT токенов и пользовательские сессии
-- **Celery** - Распределенная очередь задач с Redis backend
-- **SQLAlchemy** ORM с **Alembic** миграциями - Async поддержка
-- **Безопасность:**
-  - Rate limiting (5-100 req/min)
-  - 9 заголовков безопасности (HSTS, CSP, X-Frame-Options и др.)
-  - Валидация секретов при запуске
-  - Санитизация входных данных и защита от XSS
+## Roadmap
 
-#### NLP & AI
-- **Multi-NLP Manager** - координация 3 процессоров
-  - **SpaCy** (ru_core_news_lg) - entity recognition
-  - **Natasha** - русская морфология и NER
-  - **Stanza** (ru) - dependency parsing
-- **5 режимов обработки**: Single, Parallel, Sequential, Ensemble, Adaptive
-- **Ensemble Voting**: weighted consensus для максимального качества
-- **AI Generation:** pollinations.ai, OpenAI DALL-E (опционально)
+- [x] EPUB/FB2 book parsing
+- [x] LLM-based description extraction (Gemini)
+- [x] AI image generation (Imagen 4)
+- [x] Reading progress tracking (CFI)
+- [x] Offline support (PWA + IndexedDB)
+- [x] Subscription system
+- [ ] Mobile apps (React Native)
+- [ ] Social features (sharing, comments)
+- [ ] Multiple AI model support
+- [ ] Book recommendations
 
-#### DevOps & CI/CD (Недели 15-16)
-- **Docker** - Многоэтапные сборки с усилением безопасности
-  - Пользователи без root (node, nobody, www-data)
-  - Минимальные базовые образы (alpine, slim)
-  - Health checks и лимиты ресурсов
-- **GitHub Actions** - Автоматизированный CI/CD pipeline
-  - Backend тесты (pytest с покрытием)
-  - Frontend тесты (Playwright E2E + Vitest unit)
-  - Проверка типов (MyPy strict mode)
-  - Сканирование безопасности (аудит зависимостей)
-  - Автоматическое развертывание (staging + production)
-- **Мониторинг** - Полный стек наблюдаемости
-  - Prometheus - Сбор метрик
-  - Grafana - Визуализация и дашборды
-  - Loki - Агрегация логов
-- **Инструменты безопасности**
-  - Pre-commit hooks (контрольные точки качества)
-  - Сканирование зависимостей (npm audit, pip-audit)
-  - Обнаружение секретов (gitleaks)
-  - Сканирование контейнеров (Trivy)
+See the [open issues](https://github.com/yourusername/bookreader-ai/issues) for planned features and known issues.
 
-### Core Components
+<p align="right">(<a href="#bookreader-ai">back to top</a>)</p>
 
-1. **Book Processing Pipeline:**
-   - EPUB/FB2 парсер → Содержимое глав → Multi-NLP парсер описаний → Очередь генерации изображений
+---
 
-2. **CFI Reading System:**
-   - **Canonical Fragment Identifier (CFI)** для точного позиционирования в EPUB
-   - **Hybrid restoration**: CFI + scroll offset для pixel-perfect восстановления позиции
-   - Поддержка `reading_location_cfi` и `scroll_offset_percent` в ReadingProgress
-   - Обратная совместимость со старыми данными
+## Contributing
 
-3. **epub.js Integration:**
-   - Полная интеграция **react-reader** + **epub.js** для профессионального чтения EPUB
-   - Smart highlight system для автоматического выделения описаний в тексте
-   - Locations generation для точного трекинга прогресса (0-100%)
-   - Темная тема из коробки
-   - Responsive design для мобильных устройств
+Contributions make the open-source community amazing. Any contributions you make are **greatly appreciated**.
 
-4. **Advanced Multi-NLP System:**
-   - **3 NLP процессора**: SpaCy (ru_core_news_lg), Natasha (русский специализированный), Stanza (глубокий синтаксис)
-   - **5 режимов обработки**:
-     - SINGLE - один процессор (быстро)
-     - PARALLEL - параллельная обработка (максимальное покрытие)
-     - SEQUENTIAL - последовательная обработка (контролируемо)
-     - ENSEMBLE - voting с consensus алгоритмом (максимальное качество)
-     - ADAPTIVE - автоматический выбор режима (интеллектуально)
-   - **Ensemble voting**: weighted consensus (SpaCy 1.0, Natasha 0.8, Stanza 0.7)
-   - **Производительность**: 2171 описание за 4 секунды (тестовая книга 25 глав)
-   - **Admin API**: 5 endpoints для управления процессорами
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-5. **Image Generation:**
-   - pollinations.ai (основной, бесплатный)
-   - Промпт-инжиниринг по жанрам и типам описаний
-   - Кэширование и дедупликация изображений
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and development process.
 
-6. **Subscription Model:**
-   - FREE → PREMIUM → ULTIMATE планы
-
-## 🤖 Claude Code Agents
-
-**BookReader AI** теперь оснащён продвинутой системой из **10 специализированных AI агентов** для автоматизации разработки!
-
-### Система агентов
-
-**Tier 0 (Orchestrator):**
-- **Orchestrator Agent** - Главный координатор, переводит ваши задачи в действия
-
-**Tier 1 (Core - Must-Have):**
-- **Multi-NLP Expert** - Эксперт по критической Multi-NLP системе
-- **Backend API Developer** - FastAPI endpoints и backend логика
-- **Documentation Master** - Автоматическое обновление документации
-
-**Tier 2 (Specialists - Recommended):**
-- **Frontend Developer** - React, TypeScript, EPUB.js разработка
-- **Database Architect** - SQLAlchemy модели, миграции, оптимизация
-- **Testing & QA Specialist** - Comprehensive testing и quality assurance
-- **Analytics Specialist** - KPI tracking, user behavior, ML analytics
-
-**Tier 3 (Advanced - Extended):**
-- **Code Quality & Refactoring Agent** - Code smells, refactoring, design patterns
-- **DevOps Engineer Agent** - Docker, CI/CD, monitoring, deployment automation
-
-### Быстрый старт с агентами
+### Development Setup
 
 ```bash
-# Просто опишите что хотите - Orchestrator позаботится об остальном
-Создай endpoint для получения топ-10 популярных книг
+# Backend development
+cd backend
+pip install -r requirements.txt
+pytest -v --cov=app           # Run tests
+mypy app/                     # Type checking
+
+# Frontend development
+cd frontend
+npm install
+npm test                      # Run tests
+npm run type-check            # TypeScript check
 ```
 
-**Документация агентов:**
-- [Быстрый старт](docs/guides/agents/quickstart.md) - Начните здесь!
-- [Финальная архитектура](docs/explanations/agents-system/architecture.md) - Полное описание системы
-- [Агенты README](.claude/agents/README.md) - Описание всех 8 агентов
-- [Orchestrator Guide](docs/guides/agents/orchestrator-usage.md) - Детальное руководство
+<p align="right">(<a href="#bookreader-ai">back to top</a>)</p>
 
-## 📚 Документация
+---
 
-**Обновленная структура документации (November 2025):** Теперь следует фреймворку [Diátaxis](https://diataxis.fr/) для лучшей организации.
+## Project Structure
 
-**Навигация:** [docs/README.md](docs/README.md) - Центральный индекс документации
-
-### 📘 Руководства (Guides)
-Пошаговые инструкции и how-to guides:
-- [Installation Guide](docs/guides/getting-started/installation.md) - Установка проекта
-- [Production Deployment](docs/guides/deployment/production-deployment.md) - Production деплой
-- [Docker Setup](docs/operations/docker/setup.md) - Настройка Docker
-- [Testing Guide](docs/guides/testing/testing-guide.md) - Руководство по тестированию
-- [Agents Quickstart](docs/guides/agents/quickstart.md) - Начало работы с агентами
-
-### 📖 Справочная документация (Reference)
-Техническая документация и API:
-- [API Documentation](docs/reference/api/overview.md) - REST API справочник
-- [Database Schema](docs/reference/database/schema.md) - Схема базы данных
-- [Components Reference](docs/reference/components/) - Backend, Frontend, Parser компоненты
-- [Multi-NLP System](docs/reference/nlp/multi-nlp-system.md) - NLP система
-
-### 🎓 Объяснения (Explanations)
-Концепции и архитектура:
-- [System Architecture](docs/explanations/architecture/system-architecture.md) - Общая архитектура
-- [Multi-NLP Architecture](docs/explanations/architecture/nlp/architecture.md) - Архитектура NLP
-- [CFI System](docs/explanations/concepts/cfi-system.md) - Canonical Fragment Identifier
-- [Agents System](docs/explanations/agents-system/overview.md) - Система агентов Claude Code
-
-### 🔧 Операции (Operations)
-Деплоймент и обслуживание:
-- [Deployment Overview](docs/operations/deployment/overview.md) - Обзор деплоймента
-- [Docker Operations](docs/operations/docker/) - Docker setup, upgrade, security
-- [Backup Procedures](docs/operations/backup/procedures.md) - Резервное копирование
-- [Monitoring Setup](docs/operations/monitoring/setup.md) - Настройка мониторинга
-
-### 👨‍💻 Процесс разработки (Development)
-- [Development Plan](docs/development/planning/development-plan.md) - План разработки
-- [Development Calendar](docs/development/planning/development-calendar.md) - Календарь
-- [Current Status](docs/development/status/current-status.md) - Текущий статус
-- [Changelog 2025](docs/development/changelog/2025.md) - История изменений
-
-### 🔐 Безопасность (Security)
-- [SECURITY.md](backend/SECURITY.md) - **Application Security Guide**
-- [Security Reports](docs/security/reports/) - Отчеты по безопасности
-
-### 🇷🇺 Русская документация
-- [Документация на русском](docs/ru/README.md) - Зеркало всей структуры на русском языке
-
-### Для разработчиков
-- [CLAUDE.md](CLAUDE.md) - Руководство для Claude Code с обновленной структурой документации
-
-## 🔐 Функции безопасности (Неделя 15 - октябрь 2025)
-
-**Состояние безопасности:** Готово к production с многоуровневой защитой
-
-### Реализованные меры безопасности
-
-| Функция | Статус | Снижение риска |
-|---------|--------|----------------|
-| Rate Limiting | ✅ Активно | DDoS атаки: Высокий → Низкий |
-| Заголовки безопасности | ✅ Активно | XSS, Clickjacking: Высокий → Низкий |
-| Валидация секретов | ✅ Активно | Утечки credentials: Высокий → Низкий |
-| Валидация ввода | ✅ Активно | Injection атаки: Высокий → Низкий |
-| Конфигурация CORS | ✅ Активно | Неавторизованный доступ: Средний → Низкий |
-| JWT аутентификация | ✅ Активно | Неавторизованный доступ: Высокий → Низкий |
-
-### Rate Limiting
-
-- **Auth endpoints:** 5 запросов/минуту (защита от brute-force)
-- **Public endpoints:** 20 запросов/минуту (защита от злоупотреблений)
-- **API endpoints:** 100 запросов/минуту (нормальные операции)
-- **Тяжелые операции:** 10 запросов/минуту (защита ресурсов)
-- **Реализация:** Распределенный rate limiter на основе Redis со скользящим окном
-
-### Заголовки безопасности
-
-Все ответы включают:
-- **HSTS** - Принудительный HTTPS (production)
-- **CSP** - Content Security Policy (защита от XSS)
-- **X-Frame-Options** - Защита от clickjacking
-- **X-Content-Type-Options** - Защита от MIME sniffing
-- **Referrer-Policy** - Контроль утечки информации
-- **Permissions-Policy** - Ограничения функций браузера
-
-### Управление секретами
-
-- **Валидация при запуске:** Приложение проверяет все необходимые секреты при старте
-- **Валидация стойкости:** SECRET_KEY должен быть 32+ символов с требованиями сложности
-- **Production проверки:** Предотвращает использование default/test credentials в production режиме
-- **Авто-генерация:** `openssl rand -hex 32` для криптографически стойких ключей
-
-### Валидация и санитизация ввода
-
-- **Санитизация имен файлов:** Предотвращение path traversal
-- **Валидация email:** Соответствие RFC 5322
-- **Стойкость пароля:** Минимум 8 символов с требованиями сложности
-- **Валидация URL:** Whitelist схем (только http/https)
-- **Валидация UUID:** Проверка формата
-- **Защита от XSS:** HTML экранирование пользовательского ввода
-
-### Быстрая проверка безопасности
-
-```bash
-# Проверка заголовков безопасности
-curl -I http://localhost:8000/health
-
-# Запуск тестов безопасности
-cd backend && pytest tests/test_security.py -v
-
-# Валидация секретов
-# Приложение валидирует автоматически при запуске
-docker-compose up backend  # Покажет отчет валидации
+```
+bookreader-ai/
+├── frontend/                 # React + TypeScript frontend
+│   ├── src/
+│   │   ├── components/       # UI components (47 total)
+│   │   │   ├── Reader/       # EPUB reader (13 components)
+│   │   │   ├── Library/      # Book library (6 components)
+│   │   │   └── Admin/        # Admin panel (5 components)
+│   │   ├── hooks/            # React hooks
+│   │   │   ├── api/          # TanStack Query hooks (5 files)
+│   │   │   ├── epub/         # EPUB reader hooks (17 files)
+│   │   │   └── reader/       # Reader logic (7 files)
+│   │   ├── services/         # API clients + caching
+│   │   └── pages/            # Page components (11 pages)
+│   └── tests/                # Vitest + Playwright tests
+├── backend/                  # FastAPI + Python backend
+│   ├── app/
+│   │   ├── routers/          # API endpoints (70+ endpoints)
+│   │   ├── services/         # Business logic (15+ services)
+│   │   ├── models/           # SQLAlchemy models (9 models)
+│   │   └── core/             # Config, DB, exceptions
+│   └── tests/                # Pytest tests
+├── docs/                     # Documentation (Diataxis framework)
+├── docker-compose.yml        # Development stack
+└── scripts/                  # Deployment scripts
 ```
 
-**📖 Для полной документации по безопасности см. [backend/SECURITY.md](backend/SECURITY.md)**
+<p align="right">(<a href="#bookreader-ai">back to top</a>)</p>
 
-## 🛠 Инструменты разработки
+---
 
-```bash
-# Backend разработка
-cd backend && pip install -r requirements.txt
-python -m spacy download ru_core_news_lg
+## Documentation
 
-# Frontend разработка  
-cd frontend && npm install
+Documentation follows the [Diataxis framework](https://diataxis.fr/):
 
-# Docker разработка
-docker-compose -f docker-compose.dev.yml up
+| Category | Description | Link |
+|----------|-------------|------|
+| **Guides** | Step-by-step tutorials and how-to guides | [docs/guides/](docs/guides/) |
+| **Reference** | API, database, component specifications | [docs/reference/](docs/reference/) |
+| **Explanations** | Architecture and design decisions | [docs/explanations/](docs/explanations/) |
+| **Operations** | Deployment and maintenance | [docs/operations/](docs/operations/) |
 
-# Тестирование
-cd backend && pytest -v --cov=app
-cd frontend && npm test
+**Quick Links:**
+- [Quick Start Guide](docs/guides/getting-started/quick-start.md)
+- [API Documentation](docs/reference/api/overview.md)
+- [Deployment Guide](docs/guides/deployment/production-deployment.md)
+- [Architecture Overview](docs/explanations/architecture/system-architecture.md)
 
-# Линтинг и форматирование
-cd backend && ruff check . && black --check .
-cd frontend && npm run lint
+<p align="right">(<a href="#bookreader-ai">back to top</a>)</p>
 
-# Production деплой
-./scripts/deploy.sh init     # Инициализация
-./scripts/deploy.sh ssl      # SSL настройка
-./scripts/deploy.sh deploy   # Деплой приложения
-./scripts/deploy.sh status   # Проверка статуса
+---
 
-# Мониторинг (опционально)
-./scripts/setup-monitoring.sh start
-```
+## License
 
-## 📈 Метрики проекта
+Proprietary software. All rights reserved.
 
-### Code Base (Updated: December 2025)
-- **Строк кода:** ~15000+ (полный стек backend + frontend + tests + agents)
-- **Компонентов:** 55+ (backend: 30+ modularized, frontend: 25+)
-- **API endpoints:** 32+ (книги, NLP, auth, изображения, admin, CFI, image operations)
-- **React компонентов:** 28+ (страницы, компоненты, stores, hooks, epub.js integration)
-- **TanStack Query hooks:** 26+ специализированных хуков
-- **Database Tables:** 13+ (Users, Books, Chapters, Descriptions, Images, ReadingProgress с CFI)
-- **Tests:** 116 тестов (65+ backend, 35+ frontend, 16+ E2E)
+See [LICENSE](LICENSE) for more information.
 
-### Code Quality (December 2025)
-- **Max file size:** 904 lines → 485 lines (-46% reduction)
-- **Type coverage:** 95%+ (100% in core modules, MyPy strict)
-- **Test coverage:** 75%+ (focused on critical paths)
-- **Custom exceptions:** 40+ (DRY principle)
-- **Reusable dependencies:** 15+ (centralized validation)
-- **Highlighting algorithm:** O(n²) → O(n) (-90% complexity)
+<p align="right">(<a href="#bookreader-ai">back to top</a>)</p>
 
-### Architecture
-- **Admin Router:** 1 monolithic file → 6 focused modules (SRP compliant)
-- **Books Router:** 1 monolithic file → 3 focused modules (clean separation)
-- **BookService:** 1 god class → 4 specialized services (SRP applied)
-- **NLP Processors:** 3 (SpaCy, Natasha, Stanza)
-- **Processing Modes:** 5 (Single, Parallel, Sequential, Ensemble, Adaptive)
-- **PWA готовность:** ✅ Service Worker, Manifest, Offline support
-- **Claude Code Agents:** 10 специализированных AI агентов (~160KB промптов)
+---
 
-## 🔄 Последние изменения
+## Acknowledgments
 
-**14.12.2025 - Frontend & Backend Final Optimization:**
-- 🔥 **Memory optimization:** Исправлены утечки памяти в EpubReader
-  - Proper cleanup всех event listeners при unmount
-  - Тестировано на больших документах (2000+ страниц)
-  - On-demand chapter loading с максимум 50MB кэша
-- 🚀 **Component refactoring:** LibraryPage (-73%), AdminDashboard (-72%)
-  - Выделение фильтрации в отдельные компоненты
-  - Ленивая загрузка модальных окон
-  - Кэширование статистики через Redis
-- ⚡ **Highlighting optimization:** O(n²) → O(n) поиск описаний
-  - Binary search для быстрого поиска позиций
-  - Row-level caching результатов
-  - 10+ раз улучшение производительности
-- 📸 **Image handling:** Исправлена работа с URL и storage
-  - Inline content-disposition для отображения
-  - Persistent storage для изображений
-  - Нормализация путей для absolute paths
-- ✅ **116 тестов:** Полное покрытие функциональности
-  - 65+ backend unit tests
-  - 35+ frontend unit & integration tests
-  - 16+ E2E тесты с Playwright
-- 🌐 **Production:** fancai.ru live с SSL/HTTPS
-  - Health checks и monitoring
-  - Log aggregation через Loki
-  - Automatic failover и recovery
+- [epub.js](https://github.com/futurepress/epub.js) - EPUB rendering
+- [TanStack Query](https://tanstack.com/query) - Server state management
+- [FastAPI](https://fastapi.tiangolo.com/) - Python web framework
+- [Google AI](https://ai.google.dev/) - Gemini and Imagen APIs
+- [Best-README-Template](https://github.com/othneildrew/Best-README-Template) - README inspiration
 
-**25.10.2025 - Phase 3 Complete:**
-- 🔥 **Massive Refactoring:** 6 major refactorings completed
-  - Legacy code cleanup (-853 lines dead code)
-  - Admin Router: 904 lines → 6 modules (46% size reduction)
-  - Books Router: 799 lines → 3 modules (clean separation)
-  - BookService: 714 lines → 4 services (68% avg size reduction)
-  - Exception handling: 35+ custom exceptions (DRY principle)
-  - Type coverage: 70% → 95%+ (MyPy strict mode enabled)
-- ✅ **Code Quality:** SRP applied throughout, 100% backward compatible
-- ✅ **Type Safety:** MyPy strict mode, CI/CD type checking, pre-commit hooks
-- ✅ **Documentation:** TYPE_CHECKING.md, updated all architecture docs
+<p align="right">(<a href="#bookreader-ai">back to top</a>)</p>
 
-**23.10.2025:**
-- ✅ **CFI Reading System**: Реализован Canonical Fragment Identifier для точного позиционирования в EPUB
-- ✅ **epub.js Integration**: Полная интеграция react-reader + epub.js для профессионального чтения
-- ✅ **Hybrid Restoration**: Комбинация CFI + scroll_offset_percent для pixel-perfect восстановления позиции
-- ✅ **Smart Highlight System**: Автоматическое выделение описаний в тексте EPUB
-- ✅ **Locations Generation**: Точный трекинг прогресса чтения (0-100%)
-- ✅ **Database Migration**: Добавлены поля reading_location_cfi и scroll_offset_percent в ReadingProgress
-- ✅ **Phase 1 ЗАВЕРШЁН**: Все основные компоненты MVP работают в production (100%)
-- ✅ **Система Claude Code Agents**: Реализована полная система из 10 специализированных AI агентов
-- ✅ **Orchestrator Agent**: Главный координатор с Research-Plan-Implement workflow
-- ✅ **Tier 1 Core Agents**: Multi-NLP Expert, Backend Developer, Documentation Master
-- ✅ **Tier 2 Specialist Agents**: Frontend Developer, Testing & QA, Database Architect, Analytics Specialist
-- ✅ **Tier 3 Advanced Agents**: Code Quality & Refactoring, DevOps Engineer
-- ✅ **Автоматизация разработки**: 2-3x ускорение на типовых задачах, 100% актуальная документация
-- ✅ **Полное покрытие**: Backend, Frontend, NLP/ML, Database, Testing, Analytics, Code Quality, DevOps
+---
 
-**03.09.2025:**
-- ✅ **КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ**: Полностью восстановлен Books API после поломки UUID endpoints
-- ✅ **Парсинг в реальном времени**: Реализован автоматический старт парсинга при загрузке книги
-- ✅ **ParsingOverlay**: Создан новый компонент с SVG прогресс-индикатором и оптимизированным polling
-- ✅ **Frontend-Backend интеграция**: Исправлены все API пути и обработка ошибок
-- ✅ **Book management workflow**: Полный цикл загрузка → парсинг → чтение работает стабильно
-- ✅ **Celery task optimization**: Улучшена обработка фоновых задач парсинга книг
-- ✅ **Admin функциональность**: Добавлены admin endpoints для управления системой
+<div align="center">
 
-**23.08.2025:**
-- ✅ Реализована полная система управления книгами
-- ✅ Создан NLP процессор с приоритизированной экстракцией описаний
-- ✅ Добавлен парсер EPUB/FB2 книг с извлечением метаданных
-- ✅ Созданы все модели базы данных (Users, Books, Chapters, Descriptions, Images)
-- ✅ Реализованы API endpoints для загрузки и управления книгами
-- ✅ Добавлена система отслеживания прогресса чтения
-- ✅ Реализована система аутентификации с JWT токенами
-- ✅ Создан сервис AI генерации изображений с pollinations.ai
-- ✅ Добавлен prompt engineering для разных типов описаний
-- ✅ Реализована система очередей для пакетной генерации изображений
-- ✅ Создано полное React + TypeScript приложение
-- ✅ Реализована state management система с Zustand
-- ✅ Добавлены все страницы: авторизация, библиотека, чтение
-- ✅ Интегрирован полный API клиент с автоматическим refresh токенов
+**[Website](https://fancai.ru)** · **[Documentation](docs/README.md)** · **[Report Bug](https://github.com/yourusername/bookreader-ai/issues)**
 
-## 🎯 Критерии успеха MVP
+Made with passion for readers everywhere
 
-### Технические KPI
-- **Точность парсера:** >70% релевантных описаний для генерации
-- **Скорость генерации:** <30 секунд среднее время  
-- **Performance:** <2 секунды загрузка страниц читалки
-- **Uptime:** >99% доступность сервиса
-
-### Бизнес-метрики
-- **User retention:** >40% возвращаются через неделю
-- **Conversion rate:** >5% free → premium за месяц
-- **User satisfaction:** >4.0/5 в отзывах
-
-## 🤝 Вклад в проект
-
-Проект находится в стадии активной разработки. Все изменения должны соответствовать стандартам документирования, описанным в [CLAUDE.md](CLAUDE.md).
-
-## 📝 Лицензия
-
-Частный проект. Все права защищены.
+</div>

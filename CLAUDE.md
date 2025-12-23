@@ -8,7 +8,7 @@ Guidance for Claude Code when working with BookReader AI repository.
 
 **Core Value:** LLM-powered extraction of visual descriptions + AI image generation.
 
-> **NLP REMOVAL (December 2025):** Multi-NLP system (SpaCy, Natasha, Stanza, GLiNER) removed for server optimization. Description extraction now via Google Gemini API (LangExtract). RAM: 10-12 GB → 2-3 GB (-75%), Docker: 2.5 GB → 800 MB (-68%).
+> **NLP REMOVAL (December 2025):** Multi-NLP system (SpaCy, Natasha, Stanza, GLiNER) removed for server optimization. Description extraction now via Google Gemini API. RAM: 10-12 GB -> 2-3 GB (-75%), Docker: 2.5 GB -> 800 MB (-68%).
 
 ## Technology Stack
 
@@ -31,11 +31,11 @@ Guidance for Claude Code when working with BookReader AI repository.
 | Celery 5.4 | Background processing |
 | SQLAlchemy 2.0.45 + Alembic 1.14 | ORM + migrations |
 
-### Description Extraction (UPDATED December 2025)
+### Description Extraction (December 2025)
 
 **Current Architecture:** LLM-Only Mode via Google Gemini 3.0 Flash API
 - Extracts descriptions on-demand when user opens chapter
-- Supports Russian → English translation for image prompts
+- Supports Russian -> English translation for image prompts
 - Cost: ~$0.02/book (Gemini 3.0 Flash: $0.50/1M input, $3/1M output tokens)
 - RAM: ~500 MB (vs 2.2 GB for NLP models)
 
@@ -52,14 +52,24 @@ Admin API: `GET/POST/PUT/DELETE /api/v1/admin/feature-flags`
 
 ## Key Files
 
-### Backend Services
+### Backend Services (Total: 7,757 lines in 15+ services)
 | File | Lines | Purpose |
 |------|-------|---------|
 | `app/services/book_parser.py` | 925 | EPUB/FB2 parsing + CFI generation |
-| `app/services/langextract_processor.py` | 811 | LLM-based description extraction |
-| `app/services/imagen_generator.py` | ~300 | Google Imagen 4 image generation |
-| `app/services/image_generator.py` | 301 | Image generation orchestration |
-| `app/services/feature_flag_manager.py` | 422 | Feature control |
+| `app/services/langextract_processor.py` | 815 | LLM-based description extraction |
+| `app/services/gemini_extractor.py` | 661 | Direct Gemini API for extraction |
+| `app/services/imagen_generator.py` | 644 | Google Imagen 4 image generation |
+| `app/services/reading_session_cache.py` | 454 | Redis session caching |
+| `app/services/settings_manager.py` | 422 | Redis-backed settings |
+| `app/services/llm_description_enricher.py` | 413 | Description post-processing |
+| `app/services/user_statistics_service.py` | 407 | Reading analytics |
+| `app/services/reading_session_service.py` | 379 | Optimized DB queries |
+| `app/services/feature_flag_manager.py` | 378 | Feature control |
+| `app/services/auth_service.py` | 373 | JWT authentication |
+| `app/services/parsing_manager.py` | 319 | Global parsing queue |
+| `app/services/image_generator.py` | 283 | Image generation orchestration |
+| `app/services/vless_http_client.py` | 255 | Proxy-aware HTTP client |
+| `app/services/book/` | 1,028 | Book CRUD (4 services) |
 
 > **REMOVED December 2025:** `multi_nlp_manager.py`, `nlp/` directory, NLP processors
 
@@ -67,34 +77,29 @@ Admin API: `GET/POST/PUT/DELETE /api/v1/admin/feature-flags`
 | File | Lines | Purpose |
 |------|-------|---------|
 | `src/components/Reader/EpubReader.tsx` | 573 | epub.js EPUB reader with CFI navigation |
-| `src/pages/LibraryPage.tsx` | 739 | Book library + upload management |
+| `src/pages/LibraryPage.tsx` | 195 | Book library (refactored from 739) |
 | `src/hooks/epub/useDescriptionHighlighting.ts` | 566 | 9 search strategies for highlighting |
 
-### Frontend Caching Services (NEW - December 2025)
+### Frontend Caching Services
 | File | Lines | Purpose |
 |------|-------|---------|
-| `src/services/chapterCache.ts` | ~200 | IndexedDB кэш для глав (descriptions + images), auto-sync |
-| `src/services/imageCache.ts` | 482 | IndexedDB offline image cache с auto-cleanup каждые 5 минут |
+| `src/services/chapterCache.ts` | ~600 | IndexedDB cache for chapters (descriptions + images) |
+| `src/services/imageCache.ts` | ~500 | IndexedDB offline image cache with auto-cleanup |
 
-### TanStack Query Hooks (NEW - December 2025, src/hooks/api/)
+### TanStack Query Hooks (src/hooks/api/)
 | File | Purpose |
 |------|---------|
-| `queryKeys.ts` | Централизованное управление ключами кэша для всех запросов |
-| `useBooks.ts` | Хуки для работы с книгами (list, get, upload) с prefetching |
-| `useChapter.ts` | Хуки для глав с интеграцией IndexedDB и offline support |
-| `useDescriptions.ts` | Хуки для описаний с кэшированием (LLM extraction) |
-| `useImages.ts` | Хуки для генерации и управления изображениями |
+| `queryKeys.ts` | Centralized cache key management |
+| `useBooks.ts` | Book list, get, upload with prefetching |
+| `useChapter.ts` | Chapters with IndexedDB + offline support |
+| `useDescriptions.ts` | Descriptions with LLM extraction caching |
+| `useImages.ts` | Image generation and management |
 
-### Модульные Компоненты (NEW - December 2025)
-| Directory | Компоненты | Purpose |
+### Modular Components
+| Directory | Components | Purpose |
 |-----------|-----------|---------|
-| `src/components/Library/` | Header, Stats, Search, BookCard, BookGrid, Pagination | Модульные компоненты библиотеки книг |
-| `src/components/Admin/` | Header, Stats, TabNavigation, MultiNLPSettings, ParsingSettings | Модульные компоненты админ-панели |
-
-### Library Hooks (NEW - December 2025)
-| File | Purpose |
-|------|---------|
-| `src/hooks/library/useLibraryFilters.ts` | Фильтрация и статистика книг (сортировка, поиск, пагинация) |
+| `src/components/Library/` | Header, Stats, Search, BookCard, BookGrid, Pagination | Library page modules |
+| `src/components/Admin/` | Header, Stats, TabNavigation, MultiNLPSettings, ParsingSettings | Admin panel modules |
 
 ### Core Models
 | Model | Key Fields |
@@ -111,13 +116,13 @@ Admin API: `GET/POST/PUT/DELETE /api/v1/admin/feature-flags`
 services:
   postgres:     PostgreSQL 15.7
   redis:        Cache + task queue
-  backend:      FastAPI + NLP models (~2.2GB)
+  backend:      FastAPI (LLM-only, ~800MB image)
   celery-worker: Background processing
   celery-beat:   Scheduled tasks
   frontend:     Vite + React
 ```
 
-Production: `docker-compose.lite.yml` (lighter images)
+Production: `docker-compose.lite.yml` (optimized images)
 
 ## Development Commands
 
@@ -152,8 +157,8 @@ REDIS_URL=redis://localhost:6379
 SECRET_KEY=change-in-production
 
 # Optional
-GOOGLE_API_KEY=...              # For Gemini/LangExtract
-POLLINATIONS_ENABLED=true       # Image generation
+GOOGLE_API_KEY=...              # For Gemini + Imagen
+POLLINATIONS_ENABLED=true       # Fallback image generation
 YOOKASSA_SHOP_ID=...           # Payments
 ```
 
@@ -178,16 +183,15 @@ POST /api/v1/images/generate/{description_id}  # Generate image
 ```
 GET  /api/v1/admin/stats              # System statistics
 GET  /api/v1/admin/feature-flags      # Feature flags management
-GET  /api/v1/admin/multi-nlp-settings # NLP processor config
 POST /api/v1/admin/parsing/{book_id}  # Trigger manual parsing
 ```
 
 ## Database Notes
 
 **Enums stored as VARCHAR:**
-- `books.genre` → String(50), not Enum
-- `books.file_format` → String(10)
-- `generated_images.status` → String(20)
+- `books.genre` -> String(50), not Enum
+- `books.file_format` -> String(10)
+- `generated_images.status` -> String(20)
 
 **CFI Fields (EPUB position tracking):**
 - `reading_progress.reading_location_cfi` - String(500)
@@ -212,35 +216,36 @@ Types: feat, fix, docs, style, refactor, test, chore
 - Frontend: TypeScript strict mode
 - Pre-commit hooks: mypy, ruff, black, eslint
 
-## File Structure (Simplified, Updated December 2025)
+## File Structure (December 2025)
 
 ```
 fancai-vibe-hackathon/
 ├── frontend/
 │   ├── src/components/
-│   │   ├── Reader/               # EPUB reader components (EpubReader, etc.)
-│   │   ├── Library/              # Модульные компоненты библиотеки (6 файлов)
-│   │   └── Admin/                # Модульные компоненты админ-панели (5 файлов)
+│   │   ├── Reader/               # EPUB reader components (13 files)
+│   │   ├── Library/              # Modular library components (6 files)
+│   │   ├── Admin/                # Modular admin components (5 files)
+│   │   └── UI/                   # Shared UI components (12 files)
 │   ├── src/hooks/
-│   │   ├── api/                  # TanStack Query хуки (queryKeys, useBooks, useChapter, useDescriptions, useImages)
-│   │   ├── epub/                 # EPUB reader hooks (CFI, progress, highlighting)
-│   │   └── library/              # Library hooks (useLibraryFilters)
-│   ├── src/services/             # API clients + caching (imageCache, chapterCache)
-│   └── src/pages/                # Page components (LibraryPage, ReaderPage, etc.)
+│   │   ├── api/                  # TanStack Query hooks (5 files)
+│   │   ├── epub/                 # EPUB reader hooks (17 files)
+│   │   ├── reader/               # Reader business logic (7 files)
+│   │   └── library/              # Library filters (1 file)
+│   ├── src/services/             # API clients + caching (2 files)
+│   └── src/pages/                # Page components (11 files)
 ├── backend/
 │   ├── app/core/                 # Config, DB, exceptions
-│   ├── app/models/               # SQLAlchemy models
+│   ├── app/models/               # SQLAlchemy models (9 files)
 │   ├── app/routers/              # API endpoints
-│   │   ├── admin/                # Admin endpoints (modular)
-│   │   └── books/                # Book endpoints (modular)
-│   └── app/services/             # Business logic
-│       ├── nlp/                  # NLP strategies + components
-│       └── advanced_parser/      # Multi-stage parser
+│   │   ├── admin/                # Admin endpoints (8 modules)
+│   │   └── books/                # Book endpoints (3 modules)
+│   └── app/services/             # Business logic (15+ services)
+│       └── book/                 # Book CRUD services (4 files)
 ├── docs/                         # Documentation (Diataxis framework)
-│   ├── guides/                   # How-to guides
-│   ├── reference/                # API, DB schemas
-│   ├── explanations/             # Architecture
-│   └── reports/                  # Session reports (archived)
+│   ├── guides/                   # How-to guides (22 files)
+│   ├── reference/                # API, DB schemas (21 files)
+│   ├── explanations/             # Architecture (14 files)
+│   └── reports/                  # Session reports (139 files)
 └── docker-compose.yml            # Development stack
 ```
 
@@ -253,66 +258,37 @@ fancai-vibe-hackathon/
 | Page load | <2 seconds |
 | Uptime | >99% |
 
-## Current Focus (December 2025)
+## Current State (December 2025)
 
-### Completed (December 2025)
-1. **Frontend Architecture Refactoring** - TanStack Query hooks (api/), modular components (Library/, Admin/), caching services
-   - chapterCache.ts - IndexedDB для описаний и изображений глав
-   - imageCache.ts - Auto-cleanup каждые 5 минут
-   - 5 TanStack Query хуков с полной типизацией
-   - 6 компонентов Library (Header, Stats, Search, BookCard, BookGrid, Pagination)
-   - 5 компонентов Admin (Header, Stats, TabNavigation, MultiNLPSettings, ParsingSettings)
+### Completed
+1. **LLM Migration** - Gemini API for description extraction (replacing Multi-NLP)
+2. **Frontend Refactoring** - TanStack Query, modular components, IndexedDB caching
+3. **Image Generation** - Google Imagen 4 with offline cache
+4. **Performance** - 75% RAM reduction, 68% Docker image reduction
 
-2. **Image URL Handling** - Fixed inline content-disposition for proper browser display
-   - Persistent storage для сгенерированных изображений
-   - Correct URL normalization (не срезать /api/v1 prefix)
+### Active Features
+- Description extraction via Gemini Flash
+- Image generation via Imagen 4
+- CFI-based reading progress
+- 9-strategy description highlighting
+- Offline support with IndexedDB
 
-### In Progress
-1. **LLM Migration** - Evaluating Gemini-based parsing vs Multi-NLP
-2. **Description Highlighting** - 9-strategy search for accuracy (already implemented)
-3. **Reading Progress** - CFI + scroll offset for precise restoration
-4. **Offline Support** - Full offline reading with IndexedDB synchronization
-
-## Frontend Architecture Details (December 2025)
+## Frontend Architecture (December 2025)
 
 ### Caching Strategy
-- **TanStack Query (v5)** - Server state management с автоматическим кэшированием
-  - queryKeys.ts - Централизованный реестр всех ключей для type-safe кэша
-  - Stale-while-revalidate паттерн для оптимального UX
-  - Background refetch при фокусе окна
+- **TanStack Query (v5)** - Server state with auto-invalidation
+- **IndexedDB** - Offline storage (chapterCache, imageCache)
+- **Stale-while-revalidate** - Optimal UX pattern
 
-- **IndexedDB** - Локальное хранилище для offline доступа
-  - chapterCache.ts - Кэширование содержимого глав и описаний
-  - imageCache.ts - Кэширование сгенерированных изображений
-  - Auto-cleanup - Удаление старых данных каждые 5 минут
-
-### Component Organization
-- **Library Components** - Модульная архитектура для страницы библиотеки
-  - Header - Поиск и сортировка
-  - Stats - Статистика по книгам (всего, в процессе, завершено)
-  - Search - Интеграция с useLibraryFilters
-  - BookCard - Карточка книги с метаданными
-  - BookGrid - Сетка книг с пагинацией
-  - Pagination - Навигация по страницам
-
-- **Admin Components** - Модульная архитектура для админ-панели
-  - Header - Название и описание раздела
-  - Stats - Системная статистика
-  - TabNavigation - Переключение между вкладками
-  - MultiNLPSettings - Настройки NLP процессоров
-  - ParsingSettings - Настройки парсинга и очереди
-
-### Data Flow (TanStack Query)
+### Data Flow
 ```
-Component → useBooks/useChapter/useDescriptions/useImages
-    ↓
+Component -> TanStack Query hooks
+    |
 TanStack Query (queryKeys for caching)
-    ↓
-IndexedDB (if offline) / API (online)
-    ↓
+    |
+IndexedDB (offline) / API (online)
+    |
 Auto-refetch on focus/interval
-    ↓
-Automatic invalidation on mutations
 ```
 
 ## Quick Links
@@ -321,7 +297,6 @@ Automatic invalidation on mutations
 |----------|------|
 | API Documentation | `/docs` (Swagger UI) |
 | Architecture | `docs/explanations/architecture/` |
-| NLP System | `docs/explanations/architecture/nlp/` |
 | Deployment | `docs/guides/deployment/` |
 | Testing | `docs/guides/testing/` |
 | Reports | `docs/reports/` |

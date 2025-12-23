@@ -106,5 +106,7 @@ When adding or updating documentation:
 
 ---
 
-**Last Updated:** 2025-11-14
-**Documentation Version:** 2.0 (Diátaxis reorganization)
+**Last Updated:** 2025-12-23
+**Documentation Version:** 3.0 (LLM-only architecture, NLP removal)
+
+> **Note:** Multi-NLP system (SpaCy, Natasha, Stanza, GLiNER) was removed in December 2025. Description extraction now uses Google Gemini API.

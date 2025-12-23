@@ -157,15 +157,14 @@ celerybeat.pid
 monitoring/prometheus/data/
 /monitoring/prometheus/data/**
 
-# Documentation reports (keep only in backend/)
+# Documentation reports (keep only essential files in root)
 /*.md
 !README.md
+!README-ru.md
 !CONTRIBUTING.md
 !LICENSE.md
 !CHANGELOG.md
-!FAQ.md
-!TROUBLESHOOTING.md
-!SSL-QUICKSTART.md
+!CLAUDE.md
 
 # Test files (keep organized in tests/)
 /backend/test_*.py
