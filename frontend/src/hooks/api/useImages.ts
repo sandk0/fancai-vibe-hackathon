@@ -136,11 +136,12 @@ export function useBookImages(
  * Сначала проверяет IndexedDB кэш, затем загружает с API.
  *
  * @param descriptionId - ID описания
+ * @param bookId - ID книги для кэширования (P1.3)
  * @param options - Опции React Query
  *
  * @example
  * ```tsx
- * const { data: image, isLoading } = useImageForDescription('desc-123');
+ * const { data: image, isLoading } = useImageForDescription('desc-123', 'book-456');
  *
  * return (
  *   <img
@@ -152,6 +153,7 @@ export function useBookImages(
  */
 export function useImageForDescription(
   descriptionId: string,
+  bookId: string, // P1.3: Added for proper cache isolation
   options?: Omit<UseQueryOptions<GeneratedImage, Error>, 'queryKey' | 'queryFn'>
 ) {
   const userId = getCurrentUserId();
@@ -202,12 +204,13 @@ export function useImageForDescription(
       const image = await imagesAPI.getImageForDescription(descriptionId);
 
       // 3. Кэшируем
+      // P1.3: Now using proper bookId for cache organization
       try {
         await imageCache.set(
           userId,
           descriptionId,
           image.image_url,
-          image.chapter.id // bookId (на самом деле это chapterId, но пойдет)
+          bookId
         );
       } catch (err) {
         console.warn(
@@ -219,7 +222,7 @@ export function useImageForDescription(
       return image;
     },
     staleTime: 30 * 60 * 1000, // 30 минут - изображения не меняются
-    enabled: !!descriptionId,
+    enabled: !!descriptionId && !!bookId,
     ...options,
   });
 }
@@ -233,10 +236,11 @@ export function useImageForDescription(
  * ```tsx
  * const generateMutation = useGenerateImage();
  *
- * const handleGenerate = async (descriptionId: string) => {
+ * const handleGenerate = async (descriptionId: string, bookId: string) => {
  *   try {
  *     const result = await generateMutation.mutateAsync({
  *       descriptionId,
+ *       bookId,
  *       params: {
  *         style_prompt: 'watercolor painting',
  *       },
@@ -263,6 +267,7 @@ export function useGenerateImage(
       Error,
       {
         descriptionId: string;
+        bookId: string; // P1.3: Added for proper cache isolation
         params?: ImageGenerationParams;
       }
     >,
@@ -281,12 +286,13 @@ export function useGenerateImage(
     },
     onSuccess: async (data, variables) => {
       // Кэшируем сгенерированное изображение
+      // P1.3: Now using proper bookId for cache organization
       try {
         await imageCache.set(
           userId,
           variables.descriptionId,
           data.image_url,
-          '' // bookId неизвестен здесь
+          variables.bookId
         );
       } catch (err) {
         console.warn(`⚠️ [useGenerateImage] Failed to cache image:`, err);
@@ -305,11 +311,12 @@ export function useGenerateImage(
 /**
  * Мутация batch генерации изображений для главы
  *
+ * @param bookId - Book ID для кэширования (P1.3)
  * @param options - Опции мутации
  *
  * @example
  * ```tsx
- * const batchGenerateMutation = useBatchGenerateImages();
+ * const batchGenerateMutation = useBatchGenerateImages('book-123');
  *
  * const handleGenerateAll = async (chapterId: string) => {
  *   const result = await batchGenerateMutation.mutateAsync({
@@ -322,6 +329,7 @@ export function useGenerateImage(
  * ```
  */
 export function useBatchGenerateImages(
+  bookId: string, // P1.3: Added for proper cache isolation
   options?: Omit<
     UseMutationOptions<
       {
@@ -356,8 +364,9 @@ export function useBatchGenerateImages(
     },
     onSuccess: async (data, _variables) => {
       // Кэшируем все сгенерированные изображения
+      // P1.3: Now using proper bookId for cache organization
       console.log(
-        `💾 [useBatchGenerateImages] Caching ${data.images.length} generated images`
+        `💾 [useBatchGenerateImages] Caching ${data.images.length} generated images for book ${bookId}`
       );
 
       await Promise.all(
@@ -367,7 +376,7 @@ export function useBatchGenerateImages(
               userId,
               image.description_id,
               image.image_url,
-              '' // bookId неизвестен
+              bookId
             );
           } catch (err) {
             console.warn(
@@ -433,9 +442,10 @@ export function useDeleteImage(
  * ```tsx
  * const regenerateMutation = useRegenerateImage();
  *
- * const handleRegenerate = async (imageId: string) => {
+ * const handleRegenerate = async (imageId: string, bookId: string) => {
  *   const result = await regenerateMutation.mutateAsync({
  *     imageId,
+ *     bookId,
  *     params: {
  *       style_prompt: 'anime style',
  *       negative_prompt: 'blurry, low quality',
@@ -465,6 +475,7 @@ export function useRegenerateImage(
       Error,
       {
         imageId: string;
+        bookId: string; // P1.3: Added for proper cache isolation
         params?: ImageGenerationParams;
       }
     >,
@@ -479,14 +490,15 @@ export function useRegenerateImage(
       console.log(`🔄 [useRegenerateImage] Regenerating image ${imageId}`);
       return imagesAPI.regenerateImage(imageId, params);
     },
-    onSuccess: async (data, _variables) => {
+    onSuccess: async (data, variables) => {
       // Обновляем кэш
+      // P1.3: Now using proper bookId for cache organization
       try {
         await imageCache.set(
           userId,
           data.description_id,
           data.image_url,
-          '' // bookId неизвестен
+          variables.bookId
         );
       } catch (err) {
         console.warn(`⚠️ [useRegenerateImage] Failed to cache image:`, err);

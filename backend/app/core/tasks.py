@@ -131,10 +131,11 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
 
         print(f"📖 [ASYNC TASK] Found {len(chapters)} chapters")
 
-        # Парсим первые 2 главы с помощью LLM
+        # Парсим первые 5 глав с помощью LLM (increased from 2 for better UX)
+        # UPDATED (2025-12-25): Expanded pre-parsing for faster initial experience
         chapters_parsed = 0
         total_descriptions = 0
-        CHAPTERS_TO_PREPARSE = 2
+        CHAPTERS_TO_PREPARSE = 5
 
         if llm_available and chapters:
             for chapter in chapters[:CHAPTERS_TO_PREPARSE]:
@@ -166,6 +167,10 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
 
                     if chapter.word_count and chapter.word_count < 100:
                         is_service_page = True
+
+                    # P1.1: Use cached is_service_page method
+                    if chapter.is_service_page is None:
+                        chapter.is_service_page = is_service_page
 
                     if is_service_page:
                         print(f"⏭️ [ASYNC TASK] Skipping service page: {chapter.title}")
@@ -211,9 +216,9 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
                     chapter.parsed_at = datetime.now(timezone.utc)
                     chapters_parsed += 1
 
-                    # Обновляем прогресс книги
+                    # Обновляем прогресс книги (но НЕ коммитим ещё)
                     book.parsing_progress = int((chapters_parsed / CHAPTERS_TO_PREPARSE) * 100)
-                    await db.commit()
+                    # P2.2: Removed per-chapter commit, will batch commit below
 
                 except Exception as e:
                     print(f"❌ [ASYNC TASK] Error parsing chapter {chapter.chapter_number}: {str(e)}")
@@ -221,6 +226,11 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
                     print(f"🔍 [ASYNC TASK] Traceback: {traceback.format_exc()}")
                     # Продолжаем с следующей главой
                     continue
+
+            # P2.2: BATCH COMMIT after all chapters processed (was: commit per chapter)
+            # Saves ~200ms (5 chapters * 40ms per commit)
+            await db.commit()
+            print(f"💾 [ASYNC TASK] Batch committed {chapters_parsed} chapters")
 
         # Помечаем книгу как готовую
         book.is_processing = False

@@ -145,6 +145,69 @@ class ChapterAnalysisResponse(BaseModel):
 
 
 # ============================================================================
+# BATCH API SCHEMAS (Phase 3 - 2025-12-25)
+# ============================================================================
+
+
+class BatchDescriptionsRequest(BaseModel):
+    """
+    Request для получения описаний нескольких глав одним запросом.
+
+    Используется в POST /api/v1/descriptions/{book_id}/chapters/batch.
+
+    Attributes:
+        chapter_numbers: Список номеров глав (1-indexed)
+    """
+
+    chapter_numbers: List[int] = Field(
+        min_length=1,
+        max_length=10,  # Limit to prevent abuse
+        description="List of chapter numbers to fetch (1-indexed, max 10)"
+    )
+
+
+class ChapterDescriptionsResult(BaseModel):
+    """
+    Результат получения описаний для одной главы в batch запросе.
+
+    Attributes:
+        chapter_number: Номер главы
+        success: Успешно ли получены описания
+        data: Данные описаний (если success=True)
+        error: Сообщение об ошибке (если success=False)
+    """
+
+    chapter_number: int
+    success: bool = True
+    data: Optional[ChapterDescriptionsResponse] = None
+    error: Optional[str] = None
+
+
+class BatchDescriptionsResponse(BaseModel):
+    """
+    Response для batch запроса описаний нескольких глав.
+
+    Используется в POST /api/v1/descriptions/{book_id}/chapters/batch.
+
+    Attributes:
+        book_id: ID книги
+        chapters: Результаты по каждой главе
+        total_requested: Количество запрошенных глав
+        total_success: Количество успешно полученных
+        total_descriptions: Общее количество описаний
+    """
+
+    book_id: UUID
+    chapters: List[ChapterDescriptionsResult] = Field(
+        default_factory=list,
+        description="Results for each requested chapter"
+    )
+    total_requested: int = Field(ge=0)
+    total_success: int = Field(ge=0)
+    total_descriptions: int = Field(ge=0)
+
+
+# ============================================================================
 # EXPORTS
 # ============================================================================
 
@@ -154,4 +217,7 @@ __all__ = [
     "ChapterDescriptionsResponse",
     "ChapterAnalysisPreview",
     "ChapterAnalysisResponse",
+    "BatchDescriptionsRequest",
+    "ChapterDescriptionsResult",
+    "BatchDescriptionsResponse",
 ]

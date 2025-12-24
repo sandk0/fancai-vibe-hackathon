@@ -79,7 +79,21 @@ export function useBooks(
   const query = useQuery({
     queryKey: bookKeys.list(userId, params),
     queryFn: () => booksAPI.getBooks(params),
-    staleTime: 30 * 1000, // 30 секунд - список обновляется довольно часто
+    // P2.1: Adaptive staleTime based on processing status
+    // Base staleTime is 5 minutes for completed books
+    staleTime: 5 * 60 * 1000,
+    // Dynamic refetchInterval: poll every 10s if any book is processing
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data?.books) return false;
+
+      const hasProcessingBook = data.books.some(
+        (book) => book.is_processing
+      );
+
+      // Poll every 10 seconds if any book is still processing
+      return hasProcessingBook ? 10 * 1000 : false;
+    },
     ...options,
   });
 
@@ -151,7 +165,20 @@ export function useBooksInfinite(
       const nextSkip = lastPage.skip + lastPage.limit;
       return nextSkip < lastPage.total ? nextSkip : undefined;
     },
-    staleTime: 30 * 1000,
+    // P2.1: Adaptive staleTime based on processing status
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: (query) => {
+      const pages = query.state.data?.pages;
+      if (!pages) return false;
+
+      const hasProcessingBook = pages.some((page) =>
+        page.books.some(
+          (book) => book.is_processing
+        )
+      );
+
+      return hasProcessingBook ? 10 * 1000 : false;
+    },
     ...options,
   });
 }

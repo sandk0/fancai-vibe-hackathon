@@ -68,6 +68,7 @@ import { TocSidebar } from './TocSidebar';
 import { ReaderControls } from './ReaderControls';
 import { ReaderHeader } from './ReaderHeader';
 import { ImageGenerationStatus } from './ImageGenerationStatus';
+import { ExtractionIndicator } from './ExtractionIndicator';
 import { notify } from '@/stores/ui';
 import { useNavigate } from 'react-router-dom';
 
@@ -122,11 +123,13 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   );
 
   // Hook 4: Manage chapter tracking and load descriptions/images
-  const { currentChapter, descriptions, images, isExtractingDescriptions } = useChapterManagement({
+  // FIXED (2025-12-25): Pass isRestoringPosition to prevent race condition
+  const { currentChapter, descriptions, images, isExtractingDescriptions, cancelExtraction } = useChapterManagement({
     book: epubBook,
     rendition,
     bookId: book.id,
     getChapterNumberByLocation,
+    isRestoringPosition, // Prevent loading during position restoration
   });
 
   // Hook 5: Debounced progress sync to backend
@@ -562,21 +565,12 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
         </div>
       )}
 
-      {/* Description Extraction Indicator - Subtle top bar */}
-      {isExtractingDescriptions && (
-        <div className="fixed top-[70px] left-0 right-0 z-40">
-          <div className="h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 animate-pulse" />
-          <div
-            className={`text-xs py-1 px-4 text-center ${
-              theme === 'dark' ? 'bg-gray-800/90 text-gray-300' :
-              theme === 'sepia' ? 'bg-amber-100/90 text-amber-800' :
-              'bg-white/90 text-gray-600'
-            }`}
-          >
-            Анализ текста главы...
-          </div>
-        </div>
-      )}
+      {/* Description Extraction Indicator - Prominent floating card */}
+      <ExtractionIndicator
+        isExtracting={isExtractingDescriptions}
+        onCancel={cancelExtraction}
+        theme={theme}
+      />
 
       {/* Image Generation Status */}
       <ImageGenerationStatus

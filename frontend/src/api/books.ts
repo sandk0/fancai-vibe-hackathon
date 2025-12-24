@@ -106,9 +106,42 @@ export const booksAPI = {
   }> {
     const params = new URLSearchParams();
     if (extractNew) params.append('extract_new', 'true');
-    
+
     const url = `/books/${bookId}/chapters/${chapterNumber}/descriptions${params.toString() ? '?' + params.toString() : ''}`;
     return apiClient.get(url);
+  },
+
+  /**
+   * Get descriptions for multiple chapters in a single request.
+   * OPTIMIZATION (Phase 3): Reduces N API calls to 1 for prefetching.
+   * Note: Does NOT trigger LLM extraction - only returns existing descriptions.
+   *
+   * @param bookId - Book ID
+   * @param chapterNumbers - Array of chapter numbers to fetch (max 10)
+   * @returns Batch response with descriptions for each chapter
+   */
+  async getBatchDescriptions(
+    bookId: string,
+    chapterNumbers: number[]
+  ): Promise<{
+    book_id: string;
+    chapters: Array<{
+      chapter_number: number;
+      success: boolean;
+      data?: {
+        chapter_info: ChapterInfo;
+        nlp_analysis: NLPAnalysis;
+        message: string;
+      };
+      error?: string;
+    }>;
+    total_requested: number;
+    total_success: number;
+    total_descriptions: number;
+  }> {
+    return apiClient.post(`/books/${bookId}/chapters/batch`, {
+      chapter_numbers: chapterNumbers,
+    });
   },
 
   // Reading progress

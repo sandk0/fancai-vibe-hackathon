@@ -54,6 +54,10 @@ class Chapter(Base):
     descriptions_found = Column(Integer, default=0, nullable=False)
     parsing_progress = Column(Integer, default=0, nullable=False)  # 0-100%
 
+    # Service page detection cache (P1.1 optimization)
+    # True = skip description extraction (ToC, copyright, etc.)
+    is_service_page = Column(Boolean, default=None, nullable=True)
+
     # Временные метки
     created_at = Column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -117,3 +121,57 @@ class Chapter(Base):
             return 0
 
         return max(1, round(self.word_count / words_per_minute))
+
+    # Service page keywords for detection
+    SERVICE_PAGE_KEYWORDS = [
+        "содержание", "оглавление", "table of contents", "contents",
+        "от автора", "слово автора", "предисловие", "послесловие",
+        "аннотация", "annotation", "synopsis",
+        "эпиграф", "epigraph", "цитата",
+        "посвящение", "dedication",
+        "благодарности", "acknowledgments",
+        "примечания", "notes", "сноски",
+        "библиография", "bibliography", "references",
+        "об авторе", "about the author", "биография",
+        "copyright", "издательство", "publisher",
+        "isbn", "все права защищены", "all rights reserved",
+    ]
+
+    def check_is_service_page(self) -> bool:
+        """
+        Определяет, является ли глава служебной страницей.
+
+        Служебные страницы (оглавление, copyright и т.д.) не парсятся
+        для извлечения описаний.
+
+        Returns:
+            True если это служебная страница
+        """
+        # Используем кэшированное значение если есть
+        if self.is_service_page is not None:
+            return self.is_service_page
+
+        # Вычисляем
+        chapter_title_lower = (self.title or "").lower()
+        chapter_content_lower = (self.content or "")[:500].lower()
+
+        is_service = any(
+            keyword in chapter_title_lower or keyword in chapter_content_lower
+            for keyword in self.SERVICE_PAGE_KEYWORDS
+        )
+
+        # Очень короткие главы тоже считаем служебными
+        if self.word_count and self.word_count < 100:
+            is_service = True
+
+        return is_service
+
+    def cache_service_page_status(self) -> bool:
+        """
+        Вычисляет и кэширует статус служебной страницы.
+
+        Returns:
+            True если это служебная страница
+        """
+        self.is_service_page = self.check_is_service_page()
+        return self.is_service_page

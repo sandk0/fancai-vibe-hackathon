@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { booksAPI } from '@/api/books';
 import { EpubReader } from '@/components/Reader/EpubReader';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { useParsingStatus } from '@/hooks/api';
 
 const BookReaderPage = () => {
   const { bookId } = useParams<{ bookId: string }>();
@@ -12,6 +13,13 @@ const BookReaderPage = () => {
     queryKey: ['book', bookId],
     queryFn: () => booksAPI.getBook(bookId!),
     enabled: !!bookId,
+  });
+
+  // Track parsing status and invalidate caches when parsing completes
+  // This ensures descriptions are immediately available after background parsing
+  const { isParsing, progress } = useParsingStatus({
+    bookId: bookId || '',
+    enabled: !!bookId && !!bookData,
   });
 
   if (isLoading) {
@@ -51,6 +59,17 @@ const BookReaderPage = () => {
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
+      {/* Parsing Status Indicator - shown while Celery is processing */}
+      {isParsing && (
+        <div
+          className="fixed left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-blue-600/90 backdrop-blur-sm text-white text-sm flex items-center gap-2 shadow-lg"
+          style={{ bottom: 'calc(20px + env(safe-area-inset-bottom))' }}
+        >
+          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          <span>Подготовка книги... {progress}%</span>
+        </div>
+      )}
+
       {/* Reader with integrated header and error protection */}
       <ErrorBoundary
         level="page"

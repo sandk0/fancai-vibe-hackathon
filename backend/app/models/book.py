@@ -135,11 +135,83 @@ class Book(Base):
     def __repr__(self):
         return f"<Book(id={self.id}, title='{self.title}', author='{self.author}')>"
 
+    def get_user_progress(self, user_id: UUID) -> "ReadingProgress | None":
+        """
+        Получает прогресс чтения для конкретного пользователя из pre-loaded данных.
+
+        P1.2 OPTIMIZATION: Использует relationship вместо дополнительного запроса.
+        Требует: selectinload(Book.reading_progress) при загрузке книги.
+
+        Args:
+            user_id: ID пользователя
+
+        Returns:
+            ReadingProgress или None
+        """
+        if not hasattr(self, 'reading_progress') or self.reading_progress is None:
+            return None
+
+        for progress in self.reading_progress:
+            if progress.user_id == user_id:
+                return progress
+        return None
+
+    def calculate_progress_percent(self, user_id: UUID) -> float:
+        """
+        Вычисляет прогресс чтения книги синхронно из pre-loaded данных.
+
+        P1.2 OPTIMIZATION: Не делает дополнительных запросов к БД.
+        Требует: selectinload(Book.chapters) и selectinload(Book.reading_progress).
+
+        Args:
+            user_id: ID пользователя
+
+        Returns:
+            Прогресс чтения от 0.0 до 100.0
+        """
+        try:
+            progress = self.get_user_progress(user_id)
+
+            if not progress:
+                return 0.0
+
+            # НОВАЯ ЛОГИКА: Если есть CFI - это EPUB reader с точным процентом
+            if progress.reading_location_cfi:
+                current_position = max(
+                    0.0, min(100.0, float(progress.current_position))
+                )
+                return current_position
+
+            # СТАРАЯ ЛОГИКА: Для обратной совместимости со старыми данными без CFI
+            # Используем pre-loaded chapters вместо запроса
+            total_chapters = len(self.chapters) if self.chapters else 0
+
+            if total_chapters == 0:
+                return 0.0
+
+            # Валидация данных
+            current_chapter = max(1, min(progress.current_chapter, total_chapters))
+            current_position = max(0.0, min(100.0, float(progress.current_position)))
+
+            if current_chapter > total_chapters:
+                return 100.0
+
+            completed_chapters_progress = ((current_chapter - 1) / total_chapters) * 100
+            current_chapter_progress = (current_position / 100) * (100 / total_chapters)
+
+            return min(100.0, max(0.0, completed_chapters_progress + current_chapter_progress))
+        except Exception as e:
+            print(f"⚠️ Error calculating reading progress: {e}")
+            return 0.0
+
     async def get_reading_progress_percent(
         self, db: AsyncSession, user_id: UUID
     ) -> float:
         """
         Получает прогресс чтения книги пользователем в процентах.
+
+        P1.2 OPTIMIZATION: Сначала пытается использовать pre-loaded данные,
+        fallback на DB запрос только если данные не загружены.
 
         Для EPUB книг с CFI (epub.js): current_position уже содержит точный процент 0-100
         Для старых данных без CFI: используется формула на основе глав
@@ -151,11 +223,15 @@ class Book(Base):
         Returns:
             Прогресс чтения от 0.0 до 100.0
         """
+        # P1.2: Try pre-loaded data first (no DB query)
+        if hasattr(self, 'reading_progress') and self.reading_progress is not None:
+            if hasattr(self, 'chapters') and self.chapters is not None:
+                return self.calculate_progress_percent(user_id)
+
+        # Fallback: Query DB (legacy path)
         try:
-            # Импортируем внутри метода чтобы избежать circular imports
             from .chapter import Chapter
 
-            # Получаем reading_progress из БД
             progress_query = select(ReadingProgress).where(
                 ReadingProgress.book_id == self.id, ReadingProgress.user_id == user_id
             )
@@ -165,17 +241,9 @@ class Book(Base):
             if not progress:
                 return 0.0
 
-            # НОВАЯ ЛОГИКА: Если есть CFI - это EPUB reader с точным процентом
             if progress.reading_location_cfi:
-                # current_position уже содержит общий процент по всей книге (0-100)
-                # вычисленный через epub.js locations API
-                current_position = max(
-                    0.0, min(100.0, float(progress.current_position))
-                )
-                return current_position
+                return max(0.0, min(100.0, float(progress.current_position)))
 
-            # СТАРАЯ ЛОГИКА: Для обратной совместимости со старыми данными без CFI
-            # Получаем общее количество глав напрямую из БД
             chapters_count_query = select(func.count(Chapter.id)).where(
                 Chapter.book_id == self.id
             )
@@ -184,25 +252,17 @@ class Book(Base):
             if not total_chapters or total_chapters == 0:
                 return 0.0
 
-            # Валидация данных
             current_chapter = max(1, min(progress.current_chapter, total_chapters))
             current_position = max(0.0, min(100.0, float(progress.current_position)))
 
-            # Если читает главу за пределами книги, возвращаем 100%
             if current_chapter > total_chapters:
                 return 100.0
 
-            # Расчет прогресса:
-            # - Завершенные главы: (current_chapter - 1) глав = (current_chapter - 1) / total_chapters
-            # - Текущая глава: current_position% от 1/total_chapters
             completed_chapters_progress = ((current_chapter - 1) / total_chapters) * 100
             current_chapter_progress = (current_position / 100) * (100 / total_chapters)
 
-            total_progress = completed_chapters_progress + current_chapter_progress
-
-            return min(100.0, max(0.0, total_progress))
+            return min(100.0, max(0.0, completed_chapters_progress + current_chapter_progress))
         except Exception as e:
-            # В случае любой ошибки возвращаем 0
             print(f"⚠️ Error calculating reading progress: {e}")
             return 0.0
 

@@ -227,6 +227,64 @@ class CacheManager:
             logger.error(f"Redis FLUSH error: {e}")
             return False
 
+    async def acquire_lock(
+        self, lock_key: str, ttl: int = 60, value: str = "locked"
+    ) -> bool:
+        """
+        Acquire a distributed lock using Redis SET NX.
+
+        Args:
+            lock_key: Unique key for the lock
+            ttl: Lock expiration in seconds (default: 60s)
+            value: Value to set (default: "locked")
+
+        Returns:
+            True if lock acquired, False if already locked
+        """
+        if not self._is_available or not self._redis:
+            # If Redis unavailable, allow the operation (no locking)
+            logger.warning(f"Redis unavailable, cannot acquire lock: {lock_key}")
+            return True
+
+        try:
+            # SET key value NX EX ttl
+            # NX = only set if not exists
+            # EX = expiration in seconds
+            result = await self._redis.set(
+                lock_key, value, nx=True, ex=ttl
+            )
+            if result:
+                logger.debug(f"🔒 Lock ACQUIRED: {lock_key} (TTL: {ttl}s)")
+                return True
+            else:
+                logger.debug(f"⏳ Lock BUSY: {lock_key}")
+                return False
+        except RedisError as e:
+            logger.warning(f"Redis lock acquire error for {lock_key}: {e}")
+            # Allow operation on error (fail-open)
+            return True
+
+    async def release_lock(self, lock_key: str) -> bool:
+        """
+        Release a distributed lock.
+
+        Args:
+            lock_key: Lock key to release
+
+        Returns:
+            True if released, False otherwise
+        """
+        if not self._is_available or not self._redis:
+            return True
+
+        try:
+            await self._redis.delete(lock_key)
+            logger.debug(f"🔓 Lock RELEASED: {lock_key}")
+            return True
+        except RedisError as e:
+            logger.warning(f"Redis lock release error for {lock_key}: {e}")
+            return False
+
     async def get_stats(self) -> dict:
         """
         Get cache statistics.
