@@ -1,7 +1,7 @@
 """Add performance indexes for reader cycle optimization.
 
 Revision ID: 2025_12_25_0001
-Revises: 2025_12_20_0001_add_is_processing_column
+Revises: add_is_processing_20251220
 Create Date: 2025-12-25
 
 P0 Performance Optimization:
@@ -21,7 +21,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "2025_12_25_0001"
-down_revision = "2025_12_20_0001_add_is_processing_column"
+down_revision = "add_is_processing_20251220"
 branch_labels = None
 depends_on = None
 
