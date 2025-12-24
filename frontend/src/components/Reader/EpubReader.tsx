@@ -457,15 +457,15 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   // Main render - viewerRef MUST stay in same DOM location to prevent rendition destruction
   return (
     <div className={`relative h-full w-full transition-colors ${getBackgroundColor()}`}>
-      {/* EPUB Viewer - Maximum reading space, only top padding for header */}
+      {/* EPUB Viewer - Maximum reading space, with safe-area support */}
       <div
         ref={viewerRef}
         className={`h-full w-full ${getBackgroundColor()}`}
         style={{
-          paddingTop: '70px',      // Space for ReaderHeader only
-          paddingLeft: '0',        // No external padding
-          paddingRight: '0',       // No external padding
-          paddingBottom: '0',      // No external padding
+          paddingTop: 'calc(70px + env(safe-area-inset-top))', // Header + notch
+          paddingLeft: 'env(safe-area-inset-left)',
+          paddingRight: 'env(safe-area-inset-right)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
         }}
       />
 
@@ -474,8 +474,13 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
         <>
           {/* Left tap zone - previous page */}
           <div
-            className="fixed left-0 top-[70px] bottom-0 w-[25%] z-[5] md:hidden"
-            style={{ background: 'transparent', pointerEvents: 'auto' }}
+            className="fixed left-0 bottom-0 w-[25%] z-[5] md:hidden"
+            style={{
+              background: 'transparent',
+              pointerEvents: 'auto',
+              top: 'calc(70px + env(safe-area-inset-top))',
+              paddingBottom: 'env(safe-area-inset-bottom)',
+            }}
             onClick={() => handleTapZone('left')}
             onTouchEnd={(e) => {
               e.preventDefault();
@@ -486,8 +491,13 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
           />
           {/* Right tap zone - next page */}
           <div
-            className="fixed right-0 top-[70px] bottom-0 w-[25%] z-[5] md:hidden"
-            style={{ background: 'transparent', pointerEvents: 'auto' }}
+            className="fixed right-0 bottom-0 w-[25%] z-[5] md:hidden"
+            style={{
+              background: 'transparent',
+              pointerEvents: 'auto',
+              top: 'calc(70px + env(safe-area-inset-top))',
+              paddingBottom: 'env(safe-area-inset-bottom)',
+            }}
             onClick={() => handleTapZone('right')}
             onTouchEnd={(e) => {
               e.preventDefault();

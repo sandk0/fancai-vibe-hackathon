@@ -91,10 +91,11 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   return (
     <div
       className={cn(
-        'absolute top-0 left-0 right-0 z-10 backdrop-blur-md border-b',
+        'absolute left-0 right-0 z-10 backdrop-blur-md border-b',
         colors.bg,
         colors.border
       )}
+      style={{ top: 'env(safe-area-inset-top)' }}
     >
       <div className="flex items-center justify-between px-4 py-3 gap-3">
         {/* Left: Back button + TOC + Book Info */}
@@ -116,7 +117,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
           <button
             onClick={onTocToggle}
             className={cn(
-              'flex items-center justify-center w-10 h-10 rounded-lg transition-colors',
+              'flex items-center justify-center w-11 h-11 rounded-lg transition-colors',
               colors.buttonBg,
               colors.buttonHover,
               colors.buttonText
@@ -129,7 +130,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
           <button
             onClick={onInfoOpen}
             className={cn(
-              'flex items-center justify-center w-10 h-10 rounded-lg transition-colors',
+              'flex items-center justify-center w-11 h-11 rounded-lg transition-colors',
               colors.buttonBg,
               colors.buttonHover,
               colors.buttonText
@@ -179,7 +180,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
           <button
             onClick={onSettingsOpen}
             className={cn(
-              'flex items-center justify-center w-10 h-10 rounded-lg transition-colors',
+              'flex items-center justify-center w-11 h-11 rounded-lg transition-colors',
               colors.buttonBg,
               colors.buttonHover,
               colors.buttonText

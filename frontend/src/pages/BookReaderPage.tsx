@@ -42,7 +42,15 @@ const BookReaderPage = () => {
   }
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-gray-900">
+    <div
+      className="fixed inset-0 overflow-hidden bg-gray-900"
+      style={{
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingLeft: 'env(safe-area-inset-left)',
+        paddingRight: 'env(safe-area-inset-right)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
+    >
       {/* Reader with integrated header and error protection */}
       <ErrorBoundary
         level="page"

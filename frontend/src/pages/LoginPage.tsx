@@ -63,7 +63,13 @@ const LoginPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
+    <div
+      className="min-h-screen grid grid-cols-1 lg:grid-cols-2"
+      style={{
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
+    >
       {/* Left Side - Login Form */}
       <div
         className="flex items-center justify-center p-8 lg:p-12"
