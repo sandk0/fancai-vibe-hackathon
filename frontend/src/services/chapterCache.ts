@@ -16,7 +16,7 @@
 import type { Description, GeneratedImage } from '@/types/api';
 
 const DB_NAME = 'BookReaderChapterCache';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // v2: Added userId isolation and userBookChapter index
 const STORE_NAME = 'chapters';
 const CACHE_EXPIRATION_DAYS = 7;
 const MAX_CHAPTERS_PER_BOOK = 50; // Максимум глав одной книги в кэше
@@ -66,8 +66,17 @@ class ChapterCacheService {
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
+        const oldVersion = (event as IDBVersionChangeEvent).oldVersion;
 
-        // Создаём store для глав
+        console.log(`🔄 [ChapterCache] Upgrading from version ${oldVersion} to ${DB_VERSION}`);
+
+        // Migration from v1 to v2: Delete old store and recreate with userId isolation
+        if (oldVersion < 2 && db.objectStoreNames.contains(STORE_NAME)) {
+          console.log('🗑️ [ChapterCache] Deleting old store (v1 data without userId)');
+          db.deleteObjectStore(STORE_NAME);
+        }
+
+        // Create store with new schema
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
 
@@ -79,7 +88,7 @@ class ChapterCacheService {
           store.createIndex('lastAccessedAt', 'lastAccessedAt', { unique: false });
           store.createIndex('userBookChapter', ['userId', 'bookId', 'chapterNumber'], { unique: true });
 
-          console.log('✅ [ChapterCache] IndexedDB store created');
+          console.log('✅ [ChapterCache] IndexedDB store created with userId isolation (v2)');
         }
       };
     });
