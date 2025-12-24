@@ -3,11 +3,22 @@
  *
  * Provides centralized cache management for authentication flows.
  * Clears all application caches including:
- * - TanStack Query cache
- * - IndexedDB caches (chapterCache, imageCache)
- * - Reader store state
+ * - TanStack Query cache (server state)
+ * - IndexedDB caches (chapterCache, imageCache, epub_locations)
+ * - Service Worker cache storage (offline assets)
+ * - localStorage (pending_sessions)
+ * - Reader store state (Zustand)
  *
  * CRITICAL: Must be called on logout to prevent data leakage between users!
+ *
+ * Security layers cleared:
+ * 1. TanStack Query - prevents stale API data
+ * 2. Chapter cache - prevents book content leakage
+ * 3. Image cache - prevents generated images leakage
+ * 4. Reader store - prevents reading position leakage
+ * 5. Service Worker cache - prevents offline asset leakage
+ * 6. EPUB locations - prevents book structure/navigation leakage
+ * 7. Pending sessions - prevents reading history leakage
  *
  * @module utils/cacheManager
  */
@@ -26,6 +37,9 @@ interface ClearCacheResult {
   chapterCacheCleared: boolean;
   imageCacheCleared: boolean;
   readerStoreCleared: boolean;
+  serviceWorkerCacheCleared: boolean;
+  epubLocationsCleared: boolean;
+  pendingSessionsCleared: boolean;
   errors: string[];
 }
 
@@ -48,6 +62,9 @@ export async function clearAllCaches(): Promise<ClearCacheResult> {
     chapterCacheCleared: false,
     imageCacheCleared: false,
     readerStoreCleared: false,
+    serviceWorkerCacheCleared: false,
+    epubLocationsCleared: false,
+    pendingSessionsCleared: false,
     errors: [],
   };
 
@@ -95,6 +112,46 @@ export async function clearAllCaches(): Promise<ClearCacheResult> {
     console.error('❌ [CacheManager] Failed to clear reader store:', error);
   }
 
+  // 5. Clear Service Worker cache storage (CRITICAL for security)
+  try {
+    if ('caches' in window) {
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map(name => caches.delete(name)));
+      result.serviceWorkerCacheCleared = true;
+      console.log(`✅ [CacheManager] Service Worker cache cleared (${cacheNames.length} caches)`);
+    } else {
+      // Browser doesn't support Cache API (not an error)
+      result.serviceWorkerCacheCleared = true;
+      console.log('ℹ️ [CacheManager] Cache API not available (skipped)');
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    result.errors.push(`Service Worker cache: ${message}`);
+    console.error('❌ [CacheManager] Failed to clear Service Worker cache:', error);
+  }
+
+  // 6. Clear epub_locations IndexedDB (CRITICAL for security)
+  try {
+    await clearEpubLocationsDB();
+    result.epubLocationsCleared = true;
+    console.log('✅ [CacheManager] EPUB locations IndexedDB cleared');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    result.errors.push(`EPUB locations: ${message}`);
+    console.error('❌ [CacheManager] Failed to clear EPUB locations:', error);
+  }
+
+  // 7. Clear pending_sessions localStorage (HIGH priority)
+  try {
+    localStorage.removeItem('bookreader_pending_sessions');
+    result.pendingSessionsCleared = true;
+    console.log('✅ [CacheManager] Pending sessions localStorage cleared');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    result.errors.push(`Pending sessions: ${message}`);
+    console.error('❌ [CacheManager] Failed to clear pending sessions:', error);
+  }
+
   // Determine overall success
   result.success = result.errors.length === 0;
 
@@ -135,4 +192,72 @@ export function invalidateQueries(queryKey: string[]): void {
     console.error('❌ [CacheManager] Failed to invalidate queries:', error);
     throw error;
   }
+}
+
+/**
+ * Clear epub_locations IndexedDB database
+ * This database stores cached EPUB location data for quick book loading
+ *
+ * CRITICAL: Must be cleared on logout to prevent data leakage between users
+ */
+async function clearEpubLocationsDB(): Promise<void> {
+  const DB_NAME = 'BookReaderAI';
+  const STORE_NAME = 'epub_locations';
+
+  return new Promise((resolve, reject) => {
+    try {
+      // Open the database
+      const request = indexedDB.open(DB_NAME);
+
+      request.onerror = () => {
+        // Database doesn't exist or can't be opened - not an error
+        console.log('ℹ️ [CacheManager] EPUB locations DB does not exist (skipped)');
+        resolve();
+      };
+
+      request.onsuccess = () => {
+        const db = request.result;
+
+        // Check if the object store exists
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          console.log('ℹ️ [CacheManager] EPUB locations store does not exist (skipped)');
+          db.close();
+          resolve();
+          return;
+        }
+
+        try {
+          // Clear all entries from the object store
+          const transaction = db.transaction(STORE_NAME, 'readwrite');
+          const store = transaction.objectStore(STORE_NAME);
+          const clearRequest = store.clear();
+
+          clearRequest.onsuccess = () => {
+            console.log('✅ [CacheManager] EPUB locations store cleared');
+            db.close();
+            resolve();
+          };
+
+          clearRequest.onerror = () => {
+            console.error('❌ [CacheManager] Failed to clear EPUB locations store:', clearRequest.error);
+            db.close();
+            reject(clearRequest.error);
+          };
+
+          transaction.onerror = () => {
+            console.error('❌ [CacheManager] Transaction error:', transaction.error);
+            db.close();
+            reject(transaction.error);
+          };
+        } catch (error) {
+          console.error('❌ [CacheManager] Error creating transaction:', error);
+          db.close();
+          reject(error);
+        }
+      };
+    } catch (error) {
+      console.error('❌ [CacheManager] Error opening EPUB locations DB:', error);
+      reject(error);
+    }
+  });
 }

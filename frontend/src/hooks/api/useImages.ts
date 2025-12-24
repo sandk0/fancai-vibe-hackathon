@@ -22,7 +22,7 @@ import {
 } from '@tanstack/react-query';
 import { imagesAPI } from '@/api/images';
 import { imageCache } from '@/services/imageCache';
-import { imageKeys } from './queryKeys';
+import { imageKeys, getCurrentUserId } from './queryKeys';
 import type {
   GeneratedImage,
   ImageGenerationParams,
@@ -72,9 +72,11 @@ export function useBookImages(
     'queryKey' | 'queryFn'
   >
 ) {
+  const userId = getCurrentUserId();
+
   return useQuery({
     queryKey: [
-      ...imageKeys.byBook(bookId, chapterNumber),
+      ...imageKeys.byBook(userId, bookId, chapterNumber),
       'paginated',
       pagination,
     ],
@@ -151,8 +153,10 @@ export function useImageForDescription(
   descriptionId: string,
   options?: Omit<UseQueryOptions<GeneratedImage, Error>, 'queryKey' | 'queryFn'>
 ) {
+  const userId = getCurrentUserId();
+
   return useQuery({
-    queryKey: imageKeys.byDescription(descriptionId),
+    queryKey: imageKeys.byDescription(userId, descriptionId),
     queryFn: async () => {
       console.log(
         `🖼️ [useImageForDescription] Fetching image for description ${descriptionId}`
@@ -264,6 +268,7 @@ export function useGenerateImage(
   >
 ) {
   const queryClient = useQueryClient();
+  const userId = getCurrentUserId();
 
   return useMutation({
     mutationFn: async ({ descriptionId, params = {} }) => {
@@ -286,9 +291,9 @@ export function useGenerateImage(
 
       // Инвалидация связанных запросов
       queryClient.invalidateQueries({
-        queryKey: imageKeys.byDescription(variables.descriptionId),
+        queryKey: imageKeys.byDescription(userId, variables.descriptionId),
       });
-      queryClient.invalidateQueries({ queryKey: imageKeys.userStats() });
+      queryClient.invalidateQueries({ queryKey: imageKeys.userStats(userId) });
     },
     ...options,
   });
@@ -337,6 +342,7 @@ export function useBatchGenerateImages(
   >
 ) {
   const queryClient = useQueryClient();
+  const userId = getCurrentUserId();
 
   return useMutation({
     mutationFn: async (request: BatchGenerationRequest) => {
@@ -369,7 +375,7 @@ export function useBatchGenerateImages(
       );
 
       // Инвалидация всех image queries для этой главы
-      queryClient.invalidateQueries({ queryKey: imageKeys.all });
+      queryClient.invalidateQueries({ queryKey: imageKeys.all(userId) });
     },
     ...options,
   });
@@ -398,6 +404,7 @@ export function useDeleteImage(
   >
 ) {
   const queryClient = useQueryClient();
+  const userId = getCurrentUserId();
 
   return useMutation({
     mutationFn: (imageId: string) => imagesAPI.deleteImage(imageId),
@@ -407,7 +414,7 @@ export function useDeleteImage(
       // await imageCache.delete(descriptionId);
 
       // Инвалидация всех image queries
-      queryClient.invalidateQueries({ queryKey: imageKeys.all });
+      queryClient.invalidateQueries({ queryKey: imageKeys.all(userId) });
     },
     ...options,
   });
@@ -461,6 +468,7 @@ export function useRegenerateImage(
   >
 ) {
   const queryClient = useQueryClient();
+  const userId = getCurrentUserId();
 
   return useMutation({
     mutationFn: async ({ imageId, params = {} }) => {
@@ -481,9 +489,9 @@ export function useRegenerateImage(
 
       // Инвалидация
       queryClient.invalidateQueries({
-        queryKey: imageKeys.byDescription(data.description_id),
+        queryKey: imageKeys.byDescription(userId, data.description_id),
       });
-      queryClient.invalidateQueries({ queryKey: imageKeys.all });
+      queryClient.invalidateQueries({ queryKey: imageKeys.all(userId) });
     },
     ...options,
   });
@@ -511,8 +519,10 @@ export function useGenerationStatus(
     'queryKey' | 'queryFn'
   >
 ) {
+  const userId = getCurrentUserId();
+
   return useQuery({
-    queryKey: imageKeys.generationStatus(),
+    queryKey: imageKeys.generationStatus(userId),
     queryFn: () => imagesAPI.getGenerationStatus(),
     staleTime: 30 * 1000, // 30 секунд - статус меняется часто
     ...options,
@@ -546,8 +556,10 @@ export function useImageUserStats(
     'queryKey' | 'queryFn'
   >
 ) {
+  const userId = getCurrentUserId();
+
   return useQuery({
-    queryKey: imageKeys.userStats(),
+    queryKey: imageKeys.userStats(userId),
     queryFn: () => imagesAPI.getUserStats(),
     staleTime: 2 * 60 * 1000, // 2 минуты
     ...options,

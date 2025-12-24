@@ -26,7 +26,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useBooks } from '@/hooks/api/useBooks';
-import { bookKeys } from '@/hooks/api/queryKeys';
+import { bookKeys, getCurrentUserId } from '@/hooks/api/queryKeys';
 import { BookUploadModal } from '@/components/Books/BookUploadModal';
 import { LibraryHeader } from '@/components/Library/LibraryHeader';
 import { LibraryStats } from '@/components/Library/LibraryStats';
@@ -95,7 +95,8 @@ const LibraryPage: React.FC = () => {
 
   const handleParsingComplete = () => {
     console.log('[LibraryPage] Parsing completed, invalidating cache...');
-    queryClient.invalidateQueries({ queryKey: bookKeys.all });
+    const userId = getCurrentUserId();
+    queryClient.invalidateQueries({ queryKey: bookKeys.all(userId) });
   };
 
   const handleSortChange = (newSort: string) => {

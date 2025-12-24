@@ -20,7 +20,7 @@ import {
 } from '@tanstack/react-query';
 import { booksAPI } from '@/api/books';
 import { chapterCache } from '@/services/chapterCache';
-import { chapterKeys, descriptionKeys } from './queryKeys';
+import { chapterKeys, descriptionKeys, getCurrentUserId } from './queryKeys';
 import type { Chapter, Description } from '@/types/api';
 
 /**
@@ -64,9 +64,10 @@ export function useChapter(
   options?: Omit<UseQueryOptions<ChapterResponse, Error>, 'queryKey' | 'queryFn'>
 ) {
   const queryClient = useQueryClient();
+  const userId = getCurrentUserId();
 
   const query = useQuery({
-    queryKey: chapterKeys.detail(bookId, chapterNumber),
+    queryKey: chapterKeys.detail(userId, bookId, chapterNumber),
     queryFn: async () => {
       console.log(
         `📖 [useChapter] Fetching chapter ${chapterNumber} for book ${bookId}`
@@ -132,7 +133,7 @@ export function useChapter(
   React.useEffect(() => {
     if (query.data?.descriptions) {
       queryClient.setQueryData(
-        descriptionKeys.byChapter(bookId, chapterNumber),
+        descriptionKeys.byChapter(userId, bookId, chapterNumber),
         {
           chapter_info: {
             id: query.data.chapter.id,
@@ -164,7 +165,7 @@ export function useChapter(
     if (query.data?.navigation.has_next && query.data?.navigation.next_chapter) {
       const nextChapter = query.data.navigation.next_chapter;
       queryClient.prefetchQuery({
-        queryKey: chapterKeys.detail(bookId, nextChapter),
+        queryKey: chapterKeys.detail(userId, bookId, nextChapter),
         queryFn: () => booksAPI.getChapter(bookId, nextChapter),
         staleTime: 10 * 60 * 1000,
       });
@@ -173,12 +174,12 @@ export function useChapter(
     if (query.data?.navigation.has_previous && query.data?.navigation.previous_chapter) {
       const prevChapter = query.data.navigation.previous_chapter;
       queryClient.prefetchQuery({
-        queryKey: chapterKeys.detail(bookId, prevChapter),
+        queryKey: chapterKeys.detail(userId, bookId, prevChapter),
         queryFn: () => booksAPI.getChapter(bookId, prevChapter),
         staleTime: 10 * 60 * 1000,
       });
     }
-  }, [query.data, bookId, chapterNumber, queryClient]);
+  }, [query.data, bookId, chapterNumber, queryClient, userId]);
 
   return query;
 }
@@ -202,8 +203,10 @@ export function useChapterContent(
   chapterNumber: number,
   options?: Omit<UseQueryOptions<Chapter, Error>, 'queryKey' | 'queryFn'>
 ) {
+  const userId = getCurrentUserId();
+
   return useQuery({
-    queryKey: [...chapterKeys.detail(bookId, chapterNumber), 'content'],
+    queryKey: [...chapterKeys.detail(userId, bookId, chapterNumber), 'content'],
     queryFn: async () => {
       const response = await booksAPI.getChapter(bookId, chapterNumber);
       return response.chapter;
@@ -259,8 +262,10 @@ export function useChapterNavigation(
     'queryKey' | 'queryFn'
   >
 ) {
+  const userId = getCurrentUserId();
+
   return useQuery({
-    queryKey: chapterKeys.navigation(bookId, chapterNumber),
+    queryKey: chapterKeys.navigation(userId, bookId, chapterNumber),
     queryFn: async () => {
       const response = await booksAPI.getChapter(bookId, chapterNumber);
       return response.navigation;
@@ -294,10 +299,11 @@ export function useChapterNavigation(
  */
 export function usePrefetchChapter() {
   const queryClient = useQueryClient();
+  const userId = getCurrentUserId();
 
   return (bookId: string, chapterNumber: number) => {
     return queryClient.prefetchQuery({
-      queryKey: chapterKeys.detail(bookId, chapterNumber),
+      queryKey: chapterKeys.detail(userId, bookId, chapterNumber),
       queryFn: () => booksAPI.getChapter(bookId, chapterNumber),
       staleTime: 10 * 60 * 1000,
     });

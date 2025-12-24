@@ -4,218 +4,276 @@
  * Все query keys для BookReader AI в одном месте.
  * Позволяет легко управлять инвалидацией и предотвращает опечатки.
  *
- * Паттерн: иерархические массивы для точного контроля
- * Пример: ['books'] -> ['books', bookId] -> ['books', bookId, 'chapters', chapterNumber]
+ * SECURITY: Все keys изолированы по userId для предотвращения утечки данных между пользователями.
+ *
+ * Паттерн: иерархические массивы с обязательным userId
+ * Пример: ['books', userId] -> ['books', userId, bookId] -> ['books', userId, bookId, 'chapters', chapterNumber]
  *
  * @module hooks/api/queryKeys
  */
 
+import { useAuthStore } from '@/stores/auth';
+
+/**
+ * Получить ID текущего пользователя или выбросить ошибку
+ *
+ * @throws {Error} Если пользователь не аутентифицирован
+ * @returns {string} ID текущего пользователя
+ */
+export function getCurrentUserId(): string {
+  const user = useAuthStore.getState().user;
+
+  if (!user?.id) {
+    throw new Error('User not authenticated - cannot access user-specific data');
+  }
+
+  return user.id;
+}
+
 /**
  * Query keys для работы с книгами
+ *
+ * SECURITY: Все keys требуют userId для изоляции данных между пользователями
  */
 export const bookKeys = {
   /**
-   * Базовый ключ для всех книг
+   * Базовый ключ для всех книг конкретного пользователя
+   * @param userId - ID пользователя
    */
-  all: ['books'] as const,
+  all: (userId: string) => ['books', userId] as const,
 
   /**
    * Список книг с опциональными параметрами
+   * @param userId - ID пользователя
    * @param params - Параметры пагинации и сортировки
    */
-  list: (params?: { skip?: number; limit?: number; sort_by?: string }) =>
-    [...bookKeys.all, 'list', params] as const,
+  list: (userId: string, params?: { skip?: number; limit?: number; sort_by?: string }) =>
+    [...bookKeys.all(userId), 'list', params] as const,
 
   /**
    * Детали конкретной книги
+   * @param userId - ID пользователя
    * @param bookId - ID книги
    */
-  detail: (bookId: string) => [...bookKeys.all, bookId] as const,
+  detail: (userId: string, bookId: string) => [...bookKeys.all(userId), bookId] as const,
 
   /**
    * Прогресс чтения книги
+   * @param userId - ID пользователя
    * @param bookId - ID книги
    */
-  progress: (bookId: string) => [...bookKeys.all, bookId, 'progress'] as const,
+  progress: (userId: string, bookId: string) => [...bookKeys.all(userId), bookId, 'progress'] as const,
 
   /**
    * Статус парсинга книги
+   * @param userId - ID пользователя
    * @param bookId - ID книги
    */
-  parsingStatus: (bookId: string) =>
-    [...bookKeys.all, bookId, 'parsing-status'] as const,
+  parsingStatus: (userId: string, bookId: string) =>
+    [...bookKeys.all(userId), bookId, 'parsing-status'] as const,
 
   /**
    * Статистика пользователя по чтению
+   * @param userId - ID пользователя
    */
-  statistics: () => [...bookKeys.all, 'statistics'] as const,
+  statistics: (userId: string) => [...bookKeys.all(userId), 'statistics'] as const,
 
   /**
    * URL файла книги для EPUB reader
+   * @param userId - ID пользователя
    * @param bookId - ID книги
    */
-  fileUrl: (bookId: string) => [...bookKeys.all, bookId, 'file'] as const,
+  fileUrl: (userId: string, bookId: string) => [...bookKeys.all(userId), bookId, 'file'] as const,
 };
 
 /**
  * Query keys для работы с главами
+ *
+ * SECURITY: Все keys требуют userId для изоляции данных между пользователями
  */
 export const chapterKeys = {
   /**
-   * Базовый ключ для всех глав
+   * Базовый ключ для всех глав конкретного пользователя
+   * @param userId - ID пользователя
    */
-  all: ['chapters'] as const,
+  all: (userId: string) => ['chapters', userId] as const,
 
   /**
    * Главы конкретной книги
+   * @param userId - ID пользователя
    * @param bookId - ID книги
    */
-  byBook: (bookId: string) => [...chapterKeys.all, 'book', bookId] as const,
+  byBook: (userId: string, bookId: string) => [...chapterKeys.all(userId), 'book', bookId] as const,
 
   /**
    * Конкретная глава
+   * @param userId - ID пользователя
    * @param bookId - ID книги
    * @param chapterNumber - Номер главы
    */
-  detail: (bookId: string, chapterNumber: number) =>
-    [...chapterKeys.byBook(bookId), chapterNumber] as const,
+  detail: (userId: string, bookId: string, chapterNumber: number) =>
+    [...chapterKeys.byBook(userId, bookId), chapterNumber] as const,
 
   /**
    * Навигация по главам
+   * @param userId - ID пользователя
    * @param bookId - ID книги
    * @param chapterNumber - Номер главы
    */
-  navigation: (bookId: string, chapterNumber: number) =>
-    [...chapterKeys.detail(bookId, chapterNumber), 'navigation'] as const,
+  navigation: (userId: string, bookId: string, chapterNumber: number) =>
+    [...chapterKeys.detail(userId, bookId, chapterNumber), 'navigation'] as const,
 };
 
 /**
  * Query keys для работы с описаниями
+ *
+ * SECURITY: Все keys требуют userId для изоляции данных между пользователями
  */
 export const descriptionKeys = {
   /**
-   * Базовый ключ для всех описаний
+   * Базовый ключ для всех описаний конкретного пользователя
+   * @param userId - ID пользователя
    */
-  all: ['descriptions'] as const,
+  all: (userId: string) => ['descriptions', userId] as const,
 
   /**
    * Описания конкретной главы
+   * @param userId - ID пользователя
    * @param bookId - ID книги
    * @param chapterNumber - Номер главы
    */
-  byChapter: (bookId: string, chapterNumber: number) =>
-    [...descriptionKeys.all, 'book', bookId, 'chapter', chapterNumber] as const,
+  byChapter: (userId: string, bookId: string, chapterNumber: number) =>
+    [...descriptionKeys.all(userId), 'book', bookId, 'chapter', chapterNumber] as const,
 
   /**
    * Описания книги (все главы)
+   * @param userId - ID пользователя
    * @param bookId - ID книги
    */
-  byBook: (bookId: string) =>
-    [...descriptionKeys.all, 'book', bookId] as const,
+  byBook: (userId: string, bookId: string) =>
+    [...descriptionKeys.all(userId), 'book', bookId] as const,
 
   /**
    * NLP анализ главы
+   * @param userId - ID пользователя
    * @param bookId - ID книги
    * @param chapterNumber - Номер главы
    */
-  nlpAnalysis: (bookId: string, chapterNumber: number) =>
-    [...descriptionKeys.byChapter(bookId, chapterNumber), 'nlp'] as const,
+  nlpAnalysis: (userId: string, bookId: string, chapterNumber: number) =>
+    [...descriptionKeys.byChapter(userId, bookId, chapterNumber), 'nlp'] as const,
 };
 
 /**
  * Query keys для работы с изображениями
+ *
+ * SECURITY: Все keys требуют userId для изоляции данных между пользователями
  */
 export const imageKeys = {
   /**
-   * Базовый ключ для всех изображений
+   * Базовый ключ для всех изображений конкретного пользователя
+   * @param userId - ID пользователя
    */
-  all: ['images'] as const,
+  all: (userId: string) => ['images', userId] as const,
 
   /**
    * Изображения конкретной книги
+   * @param userId - ID пользователя
    * @param bookId - ID книги
    * @param chapterNumber - Опциональный номер главы для фильтрации
    */
-  byBook: (bookId: string, chapterNumber?: number) =>
+  byBook: (userId: string, bookId: string, chapterNumber?: number) =>
     chapterNumber !== undefined
-      ? [...imageKeys.all, 'book', bookId, 'chapter', chapterNumber] as const
-      : [...imageKeys.all, 'book', bookId] as const,
+      ? [...imageKeys.all(userId), 'book', bookId, 'chapter', chapterNumber] as const
+      : [...imageKeys.all(userId), 'book', bookId] as const,
 
   /**
    * Изображение для конкретного описания
+   * @param userId - ID пользователя
    * @param descriptionId - ID описания
    */
-  byDescription: (descriptionId: string) =>
-    [...imageKeys.all, 'description', descriptionId] as const,
+  byDescription: (userId: string, descriptionId: string) =>
+    [...imageKeys.all(userId), 'description', descriptionId] as const,
 
   /**
    * Статус генерации изображений
+   * @param userId - ID пользователя
    */
-  generationStatus: () => [...imageKeys.all, 'generation', 'status'] as const,
+  generationStatus: (userId: string) => [...imageKeys.all(userId), 'generation', 'status'] as const,
 
   /**
    * Статистика пользователя по изображениям
+   * @param userId - ID пользователя
    */
-  userStats: () => [...imageKeys.all, 'user', 'stats'] as const,
+  userStats: (userId: string) => [...imageKeys.all(userId), 'user', 'stats'] as const,
 
   /**
-   * Админ-статистика по изображениям
+   * Админ-статистика по изображениям (не зависит от userId)
    */
-  adminStats: () => [...imageKeys.all, 'admin', 'stats'] as const,
+  adminStats: () => ['images', 'admin', 'stats'] as const,
 };
 
 /**
  * Utility функции для работы с query keys
+ *
+ * SECURITY: Все функции требуют userId для изоляции данных между пользователями
  */
 export const queryKeyUtils = {
   /**
    * Инвалидация всех запросов связанных с книгой
+   * @param userId - ID пользователя
    * @param bookId - ID книги
    */
-  invalidateBook: (bookId: string) => [
-    bookKeys.detail(bookId),
-    bookKeys.progress(bookId),
-    chapterKeys.byBook(bookId),
-    descriptionKeys.byBook(bookId),
-    imageKeys.byBook(bookId),
+  invalidateBook: (userId: string, bookId: string) => [
+    bookKeys.detail(userId, bookId),
+    bookKeys.progress(userId, bookId),
+    chapterKeys.byBook(userId, bookId),
+    descriptionKeys.byBook(userId, bookId),
+    imageKeys.byBook(userId, bookId),
   ],
 
   /**
    * Инвалидация всех запросов связанных с главой
+   * @param userId - ID пользователя
    * @param bookId - ID книги
    * @param chapterNumber - Номер главы
    */
-  invalidateChapter: (bookId: string, chapterNumber: number) => [
-    chapterKeys.detail(bookId, chapterNumber),
-    descriptionKeys.byChapter(bookId, chapterNumber),
+  invalidateChapter: (userId: string, bookId: string, chapterNumber: number) => [
+    chapterKeys.detail(userId, bookId, chapterNumber),
+    descriptionKeys.byChapter(userId, bookId, chapterNumber),
   ],
 
   /**
    * Инвалидация после загрузки новой книги
+   * @param userId - ID пользователя
    */
-  invalidateAfterUpload: () => [bookKeys.list(), bookKeys.statistics()],
+  invalidateAfterUpload: (userId: string) => [
+    bookKeys.list(userId),
+    bookKeys.statistics(userId),
+  ],
 
   /**
    * Инвалидация после удаления книги
+   * @param userId - ID пользователя
    * @param bookId - ID удаленной книги
    */
-  invalidateAfterDelete: (bookId: string) => [
-    bookKeys.list(),
-    bookKeys.detail(bookId),
-    bookKeys.statistics(),
-    chapterKeys.byBook(bookId),
-    descriptionKeys.byBook(bookId),
-    imageKeys.byBook(bookId),
+  invalidateAfterDelete: (userId: string, bookId: string) => [
+    bookKeys.list(userId),
+    bookKeys.detail(userId, bookId),
+    bookKeys.statistics(userId),
+    chapterKeys.byBook(userId, bookId),
+    descriptionKeys.byBook(userId, bookId),
+    imageKeys.byBook(userId, bookId),
   ],
 
   /**
    * Инвалидация после генерации изображения
+   * @param userId - ID пользователя
    * @param bookId - ID книги
    * @param descriptionId - ID описания
    */
-  invalidateAfterImageGeneration: (bookId: string, descriptionId: string) => [
-    imageKeys.byBook(bookId),
-    imageKeys.byDescription(descriptionId),
-    imageKeys.userStats(),
+  invalidateAfterImageGeneration: (userId: string, bookId: string, descriptionId: string) => [
+    imageKeys.byBook(userId, bookId),
+    imageKeys.byDescription(userId, descriptionId),
+    imageKeys.userStats(userId),
   ],
 };

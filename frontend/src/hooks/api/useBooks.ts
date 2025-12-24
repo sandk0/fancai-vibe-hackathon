@@ -26,7 +26,7 @@ import {
 import { booksAPI } from '@/api/books';
 import { chapterCache } from '@/services/chapterCache';
 import { imageCache } from '@/services/imageCache';
-import { bookKeys, queryKeyUtils } from './queryKeys';
+import { bookKeys, queryKeyUtils, getCurrentUserId } from './queryKeys';
 import type {
   Book,
   BookDetail,
@@ -74,9 +74,10 @@ export function useBooks(
   >
 ) {
   const queryClient = useQueryClient();
+  const userId = getCurrentUserId();
 
   const query = useQuery({
-    queryKey: bookKeys.list(params),
+    queryKey: bookKeys.list(userId, params),
     queryFn: () => booksAPI.getBooks(params),
     staleTime: 30 * 1000, // 30 секунд - список обновляется довольно часто
     ...options,
@@ -88,7 +89,7 @@ export function useBooks(
       const nextSkip = (params?.skip || 0) + (params?.limit || 10);
       if (nextSkip < query.data.total) {
         queryClient.prefetchQuery({
-          queryKey: bookKeys.list({
+          queryKey: bookKeys.list(userId, {
             ...params,
             skip: nextSkip,
           }),
@@ -100,7 +101,7 @@ export function useBooks(
         });
       }
     }
-  }, [query.data, params, queryClient]);
+  }, [query.data, params, queryClient, userId]);
 
   return query;
 }
@@ -136,8 +137,10 @@ export function useBooksInfinite(
     'queryKey' | 'queryFn' | 'getNextPageParam' | 'initialPageParam'
   >
 ) {
+  const userId = getCurrentUserId();
+
   return useInfiniteQuery({
-    queryKey: bookKeys.list(params),
+    queryKey: bookKeys.list(userId, params),
     queryFn: ({ pageParam }) =>
       booksAPI.getBooks({
         ...params,
@@ -168,8 +171,10 @@ export function useBook(
   bookId: string,
   options?: Omit<UseQueryOptions<BookDetail, Error>, 'queryKey' | 'queryFn'>
 ) {
+  const userId = getCurrentUserId();
+
   return useQuery({
-    queryKey: bookKeys.detail(bookId),
+    queryKey: bookKeys.detail(userId, bookId),
     queryFn: () => booksAPI.getBook(bookId),
     staleTime: 5 * 60 * 1000, // 5 минут - детали книги меняются редко
     enabled: !!bookId, // Не запускать, если нет ID
@@ -195,8 +200,10 @@ export function useReadingProgress(
     'queryKey' | 'queryFn'
   >
 ) {
+  const userId = getCurrentUserId();
+
   return useQuery({
-    queryKey: bookKeys.progress(bookId),
+    queryKey: bookKeys.progress(userId, bookId),
     queryFn: () => booksAPI.getReadingProgress(bookId),
     staleTime: 60 * 1000, // 1 минута - прогресс обновляется часто
     enabled: !!bookId,
@@ -220,8 +227,10 @@ export function useUserStatistics(
     'queryKey' | 'queryFn'
   >
 ) {
+  const userId = getCurrentUserId();
+
   return useQuery({
-    queryKey: bookKeys.statistics(),
+    queryKey: bookKeys.statistics(userId),
     queryFn: async () => {
       const data = await booksAPI.getUserReadingStatistics();
       return data;
@@ -264,6 +273,7 @@ export function useUploadBook(
   >
 ) {
   const queryClient = useQueryClient();
+  const userId = getCurrentUserId();
 
   return useMutation({
     mutationFn: async ({ file, onProgress }) => {
@@ -281,12 +291,12 @@ export function useUploadBook(
     },
     onSuccess: (data) => {
       // Инвалидация списка книг и статистики
-      queryKeyUtils.invalidateAfterUpload().forEach((key) => {
+      queryKeyUtils.invalidateAfterUpload(userId).forEach((key) => {
         queryClient.invalidateQueries({ queryKey: key });
       });
 
       // Сразу добавляем книгу в кэш деталей
-      queryClient.setQueryData(bookKeys.detail(data.book.id), data.book);
+      queryClient.setQueryData(bookKeys.detail(userId, data.book.id), data.book);
     },
     ...options,
   });
@@ -320,23 +330,24 @@ export function useDeleteBook(
   >
 ) {
   const queryClient = useQueryClient();
+  const userId = getCurrentUserId();
 
   return useMutation({
     mutationFn: (bookId: string) => booksAPI.deleteBook(bookId),
     onMutate: async (bookId): Promise<{ previousBooks: unknown }> => {
-      // Cancel outgoing queries
-      await queryClient.cancelQueries({ queryKey: bookKeys.list() });
+      // Cancel outgoing queries - use bookKeys.all(userId) to cancel ALL user's book queries
+      await queryClient.cancelQueries({ queryKey: bookKeys.all(userId) });
 
       // Snapshot previous state для rollback
-      const previousBooks = queryClient.getQueryData(bookKeys.list());
+      const previousBooks = queryClient.getQueryData(bookKeys.list(userId));
 
-      // Оптимистичное удаление из списка
+      // Оптимистичное удаление из списка - update ALL list queries for this user
       queryClient.setQueriesData<{
         books: Book[];
         total: number;
         skip: number;
         limit: number;
-      }>({ queryKey: bookKeys.list() }, (old) => {
+      }>({ queryKey: bookKeys.all(userId) }, (old) => {
         if (!old) return old;
         return {
           ...old,
@@ -358,14 +369,14 @@ export function useDeleteBook(
       });
 
       // Инвалидация всех связанных запросов
-      queryKeyUtils.invalidateAfterDelete(bookId).forEach((key) => {
+      queryKeyUtils.invalidateAfterDelete(userId, bookId).forEach((key) => {
         queryClient.invalidateQueries({ queryKey: key });
       });
     },
     onError: (_error, _bookId, context) => {
       // Rollback на предыдущее состояние
       if (context?.previousBooks) {
-        queryClient.setQueryData(bookKeys.list(), context.previousBooks);
+        queryClient.setQueryData(bookKeys.list(userId), context.previousBooks);
       }
     },
     ...options,
@@ -412,21 +423,22 @@ export function useUpdateReadingProgress(
   >
 ) {
   const queryClient = useQueryClient();
+  const userId = getCurrentUserId();
 
   return useMutation({
     mutationFn: ({ bookId, ...data }) =>
       booksAPI.updateReadingProgress(bookId, data),
     onMutate: async ({ bookId, ...newProgress }): Promise<{ previousProgress: unknown }> => {
       // Cancel queries
-      await queryClient.cancelQueries({ queryKey: bookKeys.progress(bookId) });
+      await queryClient.cancelQueries({ queryKey: bookKeys.progress(userId, bookId) });
 
       // Snapshot
       const previousProgress = queryClient.getQueryData(
-        bookKeys.progress(bookId)
+        bookKeys.progress(userId, bookId)
       );
 
       // Оптимистичное обновление
-      queryClient.setQueryData(bookKeys.progress(bookId), {
+      queryClient.setQueryData(bookKeys.progress(userId, bookId), {
         progress: {
           book_id: bookId,
           current_chapter: newProgress.current_chapter,
@@ -443,11 +455,11 @@ export function useUpdateReadingProgress(
     },
     onSuccess: (data, variables) => {
       // Обновляем кэш прогресса
-      queryClient.setQueryData(bookKeys.progress(variables.bookId), data);
+      queryClient.setQueryData(bookKeys.progress(userId, variables.bookId), data);
 
       // Обновляем процент прогресса в деталях книги
       queryClient.setQueryData<BookDetail>(
-        bookKeys.detail(variables.bookId),
+        bookKeys.detail(userId, variables.bookId),
         (old) => {
           if (!old) return old;
           return {
@@ -469,7 +481,7 @@ export function useUpdateReadingProgress(
         total: number;
         skip: number;
         limit: number;
-      }>({ queryKey: bookKeys.list() }, (old) => {
+      }>({ queryKey: bookKeys.all(userId) }, (old) => {
         if (!old) return old;
         return {
           ...old,
@@ -480,12 +492,15 @@ export function useUpdateReadingProgress(
           ),
         };
       });
+
+      // Также инвалидируем статистику пользователя
+      queryClient.invalidateQueries({ queryKey: bookKeys.statistics(userId) });
     },
     onError: (_error, variables, context) => {
       // Rollback
       if (context?.previousProgress) {
         queryClient.setQueryData(
-          bookKeys.progress(variables.bookId),
+          bookKeys.progress(userId, variables.bookId),
           context.previousProgress
         );
       }

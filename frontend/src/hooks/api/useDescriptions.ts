@@ -19,7 +19,7 @@ import {
 } from '@tanstack/react-query';
 import { booksAPI } from '@/api/books';
 import { chapterCache } from '@/services/chapterCache';
-import { descriptionKeys } from './queryKeys';
+import { descriptionKeys, getCurrentUserId } from './queryKeys';
 import type {
   Description,
   NLPAnalysis,
@@ -64,8 +64,10 @@ export function useChapterDescriptions(
     'queryKey' | 'queryFn'
   >
 ) {
+  const userId = getCurrentUserId();
+
   return useQuery({
-    queryKey: descriptionKeys.byChapter(bookId, chapterNumber),
+    queryKey: descriptionKeys.byChapter(userId, bookId, chapterNumber),
     queryFn: async () => {
       console.log(
         `📝 [useChapterDescriptions] Fetching descriptions for chapter ${chapterNumber}`
@@ -174,13 +176,15 @@ export function useDescriptionsList(
   chapterNumber: number,
   options?: Omit<UseQueryOptions<Description[], Error>, 'queryKey' | 'queryFn'>
 ) {
+  const userId = getCurrentUserId();
+  const queryClient = useQueryClient();
+
   return useQuery({
-    queryKey: [...descriptionKeys.byChapter(bookId, chapterNumber), 'list'],
+    queryKey: [...descriptionKeys.byChapter(userId, bookId, chapterNumber), 'list'],
     queryFn: async () => {
       // Используем данные из основного query если есть
-      const queryClient = useQueryClient();
       const cachedData = queryClient.getQueryData<ChapterDescriptionsResponse>(
-        descriptionKeys.byChapter(bookId, chapterNumber)
+        descriptionKeys.byChapter(userId, bookId, chapterNumber)
       );
 
       if (cachedData && cachedData.nlp_analysis.descriptions.length > 0) {
@@ -236,9 +240,11 @@ export function useDescriptionsByType(
   types: DescriptionType[],
   options?: Omit<UseQueryOptions<Description[], Error>, 'queryKey' | 'queryFn'>
 ) {
+  const userId = getCurrentUserId();
+
   return useQuery({
     queryKey: [
-      ...descriptionKeys.byChapter(bookId, chapterNumber),
+      ...descriptionKeys.byChapter(userId, bookId, chapterNumber),
       'filtered',
       types,
     ],
@@ -283,8 +289,10 @@ export function useNLPAnalysis(
   chapterNumber: number,
   options?: Omit<UseQueryOptions<NLPAnalysis, Error>, 'queryKey' | 'queryFn'>
 ) {
+  const userId = getCurrentUserId();
+
   return useQuery({
-    queryKey: descriptionKeys.nlpAnalysis(bookId, chapterNumber),
+    queryKey: descriptionKeys.nlpAnalysis(userId, bookId, chapterNumber),
     queryFn: async () => {
       const response = await booksAPI.getChapterDescriptions(
         bookId,
@@ -332,8 +340,10 @@ export function useBookDescriptions(
     'queryKey' | 'queryFn'
   >
 ) {
+  const userId = getCurrentUserId();
+
   return useQuery({
-    queryKey: descriptionKeys.byBook(bookId),
+    queryKey: descriptionKeys.byBook(userId, bookId),
     queryFn: async () => {
       // Для этого нужен отдельный API endpoint
       // Пока возвращаем пустой массив
@@ -377,10 +387,11 @@ export function useReextractDescriptions(
   >
 ) {
   const queryClient = useQueryClient();
+  const userId = getCurrentUserId();
 
   return useQuery({
     queryKey: [
-      ...descriptionKeys.byChapter(bookId, chapterNumber),
+      ...descriptionKeys.byChapter(userId, bookId, chapterNumber),
       'reextract',
     ],
     queryFn: async () => {
@@ -396,7 +407,7 @@ export function useReextractDescriptions(
 
       // Обновляем основной кэш descriptions
       queryClient.setQueryData(
-        descriptionKeys.byChapter(bookId, chapterNumber),
+        descriptionKeys.byChapter(userId, bookId, chapterNumber),
         response
       );
 

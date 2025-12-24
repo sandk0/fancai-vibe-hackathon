@@ -1,9 +1,9 @@
 // BookReader AI - Service Worker
-// Version 1.2.0 - Fixed: regex patterns now match trailing slashes for books list
+// Version 1.3.0 - Security Fix: Exclude ALL user-specific API endpoints from SW caching
 
-const CACHE_NAME = 'bookreader-ai-v1.2.0';
-const STATIC_CACHE_NAME = 'bookreader-static-v1.2.0';
-const DYNAMIC_CACHE_NAME = 'bookreader-dynamic-v1.2.0';
+const CACHE_NAME = 'bookreader-ai-v1.3.0';
+const STATIC_CACHE_NAME = 'bookreader-static-v1.3.0';
+const DYNAMIC_CACHE_NAME = 'bookreader-dynamic-v1.3.0';
 
 // Files to cache immediately
 const STATIC_ASSETS = [
@@ -17,21 +17,42 @@ const STATIC_ASSETS = [
   // Add critical CSS and JS files here when available
 ];
 
-// API endpoints to cache (only specific book/chapter details, NOT lists)
-// Note: /api/v1/books (list) is explicitly excluded - managed by TanStack Query
+// API endpoints to cache
+// SECURITY: Only public, non-user-specific endpoints allowed
+// All user-specific data MUST be managed by TanStack Query + IndexedDB
 const API_CACHE_PATTERNS = [
-  /\/api\/v1\/books\/[a-f0-9-]+$/,  // Only specific book by UUID, not list
-  /\/api\/v1\/books\/[a-f0-9-]+\/chapters\/\d+$/,
-  /\/api\/v1\/images\/book\/[a-f0-9-]+$/,
+  // Currently empty - no public API endpoints to cache
+  // All book/chapter/user data is user-specific and handled by TanStack Query
 ];
 
-// API endpoints to NEVER cache (managed by TanStack Query)
-// NOTE: Frontend uses trailing slashes (e.g., /books/ or /books/?skip=0)
+// API endpoints to NEVER cache (all user-specific endpoints)
+// These are managed by TanStack Query + IndexedDB for proper user isolation
 const API_NO_CACHE_PATTERNS = [
-  /\/api\/v1\/books\/?$/,      // Books list (with or without trailing slash)
-  /\/api\/v1\/books\/?\?/,     // Books list with query params (e.g., /books/?skip=0 or /books?skip=0)
-  /\/api\/v1\/auth\//,         // Auth endpoints
-  /\/api\/v1\/admin\//,        // Admin endpoints
+  // Books - user-specific data
+  /\/api\/v1\/books\/?$/,                    // Books list
+  /\/api\/v1\/books\/?\?/,                   // Books list with query params
+  /\/api\/v1\/books\/[a-f0-9-]+/,            // Individual book details + all sub-routes
+
+  // Chapters - user-specific content
+  /\/api\/v1\/chapters\//,                   // All chapter endpoints
+
+  // Reading progress - user-specific tracking
+  /\/api\/v1\/progress\//,                   // Progress endpoints
+
+  // Descriptions - user-specific extractions
+  /\/api\/v1\/descriptions\//,               // Description endpoints
+
+  // Images - user-specific generations
+  /\/api\/v1\/images\//,                     // All image endpoints
+
+  // Users - obviously user-specific
+  /\/api\/v1\/users\//,                      // User profile endpoints
+
+  // Auth - session-specific
+  /\/api\/v1\/auth\//,                       // Auth endpoints
+
+  // Admin - privileged access
+  /\/api\/v1\/admin\//,                      // Admin endpoints
 ];
 
 // Image cache patterns
@@ -263,22 +284,22 @@ async function handleAPIRequest(request) {
 // Handle images - Cache First with long-term storage
 async function handleImageRequest(request) {
   try {
-    const cache = await caches.open('bookreader-images-v1.0.0');
+    const cache = await caches.open('bookreader-images-v1.3.0');
     const cachedResponse = await cache.match(request);
-    
+
     if (cachedResponse) {
       return cachedResponse;
     }
-    
+
     const networkResponse = await fetch(request);
-    
+
     if (networkResponse.ok) {
       cache.put(request, networkResponse.clone());
-      
+
       // Cleanup old image cache entries
-      cleanupCache('bookreader-images-v1.0.0', MAX_CACHE_SIZE.images);
+      cleanupCache('bookreader-images-v1.3.0', MAX_CACHE_SIZE.images);
     }
-    
+
     return networkResponse;
   } catch (error) {
     console.error('[SW] Image request failed:', error);

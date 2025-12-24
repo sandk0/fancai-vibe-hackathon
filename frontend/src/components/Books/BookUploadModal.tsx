@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { booksAPI } from '@/api/books';
 import { useUIStore } from '@/stores/ui';
-import { bookKeys } from '@/hooks/api/queryKeys';
+import { bookKeys, getCurrentUserId } from '@/hooks/api/queryKeys';
 import { useTranslation } from '@/hooks/useTranslation';
 import { getErrorMessage } from '@/utils/errors';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
@@ -102,9 +102,11 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
 
       // Принудительно обновляем кэш TanStack Query
       // invalidateQueries с refetchType: 'all' сразу триггерит refetch всех matching queries
-      console.log('📚 [MUTATION] Invalidating book queries with immediate refetch...');
+      // SECURITY: Используем userId для изоляции кэша между пользователями
+      const userId = getCurrentUserId();
+      console.log('📚 [MUTATION] Invalidating book queries with immediate refetch for userId:', userId);
       await queryClient.invalidateQueries({
-        queryKey: bookKeys.all,
+        queryKey: bookKeys.all(userId),
         refetchType: 'all', // Refetch все queries (не только active)
       });
       console.log('📚 [MUTATION] Book queries invalidated and refetched');
