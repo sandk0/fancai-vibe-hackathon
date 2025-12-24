@@ -74,7 +74,7 @@ export function useChapter(
       );
 
       // 1. Проверяем IndexedDB кэш
-      const cached = await chapterCache.get(bookId, chapterNumber);
+      const cached = await chapterCache.get(userId, bookId, chapterNumber);
       if (cached) {
         console.log(
           `✅ [useChapter] Chapter ${chapterNumber} loaded from IndexedDB cache`
@@ -113,7 +113,7 @@ export function useChapter(
       // 3. Сохраняем в IndexedDB кэш
       if (response.descriptions) {
         await chapterCache
-          .set(bookId, chapterNumber, response.descriptions, [])
+          .set(userId, bookId, chapterNumber, response.descriptions, [])
           .catch((err) => {
             console.warn(
               `⚠️ [useChapter] Failed to cache chapter ${chapterNumber}:`,

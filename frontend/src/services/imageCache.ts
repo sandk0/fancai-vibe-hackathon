@@ -15,13 +15,13 @@
  */
 
 const DB_NAME = 'BookReaderImageCache';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Incremented for userId migration
 const STORE_NAME = 'images';
 const CACHE_EXPIRATION_DAYS = 7;
 const MAX_CACHE_SIZE_MB = 100; // Maximum cache size in MB
 
 interface CachedImage {
-  id: string; // description_id
+  id: string; // userId:descriptionId
   blob: Blob;
   url: string; // Original URL for fallback
   mimeType: string;
@@ -29,6 +29,7 @@ interface CachedImage {
   cachedAt: number; // Timestamp
   bookId: string;
   descriptionId: string;
+  userId: string; // NEW: для изоляции данных между пользователями
 }
 
 interface CacheStats {
@@ -89,6 +90,7 @@ class ImageCacheService {
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
+        const oldVersion = event.oldVersion;
 
         // Create images store
         if (!db.objectStoreNames.contains(STORE_NAME)) {
@@ -97,9 +99,24 @@ class ImageCacheService {
           // Indexes for querying
           store.createIndex('bookId', 'bookId', { unique: false });
           store.createIndex('cachedAt', 'cachedAt', { unique: false });
-          store.createIndex('descriptionId', 'descriptionId', { unique: true });
+          store.createIndex('descriptionId', 'descriptionId', { unique: false }); // Changed to non-unique
+          store.createIndex('userId', 'userId', { unique: false }); // NEW: для фильтрации по пользователю
 
           console.log('✅ [ImageCache] IndexedDB store created');
+        } else if (oldVersion < 2) {
+          // Migration: удаляем старые данные без userId
+          console.log('🔄 [ImageCache] Migrating to v2 (userId isolation)...');
+          const transaction = (event.target as IDBOpenDBRequest).transaction!;
+          const store = transaction.objectStore(STORE_NAME);
+
+          // Добавляем новый индекс userId если его нет
+          if (!store.indexNames.contains('userId')) {
+            store.createIndex('userId', 'userId', { unique: false });
+          }
+
+          // Очищаем старые записи без userId
+          store.clear();
+          console.log('✅ [ImageCache] Migration complete - old cache cleared');
         }
       };
     });
@@ -109,15 +126,19 @@ class ImageCacheService {
 
   /**
    * Check if image is cached
+   *
+   * @param userId - User ID для изоляции данных
+   * @param descriptionId - Description ID для поиска
    */
-  async has(descriptionId: string): Promise<boolean> {
+  async has(userId: string, descriptionId: string): Promise<boolean> {
     try {
       const db = await this.getDB();
+      const cacheKey = this.getCacheKey(userId, descriptionId);
+
       return new Promise((resolve) => {
         const transaction = db.transaction(STORE_NAME, 'readonly');
         const store = transaction.objectStore(STORE_NAME);
-        const index = store.index('descriptionId');
-        const request = index.get(descriptionId);
+        const request = store.get(cacheKey);
 
         request.onsuccess = () => {
           const cached = request.result as CachedImage | undefined;
@@ -142,13 +163,27 @@ class ImageCacheService {
   }
 
   /**
+   * Генерация ключа кэша с учётом userId
+   *
+   * @param userId - User ID
+   * @param descriptionId - Description ID
+   * @returns Ключ формата "userId:descriptionId"
+   */
+  private getCacheKey(userId: string, descriptionId: string): string {
+    return `${userId}:${descriptionId}`;
+  }
+
+  /**
    * Get cached image as object URL
    * Returns null if not cached or expired
    *
    * ВАЖНО: Полученный URL необходимо освободить через release() когда он больше не нужен,
    * иначе будет memory leak!
+   *
+   * @param userId - User ID для изоляции данных
+   * @param descriptionId - Description ID для поиска
    */
-  async get(descriptionId: string): Promise<string | null> {
+  async get(userId: string, descriptionId: string): Promise<string | null> {
     try {
       // Проверяем, есть ли уже созданный Object URL
       const existing = this.objectURLs.get(descriptionId);
@@ -158,11 +193,12 @@ class ImageCacheService {
       }
 
       const db = await this.getDB();
+      const cacheKey = this.getCacheKey(userId, descriptionId);
+
       return new Promise((resolve) => {
         const transaction = db.transaction(STORE_NAME, 'readonly');
         const store = transaction.objectStore(STORE_NAME);
-        const index = store.index('descriptionId');
-        const request = index.get(descriptionId);
+        const request = store.get(cacheKey);
 
         request.onsuccess = () => {
           const cached = request.result as CachedImage | undefined;
@@ -171,7 +207,7 @@ class ImageCacheService {
             if (this.isExpired(cached.cachedAt)) {
               console.log('⏰ [ImageCache] Cache expired for:', descriptionId);
               // Delete expired entry asynchronously
-              this.delete(descriptionId).catch(() => {});
+              this.delete(userId, descriptionId).catch(() => {});
               resolve(null);
             } else {
               // Create object URL from blob
@@ -240,8 +276,14 @@ class ImageCacheService {
   /**
    * Store image in cache
    * Downloads the image from URL and stores as blob
+   *
+   * @param userId - User ID для изоляции данных
+   * @param descriptionId - Description ID
+   * @param imageUrl - URL изображения для загрузки
+   * @param bookId - Book ID для группировки
    */
   async set(
+    userId: string,
     descriptionId: string,
     imageUrl: string,
     bookId: string
@@ -260,15 +302,17 @@ class ImageCacheService {
       const mimeType = blob.type || 'image/png';
 
       // Check cache size before adding
-      await this.ensureCacheSize(blob.size);
+      await this.ensureCacheSize(userId, blob.size);
 
       const db = await this.getDB();
+      const cacheKey = this.getCacheKey(userId, descriptionId);
+
       return new Promise((resolve) => {
         const transaction = db.transaction(STORE_NAME, 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
 
         const cachedImage: CachedImage = {
-          id: `${bookId}_${descriptionId}`,
+          id: cacheKey,
           blob,
           url: imageUrl,
           mimeType,
@@ -276,12 +320,14 @@ class ImageCacheService {
           cachedAt: Date.now(),
           bookId,
           descriptionId,
+          userId,
         };
 
         const request = store.put(cachedImage);
 
         request.onsuccess = () => {
           console.log('✅ [ImageCache] Image cached:', {
+            userId,
             descriptionId,
             size: (blob.size / 1024).toFixed(1) + 'KB',
           });
@@ -302,36 +348,32 @@ class ImageCacheService {
   /**
    * Delete cached image
    * Также освобождает соответствующий Object URL если он существует
+   *
+   * @param userId - User ID для изоляции данных
+   * @param descriptionId - Description ID для удаления
    */
-  async delete(descriptionId: string): Promise<boolean> {
+  async delete(userId: string, descriptionId: string): Promise<boolean> {
     try {
       // Освобождаем Object URL если он существует
       this.release(descriptionId);
 
       const db = await this.getDB();
+      const cacheKey = this.getCacheKey(userId, descriptionId);
+
       return new Promise((resolve) => {
         const transaction = db.transaction(STORE_NAME, 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
-        const index = store.index('descriptionId');
+        const deleteRequest = store.delete(cacheKey);
 
-        // First find the record by descriptionId
-        const getRequest = index.get(descriptionId);
-
-        getRequest.onsuccess = () => {
-          const cached = getRequest.result as CachedImage | undefined;
-          if (cached) {
-            const deleteRequest = store.delete(cached.id);
-            deleteRequest.onsuccess = () => {
-              console.log('🗑️ [ImageCache] Deleted:', descriptionId);
-              resolve(true);
-            };
-            deleteRequest.onerror = () => resolve(false);
-          } else {
-            resolve(false);
-          }
+        deleteRequest.onsuccess = () => {
+          console.log('🗑️ [ImageCache] Deleted:', descriptionId);
+          resolve(true);
         };
 
-        getRequest.onerror = () => resolve(false);
+        deleteRequest.onerror = () => {
+          console.warn('⚠️ [ImageCache] Error deleting:', deleteRequest.error);
+          resolve(false);
+        };
       });
     } catch (err) {
       console.warn('⚠️ [ImageCache] Error deleting:', err);
@@ -342,8 +384,11 @@ class ImageCacheService {
   /**
    * Clear all cached images for a book
    * Также освобождает все связанные Object URLs
+   *
+   * @param userId - User ID для изоляции данных
+   * @param bookId - Book ID для очистки
    */
-  async clearBook(bookId: string): Promise<number> {
+  async clearBook(userId: string, bookId: string): Promise<number> {
     try {
       const db = await this.getDB();
       return new Promise((resolve) => {
@@ -358,16 +403,25 @@ class ImageCacheService {
           const cursor = request.result;
           if (cursor) {
             const cached = cursor.value as CachedImage;
-            descriptionIds.push(cached.descriptionId);
-            cursor.delete();
-            deletedCount++;
+
+            // Проверяем, что это изображение принадлежит текущему пользователю
+            if (cached.userId === userId) {
+              descriptionIds.push(cached.descriptionId);
+              cursor.delete();
+              deletedCount++;
+            }
+
             cursor.continue();
           } else {
             // Освобождаем все Object URLs для этой книги
             if (descriptionIds.length > 0) {
               this.releaseMany(descriptionIds);
             }
-            console.log('🗑️ [ImageCache] Cleared book cache:', bookId, deletedCount);
+            console.log('🗑️ [ImageCache] Cleared book cache:', {
+              userId,
+              bookId,
+              deletedCount,
+            });
             resolve(deletedCount);
           }
         };
@@ -381,9 +435,11 @@ class ImageCacheService {
   }
 
   /**
-   * Clear all expired entries
+   * Clear all expired entries for a specific user
+   *
+   * @param userId - User ID для очистки устаревших данных
    */
-  async clearExpired(): Promise<number> {
+  async clearExpired(userId: string): Promise<number> {
     try {
       const db = await this.getDB();
       const expirationTime = Date.now() - CACHE_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
@@ -391,18 +447,24 @@ class ImageCacheService {
       return new Promise((resolve) => {
         const transaction = db.transaction(STORE_NAME, 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
-        const index = store.index('cachedAt');
-        const request = index.openCursor(IDBKeyRange.upperBound(expirationTime));
+        const index = store.index('userId');
+        const request = index.openCursor(IDBKeyRange.only(userId));
         let deletedCount = 0;
 
         request.onsuccess = () => {
           const cursor = request.result;
           if (cursor) {
-            cursor.delete();
-            deletedCount++;
+            const cached = cursor.value as CachedImage;
+            if (cached.cachedAt < expirationTime) {
+              cursor.delete();
+              deletedCount++;
+            }
             cursor.continue();
           } else {
-            console.log('🧹 [ImageCache] Cleared expired entries:', deletedCount);
+            console.log('🧹 [ImageCache] Cleared expired entries:', {
+              userId,
+              deletedCount,
+            });
             resolve(deletedCount);
           }
         };
@@ -416,38 +478,73 @@ class ImageCacheService {
   }
 
   /**
-   * Clear entire cache
+   * Clear all cached images for a specific user
+   * Очищает только данные указанного пользователя, не затрагивая других
+   *
+   * @param userId - User ID для очистки данных
    */
-  async clearAll(): Promise<void> {
+  async clearAll(userId: string): Promise<number> {
     try {
       const db = await this.getDB();
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve) => {
         const transaction = db.transaction(STORE_NAME, 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
-        const request = store.clear();
+        const index = store.index('userId');
+        const request = index.openCursor(IDBKeyRange.only(userId));
+        let deletedCount = 0;
+        const descriptionIds: string[] = [];
 
         request.onsuccess = () => {
-          console.log('🗑️ [ImageCache] All cache cleared');
-          resolve();
+          const cursor = request.result;
+          if (cursor) {
+            const cached = cursor.value as CachedImage;
+            descriptionIds.push(cached.descriptionId);
+            cursor.delete();
+            deletedCount++;
+            cursor.continue();
+          } else {
+            // Освобождаем все Object URLs для этого пользователя
+            if (descriptionIds.length > 0) {
+              this.releaseMany(descriptionIds);
+            }
+            console.log('🗑️ [ImageCache] All cache cleared for user:', {
+              userId,
+              deletedCount,
+            });
+            resolve(deletedCount);
+          }
         };
 
-        request.onerror = () => reject(request.error);
+        request.onerror = () => {
+          console.warn('⚠️ [ImageCache] Error clearing user cache:', request.error);
+          resolve(deletedCount);
+        };
       });
     } catch (err) {
       console.warn('⚠️ [ImageCache] Error clearing all:', err);
+      return 0;
     }
   }
 
   /**
-   * Get cache statistics
+   * Get cache statistics for a specific user
+   *
+   * @param userId - User ID для получения статистики (опционально, если не указан - для всех)
    */
-  async getStats(): Promise<CacheStats> {
+  async getStats(userId?: string): Promise<CacheStats> {
     try {
       const db = await this.getDB();
       return new Promise((resolve) => {
         const transaction = db.transaction(STORE_NAME, 'readonly');
         const store = transaction.objectStore(STORE_NAME);
-        const request = store.openCursor();
+
+        let request: IDBRequest;
+        if (userId) {
+          const index = store.index('userId');
+          request = index.openCursor(IDBKeyRange.only(userId));
+        } else {
+          request = store.openCursor();
+        }
 
         const stats: CacheStats = {
           totalImages: 0,
@@ -474,6 +571,7 @@ class ImageCacheService {
             cursor.continue();
           } else {
             console.log('📊 [ImageCache] Stats:', {
+              userId: userId || 'all',
               images: stats.totalImages,
               size: (stats.totalSizeBytes / 1024 / 1024).toFixed(2) + 'MB',
             });
@@ -508,49 +606,77 @@ class ImageCacheService {
   }
 
   /**
-   * Ensure cache doesn't exceed size limit
+   * Ensure cache doesn't exceed size limit for a specific user
    * Deletes oldest entries if necessary
+   *
+   * @param userId - User ID для проверки размера кэша
+   * @param newEntrySize - Размер нового элемента в байтах
    */
-  private async ensureCacheSize(newEntrySize: number): Promise<void> {
-    const stats = await this.getStats();
+  private async ensureCacheSize(userId: string, newEntrySize: number): Promise<void> {
+    const stats = await this.getStats(userId);
     const maxSizeBytes = MAX_CACHE_SIZE_MB * 1024 * 1024;
 
     if (stats.totalSizeBytes + newEntrySize > maxSizeBytes) {
       console.log('⚠️ [ImageCache] Cache size exceeded, cleaning oldest entries...');
 
       // Clear expired first
-      await this.clearExpired();
+      await this.clearExpired(userId);
 
       // If still over limit, delete oldest entries
-      const newStats = await this.getStats();
+      const newStats = await this.getStats(userId);
       if (newStats.totalSizeBytes + newEntrySize > maxSizeBytes) {
-        await this.deleteOldest(Math.ceil((newStats.totalSizeBytes + newEntrySize - maxSizeBytes) / (50 * 1024))); // Assume ~50KB per image
+        await this.deleteOldest(userId, Math.ceil((newStats.totalSizeBytes + newEntrySize - maxSizeBytes) / (50 * 1024))); // Assume ~50KB per image
       }
     }
   }
 
   /**
-   * Delete oldest N entries
+   * Delete oldest N entries for a specific user
+   *
+   * @param userId - User ID для очистки старых записей
+   * @param count - Количество записей для удаления
    */
-  private async deleteOldest(count: number): Promise<void> {
+  private async deleteOldest(userId: string, count: number): Promise<void> {
     try {
       const db = await this.getDB();
       return new Promise((resolve) => {
         const transaction = db.transaction(STORE_NAME, 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
-        const index = store.index('cachedAt');
-        const request = index.openCursor();
-        let deleted = 0;
+        const index = store.index('userId');
+        const request = index.openCursor(IDBKeyRange.only(userId));
+
+        // Собираем все записи пользователя с их датами
+        const entries: Array<{ id: string; cachedAt: number }> = [];
 
         request.onsuccess = () => {
           const cursor = request.result;
-          if (cursor && deleted < count) {
-            cursor.delete();
-            deleted++;
+          if (cursor) {
+            const cached = cursor.value as CachedImage;
+            entries.push({ id: cached.id, cachedAt: cached.cachedAt });
             cursor.continue();
           } else {
-            console.log('🧹 [ImageCache] Deleted oldest entries:', deleted);
-            resolve();
+            // Сортируем по дате (старые первыми) и удаляем N самых старых
+            entries.sort((a, b) => a.cachedAt - b.cachedAt);
+            const toDelete = entries.slice(0, count);
+
+            let deleted = 0;
+            toDelete.forEach((entry) => {
+              const deleteRequest = store.delete(entry.id);
+              deleteRequest.onsuccess = () => {
+                deleted++;
+                if (deleted === toDelete.length) {
+                  console.log('🧹 [ImageCache] Deleted oldest entries:', {
+                    userId,
+                    deleted,
+                  });
+                  resolve();
+                }
+              };
+            });
+
+            if (toDelete.length === 0) {
+              resolve();
+            }
           }
         };
 

@@ -102,10 +102,11 @@ export function useBookImages(
           response.images.map(async (image) => {
             try {
               // Проверяем, есть ли уже в кэше
-              const cached = await imageCache.get(image.description.id);
+              const cached = await imageCache.get(userId, image.description.id);
               if (!cached) {
                 // Загружаем и кэшируем
                 await imageCache.set(
+                  userId,
                   image.description.id,
                   image.image_url,
                   bookId
@@ -163,7 +164,7 @@ export function useImageForDescription(
       );
 
       // 1. Проверяем IndexedDB кэш
-      const cachedUrl = await imageCache.get(descriptionId);
+      const cachedUrl = await imageCache.get(userId, descriptionId);
       if (cachedUrl) {
         console.log(
           `✅ [useImageForDescription] Image loaded from IndexedDB cache`
@@ -203,6 +204,7 @@ export function useImageForDescription(
       // 3. Кэшируем
       try {
         await imageCache.set(
+          userId,
           descriptionId,
           image.image_url,
           image.chapter.id // bookId (на самом деле это chapterId, но пойдет)
@@ -281,6 +283,7 @@ export function useGenerateImage(
       // Кэшируем сгенерированное изображение
       try {
         await imageCache.set(
+          userId,
           variables.descriptionId,
           data.image_url,
           '' // bookId неизвестен здесь
@@ -361,6 +364,7 @@ export function useBatchGenerateImages(
         data.images.map(async (image) => {
           try {
             await imageCache.set(
+              userId,
               image.description_id,
               image.image_url,
               '' // bookId неизвестен
@@ -479,6 +483,7 @@ export function useRegenerateImage(
       // Обновляем кэш
       try {
         await imageCache.set(
+          userId,
           data.description_id,
           data.image_url,
           '' // bookId неизвестен

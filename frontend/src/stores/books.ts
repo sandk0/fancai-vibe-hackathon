@@ -7,6 +7,7 @@ import type { BooksState } from '@/types/state';
 import { getErrorMessage } from '@/utils/errors';
 import { chapterCache } from '@/services/chapterCache';
 import { imageCache } from '@/services/imageCache';
+import { useAuthStore } from '@/stores/auth';
 
 export const useBooksStore = create<BooksState>((set, get) => ({
   // Initial state
@@ -191,12 +192,15 @@ export const useBooksStore = create<BooksState>((set, get) => ({
 
       // Очистка кэшей для удаляемой книги
       console.log('🗑️ [BooksStore] Clearing caches for deleted book:', bookId);
-      await Promise.all([
-        chapterCache.clearBook(bookId),
-        imageCache.clearBook(bookId),
-      ]).catch((err) => {
-        console.warn('⚠️ [BooksStore] Error clearing caches:', err);
-      });
+      const userId = useAuthStore.getState().user?.id;
+      if (userId) {
+        await Promise.all([
+          chapterCache.clearBook(userId, bookId),
+          imageCache.clearBook(userId, bookId),
+        ]).catch((err) => {
+          console.warn('⚠️ [BooksStore] Error clearing caches:', err);
+        });
+      }
 
       // Remove book from current list
       const { books } = get();

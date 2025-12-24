@@ -74,7 +74,7 @@ export function useChapterDescriptions(
       );
 
       // 1. Проверяем chapterCache
-      const cached = await chapterCache.get(bookId, chapterNumber);
+      const cached = await chapterCache.get(userId, bookId, chapterNumber);
       if (cached && cached.descriptions.length > 0) {
         console.log(
           `✅ [useChapterDescriptions] Descriptions loaded from cache: ${cached.descriptions.length}`
@@ -136,7 +136,7 @@ export function useChapterDescriptions(
       // 4. Сохраняем в кэш
       if (response.nlp_analysis.descriptions.length > 0) {
         await chapterCache
-          .set(bookId, chapterNumber, response.nlp_analysis.descriptions, [])
+          .set(userId, bookId, chapterNumber, response.nlp_analysis.descriptions, [])
           .catch((err) => {
             console.warn(
               `⚠️ [useChapterDescriptions] Failed to cache descriptions:`,
@@ -413,7 +413,7 @@ export function useReextractDescriptions(
 
       // Обновляем chapterCache
       await chapterCache
-        .set(bookId, chapterNumber, response.nlp_analysis.descriptions, [])
+        .set(userId, bookId, chapterNumber, response.nlp_analysis.descriptions, [])
         .catch((err) => {
           console.warn('⚠️ [useReextractDescriptions] Failed to update cache:', err);
         });

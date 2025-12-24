@@ -29,6 +29,7 @@ import { booksAPI } from '@/api/books';
 import { imagesAPI } from '@/api/images';
 import type { Description, GeneratedImage } from '@/types/api';
 import { chapterCache } from '@/services/chapterCache';
+import { getCurrentUserId } from '@/hooks/api/queryKeys';
 
 interface UseChapterManagementOptions {
   book: Book | null;
@@ -51,6 +52,7 @@ export const useChapterManagement = ({
   bookId,
   getChapterNumberByLocation,
 }: UseChapterManagementOptions): UseChapterManagementReturn => {
+  const userId = getCurrentUserId();
   const [currentChapter, setCurrentChapter] = useState<number>(1);
   const [descriptions, setDescriptions] = useState<Description[]>([]);
   const [images, setImages] = useState<GeneratedImage[]>([]);
@@ -120,7 +122,7 @@ export const useChapterManagement = ({
       console.log('📚 [useChapterManagement] Loading data for chapter:', chapter);
 
       // Проверяем кэш
-      const cachedData = await chapterCache.get(bookId, chapter);
+      const cachedData = await chapterCache.get(userId, bookId, chapter);
 
       // Проверяем кэш ТОЛЬКО если там есть описания
       if (cachedData && cachedData.descriptions.length > 0) {
@@ -192,7 +194,7 @@ export const useChapterManagement = ({
       const loadedImages = imagesResponse.images;
 
       // Сохраняем в кэш
-      await chapterCache.set(bookId, chapter, loadedDescriptions, loadedImages);
+      await chapterCache.set(userId, bookId, chapter, loadedDescriptions, loadedImages);
 
       setDescriptions(loadedDescriptions);
       setImages(loadedImages);
@@ -206,7 +208,7 @@ export const useChapterManagement = ({
       setImages([]);
       setIsLoadingChapter(false);
     }
-  }, [bookId]);
+  }, [userId, bookId]);
 
   /**
    * Prefetch следующей главы в фоне
@@ -217,7 +219,7 @@ export const useChapterManagement = ({
 
     try {
       // Проверяем, есть ли уже в кэше
-      const cachedData = await chapterCache.get(bookId, nextChapter);
+      const cachedData = await chapterCache.get(userId, bookId, nextChapter);
       if (cachedData && cachedData.descriptions.length > 0) {
         console.log(`📦 [useChapterManagement] Next chapter ${nextChapter} already cached`);
         return;
@@ -253,14 +255,14 @@ export const useChapterManagement = ({
       const imagesResponse = await imagesAPI.getBookImages(bookId, nextChapter);
 
       // Сохраняем в кэш
-      await chapterCache.set(bookId, nextChapter, loadedDescriptions, imagesResponse.images);
+      await chapterCache.set(userId, bookId, nextChapter, loadedDescriptions, imagesResponse.images);
 
       console.log(`✅ [useChapterManagement] Prefetched chapter ${nextChapter}: ${loadedDescriptions.length} descriptions, ${imagesResponse.images.length} images`);
     } catch (error) {
       // Тихо игнорируем ошибки prefetch - это не критично
       console.warn(`⚠️ [useChapterManagement] Prefetch failed for chapter ${nextChapter}:`, error);
     }
-  }, [bookId]);
+  }, [userId, bookId]);
 
   /**
    * Listen to relocated events to detect chapter changes

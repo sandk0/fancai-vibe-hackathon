@@ -227,15 +227,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
 
         # ========================================================================
-        # 9. Cache-Control для sensitive endpoints
+        # 9. Cache-Control Headers
         # ========================================================================
-        # Для authentication endpoints и user data - запрещаем кэширование
-        if any(
-            path in request.url.path
-            for path in ["/auth/", "/users/me", "/api/v1/admin/"]
-        ):
-            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
-            response.headers["Pragma"] = "no-cache"
+        # NOTE: Cache-Control logic moved to CacheControlMiddleware (cache_control.py)
+        # Это middleware теперь не устанавливает Cache-Control headers
+        # для избежания конфликтов и дублирования логики.
+        # См. app/middleware/cache_control.py для полной cache strategy.
 
         # ========================================================================
         # 10. Server Header Removal (информация о сервере)

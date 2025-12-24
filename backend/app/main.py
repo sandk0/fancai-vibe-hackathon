@@ -30,6 +30,7 @@ from .core.cache import cache_manager
 from .core.secrets import startup_secrets_check
 from .services.settings_manager import settings_manager
 from .middleware.security_headers import SecurityHeadersMiddleware
+from .middleware.cache_control import CacheControlMiddleware
 from .middleware.rate_limit import rate_limiter, rate_limit
 
 # Версия приложения
@@ -62,11 +63,18 @@ app.add_middleware(
     compresslevel=6,  # Баланс скорость/размер (1=fastest, 9=best compression)
 )
 
-# 2. Security Headers Middleware (добавляется вторым, выполняется предпоследним)
+# 2. Cache-Control Middleware (добавляется вторым, выполняется третьим)
+# Управляет HTTP кэшированием для optimal performance + security
+# - User-specific endpoints: private, no-cache (предотвращает кэширование личных данных)
+# - Static files: public, max-age=31536000, immutable (агрессивное кэширование)
+# - Admin/Auth: no-store (максимальная безопасность)
+app.add_middleware(CacheControlMiddleware)
+
+# 3. Security Headers Middleware (добавляется третьим, выполняется предпоследним)
 # Защита от XSS, clickjacking, MIME sniffing, etc.
 app.add_middleware(SecurityHeadersMiddleware)
 
-# 3. CORS Middleware (добавляется последним, выполняется ПЕРВЫМ)
+# 4. CORS Middleware (добавляется последним, выполняется ПЕРВЫМ)
 # КРИТИЧЕСКИ ВАЖНО: должен быть последним чтобы обрабатывать preflight запросы до всех остальных middleware
 app.add_middleware(
     CORSMiddleware,

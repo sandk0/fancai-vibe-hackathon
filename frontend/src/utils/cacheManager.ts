@@ -81,9 +81,19 @@ export async function clearAllCaches(): Promise<ClearCacheResult> {
 
   // 2. Clear IndexedDB chapter cache
   try {
-    await chapterCache.clearAll();
-    result.chapterCacheCleared = true;
-    console.log('✅ [CacheManager] Chapter cache cleared');
+    // NOTE: clearAll теперь требует userId
+    const { useAuthStore } = await import('@/stores/auth');
+    const userId = useAuthStore.getState().user?.id;
+
+    if (userId) {
+      await chapterCache.clearAll(userId);
+      result.chapterCacheCleared = true;
+      console.log('✅ [CacheManager] Chapter cache cleared for user:', userId);
+    } else {
+      // Если нет userId (уже разлогинились), пропускаем
+      result.chapterCacheCleared = true;
+      console.log('ℹ️ [CacheManager] No userId available, skipping chapter cache clear');
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     result.errors.push(`Chapter cache: ${message}`);
@@ -92,9 +102,20 @@ export async function clearAllCaches(): Promise<ClearCacheResult> {
 
   // 3. Clear IndexedDB image cache
   try {
-    await imageCache.clearAll();
-    result.imageCacheCleared = true;
-    console.log('✅ [CacheManager] Image cache cleared');
+    // NOTE: clearAll теперь требует userId, но на logout мы очищаем ВСЕ данные
+    // Получаем userId из auth store перед очисткой
+    const { useAuthStore } = await import('@/stores/auth');
+    const userId = useAuthStore.getState().user?.id;
+
+    if (userId) {
+      await imageCache.clearAll(userId);
+      result.imageCacheCleared = true;
+      console.log('✅ [CacheManager] Image cache cleared for user:', userId);
+    } else {
+      // Если нет userId (уже разлогинились), пропускаем
+      result.imageCacheCleared = true;
+      console.log('ℹ️ [CacheManager] No userId available, skipping image cache clear');
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     result.errors.push(`Image cache: ${message}`);

@@ -362,8 +362,8 @@ export function useDeleteBook(
       // Очистка кэшей глав и изображений
       console.log('🗑️ [useDeleteBook] Clearing caches for book:', bookId);
       await Promise.all([
-        chapterCache.clearBook(bookId),
-        imageCache.clearBook(bookId),
+        chapterCache.clearBook(userId, bookId),
+        imageCache.clearBook(userId, bookId),
       ]).catch((err) => {
         console.warn('⚠️ [useDeleteBook] Error clearing caches:', err);
       });

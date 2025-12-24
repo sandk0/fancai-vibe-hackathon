@@ -18,6 +18,7 @@ import type { Description, GeneratedImage } from '@/types/api';
 import { imagesAPI } from '@/api/images';
 import { notify } from '@/stores/ui';
 import { imageCache } from '@/services/imageCache';
+import { getCurrentUserId } from '@/hooks/api/queryKeys';
 
 export type GenerationStatus = 'idle' | 'generating' | 'completed' | 'error';
 
@@ -63,7 +64,8 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
     async (descriptionId: string): Promise<string | null> => {
       if (!enableCache || !bookId) return null;
       try {
-        return await imageCache.get(descriptionId);
+        const userId = getCurrentUserId();
+        return await imageCache.get(userId, descriptionId);
       } catch {
         return null;
       }
@@ -78,7 +80,8 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
     async (descriptionId: string, imageUrl: string): Promise<void> => {
       if (!enableCache || !bookId) return;
       try {
-        await imageCache.set(descriptionId, imageUrl, bookId);
+        const userId = getCurrentUserId();
+        await imageCache.set(userId, descriptionId, imageUrl, bookId);
       } catch (err) {
         console.warn('⚠️ [useImageModal] Failed to cache image:', err);
       }
