@@ -5,7 +5,7 @@
  * Проверяем аутентификацию, регистрацию и управление токенами.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useAuthStore } from '../auth';
 import { authAPI } from '@/api/auth';
