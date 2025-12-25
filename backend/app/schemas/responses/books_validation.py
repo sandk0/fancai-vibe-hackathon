@@ -10,7 +10,7 @@ Version: Phase 1.4 Type Safety (2025-11-29)
 """
 
 from pydantic import BaseModel, Field
-from typing import Dict, Any, List, Optional
+from typing import List, Optional
 
 
 class ParserStatusResponse(BaseModel):

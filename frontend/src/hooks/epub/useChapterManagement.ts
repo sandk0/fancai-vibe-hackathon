@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useChapterManagement - Custom hook for managing chapter tracking and loading
  *
@@ -99,13 +98,13 @@ export const useChapterManagement = ({
       }
 
       // Fallback: use spine index + 1 (old behavior, less reliable)
-      const spine = (book as any).spine;
+      const spine = book.spine;
       if (!spine || !spine.items) {
         console.warn('⚠️ [useChapterManagement] No spine items');
         return 1;
       }
 
-      const spineIndex = spine.items.findIndex((item: any) => {
+      const spineIndex = spine.items.findIndex((item) => {
         return item.href === currentHref || item.href.includes(currentHref);
       });
 

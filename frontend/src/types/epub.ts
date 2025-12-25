@@ -73,7 +73,7 @@ export interface Rendition {
     };
   };
   on(event: string, callback: (...args: unknown[]) => void): void;
-  off(event: string, callback?: (...args: unknown[]) => void): void;
+  off(event?: string, callback?: (...args: unknown[]) => void): void;
   currentLocation(): Location | null;
   annotations: {
     add(
@@ -112,6 +112,7 @@ export interface EpubLocations {
   load(locations: string): void;
   currentLocation(target: string): number;
   cfiFromLocation(location: number): string;
+  cfiFromPercentage(percentage: number): string;
   locationFromCfi(cfi: string): number;
   percentageFromCfi(cfi: string): number;
   percentageFromLocation(location: number): number;
@@ -134,6 +135,7 @@ export interface Book {
   };
   locations: EpubLocations;
   rendition(options?: RenditionOptions): Rendition;
+  renderTo(element: HTMLElement, options?: RenditionOptions): Rendition;
   coverUrl(): Promise<string | null>;
   loaded: {
     cover: Promise<string | null>;

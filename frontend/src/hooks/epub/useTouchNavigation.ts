@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useTouchNavigation - Touch and swipe gestures for EPUB navigation
  *
@@ -24,8 +23,9 @@ import type { Rendition } from '@/types/epub';
 // Tap detection constants
 const TAP_MAX_DURATION = 200; // ms - maximum duration to be considered a tap
 const TAP_MAX_MOVEMENT = 10; // px - maximum movement to be considered a tap
-const LEFT_ZONE_END = 0.25; // 25% from left edge
-const RIGHT_ZONE_START = 0.75; // 75% from left (25% from right)
+// Reserved for future tap zone detection:
+// const LEFT_ZONE_END = 0.25; // 25% from left edge
+// const RIGHT_ZONE_START = 0.75; // 75% from left (25% from right)
 
 interface UseTouchNavigationOptions {
   rendition: Rendition | null;
@@ -71,9 +71,6 @@ export const useTouchNavigation = ({
     const deltaY = touchEnd.y - touchStartRef.current.y;
     const deltaTime = touchEnd.time - touchStartRef.current.time;
     const touchDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-
-    // Store touch start position for tap detection
-    const touchStartX = touchStartRef.current.x;
 
     // Reset touch start
     touchStartRef.current = null;
@@ -144,7 +141,7 @@ export const useTouchNavigation = ({
     // Get the iframe container
     const getContainer = () => {
       try {
-        const contents = rendition.getContents() as any;
+        const contents = rendition.getContents();
         if (contents && contents.length > 0) {
           return contents[0].document;
         }

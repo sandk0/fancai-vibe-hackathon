@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useTextSelection - Handles text selection in EPUB
  *
@@ -24,7 +23,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import type { Rendition } from '@/types/epub';
+import type { Rendition, Contents } from '@/types/epub';
 
 export interface Selection {
   text: string;
@@ -53,7 +52,7 @@ export const useTextSelection = (
      * Handle 'selected' event from epub.js
      * This fires when user selects text in the EPUB viewer
      */
-    const handleSelected = (cfiRange: string, contents: any) => {
+    const handleSelected = (cfiRange: string, contents: Contents) => {
       try {
         // Get selected text from the iframe window
         const windowSelection = contents.window.getSelection();
@@ -66,11 +65,20 @@ export const useTextSelection = (
         }
 
         // Get position for popup menu
-        const range = windowSelection.getRangeAt(0);
+        const range = windowSelection?.getRangeAt(0);
+        if (!range) {
+          setSelection(null);
+          return;
+        }
+
         const rect = range.getBoundingClientRect();
 
         // Get iframe position to calculate absolute coordinates
-        const iframe = contents.document.defaultView.frameElement as HTMLIFrameElement;
+        const iframe = contents.document.defaultView?.frameElement as HTMLIFrameElement | null;
+        if (!iframe) {
+          setSelection(null);
+          return;
+        }
         const iframeRect = iframe.getBoundingClientRect();
 
         const absolutePosition = {
@@ -110,7 +118,7 @@ export const useTextSelection = (
     const handleClick = () => {
       // Add small delay to let 'selected' event fire first if user is selecting
       setTimeout(() => {
-        const contents = (rendition.getContents() as any)[0];
+        const contents = rendition.getContents()[0];
         if (!contents) return;
 
         const windowSelection = contents.window?.getSelection();

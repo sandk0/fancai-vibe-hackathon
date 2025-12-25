@@ -8,7 +8,6 @@ Validation & preview endpoints для работы с книгами.
 """
 
 from fastapi import APIRouter, HTTPException, UploadFile, File
-from typing import Dict, Any
 import tempfile
 import os
 from pathlib import Path

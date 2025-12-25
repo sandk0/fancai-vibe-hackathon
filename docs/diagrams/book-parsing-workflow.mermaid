@@ -1,0 +1,126 @@
+sequenceDiagram
+    participant User as 👤 User
+    participant API as 🌐 Upload API
+    participant Parser as 📚 BookParser
+    participant DB as 💾 Database
+    participant Celery as ⚙️ Celery Task
+    participant LLM as 🤖 LLM (Gemini)
+    participant Cache as 🗄️ Redis Cache
+    participant DescAPI as 📖 Descriptions API
+
+    Note over User,DescAPI: PHASE 1: UPLOAD (Synchronous)
+
+    User->>+API: POST /books/upload (EPUB)
+    API->>Parser: parse_book(file_path)
+    Parser->>Parser: Extract metadata<br/>(title, author, genre)
+    Parser->>Parser: Extract TOC → chapters
+    Parser->>Parser: Calculate statistics<br/>(word_count, reading_time)
+    Parser-->>API: ParsedBook object
+
+    API->>DB: Create Book<br/>(is_parsed=False, is_processing=True)
+    API->>DB: Create Chapters[]<br/>(is_description_parsed=False)
+    API->>DB: Create ReadingProgress
+    DB-->>API: ✅ Book created
+
+    API->>+Celery: process_book_task.delay(book_id)
+    Note over Celery: Асинхронная задача запущена
+    Celery-->>API: task_id
+
+    API->>Cache: DELETE user:{user_id}:books:*
+    Cache-->>API: Cache invalidated
+
+    API-->>-User: BookUploadResponse<br/>(book, task_id, message)
+
+    Note over User,DescAPI: PHASE 2: ASYNC PROCESSING (Celery Task)
+
+    Celery->>DB: SELECT book, chapters
+    DB-->>Celery: Book + 10 chapters
+
+    loop For first 5 chapters
+        Celery->>Celery: check_is_service_page()<br/>(keywords, word_count)
+
+        alt Is Service Page
+            Note over Celery: "Содержание", "Copyright", etc.
+            Celery->>Celery: Set is_service_page = True<br/>Set is_description_parsed = True
+            Celery->>Celery: SKIP (no LLM extraction)
+        else Is Normal Chapter
+            Note over Celery: Real content chapter
+            Celery->>Celery: Set is_service_page = False
+            Celery->>+LLM: extract_descriptions(content)
+            Note over LLM: Gemini 3.0 Flash API<br/>~5-15 descriptions
+            LLM-->>-Celery: List[Description]
+
+            loop For each description
+                Celery->>DB: INSERT Description<br/>(type, content, confidence)
+            end
+
+            Celery->>Celery: Update Chapter<br/>descriptions_found = N<br/>is_description_parsed = True
+        end
+    end
+
+    Note over Celery: 💾 BATCH COMMIT (all 5 chapters)
+    Celery->>DB: COMMIT (is_service_page, descriptions)
+    DB-->>Celery: ✅ Committed
+
+    Celery->>DB: Update Book<br/>(is_processing=False, is_parsed=True)
+    Celery->>Cache: DELETE user:{user_id}:books:*
+    Cache-->>Celery: Cache invalidated
+
+    Note over User,DescAPI: ⚠️ RACE CONDITION WINDOW (10-30s)
+    rect rgb(255, 200, 200)
+        Note over User,Celery: IF USER OPENS CHAPTER 1<br/>BEFORE CELERY COMMITS...
+        User->>+DescAPI: GET /chapters/1/descriptions
+        DescAPI->>DB: SELECT chapter WHERE number=1
+        DB-->>DescAPI: Chapter (is_service_page=NULL!)
+
+        DescAPI->>DescAPI: check_is_service_page()<br/>⚠️ May return different result!
+        DescAPI->>DB: UPDATE is_service_page = True<br/>💾 COMMIT IMMEDIATELY
+        DB-->>DescAPI: ✅ Committed
+
+        Note over DescAPI: 🚨 PROBLEM: Celery will commit<br/>is_service_page=False LATER<br/>(CONFLICT!)
+
+        DescAPI-->>-User: Empty result<br/>(total_descriptions=0)
+
+        Note over Celery: ... continues processing ...
+        Celery->>DB: UPDATE is_service_page = False<br/>💾 COMMIT (30s later)
+        Note over DB: ⚠️ Conflict! Who wins?<br/>(depends on DB isolation level)
+    end
+
+    Note over User,DescAPI: PHASE 3: ON-DEMAND EXTRACTION (Chapter 6+)
+
+    User->>+DescAPI: GET /chapters/6/descriptions
+    DescAPI->>Cache: GET descriptions:book:{id}:chapter:6
+    Cache-->>DescAPI: MISS
+
+    DescAPI->>DB: SELECT chapter WHERE number=6
+    DB-->>DescAPI: Chapter (is_description_parsed=False)
+
+    DescAPI->>DescAPI: check_is_service_page()
+
+    alt Is Service Page
+        DescAPI-->>User: Empty result
+    else Is Normal Chapter
+        DescAPI->>Cache: ACQUIRE LOCK llm_extract_lock:chapter:{id}
+        Cache-->>DescAPI: Lock acquired
+
+        DescAPI->>+LLM: extract_descriptions(content)<br/>(with 30s timeout)
+        LLM-->>-DescAPI: List[Description]
+
+        DescAPI->>DB: DELETE old descriptions
+        loop For each description
+            DescAPI->>DB: INSERT Description
+        end
+
+        DescAPI->>DB: UPDATE chapter<br/>(is_description_parsed=True)
+        DB-->>DescAPI: ✅ Committed
+
+        DescAPI->>Cache: RELEASE LOCK
+        DescAPI->>Cache: DELETE descriptions:book:{id}:chapter:6
+        DescAPI->>Cache: SET descriptions:book:{id}:chapter:6<br/>(ttl=3600s)
+
+        DescAPI-->>-User: ChapterDescriptionsResponse<br/>(descriptions[])
+    end
+
+    Note over User,DescAPI: 📊 STATISTICS
+
+    Note over API,Celery: UPLOAD: ~2-3s (synchronous)<br/>CELERY TASK: ~10-30s (5 chapters × 2-6s)<br/>ON-DEMAND: ~5-10s per chapter (LLM API)<br/>RACE WINDOW: 10-30s (Celery processing time)

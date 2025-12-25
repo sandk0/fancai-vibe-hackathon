@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Simple translation hook for Russian localization
  * Простой хук перевода для русской локализации

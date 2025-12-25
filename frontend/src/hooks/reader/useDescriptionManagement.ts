@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
 import { getErrorMessage } from "@/utils/errors";
  * useDescriptionManagement - Custom hook for description highlighting and interaction

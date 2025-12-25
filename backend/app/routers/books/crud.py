@@ -13,7 +13,6 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from typing import Dict, Any
 import tempfile
 import os
 from pathlib import Path
@@ -46,7 +45,6 @@ from ...schemas.responses import (
     BookListResponse,
     BookDetailResponse,
     BookUploadResponse,
-    BookDeleteResponse,
 )
 
 

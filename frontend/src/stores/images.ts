@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // Images Store
 
 import { create } from 'zustand';
@@ -88,14 +87,14 @@ export const useImagesStore = create<ImagesState>((set, get) => ({
     }
   },
 
-  generateImagesForChapter: async (chapterId: string, params = {}) => {
+  generateImagesForChapter: async (chapterId: string, params: Partial<Omit<import('@/types/api').BatchGenerationRequest, 'chapter_id'>> = {}) => {
     set({ isGenerating: true, error: null });
 
     try {
       const response = await imagesAPI.generateImagesForChapter(chapterId, {
         chapter_id: chapterId,
         max_images: 10,
-        ...params as any
+        ...params
       });
 
       // Convert response images to our format

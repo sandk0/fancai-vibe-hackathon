@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useAutoParser - Custom hook for automatic description parsing
  *

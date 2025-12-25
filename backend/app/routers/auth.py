@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Depends, status, Request
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, EmailStr
-from typing import Optional, Dict, Any
+from typing import Optional
 
 from ..core.database import get_database_session
 from ..core.auth import get_current_active_user, security
@@ -16,7 +16,6 @@ from ..services.auth_service import auth_service
 from ..models.user import User
 from ..middleware.rate_limit import rate_limit, RATE_LIMIT_PRESETS
 from ..schemas.responses import (
-    UserResponse,
     LoginResponse,
     RegisterResponse,
     RefreshTokenResponse,

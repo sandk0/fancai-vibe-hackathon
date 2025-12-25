@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useDescriptionHighlighting - Custom hook for highlighting descriptions in EPUB text
  *
@@ -349,7 +348,7 @@ export const useDescriptionHighlighting = ({
 
     console.log('✅ [useDescriptionHighlighting] Starting highlighting for', descriptions.length, 'descriptions');
 
-    const contents = rendition.getContents() as any;
+    const contents = rendition.getContents();
     if (!contents || contents.length === 0) {
       console.warn('⚠️ [useDescriptionHighlighting] No iframe content available');
       return;
@@ -659,7 +658,7 @@ export const useDescriptionHighlighting = ({
       console.warn(`⚠️ [COVERAGE] Only ${coverage}% descriptions highlighted (target: 100%)`);
       console.warn(`💡 [TIP] Check if descriptions are from current chapter`);
     }
-  }, [rendition, descriptions, imagesByDescId, onDescriptionClick, enabled]);
+  }, [rendition, descriptions, imagesByDescId, onDescriptionClick, enabled, images.length]);
 
   /**
    * Re-highlight when page is rendered (with debouncing)

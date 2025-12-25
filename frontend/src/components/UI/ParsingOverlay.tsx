@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { booksAPI } from '@/api/books';
@@ -92,7 +91,8 @@ export const ParsingOverlay: React.FC<ParsingOverlayProps> = ({
         intervalId = null;
       }
     };
-  }, [bookId, onParsingComplete, isComplete]); // Добавили isComplete в dependencies // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- progress in deps causes infinite re-renders
+  }, [bookId, onParsingComplete, isComplete]);
 
   // Скрываем overlay если парсинг завершен
   if (isComplete && !forceBlock) {

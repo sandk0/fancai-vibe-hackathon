@@ -13,7 +13,6 @@ from typing import Dict, Any, List, Optional
 from uuid import UUID
 from pydantic import BaseModel
 from pathlib import Path
-import tempfile
 import os
 
 from ..core.database import get_database_session
@@ -32,7 +31,6 @@ from ..schemas.responses.images import (
     UserGenerationInfo,
     APIProviderInfo,
 )
-from ..schemas.responses import ImageGenerationTaskResponse
 
 
 router = APIRouter()

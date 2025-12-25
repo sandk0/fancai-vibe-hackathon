@@ -6,7 +6,7 @@ A/B тестирования и управления экспериментал�
 """
 
 import os
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, List
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
@@ -275,7 +275,7 @@ class FeatureFlagManager:
             Список включенных feature flags
         """
         try:
-            query = select(FeatureFlag).where(FeatureFlag.enabled == True)
+            query = select(FeatureFlag).where(FeatureFlag.enabled.is_(True))
 
             if category:
                 query = query.where(FeatureFlag.category == category)

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useCFITracking - Custom hook for tracking EPUB CFI positions and progress
  *
@@ -238,7 +237,7 @@ export const useCFITracking = ({
 
       // Calculate progress
       let progressPercent = 0;
-      const locationsTotal = (locations as any)?.total || 0;
+      const locationsTotal = locations?.total || 0;
 
       if (locationsTotal > 0) {
         const currentLocation = locations.percentageFromCfi(cfi);

@@ -8,7 +8,6 @@ Endpoints:
 """
 
 from fastapi import APIRouter, HTTPException, Depends
-from typing import Dict, Any
 
 from ...core.auth import get_current_admin_user
 from ...core.cache import cache_manager, CACHE_KEY_PATTERNS, CACHE_TTL

@@ -22,7 +22,6 @@ from ..models.book import ReadingProgress
 from ..schemas.responses import (
     ReadingProgressDetailResponse,
     ReadingProgressResponse,
-    ReadingProgressUpdateResponse,
 )
 
 

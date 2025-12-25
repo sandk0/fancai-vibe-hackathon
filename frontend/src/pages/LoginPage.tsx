@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * LoginPage - Modern redesign with split-screen layout
  *

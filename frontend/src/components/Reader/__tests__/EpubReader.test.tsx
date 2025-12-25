@@ -13,24 +13,38 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { EpubReader } from '../EpubReader';
-import type { BookDetail } from '@/types/api';
+import type { BookDetail, ChapterInfo } from '@/types/api';
+import type { Book, Rendition, EpubLocations } from '@/types/epub';
 
 // Mock dependencies
 vi.mock('@/api/books', () => ({
   booksAPI: {
     getBookFileUrl: vi.fn((id: string) => `/api/v1/books/${id}/file`),
-    updateReadingProgress: vi.fn(() => Promise.resolve({ success: true })),
+    updateReadingProgress: vi.fn(() => Promise.resolve({
+      progress: {
+        book_id: 'test-book-id',
+        current_chapter: 1,
+        current_page: 1,
+        current_position: 0,
+        reading_location_cfi: undefined,
+        progress_percent: 0,
+        last_read_at: '2025-01-01T00:00:00Z',
+      },
+      message: 'Progress updated successfully',
+    })),
     getReadingProgress: vi.fn(() => Promise.resolve({
       progress: {
+        book_id: 'test-book-id',
         current_chapter: 1,
+        current_page: 1,
         current_position: 0,
-        reading_location_cfi: null,
-        scroll_offset_percent: 0,
-      }
+        reading_location_cfi: undefined,
+        progress_percent: 0,
+        last_read_at: '2025-01-01T00:00:00Z',
+      },
     })),
   },
 }));
@@ -47,44 +61,84 @@ vi.mock('@/stores/ui', () => ({
 }));
 
 // Mock all epub hooks with proper return values
-const mockRendition = {
+const mockRendition: Rendition = {
   display: vi.fn(() => Promise.resolve()),
   next: vi.fn(() => Promise.resolve()),
   prev: vi.fn(() => Promise.resolve()),
   themes: {
+    default: vi.fn(),
     register: vi.fn(),
     select: vi.fn(),
+    fontSize: vi.fn(),
   },
   on: vi.fn(),
   off: vi.fn(),
   hooks: {
     content: {
       register: vi.fn(),
+      deregister: vi.fn(),
     },
   },
   annotations: {
+    add: vi.fn(),
     highlight: vi.fn(),
     remove: vi.fn(),
   },
   destroy: vi.fn(),
+  currentLocation: vi.fn(() => null),
+  getRange: vi.fn(() => null),
+  getContents: vi.fn(() => []),
 };
 
-const mockBook = {
+const mockLocations: EpubLocations = {
+  generate: vi.fn(() => Promise.resolve()),
+  save: vi.fn(() => ''),
+  load: vi.fn(),
+  currentLocation: vi.fn(() => 0),
+  cfiFromLocation: vi.fn(() => ''),
+  cfiFromPercentage: vi.fn(() => ''),
+  locationFromCfi: vi.fn(() => 0),
+  percentageFromCfi: vi.fn(() => 0),
+  percentageFromLocation: vi.fn(() => 0),
+  total: 100,
+  length: vi.fn(() => 100),
+};
+
+const mockBook: Book = {
+  ready: Promise.resolve(),
+  spine: {
+    get: vi.fn(() => undefined),
+    each: vi.fn(),
+    items: [],
+    length: 0,
+  },
+  navigation: {
+    toc: [
+      { id: '1', label: 'Chapter 1', href: 'chapter1.xhtml', subitems: [] },
+      { id: '2', label: 'Chapter 2', href: 'chapter2.xhtml', subitems: [] },
+    ],
+    landmarks: [],
+    get: vi.fn(() => undefined),
+  },
+  locations: mockLocations,
+  rendition: vi.fn(() => mockRendition),
+  renderTo: vi.fn(() => mockRendition),
+  coverUrl: vi.fn(() => Promise.resolve(null)),
   loaded: {
-    navigation: Promise.resolve({
-      toc: [
-        { label: 'Chapter 1', href: 'chapter1.xhtml' },
-        { label: 'Chapter 2', href: 'chapter2.xhtml' },
-      ],
-    }),
-    metadata: Promise.resolve({
+    cover: Promise.resolve(null),
+    navigation: Promise.resolve(),
+    metadata: Promise.resolve(),
+  },
+  packaging: {
+    metadata: {
       title: 'Test Book',
       creator: 'Test Author',
-    }),
-  },
-  locations: {
-    generate: vi.fn(() => Promise.resolve()),
-    total: 100,
+      description: '',
+      language: 'en',
+      publisher: '',
+      pubdate: '',
+      direction: 'ltr',
+    },
   },
   destroy: vi.fn(),
 };
@@ -97,8 +151,9 @@ vi.mock('@/hooks/epub', () => ({
     error: null,
   })),
   useLocationGeneration: vi.fn(() => ({
-    locations: { total: 100 },
+    locations: mockLocations,
     isGenerating: false,
+    error: null,
   })),
   useCFITracking: vi.fn(() => ({
     currentCFI: 'epubcfi(/6/4[chap01ref]!/4/2/2[page1]/1:0)',
@@ -149,6 +204,8 @@ vi.mock('@/hooks/epub', () => ({
       title: 'Test Book',
       creator: 'Test Author',
     },
+    isLoading: false,
+    error: null,
   })),
   useTextSelection: vi.fn(() => ({
     selection: null,
@@ -203,6 +260,7 @@ const createMockBook = (overrides?: Partial<BookDetail>): BookDetail => ({
   language: 'ru',
   total_pages: 100,
   estimated_reading_time_hours: 5,
+  chapters_count: 1,
   reading_progress_percent: 0,
   has_cover: true,
   is_parsed: true,
@@ -210,14 +268,25 @@ const createMockBook = (overrides?: Partial<BookDetail>): BookDetail => ({
   chapters: [
     {
       id: 'chapter-1',
-      book_id: 'test-book-id',
       number: 1,
       title: 'Chapter 1',
-      content: 'Chapter 1 content',
       word_count: 1000,
-      descriptions_count: 5,
-    },
+      estimated_reading_time_minutes: 10,
+      is_description_parsed: true,
+      descriptions_found: 5,
+    } as ChapterInfo,
   ],
+  reading_progress: {
+    current_chapter: 1,
+    current_page: 1,
+    current_position: 0,
+    reading_location_cfi: undefined,
+    progress_percent: 0,
+  },
+  file_format: 'epub',
+  file_size_mb: 2.5,
+  parsing_progress: 100,
+  total_chapters: 1,
   ...overrides,
 });
 
@@ -251,7 +320,7 @@ describe('EpubReader Component', () => {
         book: mockBook,
         rendition: mockRendition,
         isLoading: false,
-        error: null,
+        error: '',
       });
 
       renderEpubReader();
@@ -268,7 +337,7 @@ describe('EpubReader Component', () => {
         book: null,
         rendition: null,
         isLoading: true,
-        error: null,
+        error: '',
       });
 
       renderEpubReader();
@@ -305,12 +374,13 @@ describe('EpubReader Component', () => {
         book: mockBook,
         rendition: mockRendition,
         isLoading: false,
-        error: null,
+        error: '',
       });
 
       vi.mocked(useLocationGeneration).mockReturnValue({
-        locations: { total: 100 },
+        locations: mockLocations,
         isGenerating: false,
+        error: null,
       });
 
       vi.mocked(useBookMetadata).mockReturnValue({
@@ -318,6 +388,8 @@ describe('EpubReader Component', () => {
           title: 'Test Book',
           creator: 'Test Author',
         },
+        isLoading: false,
+        error: null,
       });
 
       renderEpubReader();
@@ -335,7 +407,7 @@ describe('EpubReader Component', () => {
         book: null,
         rendition: null,
         isLoading: false,
-        error: null,
+        error: '',
       });
 
       const { container } = renderEpubReader();
@@ -377,8 +449,9 @@ describe('EpubReader Component', () => {
       const { useLocationGeneration } = await import('@/hooks/epub');
 
       vi.mocked(useLocationGeneration).mockReturnValue({
-        locations: { total: 100 },
+        locations: mockLocations,
         isGenerating: false,
+        error: null,
       });
 
       renderEpubReader();
@@ -392,17 +465,21 @@ describe('EpubReader Component', () => {
     it('generates locations correctly - total locations count > 0', async () => {
       const { useLocationGeneration } = await import('@/hooks/epub');
 
-      const mockLocations = { total: 150 };
+      const customMockLocations: EpubLocations = {
+        ...mockLocations,
+        total: 150,
+      };
       vi.mocked(useLocationGeneration).mockReturnValue({
-        locations: mockLocations,
+        locations: customMockLocations,
         isGenerating: false,
+        error: null,
       });
 
       renderEpubReader();
 
       await waitFor(() => {
         const result = useLocationGeneration(mockBook, 'test-book-id');
-        expect(result.locations.total).toBeGreaterThan(0);
+        expect(result.locations?.total || 0).toBeGreaterThan(0);
       });
     });
 
@@ -448,7 +525,7 @@ describe('EpubReader Component', () => {
         book: mockBook,
         rendition: mockRendition,
         isLoading: false,
-        error: null,
+        error: '',
       });
 
       renderEpubReader();
@@ -466,7 +543,7 @@ describe('EpubReader Component', () => {
         book: mockBook,
         rendition: mockRendition,
         isLoading: false,
-        error: null,
+        error: '',
       });
 
       const { container } = renderEpubReader();
@@ -528,7 +605,7 @@ describe('EpubReader Component', () => {
       await waitFor(() => {
         const result = useCFITracking({
           rendition: mockRendition,
-          locations: { total: 100 },
+          locations: mockLocations,
           book: mockBook,
         });
         expect(result.scrollOffsetPercent).toBe(50);
@@ -541,10 +618,13 @@ describe('EpubReader Component', () => {
 
       vi.mocked(booksAPI.getReadingProgress).mockResolvedValue({
         progress: {
+          book_id: 'test-book-id',
           current_chapter: 1,
+          current_page: 1,
           current_position: 0,
-          reading_location_cfi: null,
-          scroll_offset_percent: 0,
+          reading_location_cfi: undefined,
+          progress_percent: 0,
+          last_read_at: '2025-01-01T00:00:00Z',
         },
       });
 
@@ -568,7 +648,7 @@ describe('EpubReader Component', () => {
     });
 
     it('updates position on next chapter navigation', async () => {
-      const { useEpubNavigation, useCFITracking } = await import('@/hooks/epub');
+      const { useEpubNavigation } = await import('@/hooks/epub');
 
       const mockNextPage = vi.fn();
       vi.mocked(useEpubNavigation).mockReturnValue({
@@ -689,7 +769,7 @@ describe('EpubReader Component', () => {
       await waitFor(() => {
         const result = useCFITracking({
           rendition: mockRendition,
-          locations: { total: 100 },
+          locations: mockLocations,
           book: mockBook,
         });
         expect(result.progress).toBe(45);
@@ -746,7 +826,16 @@ describe('EpubReader Component', () => {
       const { booksAPI } = await import('@/api/books');
 
       vi.mocked(booksAPI.updateReadingProgress).mockResolvedValue({
-        success: true,
+        progress: {
+          book_id: 'test-book-id',
+          current_chapter: 1,
+          current_page: 1,
+          current_position: 0,
+          reading_location_cfi: undefined,
+          progress_percent: 0,
+          last_read_at: '2025-01-01T00:00:00Z',
+        },
+        message: 'Progress updated successfully',
       });
 
       renderEpubReader();
@@ -779,23 +868,9 @@ describe('EpubReader Component', () => {
     it('highlights descriptions on load', async () => {
       const { useDescriptionHighlighting } = await import('@/hooks/epub');
 
-      const mockDescriptions = [
-        {
-          id: 'desc-1',
-          chapter_id: 'chapter-1',
-          type: 'location',
-          content: 'Test description',
-          confidence_score: 0.9,
-          priority_score: 0.8,
-          cfi_range: 'epubcfi(/6/4[chap01ref]!/4/2/2,/1:0,/1:10)',
-        },
-      ];
-
       vi.mocked(useDescriptionHighlighting).mockImplementation((config) => {
         if (config.enabled) {
-          config.descriptions.forEach(desc => {
-            mockRendition.annotations.highlight(desc.cfi_range, {}, vi.fn());
-          });
+          // Hook internally finds CFI ranges, we just verify it was called
         }
       });
 

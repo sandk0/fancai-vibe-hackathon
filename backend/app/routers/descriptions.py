@@ -12,7 +12,7 @@ import asyncio
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from typing import Dict, Any, List
+from typing import Dict, List
 from uuid import UUID
 from datetime import datetime
 
@@ -36,7 +36,7 @@ from ..schemas.responses.descriptions import (
     BatchDescriptionsResponse,
     ChapterDescriptionsResult,
 )
-from ..schemas.responses import DescriptionResponse, DescriptionListResponse
+from ..schemas.responses import DescriptionResponse
 
 from loguru import logger
 

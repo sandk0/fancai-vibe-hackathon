@@ -39,7 +39,7 @@ def sanitize_filename(filename: str, max_length: int = 255) -> str:
     Sanitizes user-provided filename для безопасного использования в filesystem.
 
     Защищает от:
-    - Path traversal (../, ..\)
+    - Path traversal (../, ..\\)
     - Command injection (; && | `)
     - Hidden files (.filename)
     - Special characters

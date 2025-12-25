@@ -14,7 +14,7 @@ VLESS Proxy-aware HTTP Client для BookReader AI
 
 import httpx
 import os
-from typing import Optional, Dict, Any, List
+from typing import Optional, Any, List
 from urllib.parse import urlparse
 import logging
 

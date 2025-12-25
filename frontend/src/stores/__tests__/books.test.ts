@@ -4,7 +4,7 @@
  * Проверяем состояние и actions для управления книгами.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useBooksStore } from '../books';
 import { booksAPI } from '@/api/books';

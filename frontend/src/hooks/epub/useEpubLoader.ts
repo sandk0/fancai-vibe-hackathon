@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useEpubLoader - Custom hook for loading and initializing EPUB books
  *
@@ -101,11 +100,11 @@ export const useEpubLoader = ({
         if (!isMounted || !viewerRef.current) return;
 
         // Create rendition using renderTo (this is the epubjs API method)
-        const newRendition = (epubBook as any).renderTo(viewerRef.current, {
+        const newRendition = epubBook.renderTo(viewerRef.current, {
           width: '100%',
           height: '100%',
           spread: 'none',
-        }) as Rendition;
+        });
         renditionRef.current = newRendition;
         setRendition(newRendition);
 
@@ -149,7 +148,7 @@ export const useEpubLoader = ({
           // Clear all event listeners
           // Note: rendition.off() without arguments clears all listeners
           try {
-            (currentRendition as any).off?.();
+            currentRendition.off();
           } catch (err) {
             // Ignore event listener errors
             console.debug('⚠️ [useEpubLoader] Could not remove event listeners:', err);

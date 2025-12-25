@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // Service Worker Registration and Management
 import { useUIStore } from '@/stores/ui';
 

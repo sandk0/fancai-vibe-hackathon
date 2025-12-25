@@ -5,10 +5,12 @@ BookReader AI - FastAPI Main Application
 с автоматической генерацией изображений по описаниям.
 """
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 import uvicorn
 from datetime import datetime, timezone
 from typing import Dict, Any
@@ -36,6 +38,90 @@ from .middleware.rate_limit import rate_limiter, rate_limit
 # Версия приложения
 VERSION = "0.1.0"
 
+
+# ============================================================================
+# Lifespan Context Manager (replaces deprecated on_event decorators)
+# ============================================================================
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for startup and shutdown events.
+
+    Startup logic runs before yield, shutdown logic runs after yield.
+    This replaces the deprecated @app.on_event("startup") and @app.on_event("shutdown").
+    """
+    # ========================================================================
+    # STARTUP
+    # ========================================================================
+    print("🚀 Starting BookReader AI...")
+
+    # DEBUG: Print CORS configuration
+    print(f"🔧 CORS Origins configured: {settings.CORS_ORIGINS}")
+    print(f"🔧 CORS Origins list: {settings.cors_origins_list}")
+
+    # SECURITY: Validate secrets before starting
+    try:
+        is_production = not settings.DEBUG
+        startup_secrets_check(is_production=is_production)
+    except SystemExit:
+        # Re-raise to stop application if secrets validation failed
+        raise
+    except Exception as e:
+        print(f"⚠️ Secrets validation error: {e}")
+        # Continue with warning (non-critical error)
+
+    # Initialize Rate Limiter
+    try:
+        await rate_limiter.connect()
+        if rate_limiter.enabled:
+            print("✅ Rate limiter initialized and connected to Redis")
+        else:
+            print("⚠️ Rate limiter disabled (Redis unavailable)")
+    except Exception as e:
+        print(f"⚠️ Failed to initialize rate limiter: {e}")
+
+    # Инициализация Redis cache
+    try:
+        await cache_manager.initialize()
+        if cache_manager.is_available:
+            print("✅ Redis cache initialized and ready")
+        else:
+            print("⚠️ Redis cache unavailable - running without cache")
+    except Exception as e:
+        print(f"⚠️ Failed to initialize Redis cache: {e}")
+
+    # Инициализация настроек по умолчанию
+    try:
+        await settings_manager.initialize_default_settings()
+        print("✅ Default settings initialized")
+    except Exception as e:
+        print(f"⚠️ Failed to initialize settings: {e}")
+
+    # ========================================================================
+    # APPLICATION RUNS HERE
+    # ========================================================================
+    yield
+
+    # ========================================================================
+    # SHUTDOWN
+    # ========================================================================
+    print("🛑 Shutting down BookReader AI...")
+
+    # Закрываем Rate Limiter
+    try:
+        await rate_limiter.close()
+        print("✅ Rate limiter closed")
+    except Exception as e:
+        print(f"⚠️ Error closing rate limiter: {e}")
+
+    # Закрываем Redis connection pool
+    try:
+        await cache_manager.close()
+        print("✅ Redis cache closed")
+    except Exception as e:
+        print(f"⚠️ Error closing Redis cache: {e}")
+
+
 # Инициализация FastAPI приложения
 app = FastAPI(
     title="BookReader AI API",
@@ -46,6 +132,7 @@ app = FastAPI(
     # Отключаем автоматический редирект с trailing slash
     # Это предотвращает 307 редиректы которые могут нарушить HTTPS
     redirect_slashes=False,
+    lifespan=lifespan,
 )
 
 # ============================================================================
@@ -89,9 +176,6 @@ app.add_middleware(
 # ============================================================================
 # Exception Handlers - CORS headers for error responses
 # ============================================================================
-
-from fastapi.responses import JSONResponse
-from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -159,81 +243,6 @@ app.include_router(reading_sessions_router, prefix="/api/v1", tags=["reading-ses
 
 # Health & Monitoring router
 app.include_router(health_router, prefix="/api/v1", tags=["health"])
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Инициализация при запуске приложения."""
-    print("🚀 Starting BookReader AI...")
-
-    # ========================================================================
-    # DEBUG: Print CORS configuration
-    # ========================================================================
-    print(f"🔧 CORS Origins configured: {settings.CORS_ORIGINS}")
-    print(f"🔧 CORS Origins list: {settings.cors_origins_list}")
-
-    # ========================================================================
-    # SECURITY: Validate secrets before starting
-    # ========================================================================
-    try:
-        is_production = not settings.DEBUG
-        startup_secrets_check(is_production=is_production)
-    except SystemExit:
-        # Re-raise to stop application if secrets validation failed
-        raise
-    except Exception as e:
-        print(f"⚠️ Secrets validation error: {e}")
-        # Continue with warning (non-critical error)
-
-    # ========================================================================
-    # Initialize Rate Limiter
-    # ========================================================================
-    try:
-        await rate_limiter.connect()
-        if rate_limiter.enabled:
-            print("✅ Rate limiter initialized and connected to Redis")
-        else:
-            print("⚠️ Rate limiter disabled (Redis unavailable)")
-    except Exception as e:
-        print(f"⚠️ Failed to initialize rate limiter: {e}")
-
-    # Инициализация Redis cache
-    try:
-        await cache_manager.initialize()
-        if cache_manager.is_available:
-            print("✅ Redis cache initialized and ready")
-        else:
-            print("⚠️ Redis cache unavailable - running without cache")
-    except Exception as e:
-        print(f"⚠️ Failed to initialize Redis cache: {e}")
-
-    # Инициализация настроек по умолчанию
-    try:
-        await settings_manager.initialize_default_settings()
-        print("✅ Default settings initialized")
-    except Exception as e:
-        print(f"⚠️ Failed to initialize settings: {e}")
-
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Очистка ресурсов при остановке приложения."""
-    print("🛑 Shutting down BookReader AI...")
-
-    # Закрываем Rate Limiter
-    try:
-        await rate_limiter.close()
-        print("✅ Rate limiter closed")
-    except Exception as e:
-        print(f"⚠️ Error closing rate limiter: {e}")
-
-    # Закрываем Redis connection pool
-    try:
-        await cache_manager.close()
-        print("✅ Redis cache closed")
-    except Exception as e:
-        print(f"⚠️ Error closing Redis cache: {e}")
 
 
 @app.get("/")

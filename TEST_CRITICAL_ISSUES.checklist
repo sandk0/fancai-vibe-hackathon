@@ -1,0 +1,399 @@
+# КРИТИЧНЫЕ ПРОБЛЕМЫ ТЕСТИРОВАНИЯ - CHECKLIST
+
+**Статус:** 🔴 URGENT - Требует немедленного решения
+**Дата создания:** 23 декабря 2025
+**Ответственный:** Testing & QA Team
+
+---
+
+## БЛОК А: PRODUCTION CODE БЕЗ ТЕСТОВ (КРИТИЧНО!)
+
+### A1. Gemini Extractor Service
+- [ ] **Файл:** `backend/app/services/gemini_extractor.py`
+- [ ] **Размер:** 661 строк
+- [ ] **Статус:** 0% тестов
+- [ ] **Приоритет:** 🔴 КРИТИЧНЫЙ (используется в production!)
+- [ ] **Действие требуется:**
+  - [ ] Создать `/backend/tests/services/test_gemini_extractor.py`
+  - [ ] Минимум 20 тестов
+  - [ ] Target: >85% coverage
+  - [ ] Проверить: API timeout, invalid key, JSON repair, concurrency
+- [ ] **Примеры кода:** ✓ В TEST_IMPLEMENTATION_QUICKSTART.md
+- [ ] **Время:** 2-3 часа
+- [ ] **Status:** [ ] NOT STARTED [ ] IN PROGRESS [ ] COMPLETED
+
+### A2. Imagen Generator Service
+- [ ] **Файл:** `backend/app/services/imagen_generator.py`
+- [ ] **Размер:** 644 строк
+- [ ] **Статус:** 0% тестов
+- [ ] **Приоритет:** 🔴 КРИТИЧНЫЙ (Google Imagen 4 интеграция)
+- [ ] **Действие требуется:**
+  - [ ] Создать `/backend/tests/services/test_imagen_generator.py`
+  - [ ] Минимум 20 тестов
+  - [ ] Target: >85% coverage
+  - [ ] Проверить: Concurrency, caching, fallback, quota
+- [ ] **Примеры кода:** ✓ В TEST_IMPLEMENTATION_QUICKSTART.md
+- [ ] **Время:** 2-3 часа
+- [ ] **Status:** [ ] NOT STARTED [ ] IN PROGRESS [ ] COMPLETED
+
+### A3. VLESS HTTP Client
+- [ ] **Файл:** `backend/app/services/vless_http_client.py`
+- [ ] **Размер:** 255 строк
+- [ ] **Статус:** 0% тестов
+- [ ] **Приоритет:** 🟡 ВЫСОКИЙ (proxy для image generation)
+- [ ] **Действие требуется:**
+  - [ ] Создать `/backend/tests/services/test_vless_http_client.py`
+  - [ ] Минимум 15 тестов
+  - [ ] Target: >80% coverage
+  - [ ] Проверить: Proxy routing, fallback, SSL, timeout
+- [ ] **Примеры кода:** ✓ В TEST_IMPLEMENTATION_QUICKSTART.md
+- [ ] **Время:** 1 час
+- [ ] **Status:** [ ] NOT STARTED [ ] IN PROGRESS [ ] COMPLETED
+
+### A4. Auth Router
+- [ ] **Файл:** `backend/app/routers/auth.py`
+- [ ] **Размер:** ~400 строк
+- [ ] **Статус:** 0% endpoint тестов
+- [ ] **Приоритет:** 🔴 КРИТИЧНЫЙ (SECURITY!)
+- [ ] **Действие требуется:**
+  - [ ] Создать `/backend/tests/routers/test_auth.py`
+  - [ ] Минимум 20 security тестов
+  - [ ] Target: >80% coverage
+  - [ ] Проверить: SQL injection, rate limiting, token management, 2FA
+- [ ] **Примеры кода:** ✓ В TEST_IMPLEMENTATION_QUICKSTART.md
+- [ ] **Время:** 2 часа
+- [ ] **Status:** [ ] NOT STARTED [ ] IN PROGRESS [ ] COMPLETED
+
+---
+
+## БЛОК B: ORPHAN TESTS (тестируют удалённый код!)
+
+### B1. Multi-NLP Tests (ДОЛЖНЫ БЫТЬ УДАЛЕНЫ)
+- [ ] **Директория:** `backend/tests/services/nlp/`
+- [ ] **Файлы:** 47 файлов
+- [ ] **Размер:** ~1,800 LOC
+- [ ] **Статус:** Тестируют УДАЛЁННЫЙ код (Dec 2025)
+- [ ] **Приоритет:** 🔴 DELETE
+- [ ] **Почему удалять:**
+  - [ ] Multi-NLP система удалена в декабре 2025
+  - [ ] Тесты бесполезны (fake coverage)
+  - [ ] Замедляют CI/CD (~2-3 минуты)
+  - [ ] Путают разработчиков
+- [ ] **Действие:**
+  - [ ] Запустить: `rm -rf backend/tests/services/nlp/`
+  - [ ] Убедиться, что нет импортов в других местах
+  - [ ] Commit: "chore: remove orphan Multi-NLP tests"
+- [ ] **Время:** 15 минут
+- [ ] **Status:** [ ] NOT STARTED [ ] IN PROGRESS [ ] COMPLETED
+
+**ORPHAN TEST FILES:**
+- [ ] test_langextract_processor.py (тестирует removed library)
+- [ ] test_langextract_enricher.py (удалённый код)
+- [ ] test_gliner_processor.py (GLiNER removed)
+- [ ] test_stanza_processor.py (Stanza removed)
+- [ ] test_natasha_processor.py (Natasha removed)
+- [ ] test_spacy_processor.py (SpaCy removed)
+- [ ] test_multi_nlp_integration.py (removed system)
+- [ ] test_advanced_parser_*.py (4 файла, removed)
+- [ ] components/test_*.py (3 файла, removed)
+- [ ] strategies/test_*.py (7 файлов, removed)
+- [ ] utils/test_*.py (4 файла, removed)
+
+---
+
+## БЛОК C: FRONTEND КОМПОНЕНТЫ БЕЗ ТЕСТОВ
+
+### C1. Description Highlighting Hook (HIGH PRIORITY!)
+- [ ] **Файл:** `frontend/src/hooks/epub/useDescriptionHighlighting.ts`
+- [ ] **Размер:** 566 строк
+- [ ] **Статус:** 0 тестов
+- [ ] **Сложность:** HIGH (9 стратегий поиска)
+- [ ] **Приоритет:** 🔴 КРИТИЧНЫЙ (core feature!)
+- [ ] **Действие требуется:**
+  - [ ] Создать `/frontend/src/hooks/epub/__tests__/useDescriptionHighlighting.test.ts`
+  - [ ] Тесты для всех 9 стратегий:
+    - [ ] EXACT_MATCH
+    - [ ] FUZZY_MATCH
+    - [ ] WORD_BOUNDARY
+    - [ ] STEMMING (Russian)
+    - [ ] PHONETIC
+    - [ ] SEMANTIC
+    - [ ] CONTEXT_AWARE
+    - [ ] REGEX
+    - [ ] MULTI_LANGUAGE
+  - [ ] Edge cases: специальные символы, Unicode, очень длинный текст
+  - [ ] Target: >90% coverage
+  - [ ] Минимум 30 тестов
+- [ ] **Примеры кода:** ✓ В TEST_IMPLEMENTATION_QUICKSTART.md
+- [ ] **Время:** 4-5 часов
+- [ ] **Status:** [ ] NOT STARTED [ ] IN PROGRESS [ ] COMPLETED
+
+### C2. ImageCache Service
+- [ ] **Файл:** `frontend/src/services/imageCache.ts`
+- [ ] **Размер:** ~500 строк
+- [ ] **Статус:** 0 тестов
+- [ ] **Приоритет:** 🔴 ВЫСОКИЙ (offline support!)
+- [ ] **Действие требуется:**
+  - [ ] Создать `/frontend/src/services/__tests__/imageCache.test.ts`
+  - [ ] Тесты для:
+    - [ ] Storage operations (save, retrieve, delete, clear)
+    - [ ] Cache management (quota, TTL, auto-cleanup)
+    - [ ] Offline support (return cached, sync)
+    - [ ] Error handling (quota exceeded, corrupted data)
+    - [ ] Concurrency (concurrent access)
+  - [ ] Target: >85% coverage
+  - [ ] Минимум 15 тестов
+- [ ] **Примеры кода:** ✓ В TEST_IMPLEMENTATION_QUICKSTART.md
+- [ ] **Время:** 1-2 часа
+- [ ] **Status:** [ ] NOT STARTED [ ] IN PROGRESS [ ] COMPLETED
+
+### C3. Library Components
+- [ ] **Компоненты:** BookCard, BookGrid, SearchBar, LibraryHeader, Pagination
+- [ ] **Общий размер:** ~1,000 строк
+- [ ] **Статус:** 0 тестов
+- [ ] **Приоритет:** 🟡 ВЫСОКИЙ
+- [ ] **Действие требуется:**
+  - [ ] Создать tests для каждого компонента:
+    - [ ] `/frontend/src/components/Library/__tests__/BookCard.test.tsx`
+    - [ ] `/frontend/src/components/Library/__tests__/BookGrid.test.tsx`
+    - [ ] `/frontend/src/components/Library/__tests__/SearchBar.test.tsx`
+    - [ ] `/frontend/src/components/Library/__tests__/LibraryHeader.test.tsx`
+    - [ ] `/frontend/src/components/Library/__tests__/Pagination.test.tsx`
+  - [ ] Каждый: rendering, interactions, accessibility
+  - [ ] Target: >80% coverage
+  - [ ] Total: 25 тестов
+- [ ] **Время:** 2-3 часа
+- [ ] **Status:** [ ] NOT STARTED [ ] IN PROGRESS [ ] COMPLETED
+
+---
+
+## БЛОК D: НЕПОЛНОЕ ПОКРЫТИЕ КРИТИЧНЫХ СЕРВИСОВ
+
+### D1. Book Parser Service
+- [ ] **Файл:** `backend/app/services/book_parser.py`
+- [ ] **Размер:** 925 строк
+- [ ] **Текущее покрытие:** ~60%
+- [ ] **Приоритет:** 🟡 ВЫСОКИЙ
+- [ ] **Missing edge cases:**
+  - [ ] Empty EPUB file
+  - [ ] Corrupted CFI
+  - [ ] Very large chapters (>10MB)
+  - [ ] Chapters with only images
+  - [ ] Cyrillic + emoji handling
+  - [ ] Malformed HTML
+  - [ ] Missing cover image
+- [ ] **Действие:** Добавить 10-15 edge case тестов
+- [ ] **Target:** >80% coverage
+- [ ] **Status:** [ ] NOT STARTED [ ] IN PROGRESS [ ] COMPLETED
+
+### D2. LangExtract Processor (UPDATE для v2!)
+- [ ] **Файл:** `backend/app/services/langextract_processor.py`
+- [ ] **Версия:** v2 (использует Gemini API)
+- [ ] **Текущие тесты:** ✓ Есть (но для v1!)
+- [ ] **Проблема:** Тесты используют Mock для LangExtract lib (удалена)
+- [ ] **Приоритет:** 🟡 ВЫСОКИЙ
+- [ ] **Действие:**
+  - [ ] Обновить `/backend/tests/services/nlp/test_langextract_processor.py`
+  - [ ] Переписать для новой v2 архитектуры (Gemini API)
+  - [ ] Использовать реальные API mocks
+  - [ ] Добавить test для JSON repair
+  - [ ] Добавить tests для recursive chunking
+- [ ] **Target:** >85% coverage
+- [ ] **Status:** [ ] NOT STARTED [ ] IN PROGRESS [ ] COMPLETED
+
+---
+
+## БЛОК E: MISSING ROUTER TESTS
+
+### E1. Admin Routers (8 endpoints)
+- [ ] **Файлы:**
+  - [ ] `backend/app/routers/admin/cache.py` - 0 тестов
+  - [ ] `backend/app/routers/admin/images.py` - 0 тестов
+  - [ ] `backend/app/routers/admin/parsing.py` - 0 тестов
+  - [ ] `backend/app/routers/admin/reading_sessions.py` - 0 тестов
+  - [ ] `backend/app/routers/admin/stats.py` - 0 тестов
+  - [ ] `backend/app/routers/admin/system.py` - 0 тестов
+  - [ ] `backend/app/routers/admin/users.py` - 0 тестов
+- [ ] **Приоритет:** 🟡 ВЫСОКИЙ
+- [ ] **Действие:**
+  - [ ] Создать `/backend/tests/routers/test_admin_*.py`
+  - [ ] Тесты для каждого endpoint
+  - [ ] Authorization checks
+  - [ ] Error handling
+- [ ] **Target:** >75% coverage
+- [ ] **Status:** [ ] NOT STARTED [ ] IN PROGRESS [ ] COMPLETED
+
+### E2. Other Routes (missing)
+- [ ] `backend/app/routers/health.py` - 0 тестов
+- [ ] `backend/app/routers/images.py` - 0 тестов
+- [ ] `backend/app/routers/users.py` - 0 тестов
+- [ ] `backend/app/routers/books/crud.py` - 0 тестов
+- [ ] `backend/app/routers/books/processing.py` - 0 тестов
+- [ ] `backend/app/routers/books/validation.py` - 0 тестов
+- [ ] **Приоритет:** 🟡 MEDIUM
+- [ ] **Status:** [ ] NOT STARTED [ ] IN PROGRESS [ ] COMPLETED
+
+---
+
+## БЛОК F: TEST QUALITY IMPROVEMENTS
+
+### F1. Fix Flaky Async Tests
+- [ ] **Проблема:** Использование `asyncio.sleep()` вместо proper timeout
+- [ ] **Файлы:** `test_book_parser.py`, `test_reading_sessions_load.py`
+- [ ] **Действие:**
+  - [ ] Заменить `await asyncio.sleep(0.5)` на `async with asyncio.timeout()`
+  - [ ] Убедиться что тесты стабильны при повторном запуске
+  - [ ] Проверить на разных машинах
+- [ ] **Status:** [ ] NOT STARTED [ ] IN PROGRESS [ ] COMPLETED
+
+### F2. Improve Mock Management
+- [ ] **Проблема:** Mock leaks между тестами
+- [ ] **Решение:** Использовать pytest fixtures вместо @patch
+- [ ] **Файлы:** `test_image_generator.py`, NLP tests
+- [ ] **Status:** [ ] NOT STARTED [ ] IN PROGRESS [ ] COMPLETED
+
+### F3. Add More Assertions
+- [ ] **Проблема:** Тесты просто проверяют что функция не упала
+- [ ] **Решение:** Добавить assertions для результата, типов, значений
+- [ ] **Приоритет:** 🟡 MEDIUM
+- [ ] **Status:** [ ] NOT STARTED [ ] IN PROGRESS [ ] COMPLETED
+
+---
+
+## SUMMARY ТАБЛИЦА
+
+| Блок | Проблема | Файлы | Статус | Время | Приоритет |
+|------|----------|-------|--------|-------|-----------|
+| A1 | Gemini (0 тестов) | 1 | ❌ | 2-3ч | 🔴 CRITICAL |
+| A2 | Imagen (0 тестов) | 1 | ❌ | 2-3ч | 🔴 CRITICAL |
+| A3 | VLESS (0 тестов) | 1 | ❌ | 1ч | 🟡 HIGH |
+| A4 | Auth (0 тестов) | 1 | ❌ | 2ч | 🔴 CRITICAL |
+| B1 | Multi-NLP delete | 47 | ❌ | 15м | 🔴 DELETE |
+| C1 | Highlighting (0 тестов) | 1 | ❌ | 4-5ч | 🔴 CRITICAL |
+| C2 | ImageCache (0 тестов) | 1 | ❌ | 1-2ч | 🔴 HIGH |
+| C3 | Components (0 тестов) | 5+ | ❌ | 2-3ч | 🟡 HIGH |
+| D1 | Parser incomplete | 1 | ⚠ | 1-2ч | 🟡 HIGH |
+| D2 | LangExtract update | 1 | ⚠ | 2-3ч | 🟡 HIGH |
+| E | Admin routes | 7+ | ❌ | 3-4ч | 🟡 MEDIUM |
+| F | Quality improvements | 10+ | ⚠ | 2-3ч | 🟡 MEDIUM |
+| **TOTAL** | | **~80** | | **25-35ч** | |
+
+---
+
+## TIMELINE РЕКОМЕНДУЕМЫЙ
+
+### ДЕНЬ 1 (СЕГОДНЯ)
+- [ ] Прочитать все 3 анализ-документа (1-2 часа)
+- [ ] Утвердить удаление orphan tests (1 минута)
+- [ ] Создать файлы тестов (0.5 часа)
+
+### ДЕНЬ 2-3
+- [ ] Реализовать test_gemini_extractor.py (3 часа)
+- [ ] Реализовать test_imagen_generator.py (3 часа)
+- [ ] Запустить и убедиться что работают (1 час)
+
+### ДЕНЬ 4
+- [ ] Реализовать test_vless_http_client.py (1 час)
+- [ ] Реализовать test_auth.py (2 часа)
+- [ ] Удалить orphan tests (15 минут)
+
+### ДЕНЬ 5-6
+- [ ] useDescriptionHighlighting.test.ts (4-5 часов)
+- [ ] imageCache.test.ts (1-2 часа)
+
+### ДЕНЬ 7
+- [ ] Library components tests (2-3 часа)
+- [ ] Final polish и review
+
+### НЕДЕЛЯ 2-3
+- [ ] Update LangExtract v2 tests
+- [ ] Admin routers tests
+- [ ] Fix flaky tests
+- [ ] Integration tests
+
+---
+
+## QUICK START
+
+### Скопировать примеры (5 минут)
+```bash
+# Preisolated test code from TEST_IMPLEMENTATION_QUICKSTART.md
+# Just copy-paste into new files
+```
+
+### Создать файлы (2 минуты)
+```bash
+touch backend/tests/services/test_gemini_extractor.py
+touch backend/tests/services/test_imagen_generator.py
+touch backend/tests/services/test_vless_http_client.py
+touch backend/tests/routers/test_auth.py
+```
+
+### Запустить (1 минута)
+```bash
+cd backend
+pytest tests/services/test_gemini_extractor.py -v
+```
+
+### Удалить orphans (15 секунд)
+```bash
+rm -rf backend/tests/services/nlp/
+```
+
+---
+
+## ДОКУМЕНТЫ ДЛЯ СПРАВКИ
+
+1. **DEEP_TEST_ANALYSIS.md** - Полный анализ со всеми деталями
+2. **TEST_IMPLEMENTATION_QUICKSTART.md** - Copy-paste примеры кода
+3. **TEST_AUDIT_SUMMARY.md** - Высокоуровневый обзор
+4. **TEST_CRITICAL_ISSUES.checklist** - Этот файл
+
+---
+
+## ОТВЕТСТВЕННОСТЬ
+
+**Для разработчиков:**
+- [ ] Реализовать тесты по графику
+- [ ] Убедиться что все проходят локально
+- [ ] Code review для PR
+
+**Для QA:**
+- [ ] Валидировать тесты
+- [ ] Проверить coverage metrics
+- [ ] Проверить на flaky tests
+
+**Для менеджеров:**
+- [ ] Утвердить приоритеты
+- [ ] Выделить ресурсы
+- [ ] Track progress
+
+---
+
+## ФИНАЛЬНАЯ ПРОВЕРКА
+
+Вы завершили, когда:
+
+```bash
+# Backend
+pytest --cov=app --cov-fail-under=75  # ✓ PASS
+pytest --cov=app.services.gemini_extractor --cov-report=term | grep ">85"  # ✓ YES
+pytest --cov=app.services.imagen_generator --cov-report=term | grep ">85"  # ✓ YES
+
+# Frontend
+npm test -- --coverage  # ✓ >60% for new tests
+ls -la frontend/src/hooks/epub/__tests__/useDescriptionHighlighting.test.ts  # ✓ EXISTS
+
+# Orphans deleted
+ls backend/tests/services/nlp/ 2>&1 | grep "No such"  # ✓ NOT FOUND
+
+# All pass
+pytest -x  # ✓ NO FAILURES
+npm test   # ✓ NO FAILURES
+```
+
+---
+
+**НАЧНИТЕ С GEMINI EXTRACTOR - САМЫЙ ПРИОРИТЕТНЫЙ СЕРВИС!**
+
+Готовые примеры кода в TEST_IMPLEMENTATION_QUICKSTART.md

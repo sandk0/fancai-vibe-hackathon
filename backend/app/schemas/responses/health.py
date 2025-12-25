@@ -6,7 +6,7 @@ Response schemas for health check endpoints.
 """
 
 from pydantic import BaseModel, Field
-from typing import Dict, Any
+from typing import Dict
 
 
 class PrometheusMetricsResponse(BaseModel):

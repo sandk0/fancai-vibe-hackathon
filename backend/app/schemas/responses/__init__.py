@@ -25,8 +25,6 @@ from uuid import UUID
 
 # Импортируем Enum классы из моделей для консистентности
 from app.models.user import SubscriptionPlan, SubscriptionStatus
-from app.models.book import BookGenre, BookFormat
-from app.models.image import ImageStatus, ImageService
 from app.models.description import DescriptionType
 
 
@@ -515,13 +513,13 @@ class ValidationErrorResponse(BaseModel):
 # ============================================================================
 
 # Progress responses
-from .progress import ReadingProgressDetailResponse
+from .progress import ReadingProgressDetailResponse  # noqa: E402
 
 # Chapter responses
-from .chapters import NavigationInfo, BookMinimalInfo, ChapterDetailResponse
+from .chapters import NavigationInfo, BookMinimalInfo, ChapterDetailResponse  # noqa: E402
 
 # Image responses (Phase 1.2)
-from .images import (
+from .images import (  # noqa: E402
     QueueStats,
     UserGenerationInfo,
     APIProviderInfo,
@@ -531,7 +529,7 @@ from .images import (
 )
 
 # Description responses (Phase 1.2)
-from .descriptions import (
+from .descriptions import (  # noqa: E402
     ChapterMinimalInfo,
     NLPAnalysisResult,
     ChapterDescriptionsResponse,
@@ -540,7 +538,7 @@ from .descriptions import (
 )
 
 # Processing responses (Phase 1.3)
-from .processing import (
+from .processing import (  # noqa: E402
     BookProcessingResponse,
     ParsingStatusResponse,
 )
@@ -548,7 +546,7 @@ from .processing import (
 # NLP Testing responses removed (December 2025 - NLP system removed)
 
 # Admin responses (Phase 1.3 + 1.4)
-from .admin import (
+from .admin import (  # noqa: E402
     CacheStatsResponse,
     CacheClearResponse,
     QueueInfo,
@@ -572,7 +570,7 @@ from .admin import (
 )
 
 # Auth responses (Phase 1.1 + 1.4)
-from .auth import (
+from .auth import (  # noqa: E402
     LogoutResponse,
     # Phase 1.4 - Additional auth endpoints
     CurrentUserResponse,
@@ -581,7 +579,7 @@ from .auth import (
 )
 
 # User responses (Phase 1.1 + 1.4)
-from .users import (
+from .users import (  # noqa: E402
     UserStatistics,
     UserProfileResponse,
     UserUpdateResponse,
@@ -600,7 +598,7 @@ from .users import (
 )
 
 # Books Validation responses (Phase 1.4)
-from .books_validation import (
+from .books_validation import (  # noqa: E402
     ParserStatusResponse,
     ValidationResult,
     BookFileValidationResponse,
@@ -611,7 +609,7 @@ from .books_validation import (
 )
 
 # Health responses (Phase 1.4)
-from .health import (
+from .health import (  # noqa: E402
     PrometheusMetricsResponse,
 )
 

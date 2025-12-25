@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 /**
  * EpubReader - Professional EPUB reading component with advanced features
  *
@@ -160,13 +159,11 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     openModal,
     closeModal,
     updateImage,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     isGenerating: _isGeneratingImage, // Available for future use
     generationStatus,
     generationError,
     descriptionPreview,
     cancelGeneration,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     isCached: _isCached, // For future UI indicator
   } = useImageModal({ bookId: book.id });
 
@@ -383,8 +380,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
             if (savedProgress.current_position > 0 && locations) {
               // Try to restore by percentage
               try {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const fallbackCfi = (locations as any).cfiFromPercentage(savedProgress.current_position / 100);
+                const fallbackCfi = locations.cfiFromPercentage(savedProgress.current_position / 100);
                 if (fallbackCfi) {
                   await rendition.display(fallbackCfi);
                   setInitialProgress(fallbackCfi, savedProgress.current_position);

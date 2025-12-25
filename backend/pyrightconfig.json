@@ -1,0 +1,23 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/pyright/main/packages/vscode-pyright/schemas/pyrightconfig.schema.json",
+  "include": ["app", "tests"],
+  "exclude": ["**/__pycache__", "alembic/versions"],
+  "pythonVersion": "3.11",
+  "pythonPlatform": "Linux",
+  "typeCheckingMode": "basic",
+
+  "// Docker mode": "Dependencies are in container, so relax import checks",
+  "reportMissingImports": "none",
+  "reportMissingModuleSource": "none",
+  "reportMissingTypeStubs": false,
+
+  "// Code quality checks": "These work without dependencies",
+  "reportUnusedImport": true,
+  "reportUnusedVariable": true,
+  "reportOptionalMemberAccess": false,
+  "reportGeneralTypeIssues": true,
+  "reportUnusedFunction": "warning",
+  "reportDuplicateImport": true,
+
+  "extraPaths": ["app"]
+}

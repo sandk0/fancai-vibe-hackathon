@@ -1,0 +1,121 @@
+╔══════════════════════════════════════════════════════════╗
+║         EPUB Reader Touch Navigation Zones              ║
+╠══════════════════════════════════════════════════════════╣
+║                                                          ║
+║  ┌─────────┬──────────────────────┬─────────┐          ║
+║  │         │                      │         │          ║
+║  │  LEFT   │       CENTER         │  RIGHT  │          ║
+║  │  ZONE   │       ZONE           │  ZONE   │          ║
+║  │         │                      │         │          ║
+║  │   TAP   │    TAP IGNORED       │   TAP   │          ║
+║  │    →    │   (Reserved for      │    →    │          ║
+║  │  PREV   │    UI toggle)        │  NEXT   │          ║
+║  │  PAGE   │                      │  PAGE   │          ║
+║  │         │                      │         │          ║
+║  │  25%    │        50%           │  25%    │          ║
+║  │ (0-0.25)│    (0.25-0.75)       │(0.75-1) │          ║
+║  └─────────┴──────────────────────┴─────────┘          ║
+║                                                          ║
+║  Screen Width: 100%                                     ║
+║                                                          ║
+╠══════════════════════════════════════════════════════════╣
+║  TAP DETECTION CRITERIA:                                ║
+║  • Duration: < 200ms                                    ║
+║  • Movement: < 10px                                     ║
+║                                                          ║
+║  SWIPE DETECTION CRITERIA:                              ║
+║  • Distance: > 50px (horizontal)                        ║
+║  • Duration: < 300ms                                    ║
+║  • Direction: More horizontal than vertical             ║
+╚══════════════════════════════════════════════════════════╝
+
+EXAMPLES:
+
+┌─────────────────────────────────────────────────────────┐
+│ Example 1: Tap на левый край                           │
+├─────────────────────────────────────────────────────────┤
+│ Touch at X=60px (screen width: 400px)                  │
+│ → relativeX = 60/400 = 0.15 (15%)                      │
+│ → 0.15 < 0.25 ✅ LEFT ZONE                             │
+│ → Duration: 150ms < 200ms ✅                           │
+│ → Movement: 5px < 10px ✅                              │
+│ → ACTION: prevPage() → Previous page                   │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│ Example 2: Tap на правый край                          │
+├─────────────────────────────────────────────────────────┤
+│ Touch at X=320px (screen width: 400px)                 │
+│ → relativeX = 320/400 = 0.80 (80%)                     │
+│ → 0.80 > 0.75 ✅ RIGHT ZONE                            │
+│ → Duration: 180ms < 200ms ✅                           │
+│ → Movement: 8px < 10px ✅                              │
+│ → ACTION: nextPage() → Next page                       │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│ Example 3: Tap в центре                                │
+├─────────────────────────────────────────────────────────┤
+│ Touch at X=200px (screen width: 400px)                 │
+│ → relativeX = 200/400 = 0.50 (50%)                     │
+│ → 0.25 < 0.50 < 0.75 ✅ CENTER ZONE                    │
+│ → Duration: 120ms < 200ms ✅                           │
+│ → Movement: 3px < 10px ✅                              │
+│ → ACTION: Ignored (reserved for UI toggle)             │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│ Example 4: Swipe влево (не tap)                        │
+├─────────────────────────────────────────────────────────┤
+│ Touch start: X=300px → Touch end: X=220px             │
+│ → Movement: 80px > 10px ❌ NOT A TAP                   │
+│ → Horizontal distance: 80px > 50px ✅ SWIPE            │
+│ → Duration: 250ms < 300ms ✅                           │
+│ → Direction: Left                                       │
+│ → ACTION: nextPage() → Next page                       │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│ Example 5: Долгое нажатие (не tap)                     │
+├─────────────────────────────────────────────────────────┤
+│ Touch at X=60px (screen width: 400px)                  │
+│ → relativeX = 60/400 = 0.15 (15%) → LEFT ZONE          │
+│ → Duration: 350ms > 200ms ❌ NOT A TAP                 │
+│ → Movement: 5px < 10px                                  │
+│ → Falls to swipe check                                  │
+│ → Swipe distance: 5px < 50px ❌ NOT A SWIPE            │
+│ → ACTION: Ignored                                       │
+└─────────────────────────────────────────────────────────┘
+
+PRIORITY FLOW:
+┌──────────┐
+│ touchEnd │
+└────┬─────┘
+     │
+     ▼
+┌─────────────────────┐
+│ Is it a TAP?        │◄── Duration < 200ms AND Movement < 10px
+│ (quick + minimal)   │
+└────┬────────────────┘
+     │
+     ├─YES──►┌──────────────┐──►┌──────────┐
+     │       │ Which zone?  │   │ Navigate │
+     │       └──────────────┘   └──────────┘
+     │
+     ├─NO───►┌──────────────┐
+     │       │ Is it SWIPE? │◄── Distance > 50px, Duration < 300ms
+     │       └────┬─────────┘
+     │            │
+     │            ├─YES──►┌──────────┐
+     │            │       │ Navigate │
+     │            │       └──────────┘
+     │            │
+     │            └─NO───►┌──────────┐
+     │                    │  Ignore  │
+     │                    └──────────┘
+     └──────────────────────────────────┘
+
+RESPONSIVE BEHAVIOR:
+• Zones calculated dynamically based on window.innerWidth
+• Works on all screen sizes (mobile, tablet, desktop)
+• Touch coordinates normalized to 0-1 range for zone detection

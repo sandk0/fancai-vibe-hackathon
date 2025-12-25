@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useLocationGeneration - Custom hook for generating and caching EPUB locations
  *
@@ -69,7 +68,7 @@ const getCachedLocations = async (bookId: string): Promise<any | null> => {
   }
 };
 
-const cacheLocations = async (bookId: string, locations: any): Promise<void> => {
+const cacheLocations = async (bookId: string, locations: string): Promise<void> => {
   try {
     const db = await openDB();
     return new Promise((resolve, reject) => {
@@ -111,7 +110,7 @@ export const useLocationGeneration = (
         await book.ready;
 
         // Check if spine exists and is ready
-        const spine = (book as any).spine;
+        const spine = book.spine;
         if (!spine || !spine.items || spine.items.length === 0) {
           console.warn('⚠️ [useLocationGeneration] Spine not ready yet, waiting...');
           // Wait a bit more for spine to load
@@ -145,7 +144,7 @@ export const useLocationGeneration = (
 
         if (!isMounted) return;
 
-        const total = (book.locations as any).total || 0;
+        const total = book.locations.total || 0;
         console.log('✅ [useLocationGeneration] Locations generated:', total);
 
         // Cache the generated locations

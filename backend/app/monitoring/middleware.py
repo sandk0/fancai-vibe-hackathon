@@ -163,12 +163,15 @@ async def update_gauges_periodically(db_session_factory, interval_seconds: int =
         interval_seconds: Интервал обновления (по умолчанию 30 секунд)
 
     Usage:
-        # В main.py startup event:
-        @app.on_event("startup")
-        async def startup():
+        # In main.py lifespan context manager:
+        @asynccontextmanager
+        async def lifespan(app: FastAPI):
+            # Startup
             asyncio.create_task(
                 update_gauges_periodically(get_database_session, interval_seconds=30)
             )
+            yield
+            # Shutdown
     """
     while True:
         try:

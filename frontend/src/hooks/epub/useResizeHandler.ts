@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useResizeHandler - Handles rendition resize events
  *
@@ -91,7 +90,7 @@ export const useResizeHandler = ({
       }
 
       // Save current position BEFORE resize affects layout
-      const currentLocation = rendition.currentLocation() as any;
+      const currentLocation = rendition.currentLocation();
       if (currentLocation?.start?.cfi) {
         lastCFI.current = currentLocation.start.cfi;
         console.log('💾 [useResizeHandler] Saved CFI:', (lastCFI.current || '').substring(0, 80) + '...');

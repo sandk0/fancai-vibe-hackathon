@@ -22,7 +22,7 @@ from typing import Dict, Any, List, Optional
 from ...core.auth import get_current_admin_user
 from ...core.database import get_database_session
 from ...models.user import User
-from ...models.feature_flag import FeatureFlag, FeatureFlagCategory
+from ...models.feature_flag import FeatureFlagCategory
 from ...services.feature_flag_manager import FeatureFlagManager
 from ...schemas.responses import FeatureFlagBulkUpdateResponse
 

@@ -11,8 +11,7 @@ NLP REMOVAL (December 2025):
 
 from app.core.celery_app import celery_app
 import asyncio
-import os
-from typing import Dict, Any, List
+from typing import Dict, Any
 import logging
 from datetime import datetime, timezone
 from uuid import UUID

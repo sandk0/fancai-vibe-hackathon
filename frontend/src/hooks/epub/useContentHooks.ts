@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useContentHooks - epub.js content hooks for custom styling and manipulation
  *
@@ -15,7 +14,7 @@
  */
 
 import { useEffect } from 'react';
-import type { Rendition } from '@/types/epub';
+import type { Rendition, Contents } from '@/types/epub';
 import type { ThemeName } from './useEpubThemes';
 
 export const useContentHooks = (
@@ -29,7 +28,7 @@ export const useContentHooks = (
      * Content hook - runs when section content is loaded
      * Perfect for injecting custom styles, manipulating images, etc.
      */
-    const contentHook = (contents: any, _view: any) => {
+    const contentHook = (contents: Contents, _view?: unknown) => {
       console.log('🪝 [useContentHooks] Content hook triggered');
 
       const doc = contents.document;
