@@ -188,6 +188,12 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   useContentHooks(rendition, theme);
 
   // Hook 12: Description highlighting
+  // FIX: Don't gate 'enabled' on descriptions.length > 0
+  // This creates a chicken-and-egg problem:
+  // 1. descriptions = [] → enabled = false → no listeners set up
+  // 2. descriptions load → enabled = true → listeners set up
+  // 3. But page is already rendered, and initial handleRendered() might miss it
+  // The hook itself handles empty descriptions gracefully (early return in highlightDescriptions)
   useDescriptionHighlighting({
     rendition,
     descriptions,
@@ -195,7 +201,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     onDescriptionClick: async (desc, img) => {
       await openModal(desc, img);
     },
-    enabled: renditionReady && descriptions.length > 0,
+    enabled: renditionReady, // Always enabled when rendition is ready
   });
 
   // DEBUG: Log descriptions and highlighting state
@@ -204,7 +210,8 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
       descriptionsCount: descriptions.length,
       imagesCount: images.length,
       renditionReady,
-      highlightingEnabled: renditionReady && descriptions.length > 0,
+      highlightingEnabled: renditionReady,
+      willHighlight: renditionReady && descriptions.length > 0,
     });
   }, [descriptions, images, renditionReady]);
 

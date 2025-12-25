@@ -508,15 +508,21 @@ export const useChapterManagement = ({
         }
       }
 
-      // 3. For first chapter without descriptions, trigger LLM extraction
-      const firstEmptyChapter = batchResponse.chapters.find(
+      // 3. Log chapters without descriptions (don't trigger LLM in prefetch)
+      // FIX: Don't trigger LLM extraction in prefetch - it confuses users when
+      // "AI analyzing" shows while they're still reading another chapter.
+      // LLM extraction will happen automatically when user opens the chapter.
+      const emptyChapters = batchResponse.chapters.filter(
         r => r.success && r.data && r.data.nlp_analysis.descriptions.length === 0
       );
 
-      if (firstEmptyChapter) {
-        console.log(`🔄 [useChapterManagement] Triggering LLM for chapter ${firstEmptyChapter.chapter_number}`);
-        // Use individual call with extract_new=true
-        await prefetchSingleChapter(firstEmptyChapter.chapter_number, true);
+      if (emptyChapters.length > 0) {
+        console.log(
+          `⏭️ [useChapterManagement] Chapters without descriptions: ${emptyChapters.map(c => c.chapter_number).join(', ')}. ` +
+          `Will extract when opened.`
+        );
+        // NOTE: LLM extraction disabled in prefetch to avoid confusion.
+        // Extraction happens on-demand when user navigates to the chapter.
       }
 
     } catch (error) {

@@ -695,4 +695,38 @@ export const useDescriptionHighlighting = ({
       }
     };
   }, [rendition, enabled, highlightDescriptions]);
+
+  /**
+   * FIX: Force re-highlight when descriptions load after page is already rendered
+   *
+   * This handles the case where:
+   * 1. Page renders with descriptions = []
+   * 2. LLM extraction completes
+   * 3. descriptions array updates with content
+   * 4. We need to apply highlights to the already-rendered page
+   */
+  const prevDescriptionsCountRef = useRef(0);
+
+  useEffect(() => {
+    // Only trigger when descriptions change from empty to non-empty
+    const prevCount = prevDescriptionsCountRef.current;
+    const currentCount = descriptions.length;
+
+    prevDescriptionsCountRef.current = currentCount;
+
+    // Skip if no change or going from non-empty to empty (page change)
+    if (currentCount === 0 || prevCount === currentCount) return;
+
+    // Skip if highlighting is disabled
+    if (!rendition || !enabled) return;
+
+    // Descriptions just loaded - force re-highlight with small delay for DOM stability
+    console.log(`🔄 [useDescriptionHighlighting] Descriptions loaded (${prevCount} → ${currentCount}), triggering re-highlight`);
+
+    const timer = setTimeout(() => {
+      highlightDescriptions();
+    }, 150); // Slightly longer than debounce to ensure stability
+
+    return () => clearTimeout(timer);
+  }, [descriptions.length, rendition, enabled, highlightDescriptions]);
 };
