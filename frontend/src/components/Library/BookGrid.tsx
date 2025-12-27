@@ -16,7 +16,7 @@
  * @param onParsingComplete - Callback при завершении обработки
  */
 
-import React from 'react';
+import { memo, useCallback } from 'react';
 import { Book, Search, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BookCard } from './BookCard';
@@ -32,7 +32,15 @@ interface BookGridProps {
   onParsingComplete?: () => void;
 }
 
-export const BookGrid: React.FC<BookGridProps> = ({
+/**
+ * BookGrid - Memoized grid/list of book cards
+ *
+ * Optimization rationale:
+ * - Prevents re-renders when parent state changes but books array is the same
+ * - Uses useCallback for click handlers passed to BookCard children
+ * - BookCard is already memoized, so stable callbacks prevent child re-renders
+ */
+export const BookGrid = memo(function BookGrid({
   books,
   viewMode,
   searchQuery,
@@ -40,7 +48,14 @@ export const BookGrid: React.FC<BookGridProps> = ({
   onClearSearch,
   onUploadClick,
   onParsingComplete,
-}) => {
+}: BookGridProps) {
+  // Memoize book click handler factory to create stable callbacks per book
+  // This is critical because BookCard is memoized - inline arrow functions
+  // would break memoization by creating new function references on each render
+  const createBookClickHandler = useCallback(
+    (bookId: string) => () => onBookClick(bookId),
+    [onBookClick]
+  );
   // Empty state: No results from search
   if (books.length === 0 && searchQuery) {
     return (
@@ -114,10 +129,10 @@ export const BookGrid: React.FC<BookGridProps> = ({
           key={book.id}
           book={book}
           viewMode={viewMode}
-          onClick={() => onBookClick(book.id)}
+          onClick={createBookClickHandler(book.id)}
           onParsingComplete={onParsingComplete}
         />
       ))}
     </div>
   );
-};
+});

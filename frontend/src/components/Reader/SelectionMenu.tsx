@@ -14,7 +14,7 @@
  * @component
  */
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import type { Selection } from '@/hooks/epub/useTextSelection';
 import type { ThemeName } from '@/hooks/epub/useEpubThemes';
 
@@ -27,14 +27,23 @@ interface SelectionMenuProps {
   theme?: ThemeName;
 }
 
-export const SelectionMenu: React.FC<SelectionMenuProps> = ({
+/**
+ * SelectionMenu - Memoized text selection popup
+ *
+ * Optimization rationale:
+ * - Rendered on every selection event - memoization prevents redundant renders
+ * - getThemeStyles memoized - object is recreated on each render
+ * - getMenuStyle already uses useCallback (correct)
+ * - Event handlers memoized to prevent effect re-subscriptions
+ */
+export const SelectionMenu = memo(function SelectionMenu({
   selection,
   onCopy,
   onHighlight,
   onNote,
   onClose,
   theme = 'dark',
-}) => {
+}: SelectionMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   /**
@@ -119,9 +128,9 @@ export const SelectionMenu: React.FC<SelectionMenuProps> = ({
   }, [selection]);
 
   /**
-   * Get theme-specific styles
+   * Get theme-specific styles - memoized to prevent object recreation
    */
-  const getThemeStyles = () => {
+  const themeStyles = useMemo(() => {
     switch (theme) {
       case 'light':
         return {
@@ -149,43 +158,41 @@ export const SelectionMenu: React.FC<SelectionMenuProps> = ({
           buttonActive: 'active:bg-gray-600',
         };
     }
-  };
+  }, [theme]);
 
   /**
-   * Handle copy with close
+   * Handle copy with close - memoized to prevent button re-renders
    */
-  const handleCopy = () => {
-    console.log('📋 [SelectionMenu] Copy clicked');
+  const handleCopy = useCallback(() => {
+    console.log('[SelectionMenu] Copy clicked');
     onCopy();
     onClose();
-  };
+  }, [onCopy, onClose]);
 
   /**
-   * Handle highlight with close (for Task 3.1)
+   * Handle highlight with close (for Task 3.1) - memoized
    */
-  const handleHighlight = () => {
-    console.log('🎨 [SelectionMenu] Highlight clicked');
+  const handleHighlight = useCallback(() => {
+    console.log('[SelectionMenu] Highlight clicked');
     if (onHighlight) {
       onHighlight();
       onClose();
     }
-  };
+  }, [onHighlight, onClose]);
 
   /**
-   * Handle note with close (for Task 3.1)
+   * Handle note with close (for Task 3.1) - memoized
    */
-  const handleNote = () => {
-    console.log('📝 [SelectionMenu] Note clicked');
+  const handleNote = useCallback(() => {
+    console.log('[SelectionMenu] Note clicked');
     if (onNote) {
       onNote();
       onClose();
     }
-  };
+  }, [onNote, onClose]);
 
   // Don't render if no selection
   if (!selection) return null;
-
-  const themeStyles = getThemeStyles();
 
   return (
     <div
@@ -333,4 +340,4 @@ export const SelectionMenu: React.FC<SelectionMenuProps> = ({
       )}
     </div>
   );
-};
+});

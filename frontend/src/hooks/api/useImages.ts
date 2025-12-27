@@ -9,6 +9,7 @@
  * - Автоматическая нормализация URL изображений
  * - Batch генерация для глав
  * - Оптимистичные обновления
+ * - Exponential backoff retry для генерации изображений
  *
  * @module hooks/api/useImages
  */
@@ -23,6 +24,7 @@ import {
 import { imagesAPI } from '@/api/images';
 import { imageCache } from '@/services/imageCache';
 import { imageKeys, getCurrentUserId } from './queryKeys';
+import { QUERY_RETRY_PRESETS } from '@/lib/queryClient';
 import type {
   GeneratedImage,
   ImageGenerationParams,
@@ -280,12 +282,12 @@ export function useGenerateImage(
   return useMutation({
     mutationFn: async ({ descriptionId, params = {} }) => {
       console.log(
-        `🎨 [useGenerateImage] Generating image for description ${descriptionId}`
+        `[useGenerateImage] Generating image for description ${descriptionId}`
       );
       return imagesAPI.generateImageForDescription(descriptionId, params);
     },
     onSuccess: async (data, variables) => {
-      // Кэшируем сгенерированное изображение
+      // Cache the generated image
       // P1.3: Now using proper bookId for cache organization
       try {
         await imageCache.set(
@@ -295,15 +297,17 @@ export function useGenerateImage(
           variables.bookId
         );
       } catch (err) {
-        console.warn(`⚠️ [useGenerateImage] Failed to cache image:`, err);
+        console.warn(`[useGenerateImage] Failed to cache image:`, err);
       }
 
-      // Инвалидация связанных запросов
+      // Invalidate related queries
       queryClient.invalidateQueries({
         queryKey: imageKeys.byDescription(userId, variables.descriptionId),
       });
       queryClient.invalidateQueries({ queryKey: imageKeys.userStats(userId) });
     },
+    // Use image generation retry preset (4 retries, 2-60s delays with jitter)
+    ...QUERY_RETRY_PRESETS.imageGeneration,
     ...options,
   });
 }
@@ -358,15 +362,15 @@ export function useBatchGenerateImages(
   return useMutation({
     mutationFn: async (request: BatchGenerationRequest) => {
       console.log(
-        `🎨 [useBatchGenerateImages] Batch generating images for chapter ${request.chapter_id}`
+        `[useBatchGenerateImages] Batch generating images for chapter ${request.chapter_id}`
       );
       return imagesAPI.generateImagesForChapter(request.chapter_id, request);
     },
     onSuccess: async (data, _variables) => {
-      // Кэшируем все сгенерированные изображения
+      // Cache all generated images
       // P1.3: Now using proper bookId for cache organization
       console.log(
-        `💾 [useBatchGenerateImages] Caching ${data.images.length} generated images for book ${bookId}`
+        `[useBatchGenerateImages] Caching ${data.images.length} generated images for book ${bookId}`
       );
 
       await Promise.all(
@@ -380,16 +384,18 @@ export function useBatchGenerateImages(
             );
           } catch (err) {
             console.warn(
-              `⚠️ [useBatchGenerateImages] Failed to cache image:`,
+              `[useBatchGenerateImages] Failed to cache image:`,
               err
             );
           }
         })
       );
 
-      // Инвалидация всех image queries для этой главы
+      // Invalidate all image queries for this chapter
       queryClient.invalidateQueries({ queryKey: imageKeys.all(userId) });
     },
+    // Use image generation retry preset (4 retries, 2-60s delays with jitter)
+    ...QUERY_RETRY_PRESETS.imageGeneration,
     ...options,
   });
 }
@@ -487,11 +493,11 @@ export function useRegenerateImage(
 
   return useMutation({
     mutationFn: async ({ imageId, params = {} }) => {
-      console.log(`🔄 [useRegenerateImage] Regenerating image ${imageId}`);
+      console.log(`[useRegenerateImage] Regenerating image ${imageId}`);
       return imagesAPI.regenerateImage(imageId, params);
     },
     onSuccess: async (data, variables) => {
-      // Обновляем кэш
+      // Update cache
       // P1.3: Now using proper bookId for cache organization
       try {
         await imageCache.set(
@@ -501,15 +507,17 @@ export function useRegenerateImage(
           variables.bookId
         );
       } catch (err) {
-        console.warn(`⚠️ [useRegenerateImage] Failed to cache image:`, err);
+        console.warn(`[useRegenerateImage] Failed to cache image:`, err);
       }
 
-      // Инвалидация
+      // Invalidate queries
       queryClient.invalidateQueries({
         queryKey: imageKeys.byDescription(userId, data.description_id),
       });
       queryClient.invalidateQueries({ queryKey: imageKeys.all(userId) });
     },
+    // Use image generation retry preset (4 retries, 2-60s delays with jitter)
+    ...QUERY_RETRY_PRESETS.imageGeneration,
     ...options,
   });
 }

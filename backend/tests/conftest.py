@@ -4,11 +4,24 @@ import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
+from dataclasses import dataclass
+from typing import Optional, Dict, Any, List
 
 from app.main import app
 from app.core.database import get_database_session, Base
 from app.core.config import settings
+from app.core.container import (
+    DependencyContainer,
+    get_book_parser_dep,
+    get_imagen_service_dep,
+    get_gemini_extractor_dep,
+    get_auth_service_dep,
+    get_book_service_dep,
+    get_book_progress_service_dep,
+    get_image_generator_service_dep,
+    get_token_blacklist_dep,
+)
 from app.models import User, Book, Chapter, Description, GeneratedImage
 
 
@@ -443,3 +456,356 @@ async def initialized_feature_flags(db_session: AsyncSession):
     await manager.initialize()
     yield
     # Cleanup is handled by test_db fixture
+
+
+# ============================================================================
+# DEPENDENCY INJECTION MOCK FIXTURES
+# ============================================================================
+
+
+@dataclass
+class MockImageGenerationResult:
+    """Mock result for image generation."""
+    success: bool = True
+    image_url: Optional[str] = "https://example.com/test-image.png"
+    local_path: Optional[str] = "/app/storage/test-image.png"
+    error_message: Optional[str] = None
+    generation_time_seconds: Optional[float] = 5.0
+    model_used: Optional[str] = "imagen-4"
+    prompt_used: Optional[str] = "test prompt"
+
+
+@dataclass
+class MockParsedBook:
+    """Mock result for book parsing."""
+
+    @dataclass
+    class Metadata:
+        title: str = "Test Book"
+        author: str = "Test Author"
+        genre: str = "fiction"
+        language: str = "en"
+        description: str = "A test book"
+        isbn: Optional[str] = None
+        publisher: Optional[str] = None
+        publish_date: Optional[str] = None
+        cover_image_data: Optional[bytes] = None
+        cover_image_type: Optional[str] = None
+
+    @dataclass
+    class Chapter:
+        number: int
+        title: str
+        content: str
+        html_content: str
+        word_count: int
+
+    metadata: Metadata = None
+    chapters: List = None
+    file_format: str = "epub"
+    total_pages: int = 100
+    estimated_reading_time: int = 50
+
+    def __post_init__(self):
+        if self.metadata is None:
+            self.metadata = MockParsedBook.Metadata()
+        if self.chapters is None:
+            self.chapters = [
+                MockParsedBook.Chapter(
+                    number=1,
+                    title="Chapter 1",
+                    content="Test chapter content",
+                    html_content="<p>Test chapter content</p>",
+                    word_count=100
+                )
+            ]
+
+
+@pytest.fixture
+def mock_book_parser():
+    """
+    Mock BookParser for testing.
+
+    Use with app.dependency_overrides to inject this mock into routes.
+
+    Example:
+        def test_upload(mock_book_parser, client):
+            app.dependency_overrides[get_book_parser_dep] = lambda: mock_book_parser
+            # ... test code ...
+            app.dependency_overrides.clear()
+    """
+    mock = AsyncMock()
+    mock.parse_book.return_value = MockParsedBook()
+    mock.detect_format.return_value = "epub"
+    mock.is_format_supported.return_value = True
+    mock.get_supported_formats.return_value = ["epub", "fb2"]
+    return mock
+
+
+@pytest.fixture
+def mock_image_generator_service():
+    """
+    Mock ImageGeneratorService for testing.
+
+    Provides mock implementations for all image generation methods.
+    """
+    mock = MagicMock()
+
+    # Async methods
+    mock.generate_image_for_description = AsyncMock(
+        return_value=MockImageGenerationResult()
+    )
+    mock.generate_image_from_text = AsyncMock(
+        return_value=MockImageGenerationResult()
+    )
+    mock.batch_generate_for_chapter = AsyncMock(
+        return_value=[MockImageGenerationResult()]
+    )
+    mock.get_generation_stats = AsyncMock(
+        return_value={
+            "queue_size": 0,
+            "is_processing": False,
+            "supported_types": ["location", "character", "atmosphere"],
+            "service_status": {"available": True},
+            "api_status": "operational",
+            "queue_backend": "celery_redis",
+        }
+    )
+    mock.preview_prompt = AsyncMock(
+        return_value={"english_prompt": "translated prompt", "original": "original"}
+    )
+
+    # Sync methods
+    mock.queue_image_generation.return_value = {
+        "task_id": "test-task-123",
+        "status": "queued",
+        "description_id": "test-desc-id",
+    }
+    mock.queue_batch_generation.return_value = {
+        "task_id": "test-batch-task-123",
+        "status": "queued",
+        "chapter_id": "test-chapter-id",
+        "descriptions_count": 5,
+    }
+    mock.get_task_status.return_value = {
+        "task_id": "test-task-123",
+        "status": "SUCCESS",
+        "ready": True,
+        "result": {"image_url": "https://example.com/result.png"},
+    }
+
+    return mock
+
+
+@pytest.fixture
+def mock_imagen_service():
+    """
+    Mock ImagenService for testing.
+
+    Lower-level Imagen API mock.
+    """
+    mock = MagicMock()
+    mock.is_available.return_value = True
+    mock.get_status.return_value = {
+        "available": True,
+        "model": "imagen-4",
+        "rate_limit_remaining": 100,
+    }
+    mock.generate_image = AsyncMock(
+        return_value=MockImageGenerationResult()
+    )
+    return mock
+
+
+@pytest.fixture
+def mock_gemini_extractor():
+    """
+    Mock GeminiDirectExtractor for testing.
+
+    Provides mock description extraction.
+    """
+    mock = MagicMock()
+    mock.is_available.return_value = True
+    mock.get_statistics.return_value = {
+        "total_extractions": 100,
+        "avg_descriptions_per_chapter": 5,
+    }
+    mock.extract = AsyncMock(
+        return_value=[
+            {
+                "content": "beautiful forest with tall trees",
+                "type": "location",
+                "confidence_score": 0.9,
+                "priority_score": 0.8,
+                "chapter_position": 50,
+            },
+            {
+                "content": "mysterious castle on the hill",
+                "type": "location",
+                "confidence_score": 0.85,
+                "priority_score": 0.75,
+                "chapter_position": 120,
+            },
+        ]
+    )
+    return mock
+
+
+@pytest.fixture
+def mock_book_service():
+    """
+    Mock BookService for testing CRUD operations.
+    """
+    mock = MagicMock()
+    mock.create_book_from_upload = AsyncMock()
+    mock.get_user_books = AsyncMock(return_value=[])
+    mock.get_book_by_id = AsyncMock(return_value=None)
+    mock.get_book_chapters = AsyncMock(return_value=[])
+    mock.get_chapter_by_number = AsyncMock(return_value=None)
+    mock.delete_book = AsyncMock(return_value=True)
+    return mock
+
+
+@pytest.fixture
+def mock_book_progress_service():
+    """
+    Mock BookProgressService for testing reading progress.
+    """
+    mock = MagicMock()
+    mock.get_books_with_progress = AsyncMock(return_value=[])
+    mock.update_reading_progress = AsyncMock(return_value=True)
+    mock.get_reading_progress = AsyncMock(return_value=None)
+    return mock
+
+
+@pytest.fixture
+def mock_auth_service():
+    """
+    Mock AuthService for testing authentication.
+
+    Note: For most auth tests, use the real AuthService with test database.
+    This mock is useful for unit testing specific edge cases.
+    """
+    from app.services.auth_service import AuthService
+
+    real_service = AuthService()
+    mock = MagicMock(spec=AuthService)
+
+    # Use real password hashing for consistency
+    mock.get_password_hash = real_service.get_password_hash
+    mock.verify_password = real_service.verify_password
+
+    # Mock async methods
+    mock.create_user = AsyncMock()
+    mock.authenticate_user = AsyncMock()
+    mock.refresh_access_token = AsyncMock()
+    mock.update_user_profile = AsyncMock(return_value=True)
+    mock.deactivate_user = AsyncMock(return_value=True)
+
+    # Mock token methods
+    mock.create_tokens_for_user.return_value = {
+        "access_token": "mock-access-token",
+        "refresh_token": "mock-refresh-token",
+        "token_type": "bearer",
+    }
+    mock.verify_token.return_value = {
+        "sub": "test-user-id",
+        "exp": 9999999999,
+        "type": "access",
+    }
+
+    return mock
+
+
+@pytest.fixture
+def mock_token_blacklist():
+    """
+    Mock TokenBlacklist for testing logout functionality.
+    """
+    mock = MagicMock()
+    mock.add = AsyncMock(return_value=True)
+    mock.is_blacklisted = AsyncMock(return_value=False)
+    mock.cleanup_expired = AsyncMock()
+    return mock
+
+
+@pytest.fixture
+def di_override_cleanup():
+    """
+    Fixture to ensure DI overrides are cleaned up after tests.
+
+    Use as a dependency for tests that use DI overrides:
+
+        def test_something(di_override_cleanup, mock_book_parser):
+            app.dependency_overrides[get_book_parser_dep] = lambda: mock_book_parser
+            # test code...
+    """
+    yield
+    app.dependency_overrides.clear()
+    DependencyContainer.reset_all()
+    DependencyContainer.clear_caches()
+
+
+@pytest_asyncio.fixture
+async def app_with_mock_services(
+    override_get_database,
+    mock_book_parser,
+    mock_image_generator_service,
+    mock_gemini_extractor,
+):
+    """
+    Fixture that sets up the app with all mock services.
+
+    Useful for integration tests that don't need real external services.
+    Database is still real (test database).
+    """
+    app.dependency_overrides[get_book_parser_dep] = lambda: mock_book_parser
+    app.dependency_overrides[get_image_generator_service_dep] = lambda: mock_image_generator_service
+    app.dependency_overrides[get_gemini_extractor_dep] = lambda: mock_gemini_extractor
+
+    yield app
+
+    # Cleanup
+    app.dependency_overrides.clear()
+    DependencyContainer.reset_all()
+    DependencyContainer.clear_caches()
+
+
+# ============================================================================
+# EXAMPLE TEST HELPERS
+# ============================================================================
+
+def create_mock_dependency_overrides(
+    book_parser=None,
+    image_generator=None,
+    gemini_extractor=None,
+    auth_service=None,
+    book_service=None,
+    token_blacklist=None,
+) -> Dict:
+    """
+    Helper to create dependency overrides dictionary.
+
+    Example:
+        overrides = create_mock_dependency_overrides(
+            book_parser=mock_book_parser,
+            image_generator=mock_image_generator,
+        )
+        app.dependency_overrides.update(overrides)
+    """
+    overrides = {}
+
+    if book_parser:
+        overrides[get_book_parser_dep] = lambda: book_parser
+    if image_generator:
+        overrides[get_image_generator_service_dep] = lambda: image_generator
+    if gemini_extractor:
+        overrides[get_gemini_extractor_dep] = lambda: gemini_extractor
+    if auth_service:
+        overrides[get_auth_service_dep] = lambda: auth_service
+    if book_service:
+        overrides[get_book_service_dep] = lambda: book_service
+    if token_blacklist:
+        overrides[get_token_blacklist_dep] = lambda: token_blacklist
+
+    return overrides

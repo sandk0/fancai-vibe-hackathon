@@ -17,7 +17,7 @@
  * @param onClick - Callback при клике на карточку
  */
 
-import React from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { Book, AlertCircle, BookMarked, Layers, Calendar, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ParsingOverlay } from '@/components/UI/ParsingOverlay';
@@ -45,17 +45,35 @@ const getCurrentPage = (totalPages: number, progressPercent: number): number => 
   return Math.round((totalPages * progressPercent) / 100);
 };
 
-export const BookCard: React.FC<BookCardProps> = ({
+/**
+ * BookCard - Memoized book card component
+ *
+ * Optimization rationale:
+ * - Rendered in a list via BookGrid.map() - prevents unnecessary re-renders
+ * - onClick handler memoized to maintain referential equality
+ * - coverUrl memoized as it involves string concatenation
+ */
+export const BookCard = memo(function BookCard({
   book,
   viewMode,
   onClick,
   onParsingComplete,
-}) => {
-  const coverUrl = book.has_cover
-    ? `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/books/${book.id}/cover`
-    : null;
+}: BookCardProps) {
+  // Memoize coverUrl - involves string concatenation on each render
+  const coverUrl = useMemo(() => {
+    return book.has_cover
+      ? `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/books/${book.id}/cover`
+      : null;
+  }, [book.has_cover, book.id]);
 
   const isClickable = book.is_parsed && !book.is_processing;
+
+  // Memoize click handler to prevent child re-renders
+  const handleClick = useCallback(() => {
+    if (isClickable) {
+      onClick();
+    }
+  }, [isClickable, onClick]);
 
   // Grid View
   if (viewMode === 'grid') {
@@ -65,7 +83,7 @@ export const BookCard: React.FC<BookCardProps> = ({
           "group cursor-pointer relative transition-all duration-300 hover:-translate-y-2",
           !isClickable && "pointer-events-none"
         )}
-        onClick={isClickable ? onClick : undefined}
+        onClick={handleClick}
       >
         <div className="flex flex-col h-full">
           {/* Book Cover */}
@@ -171,7 +189,7 @@ export const BookCard: React.FC<BookCardProps> = ({
         "group cursor-pointer p-4 rounded-2xl border-2 hover:shadow-lg transition-all duration-300",
         !isClickable && "pointer-events-none"
       )}
-      onClick={isClickable ? onClick : undefined}
+      onClick={handleClick}
       style={{
         backgroundColor: 'var(--bg-primary)',
         borderColor: 'var(--border-color)',
@@ -258,4 +276,4 @@ export const BookCard: React.FC<BookCardProps> = ({
       </div>
     </div>
   );
-};
+});

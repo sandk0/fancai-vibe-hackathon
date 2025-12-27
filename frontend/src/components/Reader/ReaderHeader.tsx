@@ -13,7 +13,7 @@
  * @component
  */
 
-import React from 'react';
+import { memo, useMemo } from 'react';
 import { ArrowLeft, List, Info, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ThemeName } from '@/hooks/epub/useEpubThemes';
@@ -31,7 +31,15 @@ interface ReaderHeaderProps {
   onSettingsOpen: () => void;
 }
 
-export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
+/**
+ * ReaderHeader - Memoized header with navigation and progress
+ *
+ * Optimization rationale:
+ * - Rendered on every progress update (frequent) - memo prevents full re-renders
+ * - getThemeColors memoized - creates new object on each render
+ * - Callbacks come from parent (EpubReader) which already uses useCallback
+ */
+export const ReaderHeader = memo(function ReaderHeader({
   title,
   author,
   theme,
@@ -42,9 +50,9 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   onTocToggle,
   onInfoOpen,
   onSettingsOpen,
-}) => {
-  // Theme-aware colors
-  const getThemeColors = () => {
+}: ReaderHeaderProps) {
+  // Theme-aware colors - memoized to prevent object recreation on each render
+  const colors = useMemo(() => {
     switch (theme) {
       case 'light':
         return {
@@ -84,9 +92,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
           progressFill: 'bg-blue-400',
         };
     }
-  };
-
-  const colors = getThemeColors();
+  }, [theme]);
 
   return (
     <div
@@ -193,4 +199,4 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
       </div>
     </div>
   );
-};
+});

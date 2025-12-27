@@ -43,7 +43,8 @@ celery_app.conf.update(
     # Rate limiting (basic)
     task_routes={
         "app.core.tasks.process_book_task": {"queue": "heavy"},
-        "app.core.tasks.generate_image_task": {"queue": "normal"},
+        "generate_image_task": {"queue": "normal"},
+        "generate_image_batch_task": {"queue": "normal"},
     },
     # Default queue
     task_default_queue="normal",

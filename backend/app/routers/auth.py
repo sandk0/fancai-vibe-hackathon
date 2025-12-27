@@ -4,6 +4,7 @@ API роуты для аутентификации в BookReader AI.
 Содержит endpoints для регистрации, входа, обновления токенов и управления профилем.
 """
 
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Depends, status, Request
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +13,9 @@ from typing import Optional
 
 from ..core.database import get_database_session
 from ..core.auth import get_current_active_user, security
-from ..services.auth_service import auth_service
+from ..services.auth_service import AuthService
+from ..services.token_blacklist import TokenBlacklist
+from ..core.container import get_auth_service_dep, get_token_blacklist_dep
 from ..models.user import User
 from ..middleware.rate_limit import rate_limit, RATE_LIMIT_PRESETS
 from ..schemas.responses import (
@@ -71,6 +74,7 @@ async def register_user(
     user_request: UserRegistrationRequest,
     request: Request,
     db: AsyncSession = Depends(get_database_session),
+    auth_svc: AuthService = Depends(get_auth_service_dep),
 ) -> RegisterResponse:
     """
     Регистрация нового пользователя.
@@ -97,8 +101,8 @@ async def register_user(
         )
 
     try:
-        # Создаем пользователя
-        user = await auth_service.create_user(
+        # Создаем пользователя (используем DI)
+        user = await auth_svc.create_user(
             db=db,
             email=user_request.email,
             password=user_request.password,
@@ -120,8 +124,8 @@ async def register_user(
             "updated_at": user.updated_at.isoformat(),
         }
 
-        # Создаем токены для нового пользователя
-        tokens = auth_service.create_tokens_for_user(user)
+        # Создаем токены для нового пользователя (используем DI)
+        tokens = auth_svc.create_tokens_for_user(user)
 
         return {
             "user": user_data,
@@ -139,6 +143,7 @@ async def login_user(
     user_request: UserLoginRequest,
     request: Request,
     db: AsyncSession = Depends(get_database_session),
+    auth_svc: AuthService = Depends(get_auth_service_dep),
 ) -> LoginResponse:
     """
     Вход пользователя в систему.
@@ -154,7 +159,8 @@ async def login_user(
     Raises:
         HTTPException: Если неверные учетные данные
     """
-    user = await auth_service.authenticate_user(
+    # Аутентифицируем пользователя (используем DI)
+    user = await auth_svc.authenticate_user(
         db=db, email=user_request.email, password=user_request.password
     )
 
@@ -181,8 +187,8 @@ async def login_user(
         "last_login": user.last_login.isoformat() if user.last_login else None,
     }
 
-    # Создаем токены
-    tokens = auth_service.create_tokens_for_user(user)
+    # Создаем токены (используем DI)
+    tokens = auth_svc.create_tokens_for_user(user)
 
     return {
         "user": user_data,
@@ -193,7 +199,9 @@ async def login_user(
 
 @router.post("/auth/refresh", response_model=RefreshTokenResponse)
 async def refresh_token(
-    request: TokenRefreshRequest, db: AsyncSession = Depends(get_database_session)
+    request: TokenRefreshRequest,
+    db: AsyncSession = Depends(get_database_session),
+    auth_svc: AuthService = Depends(get_auth_service_dep),
 ) -> RefreshTokenResponse:
     """
     Обновление access токена с помощью refresh токена.
@@ -215,7 +223,8 @@ async def refresh_token(
              -d '{"refresh_token": "<refresh_token>"}'
         ```
     """
-    tokens = await auth_service.refresh_access_token(db, request.refresh_token)
+    # Обновляем токен (используем DI)
+    tokens = await auth_svc.refresh_access_token(db, request.refresh_token)
 
     if not tokens:
         raise HTTPException(
@@ -264,6 +273,7 @@ async def update_user_profile(
     request: UserProfileUpdateRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
+    auth_svc: AuthService = Depends(get_auth_service_dep),
 ) -> ProfileUpdateResponse:
     """
     Обновление профиля пользователя.
@@ -297,7 +307,8 @@ async def update_user_profile(
             detail="Current password is required to change password",
         )
 
-    success = await auth_service.update_user_profile(
+    # Обновляем профиль (используем DI)
+    success = await auth_svc.update_user_profile(
         db=db,
         user_id=current_user.id,
         full_name=request.full_name,
@@ -317,12 +328,14 @@ async def update_user_profile(
 @router.post("/auth/logout", response_model=LogoutResponse)
 async def logout_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
+    auth_svc: AuthService = Depends(get_auth_service_dep),
+    token_bl: TokenBlacklist = Depends(get_token_blacklist_dep),
 ) -> LogoutResponse:
     """
     Выход пользователя из системы.
 
-    В текущей реализации просто возвращает сообщение об успешном выходе.
-    В будущем можно добавить blacklist токенов или другие механизмы.
+    Добавляет токен в blacklist до его естественного истечения,
+    предотвращая повторное использование токена после logout.
 
     Args:
         credentials: JWT токен для валидации
@@ -335,10 +348,25 @@ async def logout_user(
         curl -X POST http://localhost:8000/api/v1/auth/logout \\
              -H "Authorization: Bearer <token>"
         ```
+
+    Security:
+        - Token is blacklisted in Redis until its natural expiration
+        - Subsequent requests with this token will be rejected with 401
+        - Blacklist entries auto-expire when the token would have expired
     """
-    # В текущей реализации JWT токены stateless,
-    # поэтому просто возвращаем сообщение
-    # В будущем можно добавить Redis blacklist для токенов
+    token = credentials.credentials
+
+    # Verify token and extract expiration (используем DI)
+    payload = auth_svc.verify_token(token, "access")
+
+    if payload:
+        # Get token expiration from payload
+        exp_timestamp = payload.get("exp")
+        if exp_timestamp:
+            expires_at = datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
+            # Add token to blacklist (используем DI)
+            await token_bl.add(token, expires_at)
+
     return LogoutResponse()
 
 
@@ -346,6 +374,7 @@ async def logout_user(
 async def deactivate_account(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
+    auth_svc: AuthService = Depends(get_auth_service_dep),
 ) -> AccountDeactivationResponse:
     """
     Деактивация аккаунта пользователя.
@@ -360,7 +389,8 @@ async def deactivate_account(
     Raises:
         HTTPException: Если не удалось деактивировать аккаунт
     """
-    success = await auth_service.deactivate_user(db, current_user.id)
+    # Деактивируем пользователя (используем DI)
+    success = await auth_svc.deactivate_user(db, current_user.id)
 
     if not success:
         raise HTTPException(
