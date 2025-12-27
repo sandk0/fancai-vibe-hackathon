@@ -21,6 +21,7 @@ import { memo, useCallback, useMemo } from 'react';
 import { Book, AlertCircle, BookMarked, Layers, Calendar, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ParsingOverlay } from '@/components/UI/ParsingOverlay';
+import { AuthenticatedImage } from '@/components/UI/AuthenticatedImage';
 import type { Book as BookType } from '@/types/api';
 
 interface BookCardProps {
@@ -95,17 +96,16 @@ export const BookCard = memo(function BookCard({
                 forceBlock={false}
               />
             )}
-            {coverUrl ? (
-              <img
-                src={coverUrl}
-                alt={`${book.title} cover`}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Book className="w-12 h-12" style={{ color: 'var(--text-tertiary)' }} />
-              </div>
-            )}
+            <AuthenticatedImage
+              src={coverUrl}
+              alt={`${book.title} cover`}
+              className="w-full h-full object-cover"
+              fallback={
+                <div className="w-full h-full flex items-center justify-center">
+                  <Book className="w-12 h-12" style={{ color: 'var(--text-tertiary)' }} />
+                </div>
+              }
+            />
           </div>
 
           {/* Book Info */}
@@ -198,17 +198,16 @@ export const BookCard = memo(function BookCard({
       <div className="flex gap-4">
         {/* Cover */}
         <div className="w-24 h-32 flex-shrink-0 rounded-xl overflow-hidden shadow-md" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-          {coverUrl ? (
-            <img
-              src={coverUrl}
-              alt={`${book.title} cover`}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Book className="w-8 h-8" style={{ color: 'var(--text-tertiary)' }} />
-            </div>
-          )}
+          <AuthenticatedImage
+            src={coverUrl}
+            alt={`${book.title} cover`}
+            className="w-full h-full object-cover"
+            fallback={
+              <div className="w-full h-full flex items-center justify-center">
+                <Book className="w-8 h-8" style={{ color: 'var(--text-tertiary)' }} />
+              </div>
+            }
+          />
         </div>
 
         {/* Book Info */}

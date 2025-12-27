@@ -26,6 +26,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { booksAPI } from '@/api/books';
+import { AuthenticatedImage } from '@/components/UI/AuthenticatedImage';
 
 const BookPage: React.FC = () => {
   const { bookId } = useParams<{ bookId: string }>();
@@ -122,19 +123,20 @@ const BookPage: React.FC = () => {
                 className="w-48 h-72 lg:w-64 lg:h-96 rounded-2xl shadow-2xl overflow-hidden mx-auto lg:mx-0"
                 style={{ backgroundColor: 'var(--bg-secondary)' }}
               >
-                {book.has_cover ? (
-                  <img
-                    src={`${
-                      import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
-                    }/books/${book.id}/cover`}
-                    alt={`${book.title} cover`}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Book className="w-16 h-16" style={{ color: 'var(--text-tertiary)' }} />
-                  </div>
-                )}
+                <AuthenticatedImage
+                  src={
+                    book.has_cover
+                      ? `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/books/${book.id}/cover`
+                      : null
+                  }
+                  alt={`${book.title} cover`}
+                  className="w-full h-full object-cover"
+                  fallback={
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Book className="w-16 h-16" style={{ color: 'var(--text-tertiary)' }} />
+                    </div>
+                  }
+                />
               </div>
             </div>
 

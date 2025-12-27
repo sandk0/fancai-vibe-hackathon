@@ -17,6 +17,7 @@ import { ArrowLeft, BookOpen, Image as ImageIcon, Sparkles, TrendingUp } from 'l
 import { useQuery } from '@tanstack/react-query';
 import { booksAPI } from '@/api/books';
 import { ImageGallery } from '@/components/Images/ImageGallery';
+import { AuthenticatedImage } from '@/components/UI/AuthenticatedImage';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import ErrorMessage from '@/components/UI/ErrorMessage';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -89,24 +90,23 @@ const BookImagesPage: React.FC = () => {
           <div className="flex flex-col lg:flex-row items-center gap-8">
             {/* Book Cover */}
             <div className="w-40 h-56 rounded-2xl overflow-hidden shadow-2xl flex-shrink-0 border-4 border-white/20">
-              {book.has_cover ? (
-                <img
-                  src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/books/${book.id}/cover`}
-                  alt={`${book.title} cover`}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                  }}
-                />
-              ) : (
-                <div
-                  className="w-full h-full flex items-center justify-center"
-                  style={{ backgroundColor: 'var(--accent-color)' }}
-                >
-                  <BookOpen className="w-16 h-16 text-white" />
-                </div>
-              )}
+              <AuthenticatedImage
+                src={
+                  book.has_cover
+                    ? `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/books/${book.id}/cover`
+                    : null
+                }
+                alt={`${book.title} cover`}
+                className="w-full h-full object-cover"
+                fallback={
+                  <div
+                    className="w-full h-full flex items-center justify-center"
+                    style={{ backgroundColor: 'var(--accent-color)' }}
+                  >
+                    <BookOpen className="w-16 h-16 text-white" />
+                  </div>
+                }
+              />
             </div>
 
             {/* Book Info */}
