@@ -12,6 +12,7 @@ import { initializeStores } from '@/stores';
 // Layout components (always loaded)
 import Layout from '@/components/Layout/Layout';
 import AuthGuard from '@/components/Auth/AuthGuard';
+import { OfflineBanner } from '@/components/UI/OfflineBanner';
 
 // Core pages (eagerly loaded - small and frequently accessed)
 import HomePage from '@/pages/HomePage';
@@ -122,6 +123,9 @@ function App() {
             />
           </Routes>
           
+          {/* Offline status banner */}
+          <OfflineBanner />
+
           {/* Global notifications */}
           <Toaster
             position="top-right"

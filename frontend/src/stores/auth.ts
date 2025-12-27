@@ -5,7 +5,7 @@ import { persist } from 'zustand/middleware';
 import { authAPI } from '@/api/auth';
 import type { AuthState } from '@/types/state';
 import { STORAGE_KEYS } from '@/types/state';
-import { clearAllCaches } from '@/utils/cacheManager';
+import { clearAllCaches, backupReadingProgress, restoreReadingProgress } from '@/utils/cacheManager';
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -39,6 +39,13 @@ export const useAuthStore = create<AuthState>()(
           localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
 
           console.log('💾 Data saved to localStorage');
+
+          // IMPORTANT: Restore reading progress AFTER successful login
+          console.log('📂 Checking for reading progress backup...');
+          const restored = restoreReadingProgress(user.id);
+          if (restored) {
+            console.log('✅ Reading progress restored successfully');
+          }
 
           set({
             user,
@@ -89,10 +96,17 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         console.log('🚪 Logging out...');
 
+        // IMPORTANT: Backup reading progress BEFORE clearing caches
+        const userId = get().user?.id;
+        if (userId) {
+          console.log('💾 Backing up reading progress before logout...');
+          backupReadingProgress(userId);
+        }
+
         // Call logout API
         authAPI.logout().catch(console.error);
 
-        // Clear localStorage
+        // Clear localStorage (except reading progress backup)
         localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
         localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
         localStorage.removeItem(STORAGE_KEYS.USER_DATA);

@@ -27,7 +27,7 @@
  * );
  */
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface UseProgressSyncOptions {
@@ -41,6 +41,11 @@ interface UseProgressSyncOptions {
   enabled?: boolean;
 }
 
+interface UseProgressSyncReturn {
+  isSaving: boolean;
+  lastSaved: number | null;
+}
+
 export const useProgressSync = ({
   bookId,
   currentCFI,
@@ -50,9 +55,11 @@ export const useProgressSync = ({
   onSave,
   debounceMs = 5000,
   enabled = true,
-}: UseProgressSyncOptions): void => {
+}: UseProgressSyncOptions): UseProgressSyncReturn => {
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<number | null>(null);
   const queryClient = useQueryClient();
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastSavedRef = useRef<{
     cfi: string;
     progress: number;
@@ -78,12 +85,13 @@ export const useProgressSync = ({
       lastSavedRef.current.scrollOffset === scrollOffset &&
       lastSavedRef.current.chapter === currentChapter
     ) {
-      console.log('⏭️ [useProgressSync] Skipping save - no changes');
+      console.log('[useProgressSync] Skipping save - no changes');
       return;
     }
 
     try {
-      console.log('💾 [useProgressSync] Saving progress immediately:', {
+      setIsSaving(true);
+      console.log('[useProgressSync] Saving progress immediately:', {
         cfi: currentCFI.substring(0, 50) + '...',
         progress: progress + '%',
         scrollOffset: scrollOffset.toFixed(2) + '%',
@@ -99,9 +107,12 @@ export const useProgressSync = ({
         chapter: currentChapter,
       };
 
-      console.log('✅ [useProgressSync] Progress saved successfully');
+      setLastSaved(Date.now());
+      console.log('[useProgressSync] Progress saved successfully');
     } catch (err) {
-      console.error('❌ [useProgressSync] Error saving progress:', err);
+      console.error('[useProgressSync] Error saving progress:', err);
+    } finally {
+      setIsSaving(false);
     }
   }, [enabled, currentCFI, progress, scrollOffset, currentChapter, bookId, onSave]);
 
@@ -230,4 +241,6 @@ export const useProgressSync = ({
       });
     };
   }, [enabled, currentCFI, progress, scrollOffset, currentChapter, bookId, saveImmediate, queryClient]);
+
+  return { isSaving, lastSaved };
 };

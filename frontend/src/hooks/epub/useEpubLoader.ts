@@ -20,7 +20,7 @@
  * );
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import ePub from 'epubjs';
 import type { Book, Rendition } from '@/types/epub';
 
@@ -36,6 +36,7 @@ interface UseEpubLoaderReturn {
   rendition: Rendition | null;
   isLoading: boolean;
   error: string;
+  reload: () => void;
 }
 
 export const useEpubLoader = ({
@@ -48,9 +49,17 @@ export const useEpubLoader = ({
   const [rendition, setRendition] = useState<Rendition | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const [reloadKey, setReloadKey] = useState(0);
 
   const bookRef = useRef<Book | null>(null);
   const renditionRef = useRef<Rendition | null>(null);
+
+  // Reload function to retry loading the book
+  const reload = useCallback(() => {
+    console.log('🔄 [useEpubLoader] Reloading book...');
+    setError('');
+    setReloadKey(prev => prev + 1);
+  }, []);
 
   useEffect(() => {
     if (!viewerRef.current) {
@@ -187,12 +196,13 @@ export const useEpubLoader = ({
       setBook(null);
       setRendition(null);
     };
-  }, [bookUrl, authToken]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [bookUrl, authToken, reloadKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     book,
     rendition,
     isLoading,
     error,
+    reload,
   };
 };

@@ -30,7 +30,7 @@
  * @component
  */
 
-import { useRef, useCallback, useEffect, useState } from 'react';
+import { useRef, useCallback, useEffect, useState, useMemo } from 'react';
 import { booksAPI } from '@/api/books';
 import { STORAGE_KEYS } from '@/types/state';
 import type { BookDetail } from '@/types/api';
@@ -68,11 +68,61 @@ import { ReaderControls } from './ReaderControls';
 import { ReaderHeader } from './ReaderHeader';
 import { ImageGenerationStatus } from './ImageGenerationStatus';
 import { ExtractionIndicator } from './ExtractionIndicator';
+import { ProgressSaveIndicator } from './ProgressSaveIndicator';
+import { PositionConflictDialog } from './PositionConflictDialog';
 import { notify } from '@/stores/ui';
 import { useNavigate } from 'react-router-dom';
 
+// Types for position conflict
+interface PositionConflict {
+  serverPosition: {
+    cfi: string;
+    progress: number;
+    lastReadAt: Date;
+  };
+  localPosition: {
+    cfi: string;
+    progress: number;
+    savedAt: Date;
+  };
+}
+
 interface EpubReaderProps {
   book: BookDetail;
+}
+
+/**
+ * Convert technical error messages to user-friendly Russian text
+ */
+function getHumanReadableError(error: string): string {
+  const lowerError = error.toLowerCase();
+
+  if (lowerError.includes('network') || lowerError.includes('failed to fetch') || lowerError.includes('net::')) {
+    return 'Проверьте подключение к интернету и попробуйте снова.';
+  }
+  if (lowerError.includes('404') || lowerError.includes('not found')) {
+    return 'Файл книги не найден. Возможно, книга была удалена.';
+  }
+  if (lowerError.includes('401') || lowerError.includes('unauthorized')) {
+    return 'Сессия истекла. Пожалуйста, войдите в систему снова.';
+  }
+  if (lowerError.includes('403') || lowerError.includes('forbidden')) {
+    return 'У вас нет доступа к этой книге.';
+  }
+  if (lowerError.includes('500') || lowerError.includes('internal server')) {
+    return 'Ошибка сервера. Попробуйте позже.';
+  }
+  if (lowerError.includes('timeout') || lowerError.includes('timed out')) {
+    return 'Превышено время ожидания. Проверьте соединение и попробуйте снова.';
+  }
+  if (lowerError.includes('epub') || lowerError.includes('parse')) {
+    return 'Не удалось открыть файл книги. Формат может быть поврежден.';
+  }
+  if (lowerError.includes('viewer') || lowerError.includes('container')) {
+    return 'Ошибка отображения. Обновите страницу и попробуйте снова.';
+  }
+
+  return 'Произошла ошибка при загрузке книги. Попробуйте позже.';
 }
 
 export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
@@ -86,11 +136,14 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   // State for settings dropdown
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+  // State for position conflict dialog (sync between devices)
+  const [positionConflict, setPositionConflict] = useState<PositionConflict | null>(null);
+
   // Get auth token
   const authToken = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
 
   // Hook 1: Load EPUB file and create rendition
-  const { book: epubBook, rendition, isLoading, error } = useEpubLoader({
+  const { book: epubBook, rendition, isLoading, error, reload } = useEpubLoader({
     bookUrl: booksAPI.getBookFileUrl(book.id),
     viewerRef,
     authToken,
@@ -132,7 +185,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   });
 
   // Hook 5: Debounced progress sync to backend
-  useProgressSync({
+  const { isSaving, lastSaved } = useProgressSync({
     bookId: book.id,
     currentCFI,
     progress,
@@ -334,13 +387,14 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
    * - Race condition between displayInitial and restorePosition
    * - Shows loading overlay until position is ready
    * - Proper fallback when CFI is invalid
+   * - Sync on Open: Checks localStorage backup vs server position for multi-device sync
    */
   useEffect(() => {
     if (!rendition || !renditionReady) return;
 
     // Skip if already restored position for this book
     if (hasRestoredPosition.current) {
-      console.log('⏭️ [EpubReader] Position already restored, skipping');
+      console.log('[EpubReader] Position already restored, skipping');
       setIsRestoringPosition(false);
       return;
     }
@@ -351,15 +405,60 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
       setIsRestoringPosition(true);
 
       try {
-        // Fetch saved progress
-        console.log('📖 [EpubReader] Fetching saved progress...');
+        // Fetch saved progress from server
+        console.log('[EpubReader] Fetching saved progress...');
         const { progress: savedProgress } = await booksAPI.getReadingProgress(book.id);
 
         if (!isMounted) return;
 
+        // Check localStorage backup for position conflict (multi-device sync)
+        const localBackupKey = `book_${book.id}_progress_backup`;
+        const localBackupRaw = localStorage.getItem(localBackupKey);
+
+        if (localBackupRaw && savedProgress) {
+          try {
+            const localBackup = JSON.parse(localBackupRaw);
+            const serverPercent = savedProgress.current_position || 0;
+            const localPercent = localBackup.current_position || 0;
+
+            console.log('[EpubReader] Comparing positions:', {
+              server: serverPercent.toFixed(2) + '%',
+              local: localPercent.toFixed(2) + '%',
+              difference: Math.abs(serverPercent - localPercent).toFixed(2) + '%',
+            });
+
+            // If difference > 5% - show conflict dialog
+            if (Math.abs(serverPercent - localPercent) > 5) {
+              console.log('[EpubReader] Position conflict detected (>5% difference)');
+
+              setPositionConflict({
+                serverPosition: {
+                  cfi: savedProgress.reading_location_cfi || '',
+                  progress: serverPercent,
+                  lastReadAt: new Date(savedProgress.last_read_at),
+                },
+                localPosition: {
+                  cfi: localBackup.reading_location_cfi || '',
+                  progress: localPercent,
+                  savedAt: new Date(localBackup.savedAt || Date.now()),
+                },
+              });
+
+              // Show first page while waiting for user decision
+              // Don't set isRestoringPosition to false yet - user must choose
+              await rendition.display();
+              return; // Wait for user to choose position
+            }
+          } catch (parseError) {
+            console.warn('[EpubReader] Failed to parse local backup, ignoring:', parseError);
+            // Continue with server position
+          }
+        }
+
+        // No conflict or no local backup - use server position
         if (savedProgress?.reading_location_cfi) {
           // Try to restore saved position
-          console.log('📖 [EpubReader] Restoring saved position:', {
+          console.log('[EpubReader] Restoring saved position:', {
             cfi: savedProgress.reading_location_cfi.substring(0, 80) + '...',
             progress: savedProgress.current_position + '%',
             scrollOffset: savedProgress.scroll_offset_percent || 0,
@@ -372,10 +471,10 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
             // Set initial progress immediately so header shows correct value
             setInitialProgress(savedProgress.reading_location_cfi, savedProgress.current_position);
 
-            console.log('✅ [EpubReader] Position restoration complete');
+            console.log('[EpubReader] Position restoration complete');
           } catch (cfiError) {
             // CFI is invalid - fallback to percentage or first page
-            console.warn('⚠️ [EpubReader] CFI invalid, trying percentage fallback:', cfiError);
+            console.warn('[EpubReader] CFI invalid, trying percentage fallback:', cfiError);
 
             if (savedProgress.current_position > 0 && locations) {
               // Try to restore by percentage
@@ -384,12 +483,12 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
                 if (fallbackCfi) {
                   await rendition.display(fallbackCfi);
                   setInitialProgress(fallbackCfi, savedProgress.current_position);
-                  console.log('✅ [EpubReader] Restored position via percentage fallback');
+                  console.log('[EpubReader] Restored position via percentage fallback');
                 } else {
                   throw new Error('Could not generate CFI from percentage');
                 }
               } catch (fallbackError) {
-                console.error('❌ [EpubReader] Percentage fallback failed, showing first page:', fallbackError);
+                console.error('[EpubReader] Percentage fallback failed, showing first page:', fallbackError);
                 await rendition.display();
               }
             } else {
@@ -399,22 +498,22 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
           }
         } else {
           // No saved progress - show first page
-          console.log('📖 [EpubReader] No saved progress, displaying first page');
+          console.log('[EpubReader] No saved progress, displaying first page');
           await rendition.display();
         }
 
         // Mark as restored
         hasRestoredPosition.current = true;
       } catch (err) {
-        console.error('❌ [EpubReader] Error initializing position:', err);
+        console.error('[EpubReader] Error initializing position:', err);
         // On any error, try to show first page
         try {
           await rendition.display();
         } catch (displayErr) {
-          console.error('❌ [EpubReader] Could not even display first page:', displayErr);
+          console.error('[EpubReader] Could not even display first page:', displayErr);
         }
       } finally {
-        if (isMounted) {
+        if (isMounted && !positionConflict) {
           setIsRestoringPosition(false);
         }
       }
@@ -425,7 +524,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     return () => {
       isMounted = false;
     };
-  }, [rendition, renditionReady, book.id, locations, goToCFI, skipNextRelocated, setInitialProgress]);
+  }, [rendition, renditionReady, book.id, locations, goToCFI, skipNextRelocated, setInitialProgress, positionConflict]);
 
   /**
    * Handle image regeneration
@@ -434,8 +533,88 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     updateImage(newImageUrl);
   }, [updateImage]);
 
-  // Get background color based on theme
-  const getBackgroundColor = () => {
+  /**
+   * Handle position conflict resolution - use server position
+   */
+  const handleUseServerPosition = useCallback(async () => {
+    if (!rendition || !positionConflict) return;
+
+    try {
+      console.log('[EpubReader] User chose server position:', positionConflict.serverPosition.progress + '%');
+
+      skipNextRelocated(); // Skip auto-save on restored position
+
+      if (positionConflict.serverPosition.cfi) {
+        await goToCFI(positionConflict.serverPosition.cfi);
+        setInitialProgress(positionConflict.serverPosition.cfi, positionConflict.serverPosition.progress);
+      } else if (locations && positionConflict.serverPosition.progress > 0) {
+        // Fallback to percentage if no CFI
+        const fallbackCfi = locations.cfiFromPercentage(positionConflict.serverPosition.progress / 100);
+        if (fallbackCfi) {
+          await rendition.display(fallbackCfi);
+          setInitialProgress(fallbackCfi, positionConflict.serverPosition.progress);
+        }
+      }
+
+      // Update local backup to match server
+      const localBackupKey = `book_${book.id}_progress_backup`;
+      localStorage.setItem(localBackupKey, JSON.stringify({
+        reading_location_cfi: positionConflict.serverPosition.cfi,
+        current_position: positionConflict.serverPosition.progress,
+        savedAt: Date.now(),
+      }));
+
+      hasRestoredPosition.current = true;
+      setPositionConflict(null);
+      setIsRestoringPosition(false);
+
+      notify.success('Позиция восстановлена', `Продолжаем с ${Math.round(positionConflict.serverPosition.progress)}%`);
+    } catch (err) {
+      console.error('[EpubReader] Error navigating to server position:', err);
+      notify.error('Ошибка', 'Не удалось перейти к сохраненной позиции');
+      setPositionConflict(null);
+      setIsRestoringPosition(false);
+    }
+  }, [rendition, positionConflict, goToCFI, skipNextRelocated, setInitialProgress, locations, book.id]);
+
+  /**
+   * Handle position conflict resolution - use local position
+   */
+  const handleUseLocalPosition = useCallback(async () => {
+    if (!rendition || !positionConflict) return;
+
+    try {
+      console.log('[EpubReader] User chose local position:', positionConflict.localPosition.progress + '%');
+
+      skipNextRelocated(); // Skip auto-save on restored position
+
+      if (positionConflict.localPosition.cfi) {
+        await goToCFI(positionConflict.localPosition.cfi);
+        setInitialProgress(positionConflict.localPosition.cfi, positionConflict.localPosition.progress);
+      } else if (locations && positionConflict.localPosition.progress > 0) {
+        // Fallback to percentage if no CFI
+        const fallbackCfi = locations.cfiFromPercentage(positionConflict.localPosition.progress / 100);
+        if (fallbackCfi) {
+          await rendition.display(fallbackCfi);
+          setInitialProgress(fallbackCfi, positionConflict.localPosition.progress);
+        }
+      }
+
+      hasRestoredPosition.current = true;
+      setPositionConflict(null);
+      setIsRestoringPosition(false);
+
+      notify.success('Позиция восстановлена', `Продолжаем с ${Math.round(positionConflict.localPosition.progress)}%`);
+    } catch (err) {
+      console.error('[EpubReader] Error navigating to local position:', err);
+      notify.error('Ошибка', 'Не удалось перейти к локальной позиции');
+      setPositionConflict(null);
+      setIsRestoringPosition(false);
+    }
+  }, [rendition, positionConflict, goToCFI, skipNextRelocated, setInitialProgress, locations]);
+
+  // Get background color based on theme - memoized to prevent recalculation
+  const backgroundColor = useMemo(() => {
     switch (theme) {
       case 'light':
         return 'bg-white';
@@ -445,28 +624,28 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
       default:
         return 'bg-gray-900';
     }
-  };
+  }, [theme]);
 
   // Handle tap zones for mobile navigation
   const handleTapZone = useCallback((zone: 'left' | 'right') => {
-    if (!renditionReady || isModalOpen || isTocOpen || isSettingsOpen || isBookInfoOpen) return;
+    if (!renditionReady || isModalOpen || isTocOpen || isSettingsOpen || isBookInfoOpen || positionConflict) return;
 
     if (zone === 'left') {
-      console.log('👈 [EpubReader] Left tap zone clicked, going to previous page');
+      console.log('[EpubReader] Left tap zone clicked, going to previous page');
       prevPage();
     } else {
-      console.log('👉 [EpubReader] Right tap zone clicked, going to next page');
+      console.log('[EpubReader] Right tap zone clicked, going to next page');
       nextPage();
     }
-  }, [renditionReady, isModalOpen, isTocOpen, isSettingsOpen, isBookInfoOpen, prevPage, nextPage]);
+  }, [renditionReady, isModalOpen, isTocOpen, isSettingsOpen, isBookInfoOpen, positionConflict, prevPage, nextPage]);
 
   // Main render - viewerRef MUST stay in same DOM location to prevent rendition destruction
   return (
-    <div className={`relative h-full w-full transition-colors ${getBackgroundColor()}`}>
+    <div className={`relative h-full w-full transition-colors ${backgroundColor}`}>
       {/* EPUB Viewer - Maximum reading space, with safe-area support */}
       <div
         ref={viewerRef}
-        className={`h-full w-full ${getBackgroundColor()}`}
+        className={`h-full w-full ${backgroundColor}`}
         style={{
           paddingTop: 'calc(70px + env(safe-area-inset-top))', // Header + notch
           paddingLeft: 'env(safe-area-inset-left)',
@@ -517,7 +696,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
 
       {/* Loading Overlay */}
       {(isLoading || isGenerating || isRestoringPosition) && (
-        <div className={`absolute inset-0 flex items-center justify-center ${getBackgroundColor()} z-10`} data-testid="loading-overlay">
+        <div className={`absolute inset-0 flex items-center justify-center ${backgroundColor} z-10`} data-testid="loading-overlay">
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
             <p className={theme === 'light' ? 'text-gray-700' : 'text-gray-300'} data-testid="loading-text">
@@ -529,10 +708,65 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
 
       {/* Error Overlay */}
       {error && (
-        <div className={`absolute inset-0 flex items-center justify-center ${getBackgroundColor()} z-10`}>
-          <div className="text-center">
-            <p className="text-red-400 mb-4">Ошибка загрузки книги</p>
-            <p className={theme === 'light' ? 'text-gray-600' : 'text-gray-400 text-sm'}>{error}</p>
+        <div className={`absolute inset-0 flex items-center justify-center ${backgroundColor} z-10`}>
+          <div className="text-center max-w-md mx-4">
+            {/* Error Icon */}
+            <div className="mb-6">
+              <svg
+                className="w-16 h-16 mx-auto text-red-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+            </div>
+
+            {/* Error Title */}
+            <h3 className={`text-xl font-semibold mb-3 ${theme === 'light' ? 'text-gray-800' : 'text-gray-100'}`}>
+              Не удалось загрузить книгу
+            </h3>
+
+            {/* Human-readable Error Message */}
+            <p className={`mb-6 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
+              {getHumanReadableError(error)}
+            </p>
+
+            {/* Technical Error (collapsed by default, for debugging) */}
+            <details className={`mb-6 text-left ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>
+              <summary className="cursor-pointer text-sm hover:text-blue-500 transition-colors">
+                Техническая информация
+              </summary>
+              <pre className={`mt-2 p-3 rounded text-xs overflow-x-auto ${theme === 'light' ? 'bg-gray-100' : 'bg-gray-800'}`}>
+                {error}
+              </pre>
+            </details>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={reload}
+                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                Попробовать снова
+              </button>
+              <button
+                onClick={() => navigate('/library')}
+                className={`px-6 py-2.5 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2
+                  ${theme === 'light'
+                    ? 'bg-gray-200 hover:bg-gray-300 text-gray-700 focus:ring-gray-400'
+                    : 'bg-gray-700 hover:bg-gray-600 text-gray-200 focus:ring-gray-500'
+                  }`}
+              >
+                В библиотеку
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -583,6 +817,22 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
         theme={theme}
         onCancel={cancelGeneration}
       />
+
+      {/* Progress Save Indicator */}
+      <ProgressSaveIndicator
+        lastSaved={lastSaved}
+        isSaving={isSaving}
+      />
+
+      {/* Position Conflict Dialog - Multi-device sync */}
+      {positionConflict && (
+        <PositionConflictDialog
+          serverPosition={positionConflict.serverPosition}
+          localPosition={positionConflict.localPosition}
+          onUseServer={handleUseServerPosition}
+          onUseLocal={handleUseLocalPosition}
+        />
+      )}
 
       {/* Image Modal */}
       {isModalOpen && selectedImage && (

@@ -321,6 +321,7 @@ describe('EpubReader Component', () => {
         rendition: mockRendition,
         isLoading: false,
         error: '',
+        reload: vi.fn(),
       });
 
       renderEpubReader();
@@ -338,6 +339,7 @@ describe('EpubReader Component', () => {
         rendition: null,
         isLoading: true,
         error: '',
+        reload: vi.fn(),
       });
 
       renderEpubReader();
@@ -357,12 +359,14 @@ describe('EpubReader Component', () => {
         rendition: null,
         isLoading: false,
         error: 'Failed to load EPUB file',
+        reload: vi.fn(),
       });
 
       renderEpubReader();
 
       await waitFor(() => {
-        expect(screen.getByText('Ошибка загрузки книги')).toBeInTheDocument();
+        expect(screen.getByText(/Не удалось загрузить книгу/)).toBeInTheDocument();
+        // Technical error is now in a details element
         expect(screen.getByText('Failed to load EPUB file')).toBeInTheDocument();
       });
     });
@@ -375,6 +379,7 @@ describe('EpubReader Component', () => {
         rendition: mockRendition,
         isLoading: false,
         error: '',
+        reload: vi.fn(),
       });
 
       vi.mocked(useLocationGeneration).mockReturnValue({
@@ -408,12 +413,13 @@ describe('EpubReader Component', () => {
         rendition: null,
         isLoading: false,
         error: '',
+        reload: vi.fn(),
       });
 
       const { container } = renderEpubReader();
 
       expect(container).toBeInTheDocument();
-      expect(screen.queryByText('Ошибка загрузки книги')).not.toBeInTheDocument();
+      expect(screen.queryByText(/Не удалось загрузить книгу/)).not.toBeInTheDocument();
     });
   });
 
@@ -491,12 +497,13 @@ describe('EpubReader Component', () => {
         rendition: null,
         isLoading: false,
         error: 'Corrupt EPUB file',
+        reload: vi.fn(),
       });
 
       renderEpubReader();
 
       await waitFor(() => {
-        expect(screen.getByText('Ошибка загрузки книги')).toBeInTheDocument();
+        expect(screen.getByText(/Не удалось загрузить книгу/)).toBeInTheDocument();
         expect(screen.getByText('Corrupt EPUB file')).toBeInTheDocument();
       });
     });
@@ -509,6 +516,7 @@ describe('EpubReader Component', () => {
         rendition: null,
         isLoading: false,
         error: 'Network error',
+        reload: vi.fn(),
       });
 
       renderEpubReader();
@@ -526,6 +534,7 @@ describe('EpubReader Component', () => {
         rendition: mockRendition,
         isLoading: false,
         error: '',
+        reload: vi.fn(),
       });
 
       renderEpubReader();
@@ -544,6 +553,7 @@ describe('EpubReader Component', () => {
         rendition: mockRendition,
         isLoading: false,
         error: '',
+        reload: vi.fn(),
       });
 
       const { container } = renderEpubReader();

@@ -26,7 +26,8 @@
 import { queryClient } from '@/lib/queryClient';
 import { chapterCache } from '@/services/chapterCache';
 import { imageCache } from '@/services/imageCache';
-import { useReaderStore } from '@/stores/reader';
+import { useReaderStore, ReadingProgress } from '@/stores/reader';
+import { STORAGE_KEYS } from '@/types/state';
 
 /**
  * Result of cache clearing operation
@@ -281,4 +282,145 @@ async function clearEpubLocationsDB(): Promise<void> {
       reject(error);
     }
   });
+}
+
+/**
+ * Reading progress backup data structure
+ */
+export interface ReadingProgressBackup {
+  data: {
+    readingProgress: Record<string, ReadingProgress>;
+    bookmarks: Record<string, { chapter: number; page: number; text: string; createdAt: Date }[]>;
+    highlights: Record<string, { id: string; chapter: number; text: string; color: string; createdAt: Date }[]>;
+  };
+  savedAt: number;
+  userId: string;
+}
+
+/**
+ * Backup all reading progress data before logout
+ *
+ * Collects reading progress, bookmarks, and highlights from the reader store
+ * and saves them to localStorage for restoration on next login.
+ *
+ * @param userId - Current user ID for verification on restore
+ * @returns Backup data object
+ */
+export function backupReadingProgress(userId: string): ReadingProgressBackup {
+  console.log('💾 [CacheManager] Backing up reading progress for user:', userId);
+
+  const readerState = useReaderStore.getState();
+
+  const backup: ReadingProgressBackup = {
+    data: {
+      readingProgress: readerState.readingProgress,
+      bookmarks: readerState.bookmarks,
+      highlights: readerState.highlights,
+    },
+    savedAt: Date.now(),
+    userId,
+  };
+
+  // Count items for logging
+  const progressCount = Object.keys(backup.data.readingProgress).length;
+  const bookmarkCount = Object.values(backup.data.bookmarks).reduce((sum, arr) => sum + arr.length, 0);
+  const highlightCount = Object.values(backup.data.highlights).reduce((sum, arr) => sum + arr.length, 0);
+
+  console.log('💾 [CacheManager] Backup created:', {
+    progressCount,
+    bookmarkCount,
+    highlightCount,
+  });
+
+  // Save to localStorage
+  try {
+    localStorage.setItem(STORAGE_KEYS.READING_PROGRESS_BACKUP, JSON.stringify(backup));
+    console.log('✅ [CacheManager] Reading progress backup saved to localStorage');
+  } catch (error) {
+    console.error('❌ [CacheManager] Failed to save backup to localStorage:', error);
+  }
+
+  return backup;
+}
+
+/**
+ * Restore reading progress from backup after login
+ *
+ * Checks for existing backup in localStorage and restores it
+ * if the user ID matches. Clears backup after successful restore.
+ *
+ * @param userId - User ID to verify backup belongs to this user
+ * @returns true if restore was successful, false otherwise
+ */
+export function restoreReadingProgress(userId: string): boolean {
+  console.log('📂 [CacheManager] Checking for reading progress backup for user:', userId);
+
+  try {
+    const backupStr = localStorage.getItem(STORAGE_KEYS.READING_PROGRESS_BACKUP);
+
+    if (!backupStr) {
+      console.log('ℹ️ [CacheManager] No reading progress backup found');
+      return false;
+    }
+
+    const backup: ReadingProgressBackup = JSON.parse(backupStr);
+
+    // Verify user ID matches
+    if (backup.userId !== userId) {
+      console.log('⚠️ [CacheManager] Backup belongs to different user, skipping restore');
+      // Remove stale backup from different user
+      localStorage.removeItem(STORAGE_KEYS.READING_PROGRESS_BACKUP);
+      return false;
+    }
+
+    // Check backup age (max 30 days)
+    const maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days in ms
+    if (Date.now() - backup.savedAt > maxAge) {
+      console.log('⚠️ [CacheManager] Backup is too old (>30 days), skipping restore');
+      localStorage.removeItem(STORAGE_KEYS.READING_PROGRESS_BACKUP);
+      return false;
+    }
+
+    // Restore data to reader store
+    const readerStore = useReaderStore.getState();
+
+    // Merge with any existing data (in case of partial state)
+    useReaderStore.setState({
+      readingProgress: {
+        ...readerStore.readingProgress,
+        ...backup.data.readingProgress,
+      },
+      bookmarks: {
+        ...readerStore.bookmarks,
+        ...backup.data.bookmarks,
+      },
+      highlights: {
+        ...readerStore.highlights,
+        ...backup.data.highlights,
+      },
+    });
+
+    // Count restored items for logging
+    const progressCount = Object.keys(backup.data.readingProgress).length;
+    const bookmarkCount = Object.values(backup.data.bookmarks).reduce((sum, arr) => sum + arr.length, 0);
+    const highlightCount = Object.values(backup.data.highlights).reduce((sum, arr) => sum + arr.length, 0);
+
+    console.log('✅ [CacheManager] Reading progress restored:', {
+      progressCount,
+      bookmarkCount,
+      highlightCount,
+      backupAge: Math.round((Date.now() - backup.savedAt) / 1000 / 60) + ' minutes',
+    });
+
+    // Clear backup after successful restore
+    localStorage.removeItem(STORAGE_KEYS.READING_PROGRESS_BACKUP);
+    console.log('🧹 [CacheManager] Backup cleared after restore');
+
+    return true;
+  } catch (error) {
+    console.error('❌ [CacheManager] Failed to restore reading progress:', error);
+    // Clear potentially corrupted backup
+    localStorage.removeItem(STORAGE_KEYS.READING_PROGRESS_BACKUP);
+    return false;
+  }
 }

@@ -206,6 +206,7 @@ export const STORAGE_KEYS = {
   USER_DATA: 'bookreader_user_data',
   READER_SETTINGS: 'bookreader_reader_settings',
   THEME: 'bookreader_theme',
+  READING_PROGRESS_BACKUP: 'bookreader_reading_progress_backup',
 } as const;
 
 // Route Paths
