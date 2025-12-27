@@ -30,7 +30,7 @@ kombu==5.4.2
 psutil==6.1.1
 
 # Google AI SDK (December 2025 - replaces langextract)
-google-genai==1.5.0
+google-genai==1.56.0  # Latest Google GenAI SDK (Gemini 3.0 Flash + Imagen 4)
 
 # Парсинг HTML (для book_parser.py - извлечение текста из EPUB)
 beautifulsoup4==4.12.3
@@ -47,7 +47,7 @@ aiohttp==3.11.11
 
 # Валидация и настройки (December 2025)
 pydantic[email]==2.10.4
-pydantic-settings==2.7.0
+pydantic-settings==2.7.1
 
 # Логирование и мониторинг (December 2025)
 loguru==0.7.3
@@ -62,7 +62,7 @@ ecdsa>=0.19.0
 
 # Тестирование (December 2025)
 pytest==8.3.4
-pytest-asyncio==0.25.0
+pytest-asyncio==0.25.2
 pytest-cov==6.0.0
 aiosqlite==0.20.0
 
@@ -74,9 +74,10 @@ mypy==1.14.1
 # Type stubs для mypy
 types-redis==4.6.0.20241004
 types-requests==2.32.0.20241016
-types-aiofiles==24.1.0.20240626
+types-aiofiles==24.1.0.20241221
 sqlalchemy[mypy]==2.0.45
 
 # Утилиты
 python-dateutil==2.9.0.post0
 pillow>=11.0.0
+tenacity==9.0.0  # Retry library with exponential backoff
