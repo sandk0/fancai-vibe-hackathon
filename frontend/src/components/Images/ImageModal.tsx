@@ -5,6 +5,7 @@ import { imagesAPI } from '@/api/images';
 import { useUIStore } from '@/stores/ui';
 import { useTranslation } from '@/hooks/useTranslation';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
+import { STORAGE_KEYS } from '@/types/state';
 import type { Description } from '@/types/api';
 
 interface ImageModalProps {
@@ -37,7 +38,10 @@ export const ImageModal: React.FC<ImageModalProps> = ({
 
   const handleDownload = async () => {
     try {
-      const response = await fetch(imageUrl);
+      const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+      const response = await fetch(imageUrl, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      });
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');

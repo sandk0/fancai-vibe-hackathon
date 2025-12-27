@@ -7,6 +7,7 @@ import { useUIStore } from '@/stores/ui';
 import { ImageModal } from './ImageModal';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import ErrorMessage from '@/components/UI/ErrorMessage';
+import { STORAGE_KEYS } from '@/types/state';
 import type { GeneratedImage } from '@/types/api';
 
 interface ImageGalleryProps {
@@ -80,10 +81,13 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
 
   const handleDownload = async (image: GeneratedImage) => {
     try {
-      const response = await fetch(image.image_url);
+      const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+      const response = await fetch(image.image_url, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      });
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      
+
       const link = document.createElement('a');
       link.href = url;
       link.download = `bookreader-${image.id}-${Date.now()}.jpg`;
@@ -91,7 +95,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
+
       notify.success('Download Started', 'Image download has begun');
     } catch (error) {
       notify.error('Download Failed', 'Failed to download image');

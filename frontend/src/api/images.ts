@@ -2,6 +2,7 @@
 
 import { apiClient } from './client';
 import { config } from '@/config/env';
+import { STORAGE_KEYS } from '@/types/state';
 import type {
   GeneratedImage,
   ImageGenerationParams,
@@ -269,9 +270,12 @@ export const imagesAPI = {
 
   async downloadImage(imageUrl: string, filename: string): Promise<void> {
     try {
-      const response = await fetch(imageUrl);
+      const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+      const response = await fetch(imageUrl, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      });
       const blob = await response.blob();
-      
+
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;

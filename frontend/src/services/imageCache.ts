@@ -14,6 +14,8 @@
  * @module services/imageCache
  */
 
+import { STORAGE_KEYS } from '@/types/state';
+
 const DB_NAME = 'BookReaderImageCache';
 const DB_VERSION = 2; // Incremented for userId migration
 const STORE_NAME = 'images';
@@ -289,9 +291,12 @@ class ImageCacheService {
     bookId: string
   ): Promise<boolean> {
     try {
-      // Download image as blob
+      // Download image as blob with Authorization header
       console.log('📥 [ImageCache] Downloading image for caching:', descriptionId);
-      const response = await fetch(imageUrl);
+      const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+      const response = await fetch(imageUrl, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      });
 
       if (!response.ok) {
         console.warn('⚠️ [ImageCache] Failed to download image:', response.status);
