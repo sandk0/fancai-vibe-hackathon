@@ -19,16 +19,17 @@ Detailed technical information and API documentation.
 - **[API](reference/api/)** - REST API endpoints and authentication
 - **[Database](reference/database/)** - Schema, migrations, diagrams
 - **[Components](reference/components/)** - Backend, frontend, parser components
-- **[NLP](reference/nlp/)** - Multi-NLP system, processors, ensemble voting
 - **[CLI](reference/cli/)** - Command-line interface reference
+
+> **Note:** NLP reference docs archived (December 2025). Description extraction now uses Gemini API.
 
 ### 🎓 [Explanations](explanations/) - Concepts & Architecture
 Understanding-oriented documentation about system design and decisions.
 
-- **[Architecture](explanations/architecture/)** - System architecture, infrastructure, NLP
+- **[Architecture](explanations/architecture/)** - System architecture, infrastructure, LLM integration
 - **[Concepts](explanations/concepts/)** - CFI system, EPUB integration, subscriptions
 - **[Design Decisions](explanations/design-decisions/)** - Why certain technologies were chosen
-- **[Agents System](explanations/agents-system/)** - Claude Code agents architecture
+- **[Resilience](explanations/resilience/)** - Retry strategies, offline sync, error handling
 
 ### 🔧 [Operations](operations/) - Deployment & Maintenance
 Operations and maintenance documentation.
@@ -106,7 +107,30 @@ When adding or updating documentation:
 
 ---
 
-**Last Updated:** 2025-12-23
-**Documentation Version:** 3.0 (LLM-only architecture, NLP removal)
+**Last Updated:** 2025-12-28
+**Documentation Version:** 3.1 (Post-improvement phases P0-P3)
 
-> **Note:** Multi-NLP system (SpaCy, Natasha, Stanza, GLiNER) was removed in December 2025. Description extraction now uses Google Gemini API.
+## Recent Changes (December 2025)
+
+### Improvement Phases Completed
+| Phase | Focus | Key Changes |
+|-------|-------|-------------|
+| P0 | Hotfix | Critical bug fixes, stability improvements |
+| P1 | Security | JWT token blacklist, secure logout |
+| P2 | Stability | Exponential backoff retry (backend + frontend) |
+| P3 | Comprehensive | Offline sync queue, position conflict dialog, integration tests |
+
+### New Components Added
+- `backend/app/core/retry.py` - Tenacity-based retry decorators (515 lines)
+- `backend/app/services/token_blacklist.py` - JWT revocation service (156 lines)
+- `frontend/src/utils/retryWithBackoff.ts` - Exponential backoff utility (442 lines)
+- `frontend/src/services/syncQueue.ts` - Offline operation queue (312 lines)
+- `frontend/src/hooks/useOnlineStatus.ts` - Online/offline detection (87 lines)
+- `frontend/src/components/Reader/PositionConflictDialog.tsx` - Sync conflict UI (123 lines)
+
+### Test Coverage Added
+- 8 new integration tests (`backend/tests/integration/`)
+- Service tests for Gemini extractor, Imagen generator, LangExtract processor
+- Frontend hook tests (`useOnlineStatus`, `useDescriptionHighlighting`, `useBooks`, `useProgressSync`)
+
+> **Architecture Note:** Multi-NLP system (SpaCy, Natasha, Stanza, GLiNER) was removed in December 2025. Description extraction now uses Google Gemini API.

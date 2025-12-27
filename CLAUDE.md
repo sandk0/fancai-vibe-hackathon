@@ -52,13 +52,14 @@ Admin API: `GET/POST/PUT/DELETE /api/v1/admin/feature-flags`
 
 ## Key Files
 
-### Backend Services (Total: 7,757 lines in 15+ services)
+### Backend Services (Total: 8,400+ lines in 17+ services)
 | File | Lines | Purpose |
 |------|-------|---------|
 | `app/services/book_parser.py` | 925 | EPUB/FB2 parsing + CFI generation |
 | `app/services/langextract_processor.py` | 815 | LLM-based description extraction |
 | `app/services/gemini_extractor.py` | 661 | Direct Gemini API for extraction |
 | `app/services/imagen_generator.py` | 644 | Google Imagen 4 image generation |
+| `app/core/retry.py` | 515 | **NEW:** Exponential backoff decorators (tenacity) |
 | `app/services/reading_session_cache.py` | 454 | Redis session caching |
 | `app/services/settings_manager.py` | 422 | Redis-backed settings |
 | `app/services/llm_description_enricher.py` | 413 | Description post-processing |
@@ -69,6 +70,7 @@ Admin API: `GET/POST/PUT/DELETE /api/v1/admin/feature-flags`
 | `app/services/parsing_manager.py` | 319 | Global parsing queue |
 | `app/services/image_generator.py` | 283 | Image generation orchestration |
 | `app/services/vless_http_client.py` | 255 | Proxy-aware HTTP client |
+| `app/services/token_blacklist.py` | 156 | **NEW:** JWT token revocation (Redis) |
 | `app/services/book/` | 1,028 | Book CRUD (4 services) |
 
 > **REMOVED December 2025:** `multi_nlp_manager.py`, `nlp/` directory, NLP processors
@@ -79,12 +81,17 @@ Admin API: `GET/POST/PUT/DELETE /api/v1/admin/feature-flags`
 | `src/components/Reader/EpubReader.tsx` | 573 | epub.js EPUB reader with CFI navigation |
 | `src/pages/LibraryPage.tsx` | 195 | Book library (refactored from 739) |
 | `src/hooks/epub/useDescriptionHighlighting.ts` | 566 | 9 search strategies for highlighting |
+| `src/utils/retryWithBackoff.ts` | 442 | **NEW:** Exponential backoff for API calls |
+| `src/services/syncQueue.ts` | 312 | **NEW:** Offline sync queue (localStorage) |
+| `src/components/Reader/PositionConflictDialog.tsx` | 123 | **NEW:** Reading position conflict resolution |
+| `src/hooks/useOnlineStatus.ts` | 87 | **NEW:** Online/offline status detection |
 
 ### Frontend Caching Services
 | File | Lines | Purpose |
 |------|-------|---------|
 | `src/services/chapterCache.ts` | ~600 | IndexedDB cache for chapters (descriptions + images) |
 | `src/services/imageCache.ts` | ~500 | IndexedDB offline image cache with auto-cleanup |
+| `src/services/syncQueue.ts` | 312 | **NEW:** Offline operation queue with auto-sync |
 
 ### TanStack Query Hooks (src/hooks/api/)
 | File | Purpose |
@@ -222,30 +229,41 @@ Types: feat, fix, docs, style, refactor, test, chore
 fancai-vibe-hackathon/
 ├── frontend/
 │   ├── src/components/
-│   │   ├── Reader/               # EPUB reader components (13 files)
+│   │   ├── Reader/               # EPUB reader components (14 files)
+│   │   │   └── PositionConflictDialog.tsx  # NEW: Sync conflict UI
 │   │   ├── Library/              # Modular library components (6 files)
 │   │   ├── Admin/                # Modular admin components (5 files)
 │   │   └── UI/                   # Shared UI components (12 files)
 │   ├── src/hooks/
-│   │   ├── api/                  # TanStack Query hooks (5 files)
-│   │   ├── epub/                 # EPUB reader hooks (17 files)
+│   │   ├── api/                  # TanStack Query hooks (5 files + tests)
+│   │   ├── epub/                 # EPUB reader hooks (17 files + tests)
 │   │   ├── reader/               # Reader business logic (7 files)
-│   │   └── library/              # Library filters (1 file)
-│   ├── src/services/             # API clients + caching (2 files)
+│   │   ├── library/              # Library filters (1 file)
+│   │   ├── useOnlineStatus.ts    # NEW: Online/offline detection
+│   │   └── __tests__/            # Hook tests
+│   ├── src/services/             # API clients + caching (4 files)
+│   │   └── syncQueue.ts          # NEW: Offline sync queue
+│   ├── src/utils/
+│   │   └── retryWithBackoff.ts   # NEW: Exponential backoff
 │   └── src/pages/                # Page components (11 files)
 ├── backend/
 │   ├── app/core/                 # Config, DB, exceptions
+│   │   └── retry.py              # NEW: Retry decorators (tenacity)
 │   ├── app/models/               # SQLAlchemy models (9 files)
 │   ├── app/routers/              # API endpoints
 │   │   ├── admin/                # Admin endpoints (8 modules)
 │   │   └── books/                # Book endpoints (3 modules)
-│   └── app/services/             # Business logic (15+ services)
-│       └── book/                 # Book CRUD services (4 files)
+│   ├── app/services/             # Business logic (17+ services)
+│   │   ├── book/                 # Book CRUD services (4 files)
+│   │   └── token_blacklist.py    # NEW: JWT revocation
+│   └── tests/
+│       ├── services/             # Service unit tests (15+ files)
+│       └── integration/          # NEW: Integration tests (8 files)
 ├── docs/                         # Documentation (Diataxis framework)
 │   ├── guides/                   # How-to guides (22 files)
 │   ├── reference/                # API, DB schemas (21 files)
 │   ├── explanations/             # Architecture (14 files)
-│   └── reports/                  # Session reports (139 files)
+│   └── reports/                  # Session reports (139+ files)
 └── docker-compose.yml            # Development stack
 ```
 
@@ -260,11 +278,21 @@ fancai-vibe-hackathon/
 
 ## Current State (December 2025)
 
-### Completed
+### Completed Improvement Phases
+1. **P0 Hotfix** - Critical bug fixes and stability improvements
+2. **P1 Security** - JWT token blacklist, secure token revocation
+3. **P2 Stability** - Exponential backoff retry, error handling improvements
+4. **P3 Comprehensive** - Offline sync queue, position conflict resolution, integration tests
+
+### Completed Milestones
 1. **LLM Migration** - Gemini API for description extraction (replacing Multi-NLP)
 2. **Frontend Refactoring** - TanStack Query, modular components, IndexedDB caching
 3. **Image Generation** - Google Imagen 4 with offline cache
 4. **Performance** - 75% RAM reduction, 68% Docker image reduction
+5. **Resilience** - Retry mechanisms with exponential backoff (backend + frontend)
+6. **Security** - JWT blacklist for token revocation on logout
+7. **Offline-First** - Sync queue for offline operations, online status detection
+8. **Test Coverage** - 43 backend tests (8 integration), 18 frontend tests
 
 ### Active Features
 - Description extraction via Gemini Flash
@@ -272,6 +300,10 @@ fancai-vibe-hackathon/
 - CFI-based reading progress
 - 9-strategy description highlighting
 - Offline support with IndexedDB
+- **NEW:** Exponential backoff retry (API calls, image generation, LLM)
+- **NEW:** JWT token blacklist (secure logout)
+- **NEW:** Offline sync queue (progress, bookmarks, highlights)
+- **NEW:** Position conflict resolution dialog
 
 ## Frontend Architecture (December 2025)
 

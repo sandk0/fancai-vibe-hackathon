@@ -50,6 +50,9 @@ BookReader AI is a modern web application for reading fiction with **automatic A
 | 🌙 **Dark Mode** | Comfortable reading day and night |
 | 📱 **PWA Ready** | Install as an app, works offline |
 | 🔐 **Subscription Model** | FREE / PREMIUM / ULTIMATE tiers |
+| 🔄 **Offline Sync** | Queue operations offline, auto-sync when online |
+| 🛡️ **Resilient APIs** | Exponential backoff retry for all external services |
+| 🔒 **Secure Sessions** | JWT token blacklist for secure logout |
 
 <p align="right">(<a href="#bookreader-ai">back to top</a>)</p>
 
@@ -168,10 +171,12 @@ CORS_ORIGINS=http://localhost:5173
 | `book_parser.py` | EPUB/FB2 parsing, chapter extraction, CFI generation | 925 |
 | `gemini_extractor.py` | LLM-based description extraction via Gemini API | 661 |
 | `imagen_generator.py` | AI image generation via Imagen 4 | 644 |
+| `retry.py` | Exponential backoff decorators (tenacity) | 515 |
 | `reading_session_cache.py` | Redis-backed session caching | 454 |
 | `auth_service.py` | JWT authentication and authorization | 373 |
+| `token_blacklist.py` | JWT token revocation (Redis) | 156 |
 
-> **Total Backend:** 15+ services, 7,757 lines of code
+> **Total Backend:** 17+ services, 8,400+ lines of code
 
 <p align="right">(<a href="#bookreader-ai">back to top</a>)</p>
 
@@ -246,6 +251,10 @@ GET  /api/v1/images/{id}                       # Get generated image
 - [x] Reading progress tracking (CFI)
 - [x] Offline support (PWA + IndexedDB)
 - [x] Subscription system
+- [x] Resilient API calls (exponential backoff)
+- [x] JWT token blacklist (secure logout)
+- [x] Offline sync queue
+- [x] Integration test suite
 - [ ] Mobile apps (React Native)
 - [ ] Social features (sharing, comments)
 - [ ] Multiple AI model support
@@ -275,15 +284,27 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduc
 # Backend development
 cd backend
 pip install -r requirements.txt
-pytest -v --cov=app           # Run tests
-mypy app/                     # Type checking
+pytest -v --cov=app                    # Run all tests with coverage
+pytest tests/services/ -v              # Unit tests only
+pytest tests/integration/ -v           # Integration tests only
+mypy app/                              # Type checking
 
 # Frontend development
 cd frontend
 npm install
-npm test                      # Run tests
-npm run type-check            # TypeScript check
+npm test                               # Run tests
+npm run test:coverage                  # Run with coverage
+npm run type-check                     # TypeScript check
 ```
+
+### Test Coverage
+
+| Category | Tests | Description |
+|----------|-------|-------------|
+| Backend Unit | 35+ | Service-level tests |
+| Backend Integration | 8 | End-to-end API flows |
+| Frontend Hooks | 18 | React hooks tests |
+| **Total** | **60+** | Full test suite |
 
 <p align="right">(<a href="#bookreader-ai">back to top</a>)</p>
 
@@ -295,24 +316,28 @@ npm run type-check            # TypeScript check
 bookreader-ai/
 ├── frontend/                 # React + TypeScript frontend
 │   ├── src/
-│   │   ├── components/       # UI components (47 total)
-│   │   │   ├── Reader/       # EPUB reader (13 components)
+│   │   ├── components/       # UI components (48 total)
+│   │   │   ├── Reader/       # EPUB reader (14 components)
 │   │   │   ├── Library/      # Book library (6 components)
 │   │   │   └── Admin/        # Admin panel (5 components)
 │   │   ├── hooks/            # React hooks
-│   │   │   ├── api/          # TanStack Query hooks (5 files)
-│   │   │   ├── epub/         # EPUB reader hooks (17 files)
-│   │   │   └── reader/       # Reader logic (7 files)
-│   │   ├── services/         # API clients + caching
+│   │   │   ├── api/          # TanStack Query hooks (5 files + tests)
+│   │   │   ├── epub/         # EPUB reader hooks (17 files + tests)
+│   │   │   ├── reader/       # Reader logic (7 files)
+│   │   │   └── useOnlineStatus.ts  # Online/offline detection
+│   │   ├── services/         # API clients + caching + sync queue
+│   │   ├── utils/            # Utilities (retryWithBackoff)
 │   │   └── pages/            # Page components (11 pages)
 │   └── tests/                # Vitest + Playwright tests
 ├── backend/                  # FastAPI + Python backend
 │   ├── app/
 │   │   ├── routers/          # API endpoints (70+ endpoints)
-│   │   ├── services/         # Business logic (15+ services)
+│   │   ├── services/         # Business logic (17+ services)
 │   │   ├── models/           # SQLAlchemy models (9 models)
-│   │   └── core/             # Config, DB, exceptions
-│   └── tests/                # Pytest tests
+│   │   └── core/             # Config, DB, exceptions, retry
+│   └── tests/
+│       ├── services/         # Unit tests (35+ files)
+│       └── integration/      # Integration tests (8 files)
 ├── docs/                     # Documentation (Diataxis framework)
 ├── docker-compose.yml        # Development stack
 └── scripts/                  # Deployment scripts
