@@ -83,24 +83,26 @@ class User(Base):
     last_login = Column(DateTime(timezone=True), nullable=True)
 
     # Отношения
-    books = relationship("Book", back_populates="user", cascade="all, delete-orphan")
+    # lazy="raise" предотвращает случайные N+1 queries - требует явного eager loading
+    books = relationship("Book", back_populates="user", cascade="all, delete-orphan", lazy="raise")
     reading_progress = relationship(
-        "ReadingProgress", back_populates="user", cascade="all, delete-orphan"
+        "ReadingProgress", back_populates="user", cascade="all, delete-orphan", lazy="raise"
     )
     reading_sessions = relationship(
-        "ReadingSession", back_populates="user", cascade="all, delete-orphan"
+        "ReadingSession", back_populates="user", cascade="all, delete-orphan", lazy="raise"
     )
     reading_goals = relationship(
-        "ReadingGoal", back_populates="user", cascade="all, delete-orphan"
+        "ReadingGoal", back_populates="user", cascade="all, delete-orphan", lazy="raise"
     )
     subscription = relationship(
         "Subscription",
         back_populates="user",
         uselist=False,
         cascade="all, delete-orphan",
+        lazy="raise",
     )
     generated_images = relationship(
-        "GeneratedImage", back_populates="user", cascade="all, delete-orphan"
+        "GeneratedImage", back_populates="user", cascade="all, delete-orphan", lazy="raise"
     )
 
     def __repr__(self):
@@ -163,7 +165,8 @@ class Subscription(Base):
     )
 
     # Отношения
-    user = relationship("User", back_populates="subscription")
+    # lazy="raise" предотвращает случайные N+1 queries - требует явного eager loading
+    user = relationship("User", back_populates="subscription", lazy="raise")
 
     def __repr__(self):
         return f"<Subscription(id={self.id}, user_id={self.user_id}, plan={self.plan.value})>"

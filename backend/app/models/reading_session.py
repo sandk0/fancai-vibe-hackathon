@@ -105,8 +105,9 @@ class ReadingSession(Base):
     )
 
     # Relationships
-    user: Mapped["User"] = relationship("User", back_populates="reading_sessions")
-    book: Mapped["Book"] = relationship("Book", back_populates="reading_sessions")
+    # lazy="raise" предотвращает случайные N+1 queries - требует явного eager loading
+    user: Mapped["User"] = relationship("User", back_populates="reading_sessions", lazy="raise")
+    book: Mapped["Book"] = relationship("Book", back_populates="reading_sessions", lazy="raise")
 
     # Indexes для производительности
     __table_args__ = (

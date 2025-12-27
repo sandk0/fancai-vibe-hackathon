@@ -11,41 +11,29 @@ NLP REMOVAL (December 2025):
 
 from app.core.celery_app import celery_app
 import asyncio
-from typing import Dict, Any
-import logging
+from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
 from uuid import UUID
 from sqlalchemy import select
 
 from app.core.database import AsyncSessionLocal
+from app.core.logging import logger
 from app.models.book import Book
 from app.models.chapter import Chapter
 from app.services.image_generator import image_generator_service
-
-logger = logging.getLogger(__name__)
 
 
 def _run_async_task(coro):
     """
     Helper function to run async functions in Celery tasks.
 
-    ВАЖНО: НЕ закрываем event loop после выполнения, так как:
-    1. После run_until_complete() loop уже не running
-    2. Закрытие loop может сломать последующие async операции
-    3. Позволяем asyncio управлять жизненным циклом loop
-    """
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        # Worker thread не имеет event loop - создаем новый
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+    Uses asyncio.run() which is the recommended approach in Python 3.10+.
+    This properly handles event loop creation and cleanup.
 
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        # НЕ закрываем loop - позволяем asyncio управлять им
-        pass
+    Note: Each call creates a new event loop, which is appropriate for
+    Celery tasks where each task should be isolated.
+    """
+    return asyncio.run(coro)
 
 
 @celery_app.task(name="process_book", bind=True, max_retries=3, default_retry_delay=60)
@@ -65,25 +53,26 @@ def process_book_task(self, book_id_str: str) -> Dict[str, Any]:
         Результат обработки
     """
     try:
-        print(f"🚀 [CELERY TASK] Starting book processing for book_id={book_id_str}")
+        logger.info("Starting book processing", book_id=book_id_str, task="process_book")
         book_id = UUID(book_id_str)
-        logger.info(f"Starting book processing for book_id={book_id}")
 
         result = _run_async_task(_process_book_async(book_id))
 
-        print(
-            f"✅ [CELERY TASK] Book processing completed for book_id={book_id}, result: {result}"
+        logger.info(
+            "Book processing completed",
+            book_id=book_id_str,
+            status=result.get("status"),
+            chapters_preparsed=result.get("chapters_preparsed"),
         )
-        logger.info(f"Book processing completed for book_id={book_id}")
         return result
 
     except Exception as e:
-        error_msg = f"Error processing book {book_id_str}: {str(e)}"
-        print(f"❌ [CELERY TASK] {error_msg}")
-        logger.error(error_msg)
-        import traceback
-
-        print(f"🔍 [CELERY TASK] Full traceback: {traceback.format_exc()}")
+        logger.error(
+            "Error processing book",
+            book_id=book_id_str,
+            error=str(e),
+            exc_info=True,
+        )
         return {"book_id": book_id_str, "status": "failed", "error": str(e)}
 
 
@@ -100,25 +89,23 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
     from app.models.description import Description, DescriptionType
 
     async with AsyncSessionLocal() as db:
-        print(f"🔍 [ASYNC TASK] Starting async processing for book {book_id}")
+        logger.debug("Starting async processing", book_id=str(book_id))
 
         # Проверяем доступность LLM
         llm_available = langextract_processor.is_available()
 
         if not llm_available:
-            print("⚠️ [ASYNC TASK] LangExtract not available - checking API key")
-            logger.warning("LangExtract processor not available")
+            logger.warning("LangExtract processor not available", book_id=str(book_id))
 
         # Получаем книгу
         book_result = await db.execute(select(Book).where(Book.id == book_id))
         book = book_result.scalar_one_or_none()
 
         if not book:
-            error_msg = f"Book with id {book_id} not found"
-            print(f"❌ [ASYNC TASK] {error_msg}")
-            raise ValueError(error_msg)
+            logger.error("Book not found", book_id=str(book_id))
+            raise ValueError(f"Book with id {book_id} not found")
 
-        print(f"📚 [ASYNC TASK] Found book: {book.title} by {book.author}")
+        logger.info("Found book", book_id=str(book_id), title=book.title, author=book.author)
 
         # Получаем главы
         chapters_result = await db.execute(
@@ -128,7 +115,7 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
         )
         chapters = chapters_result.scalars().all()
 
-        print(f"📖 [ASYNC TASK] Found {len(chapters)} chapters")
+        logger.info("Found chapters", book_id=str(book_id), chapters_count=len(chapters))
 
         # Парсим первые 5 глав с помощью LLM (increased from 2 for better UX)
         # UPDATED (2025-12-25): Expanded pre-parsing for faster initial experience
@@ -139,7 +126,11 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
         if llm_available and chapters:
             for chapter in chapters[:CHAPTERS_TO_PREPARSE]:
                 try:
-                    print(f"🔄 [ASYNC TASK] Parsing chapter {chapter.chapter_number}: {chapter.title}")
+                    logger.debug(
+                        "Parsing chapter",
+                        chapter_number=chapter.chapter_number,
+                        chapter_title=chapter.title,
+                    )
 
                     # Пропускаем служебные страницы
                     SERVICE_PAGE_KEYWORDS = [
@@ -172,7 +163,11 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
                         chapter.is_service_page = is_service_page
 
                     if is_service_page:
-                        print(f"⏭️ [ASYNC TASK] Skipping service page: {chapter.title}")
+                        logger.debug(
+                            "Skipping service page",
+                            chapter_number=chapter.chapter_number,
+                            chapter_title=chapter.title,
+                        )
                         chapter.is_description_parsed = True
                         chapter.parsed_at = datetime.now(timezone.utc)
                         continue
@@ -181,7 +176,11 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
                     result = await langextract_processor.extract_descriptions(chapter.content)
                     descriptions_data = result.descriptions if result.descriptions else []
 
-                    print(f"✅ [ASYNC TASK] Extracted {len(descriptions_data)} descriptions from chapter {chapter.chapter_number}")
+                    logger.info(
+                        "Extracted descriptions",
+                        chapter_number=chapter.chapter_number,
+                        descriptions_count=len(descriptions_data),
+                    )
 
                     # Сохраняем описания в базу
                     position = 0
@@ -220,16 +219,19 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
                     # P2.2: Removed per-chapter commit, will batch commit below
 
                 except Exception as e:
-                    print(f"❌ [ASYNC TASK] Error parsing chapter {chapter.chapter_number}: {str(e)}")
-                    import traceback
-                    print(f"🔍 [ASYNC TASK] Traceback: {traceback.format_exc()}")
+                    logger.error(
+                        "Error parsing chapter",
+                        chapter_number=chapter.chapter_number,
+                        error=str(e),
+                        exc_info=True,
+                    )
                     # Продолжаем с следующей главой
                     continue
 
             # P2.2: BATCH COMMIT after all chapters processed (was: commit per chapter)
             # Saves ~200ms (5 chapters * 40ms per commit)
             await db.commit()
-            print(f"💾 [ASYNC TASK] Batch committed {chapters_parsed} chapters")
+            logger.info("Batch committed chapters", chapters_parsed=chapters_parsed)
 
         # Помечаем книгу как готовую
         book.is_processing = False
@@ -240,12 +242,12 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
         # Инвалидируем кэш
         try:
             from app.core.cache import cache_manager
-            print(f"[CACHE] Invalidating book list cache for user {book.user_id}")
+            logger.debug("Invalidating book list cache", user_id=str(book.user_id))
             pattern = f"user:{book.user_id}:books:*"
             deleted_count = await cache_manager.delete_pattern(pattern)
-            print(f"[CACHE] Cache invalidated ({deleted_count} keys deleted)")
+            logger.debug("Cache invalidated", keys_deleted=deleted_count)
         except Exception as e:
-            print(f"[CACHE ERROR] Failed to invalidate cache: {str(e)}")
+            logger.warning("Failed to invalidate cache", error=str(e))
 
         result = {
             "book_id": str(book_id),
@@ -258,7 +260,13 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
             "message": f"Book ready. Pre-parsed {chapters_parsed} chapters with {total_descriptions} descriptions."
         }
 
-        print(f"🎉 [ASYNC TASK] Final result: {result}")
+        logger.info(
+            "Book processing finished",
+            book_id=str(book_id),
+            chapters_count=len(chapters),
+            chapters_preparsed=chapters_parsed,
+            descriptions_extracted=total_descriptions,
+        )
         return result
 
 
@@ -285,17 +293,17 @@ def generate_image_for_text_task(
         Результат генерации
     """
     try:
-        logger.info(f"Starting image generation for chapter {chapter_id_str}")
+        logger.info("Starting image generation", chapter_id=chapter_id_str)
 
         result = _run_async_task(
             _generate_image_for_text_async(text, chapter_id_str, user_id_str, description_type)
         )
 
-        logger.info(f"Image generation completed for chapter {chapter_id_str}")
+        logger.info("Image generation completed", chapter_id=chapter_id_str)
         return result
 
     except Exception as e:
-        logger.error(f"Error generating image: {str(e)}")
+        logger.error("Error generating image", chapter_id=chapter_id_str, error=str(e))
         return {"chapter_id": chapter_id_str, "status": "failed", "error": str(e)}
 
 
@@ -352,7 +360,11 @@ async def _generate_image_for_text_async(
                 }
 
         except Exception as e:
-            logger.error(f"Error generating image for chapter {chapter_id_str}: {str(e)}")
+            logger.error(
+                "Error generating image for chapter",
+                chapter_id=chapter_id_str,
+                error=str(e),
+            )
             return {
                 "chapter_id": chapter_id_str,
                 "status": "failed",
@@ -372,15 +384,15 @@ def cleanup_old_images_task(days_old: int = 30) -> Dict[str, Any]:
         Количество удаленных изображений
     """
     try:
-        logger.info(f"Starting cleanup of images older than {days_old} days")
+        logger.info("Starting cleanup of old images", days_old=days_old)
 
         result = _run_async_task(_cleanup_old_images_async(days_old))
 
-        logger.info("Image cleanup completed")
+        logger.info("Image cleanup completed", deleted_records=result.get("deleted_records"))
         return result
 
     except Exception as e:
-        logger.error(f"Error in image cleanup: {str(e)}")
+        logger.error("Error in image cleanup", error=str(e))
         return {"status": "failed", "error": str(e)}
 
 
@@ -411,7 +423,7 @@ async def _cleanup_old_images_async(days_old: int) -> Dict[str, Any]:
                 deleted_records += 1
 
             except Exception as e:
-                logger.error(f"Error deleting image {image.id}: {str(e)}")
+                logger.error("Error deleting image", image_id=str(image.id), error=str(e))
                 continue
 
         await db.commit()
@@ -421,6 +433,402 @@ async def _cleanup_old_images_async(days_old: int) -> Dict[str, Any]:
             "deleted_files": deleted_files,
             "deleted_records": deleted_records,
             "cutoff_date": cutoff_date.isoformat(),
+        }
+
+
+@celery_app.task(
+    name="generate_image_task",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=30,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_backoff_max=300,
+    retry_jitter=True,
+)
+def generate_image_task(
+    self,
+    description_id_str: str,
+    user_id_str: str,
+    description_content: str,
+    description_type: str = "location",
+    book_genre: Optional[str] = None,
+    custom_style: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Celery task for image generation with Redis-backed persistence.
+
+    Replaces in-memory queue with persistent Celery queue.
+    Supports automatic retries with exponential backoff.
+
+    Args:
+        description_id_str: String ID of the description (UUID)
+        user_id_str: String ID of the user (UUID)
+        description_content: Text content of the description
+        description_type: Type of description (location, character, atmosphere)
+        book_genre: Genre of the book for style adaptation
+        custom_style: Custom style instructions
+
+    Returns:
+        Dict with generation result including image_url or error
+    """
+    from app.services.imagen_generator import get_imagen_service
+    from app.models.image import GeneratedImage
+    from app.models.description import Description
+    import os
+
+    task_id = self.request.id
+    logger.info(
+        "Starting image generation task",
+        task_id=task_id,
+        description_id=description_id_str,
+        attempt=self.request.retries + 1,
+    )
+
+    try:
+        description_id = UUID(description_id_str)
+        user_id = UUID(user_id_str)
+
+        result = _run_async_task(
+            _generate_image_async(
+                task_id=task_id,
+                description_id=description_id,
+                user_id=user_id,
+                description_content=description_content,
+                description_type=description_type,
+                book_genre=book_genre,
+                custom_style=custom_style,
+            )
+        )
+
+        logger.info(
+            "Image generation task completed",
+            task_id=task_id,
+            success=result.get('success', False),
+        )
+        return result
+
+    except Exception as e:
+        logger.error(
+            "Image generation failed",
+            task_id=task_id,
+            description_id=description_id_str,
+            error=str(e),
+        )
+
+        # Let Celery handle retry with backoff
+        if self.request.retries < self.max_retries:
+            logger.info(
+                "Will retry image generation",
+                task_id=task_id,
+                attempt=self.request.retries + 1,
+                max_retries=self.max_retries + 1,
+            )
+            raise  # Celery will auto-retry due to autoretry_for
+
+        return {
+            "task_id": task_id,
+            "description_id": description_id_str,
+            "success": False,
+            "error": str(e),
+            "status": "failed",
+            "retries": self.request.retries,
+        }
+
+
+async def _generate_image_async(
+    task_id: str,
+    description_id: UUID,
+    user_id: UUID,
+    description_content: str,
+    description_type: str,
+    book_genre: Optional[str] = None,
+    custom_style: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Async function for image generation within Celery task.
+
+    Handles the actual image generation and database persistence.
+    """
+    from app.services.imagen_generator import get_imagen_service
+    from app.models.image import GeneratedImage
+    import os
+
+    async with AsyncSessionLocal() as db:
+        logger.debug("Starting async image generation", task_id=task_id)
+
+        # Get Imagen service
+        imagen_service = get_imagen_service()
+
+        if not imagen_service.is_available():
+            logger.warning("Imagen service not available", task_id=task_id)
+            return {
+                "task_id": task_id,
+                "description_id": str(description_id),
+                "success": False,
+                "error": "Image generation service not available. Check GOOGLE_API_KEY.",
+                "status": "service_unavailable",
+            }
+
+        # Generate image
+        generation_result = await imagen_service.generate_image(
+            description=description_content,
+            description_type=description_type,
+            genre=book_genre,
+            custom_style=custom_style,
+        )
+
+        if generation_result.success:
+            logger.info(
+                "Image generated successfully",
+                task_id=task_id,
+                local_path=generation_result.local_path,
+            )
+
+            # Create HTTP URL from local_path
+            filename = (
+                os.path.basename(generation_result.local_path)
+                if generation_result.local_path else None
+            )
+            http_url = f"/api/v1/images/file/{filename}" if filename else None
+
+            # Save to database
+            generated_image = GeneratedImage(
+                description_id=description_id,
+                user_id=user_id,
+                service_used="imagen",
+                status="completed",
+                image_url=http_url,
+                local_path=generation_result.local_path,
+                prompt_used=generation_result.prompt_used or custom_style or "default",
+                generation_time_seconds=generation_result.generation_time_seconds,
+            )
+
+            db.add(generated_image)
+            await db.commit()
+            await db.refresh(generated_image)
+
+            logger.info(
+                "Image saved to DB",
+                task_id=task_id,
+                image_id=str(generated_image.id),
+            )
+
+            return {
+                "task_id": task_id,
+                "image_id": str(generated_image.id),
+                "description_id": str(description_id),
+                "image_url": http_url or generation_result.image_url,
+                "local_path": generation_result.local_path,
+                "generation_time": generation_result.generation_time_seconds,
+                "success": True,
+                "status": "completed",
+            }
+        else:
+            logger.error(
+                "Image generation failed",
+                task_id=task_id,
+                error=generation_result.error_message,
+            )
+            return {
+                "task_id": task_id,
+                "description_id": str(description_id),
+                "success": False,
+                "error": generation_result.error_message,
+                "status": "failed",
+            }
+
+
+@celery_app.task(
+    name="generate_image_batch_task",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=60,
+)
+def generate_image_batch_task(
+    self,
+    chapter_id_str: str,
+    user_id_str: str,
+    descriptions: List[Dict[str, Any]],
+    book_genre: Optional[str] = None,
+    max_images: int = 5,
+) -> Dict[str, Any]:
+    """
+    Celery task for batch image generation for a chapter.
+
+    Processes multiple descriptions and generates images for each.
+    Uses Redis for persistence and supports retries.
+
+    Args:
+        chapter_id_str: String ID of the chapter (UUID)
+        user_id_str: String ID of the user (UUID)
+        descriptions: List of description dicts with id, content, type
+        book_genre: Genre of the book for style adaptation
+        max_images: Maximum number of images to generate
+
+    Returns:
+        Dict with batch generation results
+    """
+    task_id = self.request.id
+    logger.info(
+        "Starting batch image generation",
+        task_id=task_id,
+        chapter_id=chapter_id_str,
+        descriptions_count=len(descriptions),
+    )
+
+    try:
+        result = _run_async_task(
+            _generate_batch_async(
+                task_id=task_id,
+                chapter_id_str=chapter_id_str,
+                user_id_str=user_id_str,
+                descriptions=descriptions[:max_images],
+                book_genre=book_genre,
+            )
+        )
+
+        logger.info(
+            "Batch image generation completed",
+            task_id=task_id,
+            successful=result.get('successful', 0),
+            total=result.get('total', 0),
+        )
+        return result
+
+    except Exception as e:
+        logger.error(
+            "Batch generation failed",
+            task_id=task_id,
+            chapter_id=chapter_id_str,
+            error=str(e),
+        )
+
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=e)
+
+        return {
+            "task_id": task_id,
+            "chapter_id": chapter_id_str,
+            "success": False,
+            "error": str(e),
+            "status": "failed",
+        }
+
+
+async def _generate_batch_async(
+    task_id: str,
+    chapter_id_str: str,
+    user_id_str: str,
+    descriptions: List[Dict[str, Any]],
+    book_genre: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Async function for batch image generation within Celery task.
+    """
+    from app.services.imagen_generator import get_imagen_service
+    from app.models.image import GeneratedImage
+    import os
+    import asyncio
+
+    async with AsyncSessionLocal() as db:
+        chapter_id = UUID(chapter_id_str)
+        user_id = UUID(user_id_str)
+
+        imagen_service = get_imagen_service()
+
+        if not imagen_service.is_available():
+            return {
+                "task_id": task_id,
+                "chapter_id": chapter_id_str,
+                "success": False,
+                "error": "Image generation service not available",
+                "status": "service_unavailable",
+            }
+
+        results = []
+        successful = 0
+        failed = 0
+
+        for desc_data in descriptions:
+            try:
+                description_id = UUID(desc_data["id"])
+                description_content = desc_data["content"]
+                description_type = desc_data.get("type", "location")
+
+                # Generate image
+                generation_result = await imagen_service.generate_image(
+                    description=description_content,
+                    description_type=description_type,
+                    genre=book_genre,
+                )
+
+                if generation_result.success:
+                    # Create HTTP URL from local_path
+                    filename = (
+                        os.path.basename(generation_result.local_path)
+                        if generation_result.local_path else None
+                    )
+                    http_url = f"/api/v1/images/file/{filename}" if filename else None
+
+                    # Save to database
+                    generated_image = GeneratedImage(
+                        description_id=description_id,
+                        user_id=user_id,
+                        service_used="imagen",
+                        status="completed",
+                        image_url=http_url,
+                        local_path=generation_result.local_path,
+                        prompt_used=generation_result.prompt_used or "default",
+                        generation_time_seconds=generation_result.generation_time_seconds,
+                    )
+
+                    db.add(generated_image)
+
+                    results.append({
+                        "description_id": str(description_id),
+                        "description_type": description_type,
+                        "image_url": http_url or generation_result.image_url,
+                        "generation_time": generation_result.generation_time_seconds,
+                        "success": True,
+                    })
+                    successful += 1
+                else:
+                    results.append({
+                        "description_id": str(description_id),
+                        "error": generation_result.error_message,
+                        "success": False,
+                    })
+                    failed += 1
+
+                # Small delay between requests to avoid rate limiting
+                await asyncio.sleep(2)
+
+            except Exception as e:
+                logger.error(
+                    "Error generating for description",
+                    description_id=desc_data.get("id", "unknown"),
+                    error=str(e),
+                )
+                results.append({
+                    "description_id": desc_data.get("id", "unknown"),
+                    "error": str(e),
+                    "success": False,
+                })
+                failed += 1
+
+        # Commit all successful generations
+        await db.commit()
+
+        return {
+            "task_id": task_id,
+            "chapter_id": chapter_id_str,
+            "total": len(descriptions),
+            "successful": successful,
+            "failed": failed,
+            "results": results,
+            "success": successful > 0,
+            "status": "completed",
         }
 
 
@@ -438,7 +846,7 @@ def system_stats_task() -> Dict[str, Any]:
         return result
 
     except Exception as e:
-        logger.error(f"Error getting system stats: {str(e)}")
+        logger.error("Error getting system stats", error=str(e))
         return {"status": "failed", "error": str(e)}
 
 

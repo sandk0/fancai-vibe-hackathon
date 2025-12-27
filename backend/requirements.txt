@@ -68,3 +68,4 @@ sqlalchemy[mypy]==2.0.45
 # Утилиты
 python-dateutil==2.9.0.post0
 pillow>=11.0.0
+tenacity==9.0.0  # Retry library with exponential backoff

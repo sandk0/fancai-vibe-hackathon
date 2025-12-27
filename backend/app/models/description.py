@@ -103,9 +103,10 @@ class Description(Base):
     )
 
     # Отношения
-    chapter = relationship("Chapter", back_populates="descriptions")
+    # lazy="raise" предотвращает случайные N+1 queries - требует явного eager loading
+    chapter = relationship("Chapter", back_populates="descriptions", lazy="raise")
     generated_images = relationship(
-        "GeneratedImage", back_populates="description", cascade="all, delete-orphan"
+        "GeneratedImage", back_populates="description", cascade="all, delete-orphan", lazy="raise"
     )
 
     def __repr__(self) -> str:

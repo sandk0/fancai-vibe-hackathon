@@ -5,13 +5,15 @@ Replaces Pollinations.ai with Google Imagen 4 API for high-quality image generat
 Uses same API key as Gemini (GOOGLE_API_KEY or LANGEXTRACT_API_KEY).
 
 Features:
-- Automatic Russian → English prompt translation via Gemini
+- Automatic Russian -> English prompt translation via Gemini
 - Optimized prompts for book illustrations
 - Type-specific style templates (location, character, atmosphere)
 - Genre-aware styling
 - Caching support for translations
+- Exponential backoff retry for resilience
 
 Created: 2025-12-13
+Updated: 2025-12-28 - Added tenacity-based retry logic
 """
 
 import os
@@ -25,6 +27,13 @@ from typing import Dict, Any, Optional
 from dataclasses import dataclass
 from enum import Enum
 import logging
+
+from app.core.retry import (
+    retry_image_generation,
+    ImageGenerationError,
+    RateLimitError,
+    TimeoutError as RetryTimeoutError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -135,13 +144,11 @@ English translation (visual elements only, no explanations):"""
                 temperature=0.3,
             ) if self._types else None
 
-            response = await asyncio.get_event_loop().run_in_executor(
-                None,
-                lambda: self._client.models.generate_content(
-                    model=self._model,
-                    contents=prompt,
-                    config=config,
-                )
+            response = await asyncio.to_thread(
+                self._client.models.generate_content,
+                model=self._model,
+                contents=prompt,
+                config=config,
             )
 
             # Extract text from response
@@ -324,127 +331,132 @@ class GoogleImagenGenerator:
 
         start_time = time.time()
 
-        for attempt in range(self.config.max_retries):
-            try:
-                from google.genai import types
+        try:
+            # Use tenacity retry decorator for the actual generation
+            result = await self._generate_with_retry(prompt, aspect_ratio, start_time)
+            return result
+        except Exception as e:
+            # All retries exhausted
+            error_msg = str(e)
+            logger.error(f"Image generation failed after all retries: {error_msg}")
+            return ImageGenerationResult(
+                success=False,
+                error_message=f"Imagen generation failed: {error_msg}"
+            )
 
-                # Build config
-                gen_config = types.GenerateImagesConfig(
-                    number_of_images=1,
-                    aspect_ratio=aspect_ratio or self.config.aspect_ratio,
-                    person_generation=self.config.person_generation,
-                    safety_filter_level=self.config.safety_filter_level,
-                )
+    @retry_image_generation
+    async def _generate_with_retry(
+        self,
+        prompt: str,
+        aspect_ratio: Optional[str],
+        start_time: float
+    ) -> ImageGenerationResult:
+        """
+        Internal method with retry decorator for image generation.
 
-                logger.info(f"Generating image with Imagen (attempt {attempt + 1})")
-                logger.debug(f"Prompt: {prompt[:100]}...")
+        Raises retryable exceptions that trigger tenacity retry logic.
+        """
+        try:
+            from google.genai import types
 
-                # Generate (sync call wrapped in executor)
-                response = await asyncio.wait_for(
-                    asyncio.get_event_loop().run_in_executor(
-                        None,
-                        lambda: self._client.models.generate_images(
-                            model=self.config.model,
-                            prompt=prompt,
-                            config=gen_config
-                        )
-                    ),
-                    timeout=self.config.timeout_seconds
-                )
+            # Build config
+            gen_config = types.GenerateImagesConfig(
+                number_of_images=1,
+                aspect_ratio=aspect_ratio or self.config.aspect_ratio,
+                person_generation=self.config.person_generation,
+                safety_filter_level=self.config.safety_filter_level,
+            )
 
-                # Extract image
-                if response.generated_images:
-                    image = response.generated_images[0]
-                    raw_image_data = image.image.image_bytes
+            logger.info("Generating image with Imagen")
+            logger.debug(f"Prompt: {prompt[:100]}...")
 
-                    logger.info(f"Imagen raw_image_data type: {type(raw_image_data)}")
-                    if isinstance(raw_image_data, bytes):
-                        logger.info(f"Imagen raw_image_data first 20 bytes: {raw_image_data[:20]}")
+            # Generate (sync call wrapped in asyncio.to_thread)
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    self._client.models.generate_images,
+                    model=self.config.model,
+                    prompt=prompt,
+                    config=gen_config,
+                ),
+                timeout=self.config.timeout_seconds
+            )
 
-                    # Google Imagen API returns base64-encoded data
-                    # It can be either str or bytes containing base64 text
-                    if isinstance(raw_image_data, str):
-                        logger.info("Imagen returned base64 string, decoding...")
-                        image_bytes = base64.b64decode(raw_image_data)
-                        image_base64 = raw_image_data  # Already base64
-                    elif isinstance(raw_image_data, bytes):
-                        # Check if bytes contain base64 text (starts with ASCII letters like 'iVBOR')
-                        # PNG magic bytes are: 0x89 0x50 0x4E 0x47 (‰PNG)
-                        if raw_image_data[:4] == b'\x89PNG':
-                            logger.info("Imagen returned raw PNG bytes")
-                            image_bytes = raw_image_data
-                            image_base64 = base64.b64encode(image_bytes).decode('utf-8')
-                        else:
-                            # Bytes contain base64-encoded text, decode it
-                            logger.info("Imagen returned bytes containing base64 text, decoding...")
-                            image_base64 = raw_image_data.decode('utf-8')
-                            image_bytes = base64.b64decode(image_base64)
+            # Extract image
+            if response.generated_images:
+                image = response.generated_images[0]
+                raw_image_data = image.image.image_bytes
+
+                logger.info(f"Imagen raw_image_data type: {type(raw_image_data)}")
+                if isinstance(raw_image_data, bytes):
+                    logger.info(f"Imagen raw_image_data first 20 bytes: {raw_image_data[:20]}")
+
+                # Google Imagen API returns base64-encoded data
+                # It can be either str or bytes containing base64 text
+                if isinstance(raw_image_data, str):
+                    logger.info("Imagen returned base64 string, decoding...")
+                    image_bytes = base64.b64decode(raw_image_data)
+                    image_base64 = raw_image_data  # Already base64
+                elif isinstance(raw_image_data, bytes):
+                    # Check if bytes contain base64 text (starts with ASCII letters like 'iVBOR')
+                    # PNG magic bytes are: 0x89 0x50 0x4E 0x47 (PNG)
+                    if raw_image_data[:4] == b'\x89PNG':
+                        logger.info("Imagen returned raw PNG bytes")
+                        image_bytes = raw_image_data
+                        image_base64 = base64.b64encode(image_bytes).decode('utf-8')
                     else:
-                        logger.error(f"Unexpected data type from Imagen: {type(raw_image_data)}")
-                        raise ValueError(f"Unexpected data type: {type(raw_image_data)}")
-
-                    # Save locally (decoded bytes)
-                    local_path = await self._save_image(image_bytes, prompt)
-
-                    # Create data URL for frontend
-                    image_url = f"data:image/png;base64,{image_base64}"
-
-                    generation_time = time.time() - start_time
-
-                    logger.info(f"Image generated successfully in {generation_time:.2f}s")
-
-                    return ImageGenerationResult(
-                        success=True,
-                        image_url=image_url,
-                        image_data=image_bytes,
-                        local_path=local_path,
-                        generation_time_seconds=generation_time,
-                        model_used=self.config.model,
-                        prompt_used=prompt,
-                    )
+                        # Bytes contain base64-encoded text, decode it
+                        logger.info("Imagen returned bytes containing base64 text, decoding...")
+                        image_base64 = raw_image_data.decode('utf-8')
+                        image_bytes = base64.b64decode(image_base64)
                 else:
-                    error_msg = "No images generated by Imagen"
-                    logger.warning(error_msg)
+                    logger.error(f"Unexpected data type from Imagen: {type(raw_image_data)}")
+                    raise ValueError(f"Unexpected data type: {type(raw_image_data)}")
 
-                    if attempt < self.config.max_retries - 1:
-                        await asyncio.sleep(self.config.retry_delay * (attempt + 1))
-                        continue
+                # Save locally (decoded bytes)
+                local_path = await self._save_image(image_bytes, prompt)
 
-                    return ImageGenerationResult(
-                        success=False,
-                        error_message=error_msg
-                    )
+                # Create data URL for frontend
+                image_url = f"data:image/png;base64,{image_base64}"
 
-            except asyncio.TimeoutError:
-                error_msg = f"Imagen generation timed out after {self.config.timeout_seconds}s"
-                logger.warning(f"Attempt {attempt + 1}: {error_msg}")
+                generation_time = time.time() - start_time
 
-                if attempt < self.config.max_retries - 1:
-                    await asyncio.sleep(self.config.retry_delay * (attempt + 1))
-                    continue
+                logger.info(f"Image generated successfully in {generation_time:.2f}s")
 
                 return ImageGenerationResult(
-                    success=False,
-                    error_message=error_msg
+                    success=True,
+                    image_url=image_url,
+                    image_data=image_bytes,
+                    local_path=local_path,
+                    generation_time_seconds=generation_time,
+                    model_used=self.config.model,
+                    prompt_used=prompt,
                 )
+            else:
+                # No images generated - this is retryable
+                error_msg = "No images generated by Imagen"
+                logger.warning(error_msg)
+                raise ImageGenerationError(error_msg)
 
-            except Exception as e:
-                error_msg = str(e)
-                logger.error(f"Attempt {attempt + 1} failed: {error_msg}")
+        except asyncio.TimeoutError as e:
+            error_msg = f"Imagen generation timed out after {self.config.timeout_seconds}s"
+            logger.warning(error_msg)
+            # Wrap as retryable timeout error
+            raise RetryTimeoutError(error_msg) from e
 
-                if attempt < self.config.max_retries - 1:
-                    await asyncio.sleep(self.config.retry_delay * (attempt + 1))
-                    continue
+        except ImageGenerationError:
+            # Already a retryable error, re-raise
+            raise
 
-                return ImageGenerationResult(
-                    success=False,
-                    error_message=f"Imagen generation failed: {error_msg}"
-                )
-
-        return ImageGenerationResult(
-            success=False,
-            error_message="Max retries exceeded"
-        )
+        except Exception as e:
+            error_msg = str(e)
+            # Check if it's a rate limit error
+            if "rate" in error_msg.lower() and "limit" in error_msg.lower():
+                raise RateLimitError(error_msg) from e
+            if "quota" in error_msg.lower():
+                raise RateLimitError(error_msg) from e
+            # Other errors - wrap as retryable ImageGenerationError
+            logger.error(f"Image generation error: {error_msg}")
+            raise ImageGenerationError(error_msg) from e
 
     async def _save_image(self, image_data: bytes, prompt: str) -> str:
         """
@@ -469,9 +481,10 @@ class GoogleImagenGenerator:
 
         file_path = images_dir / filename
 
-        # Save file
-        with open(file_path, "wb") as f:
-            f.write(image_data)
+        # Save file (async to avoid blocking event loop)
+        import aiofiles
+        async with aiofiles.open(file_path, "wb") as f:
+            await f.write(image_data)
 
         logger.debug(f"Image saved: {file_path}")
         return str(file_path)

@@ -1,17 +1,19 @@
 """
-Gemini Direct Extractor - Прямые вызовы Google Gemini API для извлечения описаний.
+Gemini Direct Extractor - Direct Google Gemini API calls for description extraction.
 
-ЗАМЕНА LangExtract библиотеки:
-- LangExtract возвращает сущности (NER) вместо описаний
-- Этот модуль использует direct API calls для получения полных параграфов
+REPLACES LangExtract library:
+- LangExtract returns entities (NER) instead of descriptions
+- This module uses direct API calls to get full paragraphs
 
-АРХИТЕКТУРА:
-- google-generativeai SDK для прямого доступа к Gemini
-- Few-shot промпты для русской литературы
-- JSON repair с retry логикой
-- Рекурсивный чанкинг текста
+ARCHITECTURE:
+- google-generativeai SDK for direct Gemini access
+- Few-shot prompts for Russian literature
+- JSON repair with retry logic
+- Recursive text chunking
+- Exponential backoff retry with tenacity
 
 Created: 2025-12-13
+Updated: 2025-12-28 - Added tenacity-based retry logic
 Author: BookReader AI Team
 """
 
@@ -24,6 +26,13 @@ import asyncio
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
+
+from app.core.retry import (
+    retry_llm_extraction,
+    LLMExtractionError,
+    RateLimitError,
+    TimeoutError as RetryTimeoutError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -505,52 +514,80 @@ class GeminiDirectExtractor:
         chunk_text: str,
         offset: int
     ) -> List[ExtractedDescription]:
-        """Извлечь описания из одного чанка с новым google-genai SDK."""
+        """Extract descriptions from a single chunk using tenacity retry."""
         self.stats["total_calls"] += 1
 
         prompt = self.EXTRACTION_PROMPT.format(text=chunk_text)
 
-        for attempt in range(self.config.max_retries):
-            try:
-                # Вызываем Gemini API с новым SDK (google-genai)
-                # Using types.GenerateContentConfig for proper configuration
-                config = self._types.GenerateContentConfig(
-                    temperature=0.3,
-                    top_p=0.95,
-                )
+        try:
+            # Use tenacity retry decorator for the actual extraction
+            response_text = await self._call_gemini_with_retry(prompt)
 
-                response = await asyncio.get_event_loop().run_in_executor(
-                    None,
-                    lambda: self._client.models.generate_content(
-                        model=self._model,
-                        contents=prompt,
-                        config=config,
-                    )
-                )
+            # Parse JSON response
+            parsed = self.parser.parse(response_text)
 
-                # Extract text from response - handle both string and list formats
-                response_text = response.text if hasattr(response, 'text') else str(response)
+            # Convert to ExtractedDescription objects
+            descriptions = self._parse_descriptions(parsed, offset)
 
-                # Парсим JSON ответ
-                parsed = self.parser.parse(response_text)
+            self.stats["successful_calls"] += 1
 
-                # Конвертируем в ExtractedDescription
-                descriptions = self._parse_descriptions(parsed, offset)
+            # Estimate tokens
+            self.stats["total_tokens"] += len(prompt) // 4 + len(response_text) // 4
 
-                self.stats["successful_calls"] += 1
+            return descriptions
 
-                # Оценка токенов
-                self.stats["total_tokens"] += len(prompt) // 4 + len(response_text) // 4
+        except Exception as e:
+            logger.warning(f"Chunk extraction failed after all retries: {e}")
+            self.stats["failed_calls"] += 1
+            return []
 
-                return descriptions
+    @retry_llm_extraction
+    async def _call_gemini_with_retry(self, prompt: str) -> str:
+        """
+        Call Gemini API with tenacity retry decorator.
 
-            except Exception as e:
-                logger.warning(f"Attempt {attempt + 1} failed: {e}")
-                if attempt < self.config.max_retries - 1:
-                    await asyncio.sleep(self.config.retry_delay_seconds * (attempt + 1))
+        Raises retryable exceptions that trigger tenacity retry logic.
+        """
+        try:
+            # Call Gemini API with new SDK (google-genai)
+            # Using types.GenerateContentConfig for proper configuration
+            config = self._types.GenerateContentConfig(
+                temperature=0.3,
+                top_p=0.95,
+            )
 
-        self.stats["failed_calls"] += 1
-        return []
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    self._client.models.generate_content,
+                    model=self._model,
+                    contents=prompt,
+                    config=config,
+                ),
+                timeout=self.config.timeout_seconds
+            )
+
+            # Extract text from response - handle both string and list formats
+            response_text = response.text if hasattr(response, 'text') else str(response)
+
+            return response_text
+
+        except asyncio.TimeoutError as e:
+            error_msg = f"Gemini API timed out after {self.config.timeout_seconds}s"
+            logger.warning(error_msg)
+            raise RetryTimeoutError(error_msg) from e
+
+        except Exception as e:
+            error_msg = str(e)
+            # Check if it's a rate limit error
+            if "rate" in error_msg.lower() and "limit" in error_msg.lower():
+                raise RateLimitError(error_msg) from e
+            if "quota" in error_msg.lower():
+                raise RateLimitError(error_msg) from e
+            if "429" in error_msg:
+                raise RateLimitError(error_msg) from e
+            # Other errors - wrap as retryable LLMExtractionError
+            logger.error(f"Gemini extraction error: {error_msg}")
+            raise LLMExtractionError(error_msg) from e
 
     def _parse_descriptions(
         self,

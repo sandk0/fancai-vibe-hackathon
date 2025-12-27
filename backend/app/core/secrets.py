@@ -14,11 +14,11 @@ Features:
 import os
 import sys
 import re
-import logging
 from typing import List, Tuple, Optional, Dict, Any
 from enum import Enum
 
-logger = logging.getLogger(__name__)
+import aiofiles
+from app.core.logging import logger
 
 
 # ============================================================================
@@ -360,51 +360,43 @@ class SecretsValidator:
         return result
 
     def print_report(self) -> None:
-        """Печатает красивый отчет о валидации secrets."""
+        """Logs validation report using structured logging."""
         report = self.validation_results
 
-        print("\n" + "=" * 70)
-        print("🔐 SECRETS VALIDATION REPORT")
-        print("=" * 70)
-
-        # Status
         if report["valid"]:
-            print("✅ Status: PASSED")
+            logger.info("Secrets validation passed")
         else:
-            print("❌ Status: FAILED")
+            logger.error("Secrets validation failed")
 
-        # Errors
-        if report["errors"]:
-            print(f"\n❌ ERRORS ({len(report['errors'])}):")
-            for error in report["errors"]:
-                print(f"   - {error}")
+        # Log errors
+        for error in report["errors"]:
+            logger.error("Secrets validation error", message=error)
 
-        # Warnings
-        if report["warnings"]:
-            print(f"\n⚠️  WARNINGS ({len(report['warnings'])}):")
-            for warning in report["warnings"]:
-                print(f"   - {warning}")
+        # Log warnings
+        for warning in report["warnings"]:
+            logger.warning("Secrets validation warning", message=warning)
 
-        # Missing secrets summary
+        # Log missing secrets summary
         if report["missing_required"]:
-            print(f"\n🚨 Missing REQUIRED secrets ({len(report['missing_required'])}):")
-            for secret in report["missing_required"]:
-                print(f"   - {secret}")
+            logger.error(
+                "Missing required secrets",
+                secrets=report["missing_required"],
+                count=len(report["missing_required"]),
+            )
 
         if report["missing_recommended"]:
-            print(
-                f"\n⚠️  Missing RECOMMENDED secrets ({len(report['missing_recommended'])}):"
+            logger.warning(
+                "Missing recommended secrets",
+                secrets=report["missing_recommended"],
+                count=len(report["missing_recommended"]),
             )
-            for secret in report["missing_recommended"]:
-                print(f"   - {secret}")
 
         if report["missing_optional"]:
-            print(f"\n💡 Missing OPTIONAL secrets ({len(report['missing_optional'])}):")
-            for secret in report["missing_optional"]:
-                print(f"   - {secret}")
-
-        print("\n" + "=" * 70)
-        print()
+            logger.info(
+                "Missing optional secrets",
+                secrets=report["missing_optional"],
+                count=len(report["missing_optional"]),
+            )
 
 
 # ============================================================================
@@ -444,15 +436,11 @@ def startup_secrets_check(is_production: bool = None) -> None:
 
     # Skip strict secrets validation in CI/test environments
     if is_ci:
-        logger.info(
-            "Running in CI/test environment - skipping strict secrets validation"
-        )
-        print("🔧 CI/Test mode: Skipping strict secrets validation")
-        print("💡 Test credentials are allowed in CI/CD pipelines")
+        logger.info("CI/Test mode: Skipping strict secrets validation")
         return
 
     mode = "PRODUCTION" if is_production else "DEVELOPMENT"
-    logger.info(f"Running secrets validation ({mode} mode)...")
+    logger.info("Running secrets validation", mode=mode)
 
     # Выполняем валидацию (как в dev, так и в production)
     validator = SecretsValidator(is_production=is_production)
@@ -463,21 +451,19 @@ def startup_secrets_check(is_production: bool = None) -> None:
 
     # Exit if validation failed
     if not is_valid:
-        print("\n🚨 CRITICAL: Secrets validation failed!")
-        print("💡 Set missing secrets in .env file or environment variables")
-        print("💡 Generate strong SECRET_KEY with: openssl rand -hex 32")
-        print()
+        logger.critical(
+            "Secrets validation failed - cannot start application",
+            help="Set missing secrets in .env file or use: openssl rand -hex 32",
+        )
         sys.exit(1)
 
     if report["warnings"]:
         if not is_production:
-            print(
-                "⚠️  Development mode: Using dev credentials (warnings are acceptable)"
-            )
+            logger.warning("Development mode: Using dev credentials")
         else:
-            print("⚠️  Application started with warnings - review secrets configuration")
+            logger.warning("Application started with warnings - review secrets")
     else:
-        print("✅ All secrets validated successfully")
+        logger.info("All secrets validated successfully")
 
 
 def generate_secret_key() -> str:
@@ -519,7 +505,7 @@ def get_secret_template() -> str:
     return "\n".join(template)
 
 
-def check_secrets_in_file(filepath: str) -> Tuple[bool, List[str]]:
+async def check_secrets_in_file(filepath: str) -> Tuple[bool, List[str]]:
     """
     Проверяет .env файл на наличие hardcoded secrets в git-tracked файлах.
 
@@ -543,14 +529,14 @@ def check_secrets_in_file(filepath: str) -> Tuple[bool, List[str]]:
 
     found_secrets = []
     try:
-        with open(filepath, "r") as f:
-            content = f.read()
+        async with aiofiles.open(filepath, "r") as f:
+            content = await f.read()
             for key in secret_keys:
                 # Pattern: KEY=value (не пустое)
                 pattern = rf"^{key}=.+$"
                 if re.search(pattern, content, re.MULTILINE):
                     found_secrets.append(key)
     except Exception as e:
-        logger.error(f"Error checking file for secrets: {e}")
+        logger.error("Error checking file for secrets", error=str(e))
 
     return len(found_secrets) > 0, found_secrets

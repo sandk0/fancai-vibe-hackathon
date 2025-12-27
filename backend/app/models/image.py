@@ -136,9 +136,10 @@ class GeneratedImage(Base):
     generated_at = Column(DateTime(timezone=True), nullable=True)
 
     # Отношения
-    description = relationship("Description", back_populates="generated_images")
-    chapter = relationship("Chapter", back_populates="generated_images")
-    user = relationship("User", back_populates="generated_images")
+    # lazy="raise" предотвращает случайные N+1 queries - требует явного eager loading
+    description = relationship("Description", back_populates="generated_images", lazy="raise")
+    chapter = relationship("Chapter", back_populates="generated_images", lazy="raise")
+    user = relationship("User", back_populates="generated_images", lazy="raise")
 
     def __repr__(self):
         return f"<GeneratedImage(id={self.id}, service={self.service_used}, status={self.status})>"

@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import aiofiles
 from bs4 import BeautifulSoup
 
 # Библиотеки для парсинга
@@ -643,15 +644,15 @@ class FB2Parser:
         self.config = config
         self.namespaces = {"fb": "http://www.gribuser.ru/xml/fictionbook/2.0"}
 
-    def parse(self, file_path: str) -> ParsedBook:
+    async def parse(self, file_path: str) -> ParsedBook:
         """Парсит FB2 файл."""
         if not LXML_AVAILABLE:
             raise ImportError("lxml is required for FB2 parsing")
 
         try:
-            # Читаем FB2 файл
-            with open(file_path, "rb") as f:
-                content = f.read()
+            # Читаем FB2 файл (async to avoid blocking event loop)
+            async with aiofiles.open(file_path, "rb") as f:
+                content = await f.read()
 
             # Парсим XML
             try:
@@ -812,7 +813,7 @@ class BookParser:
         """Возвращает список поддерживаемых форматов."""
         return self.supported_formats.copy()
 
-    def detect_format(self, file_path: str) -> str:
+    async def detect_format(self, file_path: str) -> str:
         """Определяет формат файла книги."""
         path_obj = Path(file_path)
         extension = path_obj.suffix.lower()
@@ -824,8 +825,8 @@ class BookParser:
         elif extension == ".xml":
             # Проверяем, не является ли XML файлом FB2
             try:
-                with open(file_path, "rb") as f:
-                    content = f.read(1000)
+                async with aiofiles.open(file_path, "rb") as f:
+                    content = await f.read(1000)
                     if b"FictionBook" in content:
                         return "fb2"
             except (OSError, IOError) as e:
@@ -833,7 +834,7 @@ class BookParser:
 
         return "unknown"
 
-    def parse_book(self, file_path: str) -> ParsedBook:
+    async def parse_book(self, file_path: str) -> ParsedBook:
         """
         Парсит книгу и извлекает её содержимое.
 
@@ -847,22 +848,23 @@ class BookParser:
             ValueError: Если формат не поддерживается
             Exception: При ошибках парсинга
         """
-        file_format = self.detect_format(file_path)
+        file_format = await self.detect_format(file_path)
 
         if file_format == "epub":
             if not self.epub_parser:
                 raise ImportError("ebooklib is required for EPUB parsing")
+            # EPUBParser.parse is synchronous (uses ebooklib which is sync)
             return self.epub_parser.parse(file_path)
 
         elif file_format == "fb2":
             if not self.fb2_parser:
                 raise ImportError("lxml is required for FB2 parsing")
-            return self.fb2_parser.parse(file_path)
+            return await self.fb2_parser.parse(file_path)
 
         else:
             raise ValueError(f"Unsupported book format: {file_format}")
 
-    def validate_book_file(self, file_path: str) -> Dict[str, Any]:
+    async def validate_book_file(self, file_path: str) -> Dict[str, Any]:
         """
         Валидирует файл книги.
 
@@ -899,7 +901,7 @@ class BookParser:
                 result["error"] = "File too small"
                 return result
 
-            file_format = self.detect_format(file_path)
+            file_format = await self.detect_format(file_path)
             result["format"] = file_format
 
             if not self.is_format_supported(file_format):
@@ -908,7 +910,7 @@ class BookParser:
 
             # Пробуем парсить для проверки валидности
             try:
-                parsed_book = self.parse_book(file_path)
+                parsed_book = await self.parse_book(file_path)
                 result["is_valid"] = True
                 result["estimated_chapters"] = len(parsed_book.chapters)
             except Exception as e:

@@ -71,12 +71,13 @@ class Chapter(Base):
     parsed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Отношения
-    book = relationship("Book", back_populates="chapters")
+    # lazy="raise" предотвращает случайные N+1 queries - требует явного eager loading
+    book = relationship("Book", back_populates="chapters", lazy="raise")
     descriptions = relationship(
-        "Description", back_populates="chapter", cascade="all, delete-orphan"
+        "Description", back_populates="chapter", cascade="all, delete-orphan", lazy="raise"
     )
     generated_images = relationship(
-        "GeneratedImage", back_populates="chapter", cascade="all, delete-orphan"
+        "GeneratedImage", back_populates="chapter", cascade="all, delete-orphan", lazy="raise"
     )
 
     def __repr__(self):

@@ -12,6 +12,9 @@ import tempfile
 import os
 from pathlib import Path
 
+import aiofiles
+import aiofiles.os
+
 from ...services.book_parser import book_parser
 from ...schemas.responses.books_validation import (
     ParserStatusResponse,
@@ -80,14 +83,17 @@ async def validate_book_file(file: UploadFile = File(...)) -> BookFileValidation
     if file_size < 1024:  # 1KB
         raise HTTPException(status_code=400, detail="File too small")
 
-    # Создаём временный файл для валидации
-    with tempfile.NamedTemporaryFile(suffix=file_extension, delete=False) as temp_file:
-        temp_file.write(file_content)
-        temp_file_path = temp_file.name
+    # Создаём временный файл для валидации (async write to avoid blocking)
+    temp_file = tempfile.NamedTemporaryFile(suffix=file_extension, delete=False)
+    temp_file_path = temp_file.name
+    temp_file.close()
+
+    async with aiofiles.open(temp_file_path, "wb") as f:
+        await f.write(file_content)
 
     try:
         # Валидируем файл
-        validation_result = book_parser.validate_book_file(temp_file_path)
+        validation_result = await book_parser.validate_book_file(temp_file_path)
 
         return BookFileValidationResponse(
             filename=file.filename,
@@ -104,7 +110,7 @@ async def validate_book_file(file: UploadFile = File(...)) -> BookFileValidation
     finally:
         # Удаляем временный файл
         try:
-            os.unlink(temp_file_path)
+            await aiofiles.os.unlink(temp_file_path)
         except OSError:
             pass
 
@@ -139,14 +145,17 @@ async def parse_book_preview(file: UploadFile = File(...)) -> BookParsePreviewRe
     if file_size > 50 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File too large (max 50MB)")
 
-    # Создаём временный файл
-    with tempfile.NamedTemporaryFile(suffix=file_extension, delete=False) as temp_file:
-        temp_file.write(file_content)
-        temp_file_path = temp_file.name
+    # Создаём временный файл (async write to avoid blocking)
+    temp_file = tempfile.NamedTemporaryFile(suffix=file_extension, delete=False)
+    temp_file_path = temp_file.name
+    temp_file.close()
+
+    async with aiofiles.open(temp_file_path, "wb") as f:
+        await f.write(file_content)
 
     try:
         # Парсим книгу
-        parsed_book = book_parser.parse_book(temp_file_path)
+        parsed_book = await book_parser.parse_book(temp_file_path)
 
         # Подготавливаем превью глав (первые 3 главы)
         chapters_preview = []
@@ -200,6 +209,6 @@ async def parse_book_preview(file: UploadFile = File(...)) -> BookParsePreviewRe
     finally:
         # Удаляем временный файл
         try:
-            os.unlink(temp_file_path)
+            await aiofiles.os.unlink(temp_file_path)
         except OSError:
             pass

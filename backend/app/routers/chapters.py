@@ -14,6 +14,7 @@ NLP REMOVAL (December 2025):
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from typing import Dict, Any, List
 
 from ..core.database import get_database_session
@@ -147,8 +148,12 @@ async def get_chapter(
         return cached_result
 
     try:
-        # Загружаем книгу для навигационной информации
-        book_result = await db.execute(select(Book).where(Book.id == chapter.book_id))
+        # Загружаем книгу для навигационной информации с eager loading для chapters
+        book_result = await db.execute(
+            select(Book)
+            .where(Book.id == chapter.book_id)
+            .options(selectinload(Book.chapters))
+        )
         book = book_result.scalar_one()
 
         # NLP REMOVAL: Descriptions are now extracted on-demand via LLM API

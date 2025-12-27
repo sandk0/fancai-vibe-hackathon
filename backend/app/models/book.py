@@ -121,15 +121,16 @@ class Book(Base):
     last_accessed = Column(DateTime(timezone=True), nullable=True)
 
     # Отношения
-    user = relationship("User", back_populates="books")
+    # lazy="raise" предотвращает случайные N+1 queries - требует явного eager loading
+    user = relationship("User", back_populates="books", lazy="raise")
     chapters = relationship(
-        "Chapter", back_populates="book", cascade="all, delete-orphan"
+        "Chapter", back_populates="book", cascade="all, delete-orphan", lazy="raise"
     )
     reading_progress = relationship(
-        "ReadingProgress", back_populates="book", cascade="all, delete-orphan"
+        "ReadingProgress", back_populates="book", cascade="all, delete-orphan", lazy="raise"
     )
     reading_sessions = relationship(
-        "ReadingSession", back_populates="book", cascade="all, delete-orphan"
+        "ReadingSession", back_populates="book", cascade="all, delete-orphan", lazy="raise"
     )
 
     def __repr__(self):
@@ -322,8 +323,9 @@ class ReadingProgress(Base):
     )
 
     # Отношения
-    user = relationship("User", back_populates="reading_progress")
-    book = relationship("Book", back_populates="reading_progress")
+    # lazy="raise" предотвращает случайные N+1 queries - требует явного eager loading
+    user = relationship("User", back_populates="reading_progress", lazy="raise")
+    book = relationship("Book", back_populates="reading_progress", lazy="raise")
 
     def __repr__(self):
         return f"<ReadingProgress(user_id={self.user_id}, book_id={self.book_id}, chapter={self.current_chapter})>"

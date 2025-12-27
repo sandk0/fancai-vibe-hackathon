@@ -176,7 +176,8 @@ class ReadingGoal(Base):
     )
 
     # Relationships
-    user: Mapped["User"] = relationship("User", back_populates="reading_goals")
+    # lazy="raise" предотвращает случайные N+1 queries - требует явного eager loading
+    user: Mapped["User"] = relationship("User", back_populates="reading_goals", lazy="raise")
 
     # Constraints & Indexes
     __table_args__ = (

@@ -16,9 +16,8 @@ import httpx
 import os
 from typing import Optional, Any, List
 from urllib.parse import urlparse
-import logging
 
-logger = logging.getLogger(__name__)
+from app.core.logging import logger
 
 
 class VLESSHTTPClient:
@@ -69,8 +68,9 @@ class VLESSHTTPClient:
         self._direct_client: Optional[httpx.AsyncClient] = None
 
         logger.info(
-            f"VLESSHTTPClient initialized: use_proxy={self.use_proxy}, "
-            f"proxy_domains={self.proxy_required_domains}"
+            "VLESSHTTPClient initialized",
+            use_proxy=self.use_proxy,
+            proxy_domains=self.proxy_required_domains,
         )
 
     async def __aenter__(self):
@@ -82,7 +82,7 @@ class VLESSHTTPClient:
                 timeout=self.timeout,
                 follow_redirects=True,
             )
-            logger.debug(f"Proxy client initialized: {self.http_proxy_url}")
+            logger.debug("Proxy client initialized", proxy_url=self.http_proxy_url)
 
         # Прямой клиент (без прокси)
         self._direct_client = httpx.AsyncClient(
@@ -118,10 +118,10 @@ class VLESSHTTPClient:
         # Проверка, входит ли домен в список прокси-доменов
         for required_domain in self.proxy_required_domains:
             if required_domain in domain:
-                logger.debug(f"Using proxy for {domain}")
+                logger.debug("Using proxy for domain", domain=domain)
                 return True
 
-        logger.debug(f"Direct connection for {domain}")
+        logger.debug("Direct connection for domain", domain=domain)
         return False
 
     async def request(
@@ -157,10 +157,10 @@ class VLESSHTTPClient:
         # Выполнение запроса
         try:
             response = await client.request(method, url, **kwargs)
-            logger.debug(f"{method} {url} -> {response.status_code}")
+            logger.debug("HTTP request completed", method=method, url=url, status=response.status_code)
             return response
         except httpx.HTTPError as e:
-            logger.error(f"HTTP error for {method} {url}: {e}")
+            logger.error("HTTP error", method=method, url=url, error=str(e))
             raise
 
     async def get(self, url: str, **kwargs: Any) -> httpx.Response:
@@ -214,11 +214,11 @@ async def example_usage():
     async with get_http_client() as client:
         # Этот запрос пойдет через прокси (pollinations.ai в списке прокси-доменов)
         response = await client.get('https://pollinations.ai/api/health')
-        print(f"Pollinations health: {response.json()}")
+        logger.info("Pollinations health", response=response.json())
 
         # Этот запрос пойдет напрямую (example.com не в списке)
         response = await client.get('https://example.com')
-        print(f"Example.com status: {response.status_code}")
+        logger.info("Example.com status", status_code=response.status_code)
 
     # Вариант 2: POST запрос с JSON
     async with get_http_client() as client:
@@ -228,7 +228,7 @@ async def example_usage():
             headers={'Content-Type': 'application/json'}
         )
         image_data = response.json()
-        print(f"Generated image: {image_data}")
+        logger.info("Generated image", data=image_data)
 
     # Вариант 3: Custom конфигурация
     custom_client = VLESSHTTPClient(
@@ -247,7 +247,7 @@ async def example_usage():
             }
         )
         chat_response = response.json()
-        print(f"OpenAI response: {chat_response}")
+        logger.info("OpenAI response", response=chat_response)
 
 
 if __name__ == '__main__':

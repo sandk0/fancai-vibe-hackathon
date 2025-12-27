@@ -390,9 +390,10 @@ class BookService:
         # Путь к файлу обложки
         cover_path = covers_dir / f"{book_id}.{extension}"
 
-        # Сохраняем файл
-        with open(cover_path, "wb") as f:
-            f.write(image_data)
+        # Сохраняем файл (async to avoid blocking event loop)
+        import aiofiles
+        async with aiofiles.open(cover_path, "wb") as f:
+            await f.write(image_data)
 
         return cover_path
 
