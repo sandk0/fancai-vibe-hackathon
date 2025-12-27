@@ -2,6 +2,7 @@
 Middleware и dependencies для аутентификации в BookReader AI.
 
 Содержит функции для проверки JWT токенов и получения текущего пользователя.
+Включает проверку token blacklist для корректной обработки logout.
 """
 
 from typing import Optional
@@ -12,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .database import get_database_session
 from ..services.auth_service import auth_service
+from ..services.token_blacklist import token_blacklist
 from ..models.user import User
 
 
@@ -42,8 +44,19 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+    token_revoked_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Token has been revoked",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
     # Проверяем токен
     token = credentials.credentials
+
+    # Check if token is blacklisted (revoked via logout)
+    if await token_blacklist.is_blacklisted(token):
+        raise token_revoked_exception
+
     payload = auth_service.verify_token(token, "access")
 
     if payload is None:
@@ -133,6 +146,11 @@ def get_optional_current_user():
         try:
             # Проверяем токен
             token = credentials.credentials
+
+            # Check if token is blacklisted (revoked via logout)
+            if await token_blacklist.is_blacklisted(token):
+                return None
+
             payload = auth_service.verify_token(token, "access")
 
             if payload is None:
@@ -177,8 +195,12 @@ class AuthMiddleware:
             token: JWT токен
 
         Returns:
-            True если токен действительный
+            True если токен действительный и не отозван
         """
+        # Check blacklist first
+        if await token_blacklist.is_blacklisted(token):
+            return False
+
         payload = auth_service.verify_token(token, "access")
         return payload is not None
 

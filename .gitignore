@@ -94,11 +94,19 @@ tmp/
 temp/
 .tmp/
 
-# Secrets and keys
+# Secrets and keys (SECURITY CRITICAL - NEVER COMMIT!)
 secrets/
 keys/
+credentials/
 *.pem
 *.key
+*.p12
+*.pfx
+*.crt
+*.cer
+service-account*.json
+*credentials*.json
+*-key.json
 
 # Backup files
 *.bak

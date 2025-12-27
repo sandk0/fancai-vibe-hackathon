@@ -17,7 +17,8 @@ import os
 
 from ..core.database import get_database_session
 from ..core.auth import get_current_active_user, get_current_admin_user
-from ..services.image_generator import image_generator_service
+from ..services.image_generator import ImageGeneratorService
+from ..core.container import get_image_generator_service_dep
 from ..models.user import User
 from ..models.book import Book
 from ..models.chapter import Chapter
@@ -41,12 +42,29 @@ GENERATED_IMAGES_DIR = Path("/app/storage/generated_images")
 
 
 @router.get("/images/file/{filename}")
-async def get_generated_image_file(filename: str):
+async def get_generated_image_file(
+    filename: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_database_session),
+):
     """
-    Serve generated image file.
+    Serve generated image file with ownership verification.
 
     This endpoint serves image files from the generated_images directory.
-    No authentication required for image access (images are accessed by random filename).
+    Authentication required - verifies image belongs to a book owned by the user.
+
+    Args:
+        filename: The image filename (UUID-based)
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        FileResponse with the image
+
+    Raises:
+        HTTPException 400: Invalid filename
+        HTTPException 403: Access denied (image doesn't belong to user)
+        HTTPException 404: Image not found
     """
     # Validate filename (prevent path traversal)
     if ".." in filename or "/" in filename or "\\" in filename:
@@ -55,12 +73,45 @@ async def get_generated_image_file(filename: str):
             detail="Invalid filename"
         )
 
-    # Check if file exists
+    # Build full file path
     file_path = GENERATED_IMAGES_DIR / filename
+
+    # Check if file exists
     if not file_path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Image not found"
+        )
+
+    # SECURITY FIX: Verify ownership through database
+    # Image -> Description -> Chapter -> Book -> User
+    # OR Image -> Chapter -> Book -> User (for new schema)
+    image_result = await db.execute(
+        select(GeneratedImage)
+        .where(GeneratedImage.local_path == str(file_path))
+    )
+    image = image_result.scalar_one_or_none()
+
+    if not image:
+        # Try matching by filename in image_url field (API path format)
+        api_path = f"/api/v1/images/file/{filename}"
+        image_result = await db.execute(
+            select(GeneratedImage)
+            .where(GeneratedImage.image_url == api_path)
+        )
+        image = image_result.scalar_one_or_none()
+
+    if not image:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Image not found in database"
+        )
+
+    # Check ownership: image.user_id should match current_user.id
+    if image.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: Image does not belong to current user"
         )
 
     # Use content_disposition_type="inline" to display image in browser
@@ -99,6 +150,7 @@ class BatchGenerationRequest(BaseModel):
 )
 async def get_generation_status(
     current_user: User = Depends(get_current_active_user),
+    image_gen_svc: ImageGeneratorService = Depends(get_image_generator_service_dep),
 ) -> ImageGenerationStatusResponse:
     """
     Получение статуса системы генерации изображений.
@@ -115,7 +167,8 @@ async def get_generation_status(
     Returns:
         ImageGenerationStatusResponse: Полная информация о статусе генерации
     """
-    stats = await image_generator_service.get_generation_stats()
+    # Получаем статистику (используем DI)
+    stats = await image_gen_svc.get_generation_stats()
 
     # Map service stats to QueueStats
     queue_stats = QueueStats(
@@ -227,6 +280,7 @@ async def generate_image_for_description(
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
+    image_gen_svc: ImageGeneratorService = Depends(get_image_generator_service_dep),
 ) -> ImageGenerationSuccessResponse:
     """
     Генерирует изображение для конкретного описания.
@@ -279,8 +333,8 @@ async def generate_image_for_description(
         )
 
     try:
-        # Генерируем изображение
-        result = await image_generator_service.generate_image_for_description(
+        # Генерируем изображение (используем DI)
+        result = await image_gen_svc.generate_image_for_description(
             description=description,
             user_id=str(current_user.id),
             custom_style=params.style_prompt,
@@ -338,6 +392,7 @@ async def generate_images_for_chapter(
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
+    image_gen_svc: ImageGeneratorService = Depends(get_image_generator_service_dep),
 ) -> Dict[str, Any]:
     """
     Генерирует изображения для всех подходящих описаний в главе.
@@ -407,9 +462,9 @@ async def generate_images_for_chapter(
             "skipped": len(all_descriptions),
         }
 
-    # Запускаем пакетную генерацию
+    # Запускаем пакетную генерацию (используем DI)
     try:
-        results = await image_generator_service.batch_generate_for_chapter(
+        results = await image_gen_svc.batch_generate_for_chapter(
             descriptions=descriptions_to_process,
             user_id=str(current_user.id),
             max_images=request.max_images,
@@ -684,6 +739,7 @@ async def regenerate_image(
     params: ImageGenerationParams,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
+    image_gen_svc: ImageGeneratorService = Depends(get_image_generator_service_dep),
 ) -> Dict[str, Any]:
     """
     Перегенерирует существующее изображение с новыми параметрами.
@@ -726,9 +782,9 @@ async def regenerate_image(
             except OSError:
                 pass  # Файл уже удален или недоступен
 
-        # Генерируем новое изображение
+        # Генерируем новое изображение (используем DI)
         generation_result = (
-            await image_generator_service.generate_image_for_description(
+            await image_gen_svc.generate_image_for_description(
                 description=description,
                 user_id=str(current_user.id),
                 custom_style=params.style_prompt,
@@ -787,6 +843,7 @@ async def regenerate_image(
 async def get_admin_image_stats(
     current_admin: User = Depends(get_current_admin_user),
     db: AsyncSession = Depends(get_database_session),
+    image_gen_svc: ImageGeneratorService = Depends(get_image_generator_service_dep),
 ) -> Dict[str, Any]:
     """
     Получение статистики генерации изображений для администраторов.
@@ -821,8 +878,8 @@ async def get_admin_image_stats(
     )
     average_generation_time = avg_time.scalar() or 0
 
-    # Получаем статистику сервиса
-    service_stats = await image_generator_service.get_generation_stats()
+    # Получаем статистику сервиса (используем DI)
+    service_stats = await image_gen_svc.get_generation_stats()
 
     return {
         "total_images_generated": total_count,
@@ -836,5 +893,250 @@ async def get_admin_image_stats(
             "service_operational": True,
             "api_provider": "Google Imagen 4",
             "supported_types": service_stats["supported_types"],
+            "queue_backend": service_stats.get("queue_backend", "celery_redis"),
         },
+        "celery_stats": service_stats.get("celery_stats", {}),
     }
+
+
+# ============================================================================
+# ASYNC GENERATION ENDPOINTS (Celery-based queue)
+# ============================================================================
+
+
+class AsyncGenerationRequest(BaseModel):
+    """Request for async image generation via Celery queue."""
+    style_prompt: Optional[str] = None
+    book_genre: Optional[str] = None
+
+
+@router.post(
+    "/images/generate/async/{description_id}",
+    status_code=202,
+    summary="Queue async image generation",
+    description="Queues image generation as a background task. Returns task ID for status tracking."
+)
+async def queue_async_image_generation(
+    description_id: UUID,
+    request: AsyncGenerationRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_database_session),
+    image_gen_svc: ImageGeneratorService = Depends(get_image_generator_service_dep),
+) -> Dict[str, Any]:
+    """
+    Queue async image generation via Celery.
+
+    Unlike the synchronous endpoint, this returns immediately with a task ID.
+    The task is persisted in Redis and survives server restarts.
+
+    Use GET /images/task/{task_id} to check status.
+
+    Args:
+        description_id: ID of the description to generate image for
+        request: Generation parameters
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        Task information with task_id for tracking
+
+    Raises:
+        HTTPException 404: Description not found or access denied
+        HTTPException 409: Image already exists for this description
+    """
+    # Validate description access
+    description_result = await db.execute(
+        select(Description)
+        .join(Chapter)
+        .join(Book)
+        .where(Description.id == description_id)
+        .where(Book.user_id == current_user.id)
+    )
+    description = description_result.scalar_one_or_none()
+
+    if not description:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Description not found or access denied",
+        )
+
+    # Check for existing image
+    existing_image_result = await db.execute(
+        select(GeneratedImage).where(GeneratedImage.description_id == description_id)
+    )
+    if existing_image_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Image already exists for this description",
+        )
+
+    # Queue the generation task (используем DI)
+    queue_result = image_gen_svc.queue_image_generation(
+        description_id=str(description_id),
+        user_id=str(current_user.id),
+        description_content=description.content,
+        description_type=description.type.value if hasattr(description.type, 'value') else str(description.type),
+        book_genre=request.book_genre,
+        custom_style=request.style_prompt,
+    )
+
+    return {
+        **queue_result,
+        "message": "Image generation queued. Use task_id to check status.",
+        "status_url": f"/api/v1/images/task/{queue_result['task_id']}",
+    }
+
+
+@router.post(
+    "/images/generate/async/chapter/{chapter_id}",
+    status_code=202,
+    summary="Queue batch async image generation",
+    description="Queues batch image generation for a chapter as a background task."
+)
+async def queue_async_batch_generation(
+    chapter_id: UUID,
+    request: BatchGenerationRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_database_session),
+    image_gen_svc: ImageGeneratorService = Depends(get_image_generator_service_dep),
+) -> Dict[str, Any]:
+    """
+    Queue batch async image generation for a chapter via Celery.
+
+    Args:
+        chapter_id: ID of the chapter
+        request: Batch generation parameters
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        Task information with task_id for tracking
+    """
+    # Validate chapter access
+    chapter_result = await db.execute(
+        select(Chapter)
+        .join(Book)
+        .where(Chapter.id == chapter_id)
+        .where(Book.user_id == current_user.id)
+    )
+    chapter = chapter_result.scalar_one_or_none()
+
+    if not chapter:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Chapter not found or access denied",
+        )
+
+    # Get book for genre
+    book_result = await db.execute(
+        select(Book).where(Book.id == chapter.book_id)
+    )
+    book = book_result.scalar_one_or_none()
+    book_genre = book.genre if book else None
+
+    # Get descriptions for this chapter
+    descriptions_query = select(Description).where(Description.chapter_id == chapter_id)
+
+    if request.description_types:
+        descriptions_query = descriptions_query.where(
+            Description.type.in_(request.description_types)
+        )
+
+    descriptions_result = await db.execute(
+        descriptions_query.order_by(Description.priority_score.desc())
+    )
+    all_descriptions = descriptions_result.scalars().all()
+
+    if not all_descriptions:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No descriptions found in this chapter",
+        )
+
+    # Exclude descriptions with existing images
+    existing_images = await db.execute(
+        select(GeneratedImage.description_id).where(
+            GeneratedImage.description_id.in_([d.id for d in all_descriptions])
+        )
+    )
+    existing_desc_ids = set(img_id for img_id, in existing_images.fetchall())
+
+    descriptions_to_process = [
+        d for d in all_descriptions if d.id not in existing_desc_ids
+    ][:request.max_images]
+
+    if not descriptions_to_process:
+        return {
+            "message": "All suitable descriptions already have images",
+            "chapter_id": str(chapter_id),
+            "processed": 0,
+            "skipped": len(all_descriptions),
+        }
+
+    # Prepare descriptions for Celery task
+    descriptions_data = [
+        {
+            "id": str(d.id),
+            "content": d.content,
+            "type": d.type.value if hasattr(d.type, 'value') else str(d.type),
+        }
+        for d in descriptions_to_process
+    ]
+
+    # Queue the batch generation task (используем DI)
+    queue_result = image_gen_svc.queue_batch_generation(
+        chapter_id=str(chapter_id),
+        user_id=str(current_user.id),
+        descriptions=descriptions_data,
+        book_genre=book_genre,
+        max_images=request.max_images,
+    )
+
+    return {
+        **queue_result,
+        "total_descriptions": len(all_descriptions),
+        "queued_for_processing": len(descriptions_to_process),
+        "skipped_existing": len(existing_desc_ids),
+        "status_url": f"/api/v1/images/task/{queue_result['task_id']}",
+    }
+
+
+@router.get(
+    "/images/task/{task_id}",
+    summary="Get async generation task status",
+    description="Returns the status of an async image generation task."
+)
+async def get_task_status(
+    task_id: str,
+    current_user: User = Depends(get_current_active_user),
+    image_gen_svc: ImageGeneratorService = Depends(get_image_generator_service_dep),
+) -> Dict[str, Any]:
+    """
+    Get status of an async image generation task.
+
+    Args:
+        task_id: Celery task ID
+        current_user: Current authenticated user
+
+    Returns:
+        Task status information including result if completed
+    """
+    # Получаем статус задачи (используем DI)
+    status_info = image_gen_svc.get_task_status(task_id)
+
+    # Add friendly status messages
+    status_messages = {
+        "PENDING": "Task is waiting in queue",
+        "STARTED": "Task has started processing",
+        "SUCCESS": "Task completed successfully",
+        "FAILURE": "Task failed",
+        "RETRY": "Task is being retried",
+        "REVOKED": "Task was cancelled",
+    }
+
+    status_info["message"] = status_messages.get(
+        status_info["status"],
+        f"Task status: {status_info['status']}"
+    )
+
+    return status_info

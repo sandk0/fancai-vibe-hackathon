@@ -19,10 +19,13 @@ from pathlib import Path
 import shutil
 from uuid import uuid4
 
+import aiofiles
+
 from ...core.database import get_database_session
 from ...core.auth import get_current_active_user
-from ...core.dependencies import get_user_book, get_any_book
+from ...core.dependencies import get_user_book
 from ...core.cache import cache_manager, cache_key, CACHE_TTL
+from ...core.logging import logger
 from ...core.exceptions import (
     InvalidFileFormatException,
     FileTooLargeException,
@@ -36,8 +39,14 @@ from ...core.exceptions import (
     CoverImageNotFoundException,
     CoverFetchException,
 )
-from ...services.book_parser import book_parser
-from ...services.book import book_service, book_progress_service
+from ...services.book_parser import BookParser
+from ...services.book import BookService
+from ...services.book.book_progress_service import BookProgressService
+from ...core.container import (
+    get_book_parser_dep,
+    get_book_service_dep,
+    get_book_progress_service_dep,
+)
 from ...models.book import Book
 from ...models.user import User
 from ...core.tasks import process_book_task
@@ -56,6 +65,8 @@ async def upload_book(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_database_session),
+    parser: BookParser = Depends(get_book_parser_dep),
+    book_svc: BookService = Depends(get_book_service_dep),
 ) -> BookUploadResponse:
     """
     Загружает книгу, парсит её и сохраняет в базе данных.
@@ -71,8 +82,12 @@ async def upload_book(
     Raises:
         HTTPException: 400 если файл невалидный
     """
-    print(f"[UPLOAD] Request received from user: {current_user.email}")
-    print(f"[UPLOAD] File info: name={file.filename}, type={file.content_type}")
+    logger.info(
+        "Book upload request received",
+        user_email=current_user.email,
+        filename=file.filename,
+        content_type=file.content_type,
+    )
 
     # Валидируем файл
     if not file.filename:
@@ -85,24 +100,27 @@ async def upload_book(
     try:
         file_content = await file.read()
         file_size = len(file_content)
-        print(f"[UPLOAD] File read successfully, size: {file_size} bytes")
+        logger.debug("File read successfully", file_size=file_size)
     except Exception as e:
-        print(f"[UPLOAD ERROR] Failed to read file: {str(e)}")
+        logger.error("Failed to read file", error=str(e))
         raise FileReadException(str(e))
 
     if file_size > 50 * 1024 * 1024:
         raise FileTooLargeException(50)
 
-    # Создаем временный файл для парсинга
-    with tempfile.NamedTemporaryFile(suffix=file_extension, delete=False) as temp_file:
-        temp_file.write(file_content)
-        temp_file_path = temp_file.name
+    # Создаем временный файл для парсинга (async write to avoid blocking)
+    temp_file = tempfile.NamedTemporaryFile(suffix=file_extension, delete=False)
+    temp_file_path = temp_file.name
+    temp_file.close()
+
+    async with aiofiles.open(temp_file_path, "wb") as f:
+        await f.write(file_content)
 
     try:
-        print(f"[UPLOAD] Parsing book from: {temp_file_path}")
-        # Парсим книгу
-        parsed_book = book_parser.parse_book(temp_file_path)
-        print(f"[UPLOAD] Book parsed successfully: {parsed_book.metadata.title}")
+        logger.debug("Parsing book", temp_file_path=temp_file_path)
+        # Парсим книгу (используем DI)
+        parsed_book = await parser.parse_book(temp_file_path)
+        logger.info("Book parsed successfully", title=parsed_book.metadata.title)
 
         # Создаем постоянное хранилище для файла
         storage_dir = Path("/app/storage/books")
@@ -110,44 +128,42 @@ async def upload_book(
 
         permanent_path = storage_dir / f"{uuid4()}{file_extension}"
         shutil.move(temp_file_path, permanent_path)
-        print(f"[UPLOAD] File moved to permanent storage: {permanent_path}")
+        logger.debug("File moved to permanent storage", path=str(permanent_path))
 
-        # Сохраняем книгу в базе данных
-        print("[UPLOAD] Creating book in database...")
-        book = await book_service.create_book_from_upload(
+        # Сохраняем книгу в базе данных (используем DI)
+        logger.debug("Creating book in database")
+        book = await book_svc.create_book_from_upload(
             db=db,
             user_id=current_user.id,
             file_path=str(permanent_path),
             original_filename=file.filename,
             parsed_book=parsed_book,
         )
-        await db.refresh(book)  # ✅ FIX: Refresh object to avoid greenlet_spawn error
-        print(f"[UPLOAD] Book created in database with ID: {book.id}")
+        await db.refresh(book)  # FIX: Refresh object to avoid greenlet_spawn error
+        logger.info("Book created in database", book_id=str(book.id))
 
         # Запускаем асинхронную обработку книги для извлечения описаний
         task_id = None
         try:
-            print(f"[CELERY] Starting background processing for book {book.id}")
+            logger.debug("Starting background processing", book_id=str(book.id))
             task = process_book_task.delay(str(book.id))
             task_id = task.id if task else None
-            print(f"[CELERY] Background task started successfully (task_id: {task_id})")
+            logger.info("Background task started", book_id=str(book.id), task_id=task_id)
         except Exception as e:
-            print(f"[CELERY ERROR] Failed to start background task: {str(e)}")
+            logger.warning("Failed to start background task", error=str(e))
             # Не прерываем процесс, если Celery недоступен
 
         # КРИТИЧЕСКИ ВАЖНО: Инвалидируем кэш списка книг пользователя
         # чтобы новая книга сразу появилась в библиотеке
         try:
-            print(f"[CACHE] Invalidating book list cache for user {current_user.id}")
+            logger.debug("Invalidating book list cache", user_id=str(current_user.id))
             # Используем pattern-based deletion для удаления ВСЕХ вариантов пагинации
             # Это намного эффективнее чем цикл с 30 итерациями
             pattern = f"user:{current_user.id}:books:*"
             deleted_count = await cache_manager.delete_pattern(pattern)
-            print(
-                f"[CACHE] Book list cache invalidated successfully ({deleted_count} keys deleted)"
-            )
+            logger.debug("Book list cache invalidated", keys_deleted=deleted_count)
         except Exception as e:
-            print(f"[CACHE ERROR] Failed to invalidate cache: {str(e)}")
+            logger.warning("Failed to invalidate cache", error=str(e))
             # Не критичная ошибка, продолжаем
 
         # Создаем ответ в правильном формате согласно BookUploadResponse схеме
@@ -186,7 +202,7 @@ async def upload_book(
         )
 
     except Exception as e:
-        print(f"[UPLOAD ERROR] Processing failed: {str(e)}")
+        logger.error("Book processing failed", error=str(e), exc_info=True)
         # Удаляем временный файл в случае ошибки
         try:
             if os.path.exists(temp_file_path):
@@ -204,6 +220,7 @@ async def get_user_books(
     sort_by: str = "created_desc",
     db: AsyncSession = Depends(get_database_session),
     current_user: User = Depends(get_current_active_user),
+    book_progress_svc: BookProgressService = Depends(get_book_progress_service_dep),
 ) -> BookListResponse:
     """
     Получает список книг пользователя.
@@ -223,8 +240,12 @@ async def get_user_books(
         TTL: 10 seconds (frequently updated - parsing status changes)
         Key: user:{user_id}:books:skip:{skip}:limit:{limit}:sort:{sort_by}
     """
-    print(
-        f"[BOOKS ENDPOINT] Starting books request for user {current_user.id} (sort: {sort_by})"
+    logger.debug(
+        "Books request started",
+        user_id=str(current_user.id),
+        sort_by=sort_by,
+        skip=skip,
+        limit=limit,
     )
 
     # Try to get from cache
@@ -238,20 +259,18 @@ async def get_user_books(
     )
     cached_result = await cache_manager.get(cache_key_str)
     if cached_result is not None:
-        print(f"[BOOKS ENDPOINT] Cache HIT for user {current_user.id}")
+        logger.debug("Cache HIT for books", user_id=str(current_user.id))
         return cached_result
 
-    print(f"[BOOKS ENDPOINT] Cache MISS for user {current_user.id} - querying database")
+    logger.debug("Cache MISS for books - querying database", user_id=str(current_user.id))
 
     try:
         # ОПТИМИЗАЦИЯ: Получаем книги пользователя с предрасчитанным прогрессом
-        # Использует eager loading, чтобы избежать N+1 queries
-        books_with_progress = await book_progress_service.get_books_with_progress(
+        # Использует eager loading, чтобы избежать N+1 queries (используем DI)
+        books_with_progress = await book_progress_svc.get_books_with_progress(
             db, current_user.id, skip, limit, sort_by
         )
-        print(
-            f"[BOOKS ENDPOINT] Retrieved {len(books_with_progress)} books from service"
-        )
+        logger.debug("Retrieved books from service", books_count=len(books_with_progress))
 
         # Формируем ответ
         books_data = []
@@ -296,7 +315,7 @@ async def get_user_books(
                     }
                 )
             except Exception as e:
-                print(f"[BOOKS ENDPOINT] Error processing book {book.id}: {e}")
+                logger.warning("Error processing book", book_id=str(book.id), error=str(e))
 
         # Получаем общее количество книг для пагинации
         total_books_result = await db.execute(
@@ -304,8 +323,10 @@ async def get_user_books(
         )
         total_books = total_books_result.scalar() or 0
 
-        print(
-            f"[BOOKS ENDPOINT] Successfully returning {len(books_data)} books (total: {total_books})"
+        logger.info(
+            "Books request completed",
+            books_returned=len(books_data),
+            total_books=total_books,
         )
 
         response = {
@@ -321,7 +342,7 @@ async def get_user_books(
         return response
 
     except Exception as e:
-        print(f"[BOOKS ENDPOINT] Error: {e}")
+        logger.error("Error fetching books", error=str(e))
         raise BookListFetchException(str(e))
 
 
@@ -354,10 +375,10 @@ async def get_book(
     cache_key_str = cache_key("book", book.id, "metadata")
     cached_result = await cache_manager.get(cache_key_str)
     if cached_result is not None:
-        print(f"[BOOK ENDPOINT] Cache HIT for book {book.id}")
+        logger.debug("Cache HIT for book", book_id=str(book.id))
         return cached_result
 
-    print(f"[BOOK ENDPOINT] Cache MISS for book {book.id} - building response")
+    logger.debug("Cache MISS for book - building response", book_id=str(book.id))
 
     try:
         # Прогресс чтения - используем унифицированный метод из модели
@@ -480,19 +501,22 @@ async def get_book_file(
 
 @router.get("/{book_id}/cover")
 async def get_book_cover(
-    book: Book = Depends(get_any_book),
+    book: Book = Depends(get_user_book),
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     Получает обложку книги.
 
     Args:
-        book: Книга (автоматически получена через dependency, публичный доступ)
+        book: Книга (автоматически получена через dependency с проверкой владельца)
+        current_user: Текущий аутентифицированный пользователь
 
     Returns:
         Файл обложки книги
 
     Raises:
         BookNotFoundException: Если книга не найдена
+        BookAccessDeniedException: Если доступ запрещен
         CoverImageNotFoundException: Если обложка не найдена
     """
     try:

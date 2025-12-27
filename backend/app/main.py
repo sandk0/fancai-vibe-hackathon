@@ -30,6 +30,7 @@ from .routers.books import books_router
 from .core.config import settings
 from .core.cache import cache_manager
 from .core.secrets import startup_secrets_check
+from .core.logging import logger
 from .services.settings_manager import settings_manager
 from .middleware.security_headers import SecurityHeadersMiddleware
 from .middleware.cache_control import CacheControlMiddleware
@@ -53,11 +54,14 @@ async def lifespan(app: FastAPI):
     # ========================================================================
     # STARTUP
     # ========================================================================
-    print("🚀 Starting BookReader AI...")
+    logger.info("Starting BookReader AI", version=VERSION)
 
-    # DEBUG: Print CORS configuration
-    print(f"🔧 CORS Origins configured: {settings.CORS_ORIGINS}")
-    print(f"🔧 CORS Origins list: {settings.cors_origins_list}")
+    # DEBUG: Log CORS configuration
+    logger.debug(
+        "CORS configuration",
+        cors_origins=settings.CORS_ORIGINS,
+        cors_origins_list=settings.cors_origins_list,
+    )
 
     # SECURITY: Validate secrets before starting
     try:
@@ -67,35 +71,35 @@ async def lifespan(app: FastAPI):
         # Re-raise to stop application if secrets validation failed
         raise
     except Exception as e:
-        print(f"⚠️ Secrets validation error: {e}")
+        logger.warning("Secrets validation error", error=str(e))
         # Continue with warning (non-critical error)
 
     # Initialize Rate Limiter
     try:
         await rate_limiter.connect()
         if rate_limiter.enabled:
-            print("✅ Rate limiter initialized and connected to Redis")
+            logger.info("Rate limiter initialized and connected to Redis")
         else:
-            print("⚠️ Rate limiter disabled (Redis unavailable)")
+            logger.warning("Rate limiter disabled (Redis unavailable)")
     except Exception as e:
-        print(f"⚠️ Failed to initialize rate limiter: {e}")
+        logger.warning("Failed to initialize rate limiter", error=str(e))
 
     # Инициализация Redis cache
     try:
         await cache_manager.initialize()
         if cache_manager.is_available:
-            print("✅ Redis cache initialized and ready")
+            logger.info("Redis cache initialized and ready")
         else:
-            print("⚠️ Redis cache unavailable - running without cache")
+            logger.warning("Redis cache unavailable - running without cache")
     except Exception as e:
-        print(f"⚠️ Failed to initialize Redis cache: {e}")
+        logger.warning("Failed to initialize Redis cache", error=str(e))
 
     # Инициализация настроек по умолчанию
     try:
         await settings_manager.initialize_default_settings()
-        print("✅ Default settings initialized")
+        logger.info("Default settings initialized")
     except Exception as e:
-        print(f"⚠️ Failed to initialize settings: {e}")
+        logger.warning("Failed to initialize settings", error=str(e))
 
     # ========================================================================
     # APPLICATION RUNS HERE
@@ -105,21 +109,21 @@ async def lifespan(app: FastAPI):
     # ========================================================================
     # SHUTDOWN
     # ========================================================================
-    print("🛑 Shutting down BookReader AI...")
+    logger.info("Shutting down BookReader AI")
 
     # Закрываем Rate Limiter
     try:
         await rate_limiter.close()
-        print("✅ Rate limiter closed")
+        logger.info("Rate limiter closed")
     except Exception as e:
-        print(f"⚠️ Error closing rate limiter: {e}")
+        logger.warning("Error closing rate limiter", error=str(e))
 
     # Закрываем Redis connection pool
     try:
         await cache_manager.close()
-        print("✅ Redis cache closed")
+        logger.info("Redis cache closed")
     except Exception as e:
-        print(f"⚠️ Error closing Redis cache: {e}")
+        logger.warning("Error closing Redis cache", error=str(e))
 
 
 # Инициализация FastAPI приложения
@@ -168,7 +172,15 @@ app.add_middleware(
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allow_headers=["*"],
+    # SEC-004: Restricted headers (was "*", 27 Dec 2025)
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "Origin",
+        "X-Requested-With",
+        "Cache-Control",
+    ],
     expose_headers=["Content-Disposition", "X-Total-Count", "X-Page-Count"],  # For file downloads & pagination
     max_age=3600,  # Cache preflight requests for 1 hour
 )
@@ -335,11 +347,12 @@ async def not_found_handler(request, exc):
 @app.exception_handler(500)
 async def internal_error_handler(request, exc):
     """Обработчик внутренних ошибок сервера."""
-    import traceback
-
-    error_traceback = traceback.format_exc()
-    print(f"[ERROR HANDLER] 500 error: {exc}")
-    print(f"[ERROR HANDLER] Traceback: {error_traceback}")
+    logger.error(
+        "Internal server error",
+        error=str(exc),
+        path=str(request.url.path),
+        exc_info=True,
+    )
     return JSONResponse(
         status_code=500,
         content={

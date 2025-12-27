@@ -38,8 +38,8 @@ class Settings(BaseSettings):
     REDIS_CACHE_DEFAULT_TTL: int = 3600  # Default TTL in seconds (1 hour)
     REDIS_MAX_CONNECTIONS: int = Field(default=50, ge=10, le=200, env="REDIS_MAX_CONNECTIONS")
 
-    # Безопасность
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 720  # 12 hours
+    # Безопасность (SEC-002: Token TTL reduced from 12h to 30min, 27 Dec 2025)
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # 30 minutes (was 720 = 12 hours)
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     ALGORITHM: str = "HS256"
 
