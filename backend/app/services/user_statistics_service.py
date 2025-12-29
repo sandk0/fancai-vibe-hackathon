@@ -288,10 +288,12 @@ class UserStatisticsService:
         total_result = await db.execute(total_query)
         total_books = total_result.scalar() or 0
 
-        # Получаем все книги с reading_progress для точного расчета
+        # Получаем все книги с reading_progress и chapters для точного расчета
+        # Book.chapters нужен для calculate_progress_percent() в legacy режиме
         books_query = (
             select(Book)
             .options(selectinload(Book.reading_progress))
+            .options(selectinload(Book.chapters))
             .join(ReadingProgress, ReadingProgress.book_id == Book.id)
             .where(Book.user_id == user_id)
             .where(ReadingProgress.user_id == user_id)
