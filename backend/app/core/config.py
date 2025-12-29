@@ -38,9 +38,10 @@ class Settings(BaseSettings):
     REDIS_CACHE_DEFAULT_TTL: int = 3600  # Default TTL in seconds (1 hour)
     REDIS_MAX_CONNECTIONS: int = Field(default=50, ge=10, le=200, env="REDIS_MAX_CONNECTIONS")
 
-    # Безопасность (SEC-002: Token TTL reduced from 12h to 30min, 27 Dec 2025)
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # 30 minutes (was 720 = 12 hours)
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    # Безопасность (Updated 29 Dec 2025: Extended for book reading app UX)
+    # Users should stay logged in for at least 2 weeks without re-authentication
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080  # 7 days (10080 min) - extended for reading app
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # 30 days - allows month-long sessions
     ALGORITHM: str = "HS256"
 
     # Файловые загрузки
