@@ -1,1 +1,1 @@
-"""Services package для бизнес-логики BookReader AI."""
+"""Services package для бизнес-логики fancai."""

@@ -1,5 +1,5 @@
 """
-Security Tests для BookReader AI.
+Security Tests для fancai.
 
 Тестирует:
 - Security headers

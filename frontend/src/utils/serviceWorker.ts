@@ -37,7 +37,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
                 // Content cached for offline use
                 notify.success(
                   'App Ready',
-                  'BookReader AI is now available offline!'
+                  'fancai is now available offline!'
                 );
               }
             }
@@ -156,7 +156,7 @@ export class PWAInstallPrompt {
       const { notify } = useUIStore.getState();
       notify.success(
         'App Installed',
-        'BookReader AI has been installed successfully!'
+        'fancai has been installed successfully!'
       );
     });
   }

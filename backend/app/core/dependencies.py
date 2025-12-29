@@ -1,5 +1,5 @@
 """
-Reusable FastAPI dependencies для BookReader AI.
+Reusable FastAPI dependencies для fancai.
 
 Этот модуль содержит зависимости, которые можно переиспользовать
 в различных endpoints для проверки доступа к ресурсам и их получения.

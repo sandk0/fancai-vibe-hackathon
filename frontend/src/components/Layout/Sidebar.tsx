@@ -76,7 +76,7 @@ const Sidebar: React.FC = () => {
             <div className="flex items-center flex-shrink-0 px-4 mb-8">
               <BookOpen className="w-8 h-8 text-primary-600" />
               <span className="ml-2 text-xl font-bold text-gray-900 dark:text-white">
-                BookReader AI
+                fancai
               </span>
             </div>
             
@@ -150,7 +150,7 @@ const Sidebar: React.FC = () => {
           <div className="flex items-center flex-shrink-0 px-4 mb-8">
             <BookOpen className="w-8 h-8 text-primary-600" />
             <span className="ml-2 text-xl font-bold text-gray-900 dark:text-white">
-              BookReader AI
+              fancai
             </span>
           </div>
           

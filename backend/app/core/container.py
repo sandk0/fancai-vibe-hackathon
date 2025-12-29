@@ -1,5 +1,5 @@
 """
-Dependency Injection Container для BookReader AI.
+Dependency Injection Container для fancai.
 
 Централизованный контейнер для управления зависимостями сервисов.
 Обеспечивает:
@@ -11,7 +11,7 @@ Dependency Injection Container для BookReader AI.
 Паттерн: Dependency Injection + Factory Method
 
 Created: 2025-12-28
-Author: BookReader AI Team
+Author: fancai Team
 """
 
 from functools import lru_cache

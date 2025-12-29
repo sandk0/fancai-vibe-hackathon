@@ -1,5 +1,5 @@
 """
-VLESS Proxy-aware HTTP Client для BookReader AI
+VLESS Proxy-aware HTTP Client для fancai
 
 Этот модуль предоставляет умный HTTP клиент, который автоматически
 использует VLESS прокси для определенных доменов.

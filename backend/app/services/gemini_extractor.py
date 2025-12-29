@@ -14,7 +14,7 @@ ARCHITECTURE:
 
 Created: 2025-12-13
 Updated: 2025-12-28 - Added tenacity-based retry logic
-Author: BookReader AI Team
+Author: fancai Team
 """
 
 import os

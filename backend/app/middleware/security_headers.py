@@ -1,5 +1,5 @@
 """
-Security Headers Middleware для BookReader AI.
+Security Headers Middleware для fancai.
 
 Защищает приложение от:
 - XSS (Cross-Site Scripting) атак
@@ -68,7 +68,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
     def _get_default_csp_directives(self) -> dict:
         """
-        Возвращает ENHANCED безопасные CSP директивы для BookReader AI.
+        Возвращает ENHANCED безопасные CSP директивы для fancai.
 
         PRODUCTION-GRADE CSP Policy:
         - Removed unsafe-eval (security risk)

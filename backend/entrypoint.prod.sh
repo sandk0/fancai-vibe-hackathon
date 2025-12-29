@@ -1,12 +1,12 @@
 #!/bin/bash
-# Production startup script for BookReader AI Backend
+# Production startup script for fancai Backend
 # Optimized for limited resources (4GB RAM, 2 CPU cores)
 
 set -e  # Exit on error
 set -u  # Exit on undefined variable
 
 echo "=========================================="
-echo "BookReader AI - Production Startup"
+echo "fancai - Production Startup"
 echo "=========================================="
 
 # ============================================================================

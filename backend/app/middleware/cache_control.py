@@ -1,5 +1,5 @@
 """
-Cache-Control Headers Middleware для BookReader AI.
+Cache-Control Headers Middleware для fancai.
 
 Управляет HTTP кэшированием для различных типов endpoints:
 - User-specific endpoints: private, no-cache (предотвращает кэширование личных данных)

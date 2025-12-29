@@ -1,5 +1,5 @@
 """
-API роуты для управления сессиями чтения (Reading Sessions) в BookReader AI.
+API роуты для управления сессиями чтения (Reading Sessions) в fancai.
 
 Endpoints:
 - POST /reading-sessions/start - Начать новую сессию чтения

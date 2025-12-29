@@ -1,4 +1,4 @@
-// State Management Types for BookReader AI
+// State Management Types for fancai
 
 import { User, Book, Chapter, GeneratedImage, UserProfile, GenerationStatus, Description } from './api';
 

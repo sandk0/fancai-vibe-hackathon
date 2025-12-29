@@ -1,6 +1,6 @@
 <div align="center">
 
-# BookReader AI
+# fancai
 
 **Transform your reading experience with AI-generated visualizations**
 
@@ -25,7 +25,7 @@ English | **[Русский](README-ru.md)**
 
 ## About The Project
 
-BookReader AI is a modern web application for reading fiction with **automatic AI-generated images** based on scene descriptions. As you read, the app extracts visual descriptions from the text and generates stunning illustrations using state-of-the-art AI models.
+fancai is a modern web application for reading fiction with **automatic AI-generated images** based on scene descriptions. As you read, the app extracts visual descriptions from the text and generates stunning illustrations using state-of-the-art AI models.
 
 ### How It Works
 

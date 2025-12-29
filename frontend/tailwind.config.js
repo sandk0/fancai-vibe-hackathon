@@ -13,6 +13,9 @@ export default {
       },
     },
     extend: {
+      screens: {
+        'xs': '375px',  // iPhone SE 2nd gen
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

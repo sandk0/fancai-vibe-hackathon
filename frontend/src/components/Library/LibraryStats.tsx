@@ -65,7 +65,7 @@ export const LibraryStats: React.FC<LibraryStatsProps> = ({
         return (
           <div
             key={index}
-            className="p-6 rounded-2xl border-2 transition-all duration-300 hover:scale-105"
+            className="p-4 sm:p-6 rounded-2xl border-2 transition-all duration-300 hover:scale-105"
             style={{
               backgroundColor: 'var(--bg-primary)',
               borderColor: 'var(--border-color)',
@@ -74,7 +74,7 @@ export const LibraryStats: React.FC<LibraryStatsProps> = ({
             <div className="flex items-center justify-between mb-2">
               <Icon className="w-8 h-8" style={{ color: stat.color }} />
             </div>
-            <div className="text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
+            <div className="text-2xl sm:text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
               {stat.value}
             </div>
             <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>

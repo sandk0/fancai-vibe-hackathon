@@ -107,7 +107,7 @@ const BookPage: React.FC = () => {
       </button>
 
       {/* Hero Section */}
-      <div className="relative mb-12 overflow-hidden rounded-3xl">
+      <div className="relative mb-6 sm:mb-8 lg:mb-12 overflow-hidden rounded-2xl sm:rounded-3xl">
         <div
           className="absolute inset-0 opacity-30"
           style={{
@@ -116,11 +116,11 @@ const BookPage: React.FC = () => {
           }}
         />
         <div className="relative">
-          <div className="flex flex-col lg:flex-row gap-8 p-8 lg:p-12">
+          <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8 p-4 sm:p-6 lg:p-12">
             {/* Book Cover */}
             <div className="flex-shrink-0">
               <div
-                className="w-48 h-72 lg:w-64 lg:h-96 rounded-2xl shadow-2xl overflow-hidden mx-auto lg:mx-0"
+                className="w-36 h-52 sm:w-48 sm:h-72 lg:w-64 lg:h-96 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden mx-auto lg:mx-0"
                 style={{ backgroundColor: 'var(--bg-secondary)' }}
               >
                 <AuthenticatedImage
@@ -141,21 +141,21 @@ const BookPage: React.FC = () => {
             </div>
 
             {/* Book Info */}
-            <div className="flex-1">
+            <div className="flex-1 text-center lg:text-left">
               <h1
-                className="text-4xl lg:text-5xl font-bold mb-4"
+                className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold mb-2 sm:mb-4"
                 style={{ color: 'var(--text-primary)' }}
               >
                 {book.title}
               </h1>
 
-              <div className="flex items-center gap-2 mb-6" style={{ color: 'var(--text-secondary)' }}>
-                <User className="w-5 h-5" />
-                <span className="text-lg">{book.author}</span>
+              <div className="flex items-center justify-center lg:justify-start gap-2 mb-4 sm:mb-6" style={{ color: 'var(--text-secondary)' }}>
+                <User className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="text-base sm:text-lg">{book.author}</span>
               </div>
 
               {/* Quick Stats */}
-              <div className="flex flex-wrap gap-4 mb-8 text-sm" style={{ color: 'var(--text-secondary)' }}>
+              <div className="flex flex-wrap justify-center lg:justify-start gap-2 sm:gap-4 mb-6 sm:mb-8 text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
                 <div className="flex items-center gap-2">
                   <BookOpen className="w-4 h-4" />
                   <span>{book.chapters.length} глав</span>
@@ -183,9 +183,9 @@ const BookPage: React.FC = () => {
               {/* Reading Progress */}
               {/* FIX #2: Change threshold from > 0 to >= 0.1 to show progress earlier */}
               {book.reading_progress.progress_percent >= 0.1 && (
-                <div className="mb-8">
+                <div className="mb-6 sm:mb-8">
                   <div
-                    className="flex items-center justify-between text-sm mb-2"
+                    className="flex items-center justify-between text-xs sm:text-sm mb-2"
                     style={{ color: 'var(--text-secondary)' }}
                   >
                     <span>Прогресс чтения</span>
@@ -212,16 +212,16 @@ const BookPage: React.FC = () => {
               )}
 
               {/* Action Buttons */}
-              <div className="flex flex-wrap gap-4">
+              <div className="flex flex-col sm:flex-row flex-wrap justify-center lg:justify-start gap-3 sm:gap-4">
                 <button
                   onClick={() => navigate(`/book/${book.id}/read`)}
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-semibold text-lg transition-all hover:scale-105 shadow-lg"
+                  className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-semibold text-sm sm:text-base lg:text-lg transition-all hover:scale-105 shadow-lg"
                   style={{
                     backgroundColor: 'var(--accent-color)',
                     color: 'white',
                   }}
                 >
-                  <Play className="w-5 h-5" />
+                  <Play className="w-4 h-4 sm:w-5 sm:h-5" />
                   {/* FIX #2: Change threshold from > 0 to >= 0.1 for "Continue Reading" button */}
                   {book.reading_progress.progress_percent >= 0.1 &&
                   book.reading_progress.progress_percent < 100
@@ -231,14 +231,14 @@ const BookPage: React.FC = () => {
 
                 <button
                   onClick={() => navigate(`/book/${book.id}/images`)}
-                  className="inline-flex items-center gap-2 px-6 py-4 rounded-xl font-semibold transition-all hover:scale-105 border-2"
+                  className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 sm:px-6 py-3 sm:py-4 rounded-xl font-semibold text-sm sm:text-base transition-all hover:scale-105 border-2"
                   style={{
                     backgroundColor: 'var(--bg-primary)',
                     borderColor: 'var(--border-color)',
                     color: 'var(--text-primary)',
                   }}
                 >
-                  <ImageIcon className="w-5 h-5" />
+                  <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                   AI Галерея
                 </button>
               </div>
@@ -248,57 +248,57 @@ const BookPage: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      <div className="grid grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8 lg:mb-12">
         <div
-          className="p-6 rounded-2xl border-2 transition-all hover:scale-105"
+          className="p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border-2 transition-all hover:scale-105"
           style={{
             backgroundColor: 'var(--bg-primary)',
             borderColor: 'var(--border-color)',
           }}
         >
-          <div className="flex items-center justify-between mb-3">
-            <BookOpen className="w-8 h-8" style={{ color: 'var(--accent-color)' }} />
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8" style={{ color: 'var(--accent-color)' }} />
           </div>
-          <div className="text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
+          <div className="text-xl sm:text-2xl lg:text-3xl font-bold mb-0.5 sm:mb-1" style={{ color: 'var(--text-primary)' }}>
             {book.chapters.length}
           </div>
-          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          <div className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
             {book.chapters.length === 1 ? 'Глава' : 'Глав'}
           </div>
         </div>
 
         <div
-          className="p-6 rounded-2xl border-2 transition-all hover:scale-105"
+          className="p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border-2 transition-all hover:scale-105"
           style={{
             backgroundColor: 'var(--bg-primary)',
             borderColor: 'var(--border-color)',
           }}
         >
-          <div className="flex items-center justify-between mb-3">
-            <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400" />
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-green-600 dark:text-green-400" />
           </div>
-          <div className="text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
+          <div className="text-xl sm:text-2xl lg:text-3xl font-bold mb-0.5 sm:mb-1" style={{ color: 'var(--text-primary)' }}>
             {parsedChapters}
           </div>
-          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          <div className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
             Обработано AI
           </div>
         </div>
 
         <div
-          className="p-6 rounded-2xl border-2 transition-all hover:scale-105"
+          className="p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border-2 transition-all hover:scale-105"
           style={{
             backgroundColor: 'var(--bg-primary)',
             borderColor: 'var(--border-color)',
           }}
         >
-          <div className="flex items-center justify-between mb-3">
-            <Sparkles className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-purple-600 dark:text-purple-400" />
           </div>
-          <div className="text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
+          <div className="text-xl sm:text-2xl lg:text-3xl font-bold mb-0.5 sm:mb-1" style={{ color: 'var(--text-primary)' }}>
             {totalDescriptions}
           </div>
-          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          <div className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
             Описаний найдено
           </div>
         </div>
@@ -307,16 +307,16 @@ const BookPage: React.FC = () => {
       {/* Description */}
       {book.description && (
         <div
-          className="p-8 rounded-2xl border-2 mb-12"
+          className="p-4 sm:p-6 lg:p-8 rounded-xl sm:rounded-2xl border-2 mb-6 sm:mb-8 lg:mb-12"
           style={{
             backgroundColor: 'var(--bg-primary)',
             borderColor: 'var(--border-color)',
           }}
         >
-          <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
+          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold mb-2 sm:mb-4" style={{ color: 'var(--text-primary)' }}>
             Описание
           </h2>
-          <p className="leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+          <p className="text-sm sm:text-base leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
             {book.description}
           </p>
         </div>
@@ -324,26 +324,26 @@ const BookPage: React.FC = () => {
 
       {/* Chapters List */}
       <div>
-        <h2 className="text-3xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
+        <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6" style={{ color: 'var(--text-primary)' }}>
           Главы ({book.chapters.length})
         </h2>
 
-        <div className="space-y-3">
+        <div className="space-y-2 sm:space-y-3">
           {book.chapters.map((chapter) => (
             <div
               key={chapter.id}
               onClick={() => navigate(`/book/${book.id}/chapter/${chapter.number}`)}
-              className="group p-6 rounded-2xl border-2 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg"
+              className="group p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border-2 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg"
               style={{
                 backgroundColor: 'var(--bg-primary)',
                 borderColor: 'var(--border-color)',
               }}
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-4 flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-2 sm:gap-4">
+                <div className="flex items-start gap-2 sm:gap-4 flex-1 min-w-0">
                   {/* Chapter Number Badge */}
                   <div
-                    className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center font-bold"
+                    className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl flex items-center justify-center font-bold text-sm sm:text-base"
                     style={{
                       backgroundColor: 'var(--bg-secondary)',
                       color: 'var(--accent-color)',
@@ -355,30 +355,30 @@ const BookPage: React.FC = () => {
                   {/* Chapter Info */}
                   <div className="flex-1 min-w-0">
                     <h3
-                      className="font-semibold text-lg mb-2 line-clamp-2"
+                      className="font-semibold text-sm sm:text-base lg:text-lg mb-1 sm:mb-2 line-clamp-2"
                       style={{ color: 'var(--text-primary)' }}
                     >
                       {chapter.title}
                     </h3>
 
                     <div
-                      className="flex flex-wrap items-center gap-4 text-sm mb-3"
+                      className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm mb-2 sm:mb-3"
                       style={{ color: 'var(--text-secondary)' }}
                     >
                       <div className="flex items-center gap-1">
-                        <FileText className="w-4 h-4" />
+                        <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
                         <span>{chapter.word_count.toLocaleString()} слов</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
+                        <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
                         <span>~{chapter.estimated_reading_time_minutes} мин</span>
                       </div>
                     </div>
 
                     {/* Description Status */}
                     {chapter.is_description_parsed && chapter.descriptions_found > 0 && (
-                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-sm font-medium">
-                        <Sparkles className="w-4 h-4" />
+                      <div className="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-0.5 sm:py-1 rounded-md sm:rounded-lg bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs sm:text-sm font-medium">
+                        <Sparkles className="w-3 h-3 sm:w-4 sm:h-4" />
                         <span>{chapter.descriptions_found} описаний AI</span>
                       </div>
                     )}
@@ -386,8 +386,8 @@ const BookPage: React.FC = () => {
                 </div>
 
                 {/* Arrow Icon */}
-                <div className="flex-shrink-0 text-gray-400 group-hover:translate-x-1 transition-transform">
-                  <ArrowLeft className="w-5 h-5 rotate-180" />
+                <div className="flex-shrink-0 text-gray-400 group-hover:translate-x-1 transition-transform hidden sm:block">
+                  <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 rotate-180" />
                 </div>
               </div>
             </div>

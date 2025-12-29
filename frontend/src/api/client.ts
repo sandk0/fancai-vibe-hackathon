@@ -1,4 +1,4 @@
-// API Client for BookReader AI
+// API Client for fancai
 
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { STORAGE_KEYS } from '@/types/state';

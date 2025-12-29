@@ -1,5 +1,5 @@
 """
-Health check endpoints для мониторинга состояния BookReader AI.
+Health check endpoints для мониторинга состояния fancai.
 
 Endpoints:
 - GET /health - Базовый health check (быстрый)
@@ -340,14 +340,14 @@ async def reading_sessions_health_check(
     "/health/deep",
     response_model=DeepHealthCheckResponse,
     summary="Полный health check всех систем",
-    description="Комплексная проверка всех компонентов BookReader AI.",
+    description="Комплексная проверка всех компонентов fancai.",
     status_code=http_status.HTTP_200_OK,
 )
 async def deep_health_check(
     db: AsyncSession = Depends(get_database_session),
 ) -> DeepHealthCheckResponse:
     """
-    Полный health check всех систем BookReader AI.
+    Полный health check всех систем fancai.
 
     Проверяет:
     - PostgreSQL database

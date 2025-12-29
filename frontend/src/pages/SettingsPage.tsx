@@ -250,7 +250,7 @@ const SettingsPage: React.FC = () => {
           <div className="space-y-6">
             <div>
               <h3 className="text-xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
-                О BookReader AI
+                О fancai
               </h3>
               <div className="space-y-6">
                 {/* Version */}

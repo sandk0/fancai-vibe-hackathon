@@ -1,5 +1,5 @@
 """
-Middleware и dependencies для аутентификации в BookReader AI.
+Middleware и dependencies для аутентификации в fancai.
 
 Содержит функции для проверки JWT токенов и получения текущего пользователя.
 Включает проверку token blacklist для корректной обработки logout.

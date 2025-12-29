@@ -1,5 +1,5 @@
 """
-Pydantic response models для BookReader AI API.
+Pydantic response models для fancai API.
 
 Этот модуль содержит type-safe response schemas для всех API endpoints,
 обеспечивая автоматическую валидацию, сериализацию и OpenAPI документацию.

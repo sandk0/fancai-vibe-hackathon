@@ -1,5 +1,5 @@
 """
-Optimized Celery Configuration for BookReader AI
+Optimized Celery Configuration for fancai
 Handles high-load book parsing with resource constraints
 """
 

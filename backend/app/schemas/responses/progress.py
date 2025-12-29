@@ -1,5 +1,5 @@
 """
-Response schemas для reading progress endpoints в BookReader AI.
+Response schemas для reading progress endpoints в fancai.
 
 Этот модуль содержит type-safe response schemas для endpoints
 отслеживания прогресса чтения с поддержкой CFI (Canonical Fragment Identifier).

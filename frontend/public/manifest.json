@@ -1,6 +1,6 @@
 {
-  "name": "BookReader AI - Read with AI-Generated Illustrations",
-  "short_name": "BookReader AI",
+  "name": "fancai - Read with AI-Generated Illustrations",
+  "short_name": "fancai",
   "description": "Transform your reading experience with AI-powered image generation from book descriptions. Upload EPUB and FB2 files and watch your stories come to life.",
   "version": "1.0.0",
   "start_url": "/",

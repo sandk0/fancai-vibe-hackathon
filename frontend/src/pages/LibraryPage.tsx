@@ -22,18 +22,21 @@
  * - Responsive design
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { useBooks } from '@/hooks/api/useBooks';
+import { useBooks, useDeleteBook } from '@/hooks/api/useBooks';
 import { bookKeys, getCurrentUserId } from '@/hooks/api/queryKeys';
+import { notify } from '@/stores/ui';
 import { BookUploadModal } from '@/components/Books/BookUploadModal';
 import { LibraryHeader } from '@/components/Library/LibraryHeader';
 import { LibraryStats } from '@/components/Library/LibraryStats';
 import { LibrarySearch } from '@/components/Library/LibrarySearch';
 import { BookGrid } from '@/components/Library/BookGrid';
 import { LibraryPagination } from '@/components/Library/LibraryPagination';
+import { DeleteConfirmModal } from '@/components/Library/DeleteConfirmModal';
 import { useLibraryFilters } from '@/hooks/library/useLibraryFilters';
+import type { Book } from '@/types/api';
 
 const BOOKS_PER_PAGE = 10;
 
@@ -48,6 +51,7 @@ const LibraryPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState('created_desc');
+  const [selectedBookForDelete, setSelectedBookForDelete] = useState<Book | null>(null);
 
   // Calculate skip for pagination
   const skip = (currentPage - 1) * BOOKS_PER_PAGE;
@@ -78,6 +82,20 @@ const LibraryPage: React.FC = () => {
 
   const books = data?.books || [];
   const totalBooks = data?.total || 0;
+
+  // Delete mutation
+  const deleteBookMutation = useDeleteBook({
+    onSuccess: () => {
+      notify.success('Книга удалена', 'Книга успешно удалена из библиотеки');
+      setSelectedBookForDelete(null);
+    },
+    onError: (error) => {
+      notify.error(
+        'Ошибка удаления',
+        error instanceof Error ? error.message : 'Не удалось удалить книгу'
+      );
+    },
+  });
 
   // Filter books and calculate stats
   const { filteredBooks, stats } = useLibraryFilters(books, searchQuery);
@@ -136,6 +154,24 @@ const LibraryPage: React.FC = () => {
     // The cache is already invalidated by BookUploadModal's onSuccess mutation handler
     // Calling refetch() here would use stale query params (before setCurrentPage(1) re-render)
   };
+
+  // Delete handlers
+  const handleDeleteClick = useCallback((bookId: string) => {
+    const book = books.find(b => b.id === bookId);
+    if (book) {
+      setSelectedBookForDelete(book);
+    }
+  }, [books]);
+
+  const handleDeleteConfirm = useCallback(() => {
+    if (selectedBookForDelete) {
+      deleteBookMutation.mutate(selectedBookForDelete.id);
+    }
+  }, [selectedBookForDelete, deleteBookMutation]);
+
+  const handleDeleteCancel = useCallback(() => {
+    setSelectedBookForDelete(null);
+  }, []);
 
   // Loading state
   if (isLoading && books.length === 0) {
@@ -212,6 +248,7 @@ const LibraryPage: React.FC = () => {
         onClearSearch={handleClearSearch}
         onUploadClick={handleUploadClick}
         onParsingComplete={handleParsingComplete}
+        onDelete={handleDeleteClick}
       />
 
       {/* Pagination */}
@@ -232,6 +269,15 @@ const LibraryPage: React.FC = () => {
         isOpen={showUploadModal}
         onClose={handleModalClose}
         onUploadSuccess={handleUploadSuccess}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={!!selectedBookForDelete}
+        bookTitle={selectedBookForDelete?.title || ''}
+        isDeleting={deleteBookMutation.isPending}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
       />
     </div>
   );

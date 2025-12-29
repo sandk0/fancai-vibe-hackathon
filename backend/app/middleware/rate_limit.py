@@ -1,5 +1,5 @@
 """
-Rate Limiting Middleware для BookReader AI.
+Rate Limiting Middleware для fancai.
 
 Защищает API от abuse используя Redis для distributed rate limiting.
 

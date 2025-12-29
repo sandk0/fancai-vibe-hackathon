@@ -1,7 +1,7 @@
 /**
  * Centralized Query Keys для TanStack Query
  *
- * Все query keys для BookReader AI в одном месте.
+ * Все query keys для fancai в одном месте.
  * Позволяет легко управлять инвалидацией и предотвращает опечатки.
  *
  * SECURITY: Все keys изолированы по userId для предотвращения утечки данных между пользователями.

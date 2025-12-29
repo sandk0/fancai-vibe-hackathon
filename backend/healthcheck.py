@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Health check script for BookReader AI backend in production.
+Health check script for fancai backend in production.
 
 Optimized for fast checks (5-10 seconds timeout).
 Used by Docker, Kubernetes, monitoring systems.

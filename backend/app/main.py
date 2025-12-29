@@ -1,5 +1,5 @@
 """
-BookReader AI - FastAPI Main Application
+fancai - FastAPI Main Application
 
 Главный файл FastAPI приложения для веб-приложения чтения книг
 с автоматической генерацией изображений по описаниям.
@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI):
     # ========================================================================
     # STARTUP
     # ========================================================================
-    logger.info("Starting BookReader AI", version=VERSION)
+    logger.info("Starting fancai", version=VERSION)
 
     # DEBUG: Log CORS configuration
     logger.debug(
@@ -109,7 +109,7 @@ async def lifespan(app: FastAPI):
     # ========================================================================
     # SHUTDOWN
     # ========================================================================
-    logger.info("Shutting down BookReader AI")
+    logger.info("Shutting down fancai")
 
     # Закрываем Rate Limiter
     try:
@@ -128,7 +128,7 @@ async def lifespan(app: FastAPI):
 
 # Инициализация FastAPI приложения
 app = FastAPI(
-    title="BookReader AI API",
+    title="fancai API",
     description="API для чтения книг с ИИ-генерацией изображений",
     version=VERSION,
     docs_url="/docs",
@@ -266,7 +266,7 @@ async def root() -> Dict[str, Any]:
         Dict с информацией о сервисе
     """
     return {
-        "message": "BookReader AI API",
+        "message": "fancai API",
         "version": VERSION,
         "status": "running",
         "timestamp": datetime.now(timezone.utc).isoformat(),

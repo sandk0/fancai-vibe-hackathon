@@ -1,5 +1,5 @@
 """
-Response schemas для auth endpoints в BookReader AI.
+Response schemas для auth endpoints в fancai.
 
 Этот модуль содержит type-safe response schemas для endpoints
 аутентификации и управления сессиями.

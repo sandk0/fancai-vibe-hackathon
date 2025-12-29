@@ -25,7 +25,7 @@ LangExtract Processor - LLM-based парсер описаний для русс�
 
 Created: 2025-11-30
 Updated: 2025-12-13 (v2 - direct Gemini API)
-Author: BookReader AI Team
+Author: fancai Team
 """
 
 import os

@@ -1,5 +1,5 @@
 """
-Response schemas для user-related endpoints в BookReader AI.
+Response schemas для user-related endpoints в fancai.
 
 Этот модуль содержит type-safe response schemas для user endpoints,
 включая профили, подписки и статистику пользователей.

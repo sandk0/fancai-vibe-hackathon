@@ -1,4 +1,4 @@
-"""Routers package для API endpoints BookReader AI."""
+"""Routers package для API endpoints fancai."""
 
 from .books import books_router
 from .chapters import router as chapters_router

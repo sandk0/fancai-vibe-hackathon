@@ -1,5 +1,5 @@
 """
-Celery configuration for BookReader AI.
+Celery configuration for fancai.
 Настройка Celery для фоновых задач.
 """
 

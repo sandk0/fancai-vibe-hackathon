@@ -1,12 +1,12 @@
 #!/bin/bash
-# BookReader AI - Production Secrets Generator
+# fancai - Production Secrets Generator
 #
 # Generates cryptographically secure secrets for production deployment
 # Usage: bash scripts/generate-production-secrets.sh
 
 set -e
 
-echo "🔐 BookReader AI - Production Secrets Generator"
+echo "fancai - Production Secrets Generator"
 echo "=================================================="
 echo ""
 echo "⚠️  IMPORTANT SECURITY NOTES:"

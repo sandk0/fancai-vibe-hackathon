@@ -1,6 +1,6 @@
 """
-Background tasks for BookReader AI.
-Фоновые задачи для BookReader AI.
+Background tasks for fancai.
+Фоновые задачи для fancai.
 
 NLP REMOVAL (December 2025):
 - Удален multi_nlp_manager (требовал 10-12 ГБ RAM)

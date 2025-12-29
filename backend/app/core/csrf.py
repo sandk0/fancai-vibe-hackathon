@@ -1,5 +1,5 @@
 """
-CSRF (Cross-Site Request Forgery) Protection для BookReader AI.
+CSRF (Cross-Site Request Forgery) Protection для fancai.
 
 Implements Double Submit Cookie pattern для защиты от CSRF атак.
 

@@ -276,10 +276,11 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
           w-full md:w-80
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
           flex flex-col
+          pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]
         `}
       >
         {/* Header */}
-        <div className={`flex items-center justify-between p-4 border-b ${colors.border}`}>
+        <div className={`flex items-center justify-between p-3 sm:p-4 border-b ${colors.border}`}>
           <h2 className="text-lg font-bold">Содержание</h2>
           <button
             onClick={onClose}
@@ -291,7 +292,7 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
         </div>
 
         {/* Search */}
-        <div className="p-4 border-b border-gray-700">
+        <div className="p-3 sm:p-4 border-b border-gray-700">
           <input
             type="text"
             placeholder="Поиск глав..."
@@ -308,7 +309,7 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
         </div>
 
         {/* TOC List */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4">
           {filteredToc.length === 0 && (
             <p className={`text-center ${colors.subtext} py-8`}>
               {searchQuery ? 'Главы не найдены' : 'Содержание отсутствует'}
@@ -334,7 +335,7 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
         </div>
 
         {/* Footer info */}
-        <div className={`p-4 border-t ${colors.border} ${colors.subtext} text-xs text-center`}>
+        <div className={`p-3 sm:p-4 border-t ${colors.border} ${colors.subtext} text-xs text-center`}>
           {filteredToc.length} глав{searchQuery && ' (фильтровано)'}
         </div>
       </div>

@@ -524,6 +524,16 @@ export const useChapterManagement = ({
         // Extraction happens on-demand when user navigates to the chapter.
       }
 
+      // Fire-and-forget: Trigger background extraction for next chapter
+      // This prepares descriptions asynchronously without blocking the UI
+      const nextChapterNumber = currentChapter + 1;
+      if (nextChapterNumber > 0) {
+        console.log(`[useChapterManagement] Triggering background extraction for chapter ${nextChapterNumber}`);
+        booksAPI.triggerBackgroundExtraction(bookId, nextChapterNumber)
+          .then(res => console.log(`[useChapterManagement] Background extraction: ${res.status}`))
+          .catch(err => console.warn('[useChapterManagement] Background extraction failed:', err));
+      }
+
     } catch (error) {
       console.warn('⚠️ [useChapterManagement] Batch prefetch failed, falling back to individual calls:', error);
 

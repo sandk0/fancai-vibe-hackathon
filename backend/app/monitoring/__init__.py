@@ -1,5 +1,5 @@
 """
-Monitoring package для BookReader AI.
+Monitoring package для fancai.
 
 Modules:
 - metrics.py - Prometheus metrics definitions

@@ -15,7 +15,7 @@ COPY . .
 # Build arguments (using VITE_ prefix for Vite)
 ARG VITE_API_BASE_URL=/api/v1
 ARG VITE_WS_URL=/ws
-ARG VITE_APP_NAME="BookReader AI"
+ARG VITE_APP_NAME="fancai"
 ARG VITE_APP_VERSION="1.0.0"
 ARG VITE_ENVIRONMENT=production
 

@@ -213,6 +213,72 @@ const getMiddleSection = (text: string, startPercent: number = 0.2, endPercent: 
 };
 
 /**
+ * Extend highlight to the end of the sentence for better visual matching
+ *
+ * PROBLEM: LLM extracts "cleaned" text that differs from EPUB source:
+ * - EPUB: «Старый замок возвышался на холме, — сказал он, — окруженный лесом.»
+ * - LLM:  Старый замок возвышался на холме, окруженный лесом.
+ *
+ * This causes fixed-length highlights to end mid-sentence.
+ *
+ * SOLUTION: Find the start, then extend to the nearest sentence end.
+ *
+ * @param text - The full original text
+ * @param startIndex - Index where the description starts
+ * @param minLength - Minimum highlight length (fallback)
+ * @param maxLength - Maximum highlight length (to prevent runaway)
+ * @returns Index of the sentence end (exclusive)
+ */
+const extendToSentenceEnd = (
+  text: string,
+  startIndex: number,
+  minLength: number,
+  maxLength: number = 1500
+): number => {
+  const searchText = text.substring(startIndex);
+
+  // Sentence enders: .!?… (including ellipsis) optionally followed by closing quotes/brackets
+  // Also match Cyrillic-specific patterns like "».» or "."
+  const sentenceEnders = /[.!?…][»«"')\]]*(\s|$)/g;
+
+  let match;
+  let bestEnd = startIndex + minLength;
+  let foundSentenceEnd = false;
+
+  while ((match = sentenceEnders.exec(searchText)) !== null) {
+    const endPos = startIndex + match.index + match[0].trimEnd().length;
+
+    // Check if this end is valid:
+    // 1. At least minLength from start
+    // 2. Not exceeding maxLength
+    if (endPos >= startIndex + minLength && endPos <= startIndex + maxLength) {
+      bestEnd = endPos;
+      foundSentenceEnd = true;
+      break; // Take the first valid sentence end
+    }
+
+    // If we're past maxLength, stop searching
+    if (match.index > maxLength) break;
+  }
+
+  // If no sentence end found, try to find word boundary to avoid cutting mid-word
+  if (!foundSentenceEnd && bestEnd < text.length) {
+    const targetEnd = bestEnd;
+    // Look for last whitespace before the target end (within reasonable range)
+    const searchWindow = text.substring(startIndex, Math.min(targetEnd + 50, text.length));
+    const lastSpaceIndex = searchWindow.lastIndexOf(' ', minLength + 20);
+
+    if (lastSpaceIndex > minLength - 10) {
+      // Found a word boundary, use it
+      bestEnd = startIndex + lastSpaceIndex;
+    }
+  }
+
+  // Clamp to maxLength if no sentence end found
+  return Math.min(bestEnd, startIndex + maxLength, text.length);
+};
+
+/**
  * Preprocess description into all search patterns (MEMOIZED)
  * This avoids recalculating patterns for each DOM node
  */
@@ -524,8 +590,12 @@ export const useDescriptionHighlighting = ({
             const actualIndex = originalText.toLowerCase().indexOf(searchString.toLowerCase());
 
             if (actualIndex !== -1) {
-              // Highlight the full description text
-              const highlightLength = patterns.original.length;
+              // FIX: Extend highlight to sentence end instead of fixed length
+              // This prevents mismatched highlights when LLM modifies text
+              const minLength = Math.max(searchString.length, 50);
+              const maxLength = Math.min(patterns.original.length * 1.5, 1500);
+              const sentenceEndIndex = extendToSentenceEnd(originalText, actualIndex, minLength, maxLength);
+              const highlightLength = sentenceEndIndex - actualIndex;
 
               // Create highlight span
               const span = doc.createElement('span');

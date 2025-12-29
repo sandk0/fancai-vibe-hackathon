@@ -1,5 +1,5 @@
 """
-Image Generation Service for BookReader AI.
+Image Generation Service for fancai.
 
 Uses Google Imagen 4 API for high-quality image generation from book descriptions.
 Replaces legacy Pollinations.ai integration.

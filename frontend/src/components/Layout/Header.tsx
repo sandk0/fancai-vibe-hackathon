@@ -66,7 +66,7 @@ const Header: React.FC = () => {
               <div className="flex items-center">
                 <BookOpen className="w-8 h-8 text-primary-600" />
                 <span className="ml-2 text-xl font-bold text-gray-900 dark:text-white hidden sm:block">
-                  BookReader AI
+                  fancai
                 </span>
               </div>
             </Link>

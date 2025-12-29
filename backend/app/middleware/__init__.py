@@ -1,5 +1,5 @@
 """
-Middleware modules для BookReader AI.
+Middleware modules для fancai.
 """
 
 from .rate_limit import rate_limiter, rate_limit, RATE_LIMIT_PRESETS

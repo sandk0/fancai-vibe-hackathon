@@ -1,5 +1,5 @@
 """
-Prometheus metrics для мониторинга Reading Sessions в BookReader AI.
+Prometheus metrics для мониторинга Reading Sessions в fancai.
 
 Метрики:
 - Counters: sessions_started_total, sessions_ended_total, session_errors_total

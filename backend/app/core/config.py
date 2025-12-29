@@ -1,5 +1,5 @@
 """
-Конфигурация приложения BookReader AI.
+Конфигурация приложения fancai.
 
 Настройки базы данных, Redis, AI сервисов и других компонентов.
 """
@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     """Настройки приложения."""
 
     # Основные настройки приложения
-    APP_NAME: str = "BookReader AI"
+    APP_NAME: str = "fancai"
     APP_VERSION: str = "0.1.0"
     DEBUG: bool = (
         True  # Development mode по умолчанию (установите DEBUG=false в production!)

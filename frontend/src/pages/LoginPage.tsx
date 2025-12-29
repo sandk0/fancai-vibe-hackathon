@@ -86,7 +86,7 @@ const LoginPage: React.FC = () => {
               </div>
               <div>
                 <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                  BookReader AI
+                  fancai
                 </h1>
               </div>
             </div>

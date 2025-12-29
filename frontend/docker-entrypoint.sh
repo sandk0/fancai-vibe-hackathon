@@ -1,11 +1,11 @@
 #!/bin/sh
-# Docker entrypoint script for BookReader AI Frontend
+# Docker entrypoint script for fancai Frontend
 # Handles runtime configuration and nginx startup
 
 set -e
 
 echo "==========================================="
-echo "BookReader AI Frontend - Starting..."
+echo "fancai Frontend - Starting..."
 echo "==========================================="
 
 # Environment variables for runtime configuration

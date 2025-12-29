@@ -1,4 +1,4 @@
-"""Alembic environment configuration для BookReader AI."""
+"""Alembic environment configuration для fancai."""
 
 import asyncio
 import os

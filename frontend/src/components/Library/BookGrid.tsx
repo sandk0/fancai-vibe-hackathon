@@ -30,6 +30,7 @@ interface BookGridProps {
   onClearSearch?: () => void;
   onUploadClick?: () => void;
   onParsingComplete?: () => void;
+  onDelete?: (bookId: string) => void;
 }
 
 /**
@@ -48,6 +49,7 @@ export const BookGrid = memo(function BookGrid({
   onClearSearch,
   onUploadClick,
   onParsingComplete,
+  onDelete,
 }: BookGridProps) {
   // Memoize book click handler factory to create stable callbacks per book
   // This is critical because BookCard is memoized - inline arrow functions
@@ -120,7 +122,7 @@ export const BookGrid = memo(function BookGrid({
     <div
       className={cn(
         viewMode === 'grid'
-          ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6'
+          ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-6'
           : 'space-y-4'
       )}
     >
@@ -131,6 +133,7 @@ export const BookGrid = memo(function BookGrid({
           viewMode={viewMode}
           onClick={createBookClickHandler(book.id)}
           onParsingComplete={onParsingComplete}
+          onDelete={onDelete}
         />
       ))}
     </div>

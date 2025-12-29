@@ -1,7 +1,7 @@
 /**
  * React Query Hooks - Barrel Export
  *
- * Централизованный экспорт всех React Query хуков для BookReader AI.
+ * Централизованный экспорт всех React Query хуков для fancai.
  *
  * Использование:
  * ```tsx

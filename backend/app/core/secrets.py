@@ -1,5 +1,5 @@
 """
-Secrets Management и Validation для BookReader AI.
+Secrets Management и Validation для fancai.
 
 Валидирует критические secrets на старте приложения и обеспечивает
 security best practices для управления конфиденциальными данными.
@@ -491,7 +491,7 @@ def get_secret_template() -> str:
         String с template .env файла
     """
     template = []
-    template.append("# BookReader AI - Environment Variables")
+    template.append("# fancai - Environment Variables")
     template.append("# Generated secrets template")
     template.append("")
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Emergency NLP Rollback Utility для BookReader AI.
+Emergency NLP Rollback Utility для fancai.
 
 Управление canary deployment новой Multi-NLP архитектуры через CLI.
 
@@ -356,7 +356,7 @@ async def clear_cache() -> int:
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
-        description="Emergency NLP Rollback Utility for BookReader AI",
+        description="Emergency NLP Rollback Utility for fancai",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

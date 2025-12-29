@@ -18,7 +18,7 @@
  */
 
 import { memo, useCallback, useMemo } from 'react';
-import { Book, AlertCircle, BookMarked, Layers, Calendar, BarChart3 } from 'lucide-react';
+import { Book, AlertCircle, BookMarked, Layers, Calendar, BarChart3, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ParsingOverlay } from '@/components/UI/ParsingOverlay';
 import { AuthenticatedImage } from '@/components/UI/AuthenticatedImage';
@@ -29,6 +29,7 @@ interface BookCardProps {
   viewMode: 'grid' | 'list';
   onClick: () => void;
   onParsingComplete?: () => void;
+  onDelete?: (bookId: string) => void;
 }
 
 // Helper: Format date as "2 ноября 2025г."
@@ -59,6 +60,7 @@ export const BookCard = memo(function BookCard({
   viewMode,
   onClick,
   onParsingComplete,
+  onDelete,
 }: BookCardProps) {
   // Memoize coverUrl - involves string concatenation on each render
   const coverUrl = useMemo(() => {
@@ -75,6 +77,12 @@ export const BookCard = memo(function BookCard({
       onClick();
     }
   }, [isClickable, onClick]);
+
+  // Memoize delete handler to prevent re-renders
+  const handleDelete = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    onDelete?.(book.id);
+  }, [book.id, onDelete]);
 
   // Grid View
   if (viewMode === 'grid') {
@@ -106,6 +114,20 @@ export const BookCard = memo(function BookCard({
                 </div>
               }
             />
+            {/* Delete Button */}
+            {onDelete && (
+              <button
+                onClick={handleDelete}
+                className="absolute top-2 right-2 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:scale-110"
+                style={{
+                  backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                  color: 'white',
+                }}
+                title="Удалить книгу"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {/* Book Info */}
@@ -186,7 +208,7 @@ export const BookCard = memo(function BookCard({
   return (
     <div
       className={cn(
-        "group cursor-pointer p-4 rounded-2xl border-2 hover:shadow-lg transition-all duration-300",
+        "group cursor-pointer p-3 sm:p-4 rounded-2xl border-2 hover:shadow-lg transition-all duration-300 relative",
         !isClickable && "pointer-events-none"
       )}
       onClick={handleClick}
@@ -195,9 +217,23 @@ export const BookCard = memo(function BookCard({
         borderColor: 'var(--border-color)',
       }}
     >
+      {/* Delete Button for List View */}
+      {onDelete && (
+        <button
+          onClick={handleDelete}
+          className="absolute top-2 right-2 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:scale-110 z-10"
+          style={{
+            backgroundColor: 'rgba(239, 68, 68, 0.9)',
+            color: 'white',
+          }}
+          title="Удалить книгу"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      )}
       <div className="flex gap-4">
         {/* Cover */}
-        <div className="w-24 h-32 flex-shrink-0 rounded-xl overflow-hidden shadow-md" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+        <div className="w-20 h-28 sm:w-24 sm:h-32 flex-shrink-0 rounded-xl overflow-hidden shadow-md" style={{ backgroundColor: 'var(--bg-secondary)' }}>
           <AuthenticatedImage
             src={coverUrl}
             alt={`${book.title} cover`}

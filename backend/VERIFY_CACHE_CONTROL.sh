@@ -13,7 +13,7 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo "🔍 Проверка Cache-Control headers для BookReader AI"
+echo "Проверка Cache-Control headers для fancai"
 echo "Base URL: $BASE_URL"
 echo ""
 

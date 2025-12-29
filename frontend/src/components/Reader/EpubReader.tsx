@@ -626,15 +626,26 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     }
   }, [theme]);
 
-  // Handle tap zones for mobile navigation
-  const handleTapZone = useCallback((zone: 'left' | 'right') => {
+  // Ref to prevent double-firing on touch devices (touchend + click)
+  const lastTapTimeRef = useRef<number>(0);
+
+  // Handle tap zones for mobile navigation with debounce
+  const handleTapZone = useCallback((zone: 'left' | 'right', isTouch: boolean = false) => {
     if (!renditionReady || isModalOpen || isTocOpen || isSettingsOpen || isBookInfoOpen || positionConflict) return;
 
+    const now = Date.now();
+    // Debounce: ignore if less than 300ms since last tap
+    if (now - lastTapTimeRef.current < 300) {
+      console.log('[EpubReader] Tap debounced - too fast');
+      return;
+    }
+    lastTapTimeRef.current = now;
+
     if (zone === 'left') {
-      console.log('[EpubReader] Left tap zone clicked, going to previous page');
+      console.log(`[EpubReader] Left tap zone ${isTouch ? 'touched' : 'clicked'}, going to previous page`);
       prevPage();
     } else {
-      console.log('[EpubReader] Right tap zone clicked, going to next page');
+      console.log(`[EpubReader] Right tap zone ${isTouch ? 'touched' : 'clicked'}, going to next page`);
       nextPage();
     }
   }, [renditionReady, isModalOpen, isTocOpen, isSettingsOpen, isBookInfoOpen, positionConflict, prevPage, nextPage]);
@@ -659,34 +670,36 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
         <>
           {/* Left tap zone - previous page */}
           <div
-            className="fixed left-0 bottom-0 w-[25%] z-[5] md:hidden"
+            className="fixed left-0 bottom-0 w-[25%] z-[5] md:hidden active:bg-black/5"
             style={{
               background: 'transparent',
               pointerEvents: 'auto',
               top: 'calc(70px + env(safe-area-inset-top))',
               paddingBottom: 'env(safe-area-inset-bottom)',
+              WebkitTapHighlightColor: 'transparent',
             }}
-            onClick={() => handleTapZone('left')}
+            onClick={() => handleTapZone('left', false)}
             onTouchEnd={(e) => {
               e.preventDefault();
-              handleTapZone('left');
+              handleTapZone('left', true);
             }}
             aria-label="Previous page"
             role="button"
           />
           {/* Right tap zone - next page */}
           <div
-            className="fixed right-0 bottom-0 w-[25%] z-[5] md:hidden"
+            className="fixed right-0 bottom-0 w-[25%] z-[5] md:hidden active:bg-black/5"
             style={{
               background: 'transparent',
               pointerEvents: 'auto',
               top: 'calc(70px + env(safe-area-inset-top))',
               paddingBottom: 'env(safe-area-inset-bottom)',
+              WebkitTapHighlightColor: 'transparent',
             }}
-            onClick={() => handleTapZone('right')}
+            onClick={() => handleTapZone('right', false)}
             onTouchEnd={(e) => {
               e.preventDefault();
-              handleTapZone('right');
+              handleTapZone('right', true);
             }}
             aria-label="Next page"
             role="button"

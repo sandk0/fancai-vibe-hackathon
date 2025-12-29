@@ -1,5 +1,5 @@
 /**
- * Environment Configuration для BookReader AI Frontend
+ * Environment Configuration для fancai Frontend
  *
  * Централизованное управление environment variables с валидацией.
  * Проверяет наличие обязательных переменных при build/runtime.
@@ -105,7 +105,7 @@ export const config = {
 
   // Application Info
   app: {
-    name: import.meta.env.VITE_APP_NAME || 'BookReader AI',
+    name: import.meta.env.VITE_APP_NAME || 'fancai',
     version: import.meta.env.VITE_APP_VERSION || '1.0.0',
     environment: import.meta.env.VITE_ENVIRONMENT || (import.meta.env.PROD ? 'production' : 'development'),
   },

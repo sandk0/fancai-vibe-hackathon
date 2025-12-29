@@ -1,5 +1,5 @@
 """
-Token Blacklist Service for BookReader AI.
+Token Blacklist Service for fancai.
 
 Provides secure JWT token revocation using Redis storage.
 Tokens are stored until their natural expiration to prevent replay attacks.

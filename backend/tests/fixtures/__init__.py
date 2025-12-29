@@ -1,3 +1,3 @@
 """
-Test fixtures for BookReader AI tests.
+Test fixtures for fancai tests.
 """

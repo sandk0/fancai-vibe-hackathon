@@ -1,5 +1,5 @@
 # =============================================================================
-# BookReader AI - Lite Requirements (LangExtract only, no NLP libraries)
+# fancai - Lite Requirements (LangExtract only, no NLP libraries)
 # =============================================================================
 # This is a lightweight version without heavy NLP dependencies:
 # - No SpaCy (~500MB)

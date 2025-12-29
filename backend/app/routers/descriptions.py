@@ -1,5 +1,5 @@
 """
-API роуты для работы с описаниями в книгах BookReader AI.
+API роуты для работы с описаниями в книгах fancai.
 
 Этот модуль содержит endpoints для управления описаниями:
 - Получение описаний главы
@@ -9,14 +9,14 @@ API роуты для работы с описаниями в книгах BookR
 
 import asyncio
 
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Dict, List
 from uuid import UUID
 from datetime import datetime
 
-from ..core.database import get_database_session
+from ..core.database import get_database_session, AsyncSessionLocal
 from ..core.auth import get_current_active_user
 from ..core.cache import cache_manager
 from ..core.exceptions import (
@@ -706,3 +706,203 @@ async def get_batch_descriptions(
         total_success=success_count,
         total_descriptions=total_descriptions,
     )
+
+
+# ============================================================================
+# BACKGROUND EXTRACTION API (Phase 4 - 2025-12-29)
+# ============================================================================
+
+
+async def _background_extract_descriptions(
+    chapter_id: str,
+    book_id: str,
+    user_id: str,
+) -> None:
+    """
+    Background task для извлечения описаний из главы.
+
+    Создает новую DB сессию (background tasks не могут использовать request-scoped сессию)
+    и вызывает LLM extraction сервис.
+
+    Args:
+        chapter_id: UUID главы (строка)
+        book_id: UUID книги (строка)
+        user_id: UUID пользователя (строка)
+    """
+    logger.info(
+        f"[BG] Starting background extraction: chapter={chapter_id}, "
+        f"book={book_id}, user={user_id}"
+    )
+
+    # Create new DB session for background task
+    async with AsyncSessionLocal() as db:
+        try:
+            # Get chapter
+            chapter_uuid = UUID(chapter_id)
+            result = await db.execute(
+                select(Chapter).where(Chapter.id == chapter_uuid)
+            )
+            chapter = result.scalar_one_or_none()
+
+            if not chapter:
+                logger.warning(f"[BG] Chapter {chapter_id} not found")
+                return
+
+            # Check if already extracted (race condition protection)
+            existing = await db.execute(
+                select(Description).where(Description.chapter_id == chapter_uuid).limit(1)
+            )
+            if existing.scalar_one_or_none():
+                logger.info(f"[BG] Chapter {chapter_id} already has descriptions, skipping")
+                return
+
+            # Check if LLM processor is available
+            if not langextract_processor.is_available():
+                logger.error("[BG] LLM processor unavailable. Check GOOGLE_API_KEY.")
+                return
+
+            # Acquire distributed lock to prevent parallel extraction
+            lock_key = f"llm_extract_lock:chapter:{chapter_id}"
+            lock_acquired = await cache_manager.acquire_lock(lock_key, ttl=120)
+
+            if not lock_acquired:
+                logger.info(f"[BG] Lock not acquired for chapter {chapter_id}, another task is processing")
+                return
+
+            try:
+                # Extract descriptions via LLM
+                LLM_EXTRACTION_TIMEOUT = 30.0
+                try:
+                    extraction_result = await asyncio.wait_for(
+                        langextract_processor.extract_descriptions(chapter.content),
+                        timeout=LLM_EXTRACTION_TIMEOUT
+                    )
+                except asyncio.TimeoutError:
+                    logger.error(f"[BG] LLM extraction timeout for chapter {chapter_id}")
+                    return
+
+                descriptions_data = extraction_result.descriptions if extraction_result.descriptions else []
+
+                # Save descriptions to DB
+                position = 0
+                for desc_data in descriptions_data:
+                    desc_dict = desc_data.to_dict() if hasattr(desc_data, 'to_dict') else desc_data
+
+                    type_str = desc_dict.get("type", "location")
+                    try:
+                        desc_type = DescriptionType(type_str)
+                    except ValueError:
+                        desc_type = DescriptionType.LOCATION
+
+                    new_description = Description(
+                        chapter_id=chapter.id,
+                        type=desc_type,
+                        content=desc_dict.get("content", ""),
+                        confidence_score=desc_dict.get("confidence_score", 0.8),
+                        priority_score=desc_dict.get("priority_score", 0.5),
+                        entities_mentioned=",".join(desc_dict.get("entities_mentioned", [])),
+                        position_in_chapter=position,
+                        word_count=desc_dict.get("word_count", len(desc_dict.get("content", "").split())),
+                    )
+                    position += 1
+                    db.add(new_description)
+
+                # Update chapter stats
+                chapter.descriptions_found = len(descriptions_data)
+                chapter.is_description_parsed = True
+                chapter.parsed_at = datetime.utcnow()
+
+                await db.commit()
+
+                # Invalidate cache
+                cache_key = f"descriptions:book:{book_id}:chapter:{chapter.chapter_number}"
+                await cache_manager.delete(cache_key)
+
+                logger.info(
+                    f"[BG] Extraction complete for chapter {chapter_id}: "
+                    f"{len(descriptions_data)} descriptions"
+                )
+
+            finally:
+                await cache_manager.release_lock(lock_key)
+
+        except Exception as e:
+            logger.exception(f"[BG] Error extracting descriptions for chapter {chapter_id}: {e}")
+
+
+@router.post(
+    "/{book_id}/chapters/{chapter_number}/extract-background",
+    summary="Trigger background LLM extraction",
+    description="Starts LLM extraction in background for the specified chapter. "
+                "Returns immediately without blocking. Used for prefetching next chapter."
+)
+async def trigger_background_extraction(
+    book_id: UUID,
+    chapter_number: int,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_database_session),
+) -> dict:
+    """
+    Starts LLM extraction in background for the specified chapter.
+    Returns immediately without blocking the client.
+
+    Used for prefetching next chapter while user reads current one.
+
+    Args:
+        book_id: Book UUID
+        chapter_number: Chapter number (1-indexed)
+        background_tasks: FastAPI BackgroundTasks
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        dict: Status of the extraction trigger
+    """
+    # 1. Verify book ownership
+    book = await book_service.get_book_by_id(
+        db=db, book_id=book_id, user_id=current_user.id
+    )
+
+    if not book:
+        raise BookNotFoundException(book_id)
+
+    # 2. Find chapter
+    chapter = None
+    for c in book.chapters:
+        if c.chapter_number == chapter_number:
+            chapter = c
+            break
+
+    if not chapter:
+        raise HTTPException(status_code=404, detail="Chapter not found")
+
+    # 3. Check for service page
+    if chapter.check_is_service_page():
+        return {"status": "skipped", "reason": "service_page", "chapter_number": chapter_number}
+
+    # 4. Check for existing descriptions
+    existing = await db.execute(
+        select(Description).where(Description.chapter_id == chapter.id).limit(1)
+    )
+    if existing.scalar_one_or_none():
+        return {"status": "already_extracted", "chapter_number": chapter_number}
+
+    # 5. Check if LLM processor is available
+    if not langextract_processor.is_available():
+        return {"status": "unavailable", "reason": "llm_processor_unavailable", "chapter_number": chapter_number}
+
+    # 6. Start background extraction
+    background_tasks.add_task(
+        _background_extract_descriptions,
+        chapter_id=str(chapter.id),
+        book_id=str(book_id),
+        user_id=str(current_user.id),
+    )
+
+    logger.info(
+        f"[API] Triggered background extraction: chapter={chapter_number}, "
+        f"book={book_id}"
+    )
+
+    return {"status": "extraction_started", "chapter_number": chapter_number}

@@ -1,5 +1,5 @@
 """
-Redis cache layer для активных reading sessions в BookReader AI.
+Redis cache layer для активных reading sessions в fancai.
 
 Оптимизирует производительность при высокой нагрузке (100+ concurrent users).
 

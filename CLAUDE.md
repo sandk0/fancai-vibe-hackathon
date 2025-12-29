@@ -1,10 +1,10 @@
 # CLAUDE.md
 
-Guidance for Claude Code when working with BookReader AI repository.
+Guidance for Claude Code when working with fancai repository.
 
 ## Project Overview
 
-**BookReader AI** - Web application for reading fiction with automatic image generation from book descriptions. Subscription-based monetization (FREE/PREMIUM/ULTIMATE).
+**fancai** - Web application for reading fiction with automatic image generation from book descriptions. Subscription-based monetization (FREE/PREMIUM/ULTIMATE).
 
 **Core Value:** LLM-powered extraction of visual descriptions + AI image generation.
 

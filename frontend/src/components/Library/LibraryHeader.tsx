@@ -45,20 +45,20 @@ export const LibraryHeader: React.FC<LibraryHeaderProps> = ({
   };
 
   return (
-    <div className="relative mb-12 overflow-hidden rounded-3xl">
+    <div className="relative mb-6 sm:mb-12 overflow-hidden rounded-2xl sm:rounded-3xl">
       <div
         className="absolute inset-0 opacity-50"
         style={{
           background: 'linear-gradient(135deg, var(--accent-color) 0%, rgba(147, 51, 234, 0.3) 100%)',
         }}
       />
-      <div className="relative px-8 py-12">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div className="relative px-4 sm:px-8 py-6 sm:py-12">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6">
           <div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-3" style={{ color: 'var(--text-primary)' }}>
+            <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold mb-2 sm:mb-3" style={{ color: 'var(--text-primary)' }}>
               Моя библиотека 📚
             </h1>
-            <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
+            <p className="text-base sm:text-lg" style={{ color: 'var(--text-secondary)' }}>
               {getSubtitle()}
             </p>
           </div>
@@ -66,8 +66,8 @@ export const LibraryHeader: React.FC<LibraryHeaderProps> = ({
           <button
             onClick={onUploadClick}
             className={cn(
-              "group inline-flex items-center gap-2 px-6 py-3 rounded-xl",
-              "font-semibold transition-all duration-200",
+              "group inline-flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg sm:rounded-xl",
+              "text-sm sm:text-base font-semibold transition-all duration-200",
               "shadow-lg hover:shadow-xl hover:scale-105"
             )}
             style={{
@@ -75,7 +75,7 @@ export const LibraryHeader: React.FC<LibraryHeaderProps> = ({
               color: 'white',
             }}
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
             <span>Загрузить книгу</span>
           </button>
         </div>

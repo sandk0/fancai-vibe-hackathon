@@ -291,4 +291,23 @@ export const booksAPI = {
     const baseUrl = apiClient.client.defaults.baseURL || '';
     return `${baseUrl}/books/${bookId}/file`;
   },
+
+  /**
+   * Trigger background extraction of descriptions for a chapter.
+   * This is a fire-and-forget operation - the backend will process asynchronously.
+   *
+   * @param bookId - Book ID
+   * @param chapterNumber - Chapter number to extract descriptions for
+   * @returns Status of the background extraction request
+   */
+  async triggerBackgroundExtraction(
+    bookId: string,
+    chapterNumber: number
+  ): Promise<{ status: string }> {
+    // Note: apiClient.post already returns response.data
+    // Backend endpoint is on /books/ router, not /descriptions/
+    return apiClient.post<{ status: string }>(
+      `/books/${bookId}/chapters/${chapterNumber}/extract-background`
+    );
+  },
 };

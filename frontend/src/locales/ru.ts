@@ -1,6 +1,6 @@
 /**
- * Русская локализация для BookReader AI
- * Russian translations for BookReader AI
+ * Русская локализация для fancai
+ * Russian translations for fancai
  */
 
 export const ru = {
@@ -40,10 +40,10 @@ export const ru = {
     createAccount: 'Создать аккаунт',
     creatingAccount: 'Создание аккаунта...',
     accountCreated: 'Аккаунт создан!',
-    accountCreatedMessage: 'Добро пожаловать в BookReader AI. Загрузите первую книгу!',
+    accountCreatedMessage: 'Добро пожаловать в fancai. Загрузите первую книгу!',
     registrationFailed: 'Ошибка регистрации',
     registerTitle: 'Создать аккаунт',
-    registerSubtitle: 'Присоединяйтесь к BookReader AI и открывайте книги с AI-иллюстрациями',
+    registerSubtitle: 'Присоединяйтесь к fancai и открывайте книги с AI-иллюстрациями',
     alreadyHaveAccount: 'Уже есть аккаунт?',
     signInHere: 'Войдите здесь',
     termsAgreement: 'Создавая аккаунт, вы соглашаетесь с нашими',
@@ -220,7 +220,7 @@ export const ru = {
     regenerationFailed: 'Ошибка пересоздания',
     regenerationFailedDesc: 'Не удалось пересоздать изображение. Попробуйте снова.',
     generatedImageAlt: 'Сгенерированное изображение',
-    shareTitle: 'BookReader AI - Сгенерированное изображение',
+    shareTitle: 'fancai - Сгенерированное изображение',
     shareText: 'Изображение, созданное из описания в книге',
   },
 
@@ -427,6 +427,17 @@ export const ru = {
     darkMode: 'Темная тема',
     offlineReading: 'Оффлайн чтение',
     multiDevice: 'Синхронизация между устройствами',
+  },
+
+  // Удаление книги / Book deletion modal
+  deleteModal: {
+    title: 'Удаление книги',
+    confirmText: 'Вы уверены, что хотите удалить эту книгу?',
+    warningTitle: 'Это действие необратимо!',
+    warningChapters: 'Все главы книги будут удалены',
+    warningImages: 'Все сгенерированные изображения будут удалены',
+    warningProgress: 'Прогресс чтения будет потерян',
+    deleting: 'Удаление...',
   },
 
   // Кнопки и действия / Buttons and actions

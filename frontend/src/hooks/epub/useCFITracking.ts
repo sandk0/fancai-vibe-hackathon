@@ -235,18 +235,21 @@ export const useCFITracking = ({
         restoredCfiRef.current = null;
       }
 
-      // Calculate progress
+      // Calculate progress with higher precision for smoother updates
       let progressPercent = 0;
       const locationsTotal = locations?.total || 0;
 
       if (locationsTotal > 0) {
         const currentLocation = locations.percentageFromCfi(cfi);
-        progressPercent = Math.round((currentLocation || 0) * 100);
+        // Use 1 decimal place for more granular progress tracking
+        // Clamp to 0-100% to handle edge cases (e.g., last page, CFI beyond end)
+        progressPercent = Math.min(100, Math.max(0, Math.round((currentLocation || 0) * 1000) / 10));
       } else {
         // Fallback to currentLocation()
         const current = rendition.currentLocation();
         if (current && current.start && current.start.percentage !== undefined) {
-          progressPercent = Math.round(current.start.percentage * 100);
+          // Clamp to 0-100% for safety
+          progressPercent = Math.min(100, Math.max(0, Math.round(current.start.percentage * 1000) / 10));
         }
       }
 

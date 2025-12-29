@@ -1,5 +1,5 @@
 """
-Response schemas для chapter endpoints в BookReader AI.
+Response schemas для chapter endpoints в fancai.
 
 Этот модуль содержит type-safe response schemas для endpoints
 работы с главами книг, включая навигацию и метаданные.

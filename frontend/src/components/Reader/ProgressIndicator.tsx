@@ -68,10 +68,10 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
 
   return (
     <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 z-10 ${colors.bg} backdrop-blur-sm rounded-lg px-4 py-2 shadow-lg border ${colors.border}`}>
-      <div className="flex items-center gap-4 min-w-[200px]">
+      <div className="flex items-center gap-2 sm:gap-4 min-w-[140px] sm:min-w-[200px]">
         {/* Progress percentage */}
-        <div className={`text-sm font-medium ${colors.text}`}>
-          {progress}%
+        <div className={`text-sm font-medium tabular-nums ${colors.text}`}>
+          {progress < 10 ? progress.toFixed(1) : Math.round(progress)}%
         </div>
 
         {/* Progress bar */}

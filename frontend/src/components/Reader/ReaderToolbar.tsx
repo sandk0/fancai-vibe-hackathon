@@ -78,12 +78,12 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
   return (
     <div
       className={cn(
-        "fixed bottom-6 left-1/2 -translate-x-1/2 z-50",
+        "fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50",
         colors.bg,
         colors.border,
         "backdrop-blur-md border",
-        "rounded-full shadow-2xl px-6 py-3.5",
-        "flex items-center gap-4",
+        "rounded-full shadow-2xl px-3 sm:px-6 py-2.5 sm:py-3.5",
+        "flex items-center gap-2 sm:gap-4",
         "transition-all duration-300",
         className
       )}
@@ -92,19 +92,19 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
       <button
         onClick={onPrevPage}
         className={cn(
-          "h-10 w-10 rounded-full flex items-center justify-center transition-colors",
+          "h-8 w-8 sm:h-10 sm:w-10 rounded-full flex items-center justify-center transition-colors",
           colors.text,
           colors.hover
         )}
         aria-label="Previous page"
       >
-        <ChevronLeft className="h-5 w-5" />
+        <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
       </button>
 
       {/* Progress Section */}
-      <div className="flex flex-col items-center gap-2 min-w-[240px]">
+      <div className="flex flex-col items-center gap-1.5 sm:gap-2 min-w-[160px] sm:min-w-[240px]">
         {/* Progress Bar */}
-        <div className={cn("w-full h-2 rounded-full overflow-hidden", colors.progressBg)}>
+        <div className={cn("w-full h-1.5 sm:h-2 rounded-full overflow-hidden", colors.progressBg)}>
           <div
             className={cn("h-full transition-all duration-300 rounded-full", colors.progressFill)}
             style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
@@ -112,14 +112,14 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
         </div>
 
         {/* Page Info */}
-        <div className={cn("flex items-center gap-3 text-xs", colors.textSecondary)}>
+        <div className={cn("flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs", colors.textSecondary)}>
           {currentPage !== undefined && totalPages !== undefined ? (
             <span className="font-medium">
               Страница {currentPage} / {totalPages}
             </span>
           ) : null}
-          <span className={cn("font-semibold", colors.text)}>
-            {Math.round(progress)}%
+          <span className={cn("font-semibold tabular-nums", colors.text)}>
+            {progress < 10 ? progress.toFixed(1) : Math.round(progress)}%
           </span>
         </div>
       </div>
@@ -128,13 +128,13 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
       <button
         onClick={onNextPage}
         className={cn(
-          "h-10 w-10 rounded-full flex items-center justify-center transition-colors",
+          "h-8 w-8 sm:h-10 sm:w-10 rounded-full flex items-center justify-center transition-colors",
           colors.text,
           colors.hover
         )}
         aria-label="Next page"
       >
-        <ChevronRight className="h-5 w-5" />
+        <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
       </button>
     </div>
   );

@@ -1,6 +1,6 @@
-# React Query Hooks для BookReader AI
+# React Query Hooks для fancai
 
-Современные React Query хуки для управления server state в BookReader AI frontend.
+Современные React Query хуки для управления server state в fancai frontend.
 
 ## Особенности
 
@@ -418,4 +418,4 @@ const { data, isLoading } = useBooks();
 
 ## Лицензия
 
-Часть проекта BookReader AI.
+Часть проекта fancai.

@@ -1,5 +1,5 @@
 """
-API роуты для управления пользователями в BookReader AI.
+API роуты для управления пользователями в fancai.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status

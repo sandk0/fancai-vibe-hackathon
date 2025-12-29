@@ -1,5 +1,5 @@
 """
-Redis caching layer for BookReader AI backend.
+Redis caching layer for fancai backend.
 
 Provides:
 - Redis connection management with connection pooling

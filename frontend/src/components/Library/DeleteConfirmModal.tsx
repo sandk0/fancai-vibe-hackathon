@@ -1,0 +1,165 @@
+/**
+ * DeleteConfirmModal - Modal for confirming book deletion
+ *
+ * Displays a confirmation dialog before deleting a book.
+ * Shows book title and warns about irreversible action.
+ *
+ * @param isOpen - Whether the modal is visible
+ * @param bookTitle - Title of the book being deleted
+ * @param isDeleting - Whether deletion is in progress
+ * @param onConfirm - Callback when user confirms deletion
+ * @param onCancel - Callback when user cancels
+ */
+
+import React, { useEffect, useRef, useCallback } from 'react';
+import { X, AlertTriangle, Trash2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+interface DeleteConfirmModalProps {
+  isOpen: boolean;
+  bookTitle: string;
+  isDeleting: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
+  isOpen,
+  bookTitle,
+  isDeleting,
+  onConfirm,
+  onCancel,
+}) => {
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Handle Escape key press
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isDeleting) {
+        onCancel();
+      }
+    },
+    [isDeleting, onCancel]
+  );
+
+  // Add/remove escape key listener and focus management
+  useEffect(() => {
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      // Focus cancel button on open for accessibility
+      setTimeout(() => cancelButtonRef.current?.focus(), 100);
+    }
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, handleKeyDown]);
+
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+        onClick={onCancel}
+        role="presentation"
+      >
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          className="relative rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden"
+          style={{ backgroundColor: 'var(--bg-primary)' }}
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-modal-title"
+          aria-describedby="delete-modal-description"
+        >
+          {/* Header */}
+          <div
+            className="flex items-center justify-between p-6 border-b"
+            style={{ borderColor: 'var(--border-color)' }}
+          >
+            <div className="flex items-center space-x-3">
+              <div className="p-2 rounded-full bg-red-100 dark:bg-red-900/30">
+                <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+              </div>
+              <h2
+                id="delete-modal-title"
+                className="text-xl font-semibold"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                Удалить книгу?
+              </h2>
+            </div>
+            <button
+              onClick={onCancel}
+              className="p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+              style={{ color: 'var(--text-tertiary)' }}
+              disabled={isDeleting}
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div id="delete-modal-description" className="p-6">
+            <p style={{ color: 'var(--text-secondary)' }}>
+              Вы уверены, что хотите удалить книгу{' '}
+              <span
+                className="font-semibold"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                "{bookTitle}"
+              </span>
+              ?
+            </p>
+            <p
+              className="mt-3 text-sm"
+              style={{ color: 'var(--text-tertiary)' }}
+            >
+              Это действие необратимо. Все данные книги, включая прогресс чтения
+              и сгенерированные изображения, будут удалены.
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div
+            className="flex justify-end gap-3 p-6 border-t"
+            style={{ borderColor: 'var(--border-color)' }}
+          >
+            <button
+              ref={cancelButtonRef}
+              onClick={onCancel}
+              disabled={isDeleting}
+              className="px-4 py-2 rounded-lg font-medium transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              Отмена
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={isDeleting}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isDeleting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Удаление...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4" />
+                  Удалить
+                </>
+              )}
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};

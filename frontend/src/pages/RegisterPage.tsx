@@ -103,7 +103,7 @@ const RegisterPage: React.FC = () => {
   const onSubmit = async (data: RegisterFormData) => {
     try {
       await registerUser(data.email, data.password, data.fullName);
-      notify.success('Регистрация успешна!', 'Добро пожаловать в BookReader AI');
+      notify.success('Регистрация успешна!', 'Добро пожаловать в fancai');
       navigate('/library', { replace: true });
     } catch (error) {
       notify.error('Ошибка регистрации', getErrorMessage(error, 'Попробуйте снова'));
@@ -142,7 +142,7 @@ const RegisterPage: React.FC = () => {
               </div>
               <div>
                 <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                  BookReader AI
+                  fancai
                 </h1>
               </div>
             </div>

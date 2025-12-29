@@ -1,5 +1,5 @@
 """
-Custom exception classes для BookReader AI.
+Custom exception classes для fancai.
 
 Этот модуль содержит специализированные исключения для различных
 типов ошибок в приложении, обеспечивая консистентные error messages

@@ -160,24 +160,27 @@ export const ReaderHeader = memo(function ReaderHeader({
         {/* Right: Compact Progress + Settings */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Compact Progress Bar */}
-          <div className="flex flex-col items-end gap-1 min-w-[80px] sm:min-w-[140px]">
+          <div className="flex flex-col items-end gap-1 min-w-[100px] sm:min-w-[140px]">
             {/* Progress Info - Above the bar */}
-            <div className={cn('flex items-center gap-1 sm:gap-2 text-xs', colors.textSecondary)}>
+            <div className={cn('flex items-center gap-1.5 sm:gap-2 text-xs', colors.textSecondary)}>
               {currentPage !== undefined && totalPages !== undefined && (
-                <span className="font-medium hidden xs:inline">
+                <span className="font-medium text-[10px] sm:text-xs">
                   {currentPage}/{totalPages}
                 </span>
               )}
-              <span className={cn('font-semibold', colors.text)}>
-                {Math.round(progress)}%
+              <span className={cn('font-bold text-sm sm:text-base tabular-nums', colors.text)}>
+                {progress < 10 ? progress.toFixed(1) : Math.round(progress)}%
               </span>
             </div>
 
             {/* Progress Bar */}
-            <div className={cn('w-full h-1.5 rounded-full overflow-hidden', colors.progressBg)}>
+            <div className={cn('w-full h-2 sm:h-1.5 rounded-full overflow-hidden', colors.progressBg)}>
               <div
-                className={cn('h-full transition-all duration-300 rounded-full', colors.progressFill)}
-                style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+                className={cn('h-full rounded-full', colors.progressFill)}
+                style={{
+                  width: `${Math.min(100, Math.max(0, progress))}%`,
+                  transition: 'width 150ms ease-out'
+                }}
               />
             </div>
           </div>

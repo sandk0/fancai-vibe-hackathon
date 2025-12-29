@@ -106,7 +106,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'BookReader AI - Generated Image',
+          title: 'fancai - Generated Image',
           text: image.description?.content || 'AI-generated book illustration',
           url: image.image_url,
         });

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Финальная проверка всех систем BookReader AI.
+Финальная проверка всех систем fancai.
 """
 
 import sys

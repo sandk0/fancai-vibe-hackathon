@@ -1,4 +1,4 @@
-// API Types for BookReader AI Frontend
+// API Types for fancai Frontend
 
 export interface ApiResponse<T = unknown> {
   data?: T;

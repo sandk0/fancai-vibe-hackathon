@@ -1,5 +1,5 @@
 """
-Structured logging configuration for BookReader AI.
+Structured logging configuration for fancai.
 
 Uses loguru for structured logging with JSON output in production
 and colorized human-readable output in development.
@@ -11,7 +11,7 @@ Usage:
     logger.error("Failed to parse", error=str(e), exc_info=True)
 
 Created: December 2025
-Author: BookReader AI Team
+Author: fancai Team
 """
 
 import sys

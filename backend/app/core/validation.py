@@ -1,5 +1,5 @@
 """
-Input Validation и Sanitization Utilities для BookReader AI.
+Input Validation и Sanitization Utilities для fancai.
 
 Защищает от:
 - Path traversal attacks

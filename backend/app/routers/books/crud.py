@@ -535,3 +535,25 @@ async def get_book_cover(
         raise
     except Exception as e:
         raise CoverFetchException(str(e))
+
+
+@router.delete("/{book_id}", status_code=200)
+async def delete_book(
+    book: Book = Depends(get_user_book),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_database_session),
+    book_svc: BookService = Depends(get_book_service_dep),
+) -> dict:
+    """
+    Удаляет книгу и все связанные данные (главы, описания, изображения, прогресс).
+
+    Returns:
+        dict: Сообщение об успешном удалении
+
+    Raises:
+        HTTPException: 404 если книга не найдена
+    """
+    success = await book_svc.delete_book(db, book.id, current_user.id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Book not found or already deleted")
+    return {"message": f"Book '{book.title}' deleted successfully", "id": str(book.id)}

@@ -1,9 +1,9 @@
-// BookReader AI - Service Worker
+// fancai - Service Worker
 // Version 1.3.0 - Security Fix: Exclude ALL user-specific API endpoints from SW caching
 
-const CACHE_NAME = 'bookreader-ai-v1.3.0';
-const STATIC_CACHE_NAME = 'bookreader-static-v1.3.0';
-const DYNAMIC_CACHE_NAME = 'bookreader-dynamic-v1.3.0';
+const CACHE_NAME = 'fancai-v1.3.0';
+const STATIC_CACHE_NAME = 'fancai-static-v1.3.0';
+const DYNAMIC_CACHE_NAME = 'fancai-dynamic-v1.3.0';
 
 // Files to cache immediately
 const STATIC_ASSETS = [
@@ -284,7 +284,7 @@ async function handleAPIRequest(request) {
 // Handle images - Cache First with long-term storage
 async function handleImageRequest(request) {
   try {
-    const cache = await caches.open('bookreader-images-v1.3.0');
+    const cache = await caches.open('fancai-images-v1.3.0');
     const cachedResponse = await cache.match(request);
 
     if (cachedResponse) {
@@ -297,7 +297,7 @@ async function handleImageRequest(request) {
       cache.put(request, networkResponse.clone());
 
       // Cleanup old image cache entries
-      cleanupCache('bookreader-images-v1.3.0', MAX_CACHE_SIZE.images);
+      cleanupCache('fancai-images-v1.3.0', MAX_CACHE_SIZE.images);
     }
 
     return networkResponse;
@@ -468,7 +468,7 @@ self.addEventListener('push', (event) => {
   }
   
   event.waitUntil(
-    self.registration.showNotification('BookReader AI', options)
+    self.registration.showNotification('fancai', options)
   );
 });
 

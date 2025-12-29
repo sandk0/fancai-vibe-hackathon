@@ -1,5 +1,5 @@
 """
-Feature Flag Manager для BookReader AI.
+Feature Flag Manager для fancai.
 
 Управляет feature flags для безопасного rollout новых функций,
 A/B тестирования и управления экспериментальной функциональностью.
