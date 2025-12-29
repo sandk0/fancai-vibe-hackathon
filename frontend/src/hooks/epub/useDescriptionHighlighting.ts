@@ -590,12 +590,29 @@ export const useDescriptionHighlighting = ({
             const actualIndex = originalText.toLowerCase().indexOf(searchString.toLowerCase());
 
             if (actualIndex !== -1) {
-              // FIX: Extend highlight to sentence end instead of fixed length
-              // This prevents mismatched highlights when LLM modifies text
-              const minLength = Math.max(searchString.length, 50);
-              const maxLength = Math.min(patterns.original.length * 1.5, 1500);
-              const sentenceEndIndex = extendToSentenceEnd(originalText, actualIndex, minLength, maxLength);
-              const highlightLength = sentenceEndIndex - actualIndex;
+              // FIX: Highlight the FULL description text, not just the first sentence
+              // Use the original description length from backend as the target
+              // Only extend to sentence end if needed for clean visual boundaries
+              const originalDescLength = patterns.original.length;
+
+              // Calculate available text from start position
+              const availableLength = originalText.length - actualIndex;
+
+              // Use the original description length, capped by available text
+              let highlightLength = Math.min(originalDescLength, availableLength);
+
+              // If original length is available, check if we need to extend to sentence end
+              // This handles cases where EPUB text has extra formatting (quotes, dialogue tags)
+              if (highlightLength >= originalDescLength * 0.9) {
+                // Description fits well - try to extend to clean sentence boundary if close
+                const extendedEnd = extendToSentenceEnd(
+                  originalText,
+                  actualIndex,
+                  highlightLength,  // min: full description length
+                  Math.min(highlightLength * 1.2, availableLength) // max: 20% more
+                );
+                highlightLength = extendedEnd - actualIndex;
+              }
 
               // Create highlight span
               const span = doc.createElement('span');
