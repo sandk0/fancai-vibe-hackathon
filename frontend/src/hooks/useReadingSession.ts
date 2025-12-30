@@ -1,5 +1,3 @@
-/* eslint-disable react-hooks/exhaustive-deps */
- 
 /**
  * useReadingSession - Custom hook for automatic reading session tracking
  *
@@ -62,6 +60,14 @@ export function useReadingSession({
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const isEndingRef = useRef(false);
   const hasStartedRef = useRef(false);
+
+  // Ref to track current position without causing re-renders in interval callbacks
+  const positionRef = useRef(currentPosition);
+
+  // Keep positionRef in sync with currentPosition
+  useEffect(() => {
+    positionRef.current = currentPosition;
+  }, [currentPosition]);
 
   // Query for active session (check if there's an existing session)
   const { data: activeSession, isLoading: isLoadingActive } = useQuery({
@@ -192,7 +198,7 @@ export function useReadingSession({
     try {
       await endMutation.mutateAsync({
         sessionId: sessionIdRef.current,
-        position: currentPosition,
+        position: positionRef.current,
       });
     } catch (error) {
       console.error('❌ [useReadingSession] Error ending session:', error);
@@ -200,7 +206,7 @@ export function useReadingSession({
       sessionIdRef.current = null;
       hasStartedRef.current = false;
     }
-  }, [currentPosition, endMutation]);
+  }, [endMutation]);
 
   /**
    * Effect 1: Start or continue session on mount
@@ -249,6 +255,7 @@ export function useReadingSession({
 
   /**
    * Effect 2: Periodic position updates
+   * Uses positionRef.current to avoid re-running effect on every position change
    */
   useEffect(() => {
     if (!enabled || !sessionIdRef.current || isEndingRef.current) {
@@ -259,7 +266,7 @@ export function useReadingSession({
     intervalRef.current = setInterval(() => {
       if (sessionIdRef.current && !isEndingRef.current) {
         console.log('⏱️ [useReadingSession] Periodic update triggered');
-        updatePosition(currentPosition);
+        updatePosition(positionRef.current);
       }
     }, updateInterval);
 
@@ -269,7 +276,7 @@ export function useReadingSession({
         intervalRef.current = null;
       }
     };
-  }, [enabled, currentPosition, updateInterval, updatePosition]);
+  }, [enabled, updateInterval, updatePosition]);
 
   /**
    * Effect 3: Update position when it changes
@@ -293,18 +300,22 @@ export function useReadingSession({
 
   /**
    * Effect 4: End session on unmount
+   * Uses refs to access current values without adding dependencies
    */
   useEffect(() => {
+    // Store mutation ref to access in cleanup
+    const currentEndMutation = endMutation;
+
     return () => {
       // End session on component unmount
       if (sessionIdRef.current && !isEndingRef.current) {
         console.log('🧹 [useReadingSession] Component unmounting, ending session');
         // Use beacon API for guaranteed delivery even if page is closing
         const sessionId = sessionIdRef.current;
-        const position = currentPosition;
+        const position = positionRef.current;
 
         // Try to end session gracefully
-        endMutation.mutate(
+        currentEndMutation.mutate(
           { sessionId, position },
           {
             onError: () => {
@@ -334,10 +345,11 @@ export function useReadingSession({
         clearInterval(intervalRef.current);
       }
     };
-  }, []); // Empty deps - only run on unmount // eslint-disable-line react-hooks/exhaustive-deps
+  }, [endMutation]);
 
   /**
    * Effect 5: beforeunload handler for graceful page close
+   * Uses positionRef.current to get latest position without dependency on currentPosition
    */
   useEffect(() => {
     if (!enabled) {
@@ -355,7 +367,7 @@ export function useReadingSession({
           const beaconData = new Blob(
             [
               JSON.stringify({
-                end_position: currentPosition,
+                end_position: positionRef.current,
               }),
             ],
             { type: 'application/json' }
@@ -376,7 +388,7 @@ export function useReadingSession({
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [enabled, currentPosition]);
+  }, [enabled]);
 
   return {
     session,

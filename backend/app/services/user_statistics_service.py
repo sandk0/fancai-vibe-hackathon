@@ -5,16 +5,27 @@
 - Weekly activity (активность по дням недели)
 - Reading streak (непрерывная серия дней чтения)
 - Общие метрики чтения
+
+Performance optimization (December 2025):
+- Redis caching for aggregated statistics with 5-minute TTL
+- Graceful fallback to direct DB queries if Redis unavailable
 """
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, cast, Date
+from sqlalchemy import select, func, cast, Date, case, and_, Float
 from datetime import datetime, timedelta, timezone
-from typing import List, Dict
+from typing import List, Dict, Any, Optional
 from uuid import UUID
+
+from loguru import logger
 
 from ..models.reading_session import ReadingSession
 from ..models.book import Book, ReadingProgress
+from ..core.cache import cache_manager
+
+# Cache configuration for user statistics
+USER_STATS_CACHE_TTL = 300  # 5 minutes
+USER_STATS_CACHE_KEY_PREFIX = "user_stats"
 
 
 class UserStatisticsService:
@@ -265,14 +276,16 @@ class UserStatisticsService:
         - completed: Прочитанные книги
 
         Логика:
-        - completed: Если Book.get_reading_progress_percent() >= 95 (CFI-aware расчет)
-        - in_progress: Если есть reading_progress и прогресс < 95%
+        - completed: Если прогресс >= 95%
+        - in_progress: Если есть reading_progress и 0 < прогресс < 95%
         - total: Общее количество книг
 
-        ИСПРАВЛЕНО P0-3: Используется метод Book.get_reading_progress_percent(),
-        который правильно обрабатывает CFI (EPUB) и legacy форматы.
-        Старая логика `current_position >= 95` некорректна, так как для legacy формата
-        current_position - это % в ГЛАВЕ, а не общий прогресс по книге.
+        CFI-aware расчет прогресса (в SQL):
+        - Для EPUB (reading_location_cfi IS NOT NULL): current_position уже содержит точный %
+        - Для legacy: формула ((current_chapter - 1) + current_position/100) / total_chapters * 100
+
+        ОПТИМИЗАЦИЯ (December 2025): Использует SQL COUNT и CASE вместо загрузки
+        всех книг в память. Подсчет выполняется на стороне базы данных.
 
         Args:
             db: Асинхронная сессия БД
@@ -281,43 +294,114 @@ class UserStatisticsService:
         Returns:
             Словарь с количествами книг по статусам
         """
-        from sqlalchemy.orm import selectinload
+        from ..models.chapter import Chapter
 
-        # Общее количество книг
+        # Общее количество книг (простой COUNT)
         total_query = select(func.count(Book.id)).where(Book.user_id == user_id)
         total_result = await db.execute(total_query)
         total_books = total_result.scalar() or 0
 
-        # Получаем все книги с reading_progress и chapters для точного расчета
-        # Book.chapters нужен для calculate_progress_percent() в legacy режиме
-        books_query = (
-            select(Book)
-            .options(selectinload(Book.reading_progress))
-            .options(selectinload(Book.chapters))
-            .join(ReadingProgress, ReadingProgress.book_id == Book.id)
-            .where(Book.user_id == user_id)
-            .where(ReadingProgress.user_id == user_id)
+        # Подзапрос для подсчета глав каждой книги (для legacy режима)
+        chapter_counts = (
+            select(Chapter.book_id, func.count(Chapter.id).label("chapter_count"))
+            .group_by(Chapter.book_id)
+            .subquery()
         )
-        books_result = await db.execute(books_query)
-        books_with_progress = books_result.scalars().unique().all()
 
-        # Считаем прочитанные и в процессе книги используя CFI-aware метод
-        completed_books = 0
-        in_progress_books = 0
+        # SQL CASE для подсчета книг по статусам
+        # CFI mode: reading_location_cfi IS NOT NULL -> current_position содержит точный %
+        # Legacy mode: формула на основе глав
+        status_query = (
+            select(
+                func.count(
+                    case(
+                        # CFI mode: completed (>= 95%)
+                        (
+                            and_(
+                                ReadingProgress.reading_location_cfi.isnot(None),
+                                ReadingProgress.current_position >= 95
+                            ),
+                            Book.id
+                        ),
+                        # Legacy mode: completed (>= 95%)
+                        # progress = ((current_chapter - 1) + current_position/100) / total_chapters * 100
+                        (
+                            and_(
+                                ReadingProgress.reading_location_cfi.is_(None),
+                                func.coalesce(chapter_counts.c.chapter_count, 0) > 0,
+                                (
+                                    (
+                                        cast(ReadingProgress.current_chapter - 1, Float)
+                                        + cast(ReadingProgress.current_position, Float) / 100.0
+                                    )
+                                    / cast(chapter_counts.c.chapter_count, Float)
+                                ) >= 0.95
+                            ),
+                            Book.id
+                        ),
+                    )
+                ).label("completed"),
+                func.count(
+                    case(
+                        # CFI mode: in_progress (0 < progress < 95)
+                        (
+                            and_(
+                                ReadingProgress.reading_location_cfi.isnot(None),
+                                ReadingProgress.current_position > 0,
+                                ReadingProgress.current_position < 95
+                            ),
+                            Book.id
+                        ),
+                        # Legacy mode: in_progress (0 < progress < 95)
+                        (
+                            and_(
+                                ReadingProgress.reading_location_cfi.is_(None),
+                                func.coalesce(chapter_counts.c.chapter_count, 0) > 0,
+                                (
+                                    (
+                                        cast(ReadingProgress.current_chapter - 1, Float)
+                                        + cast(ReadingProgress.current_position, Float) / 100.0
+                                    )
+                                    / cast(chapter_counts.c.chapter_count, Float)
+                                ) > 0,
+                                (
+                                    (
+                                        cast(ReadingProgress.current_chapter - 1, Float)
+                                        + cast(ReadingProgress.current_position, Float) / 100.0
+                                    )
+                                    / cast(chapter_counts.c.chapter_count, Float)
+                                ) < 0.95
+                            ),
+                            Book.id
+                        ),
+                        # Legacy mode: in_progress fallback (no chapters but current_chapter > 1)
+                        (
+                            and_(
+                                ReadingProgress.reading_location_cfi.is_(None),
+                                func.coalesce(chapter_counts.c.chapter_count, 0) == 0,
+                                ReadingProgress.current_chapter > 1
+                            ),
+                            Book.id
+                        ),
+                    )
+                ).label("in_progress"),
+            )
+            .select_from(Book)
+            .join(ReadingProgress, and_(
+                ReadingProgress.book_id == Book.id,
+                ReadingProgress.user_id == user_id
+            ))
+            .outerjoin(chapter_counts, chapter_counts.c.book_id == Book.id)
+            .where(Book.user_id == user_id)
+        )
 
-        for book in books_with_progress:
-            # Используем метод Book.get_reading_progress_percent() для точного расчета
-            progress_percent = await book.get_reading_progress_percent(db, user_id)
-
-            if progress_percent >= 95.0:
-                completed_books += 1
-            elif progress_percent > 0.0:
-                in_progress_books += 1
+        result = await db.execute(status_query)
+        row = result.one()
 
         return {
             "total": total_books,
-            "in_progress": in_progress_books,
-            "completed": completed_books,
+            "in_progress": row.in_progress or 0,
+            "completed": row.completed or 0,
         }
 
     @staticmethod
@@ -498,3 +582,266 @@ class UserStatisticsService:
             longest_streak = current_streak
 
         return {"current": current_streak, "longest": longest_streak}
+
+    @staticmethod
+    async def get_monthly_statistics(
+        db: AsyncSession, user_id: UUID
+    ) -> Dict[str, int]:
+        """
+        Возвращает статистику чтения за текущий месяц.
+
+        Включает:
+        - books_this_month: количество книг начатых/читаемых этот месяц
+        - reading_time_this_month: минуты чтения за этот месяц
+        - pages_this_month: страницы прочитанные в этом месяце
+
+        Args:
+            db: Асинхронная сессия БД
+            user_id: UUID пользователя
+
+        Returns:
+            Dict с ключами:
+            - books_this_month: int
+            - reading_time_this_month: int (минуты)
+            - pages_this_month: int
+        """
+        # Начало текущего месяца
+        now = datetime.now(timezone.utc)
+        start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        # 1. Время чтения за этот месяц (из reading_sessions)
+        reading_time_query = select(
+            func.sum(ReadingSession.duration_minutes)
+        ).where(
+            ReadingSession.user_id == user_id,
+            ReadingSession.started_at >= start_of_month,
+            ReadingSession.is_active == False,  # noqa: E712
+        )
+        reading_time_result = await db.execute(reading_time_query)
+        reading_time_this_month = int(reading_time_result.scalar() or 0)
+
+        # 2. Количество уникальных книг с активностью в этом месяце
+        books_query = select(
+            func.count(func.distinct(ReadingSession.book_id))
+        ).where(
+            ReadingSession.user_id == user_id,
+            ReadingSession.started_at >= start_of_month,
+        )
+        books_result = await db.execute(books_query)
+        books_this_month = int(books_result.scalar() or 0)
+
+        # 3. Страницы за этот месяц
+        # Считаем прогресс на основе позиций в сессиях
+        pages_query = select(
+            func.sum(ReadingSession.end_position - ReadingSession.start_position)
+        ).where(
+            ReadingSession.user_id == user_id,
+            ReadingSession.started_at >= start_of_month,
+            ReadingSession.is_active == False,  # noqa: E712
+        )
+        pages_result = await db.execute(pages_query)
+        progress_this_month = int(pages_result.scalar() or 0)
+
+        # progress - это разница позиций (0-100)
+        # Для упрощенного подсчета: 1 единица прогресса ~ 1 страница
+        pages_this_month = progress_this_month
+
+        return {
+            "books_this_month": books_this_month,
+            "reading_time_this_month": reading_time_this_month,
+            "pages_this_month": pages_this_month,
+        }
+
+    # =========================================================================
+    # Redis Caching Methods (December 2025)
+    # =========================================================================
+
+    @staticmethod
+    def _get_cache_key(user_id: UUID) -> str:
+        """
+        Generate Redis cache key for user statistics.
+
+        Args:
+            user_id: UUID of the user
+
+        Returns:
+            Cache key in format: "user_stats:{user_id}"
+        """
+        return f"{USER_STATS_CACHE_KEY_PREFIX}:{user_id}"
+
+    @staticmethod
+    async def get_all_reading_statistics(
+        db: AsyncSession, user_id: UUID, use_cache: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Get all reading statistics for a user with Redis caching.
+
+        This method aggregates all statistics into a single call and caches
+        the result in Redis with a 5-minute TTL. On cache miss or Redis
+        unavailability, it falls back to direct database queries.
+
+        Args:
+            db: Async database session
+            user_id: UUID of the user
+            use_cache: Whether to use Redis cache (default: True)
+
+        Returns:
+            Dictionary with all reading statistics:
+            {
+                "total_books": int,
+                "books_in_progress": int,
+                "books_completed": int,
+                "total_reading_time_minutes": int,
+                "reading_streak_days": int,
+                "longest_streak_days": int,
+                "average_reading_speed_wpm": float,
+                "favorite_genres": List[Dict],
+                "weekly_activity": List[Dict],
+                "total_pages_read": int,
+                "total_chapters_read": int,
+                "avg_minutes_per_day": int
+            }
+
+        Example:
+            >>> stats = await UserStatisticsService.get_all_reading_statistics(db, user_id)
+            >>> print(f"User has read {stats['total_books']} books")
+        """
+        cache_key = UserStatisticsService._get_cache_key(user_id)
+
+        # Try to get from cache first
+        if use_cache:
+            try:
+                cached_stats = await cache_manager.get(cache_key)
+                if cached_stats is not None:
+                    logger.debug(f"User statistics cache HIT for user {user_id}")
+                    return cached_stats
+            except Exception as e:
+                # Redis error - log and continue to DB query
+                logger.warning(f"Redis GET error for user stats {user_id}: {e}")
+
+        # Cache miss or error - compute from database
+        logger.debug(f"User statistics cache MISS for user {user_id}, computing from DB")
+        stats = await UserStatisticsService._compute_all_statistics(db, user_id)
+
+        # Try to cache the result
+        if use_cache:
+            try:
+                await cache_manager.set(cache_key, stats, ttl=USER_STATS_CACHE_TTL)
+                logger.debug(
+                    f"User statistics cached for user {user_id} "
+                    f"(TTL: {USER_STATS_CACHE_TTL}s)"
+                )
+            except Exception as e:
+                # Redis error - log but don't fail the request
+                logger.warning(f"Redis SET error for user stats {user_id}: {e}")
+
+        return stats
+
+    @staticmethod
+    async def _compute_all_statistics(
+        db: AsyncSession, user_id: UUID
+    ) -> Dict[str, Any]:
+        """
+        Compute all reading statistics from database.
+
+        Internal method that performs all database queries to gather
+        statistics. Called on cache miss.
+
+        Args:
+            db: Async database session
+            user_id: UUID of the user
+
+        Returns:
+            Dictionary with all reading statistics
+        """
+        # Get books count by status
+        books_stats = await UserStatisticsService.get_books_count_by_status(
+            db, user_id
+        )
+
+        # Total reading time
+        total_reading_time = await UserStatisticsService.get_total_reading_time(
+            db, user_id
+        )
+
+        # Reading streak (current and longest)
+        streak_data = await UserStatisticsService.get_reading_streak_with_longest(
+            db, user_id
+        )
+
+        # Average reading speed
+        avg_reading_speed = await UserStatisticsService.get_average_reading_speed(
+            db, user_id
+        )
+
+        # Favorite genres (top 5)
+        favorite_genres = await UserStatisticsService.get_favorite_genres(
+            db, user_id, limit=5
+        )
+
+        # Weekly activity (last 7 days)
+        weekly_activity = await UserStatisticsService.get_weekly_activity(
+            db, user_id, days=7
+        )
+
+        # Total pages and chapters read
+        total_pages = await UserStatisticsService.get_total_pages_read(db, user_id)
+        total_chapters = await UserStatisticsService.get_total_chapters_read(
+            db, user_id
+        )
+
+        # Average reading time per day
+        avg_minutes_per_day = await UserStatisticsService.get_average_reading_time_per_day(
+            db, user_id
+        )
+
+        # Monthly statistics
+        monthly_stats = await UserStatisticsService.get_monthly_statistics(db, user_id)
+
+        return {
+            "total_books": books_stats["total"],
+            "books_in_progress": books_stats["in_progress"],
+            "books_completed": books_stats["completed"],
+            "total_reading_time_minutes": total_reading_time,
+            "reading_streak_days": streak_data["current"],
+            "longest_streak_days": streak_data["longest"],
+            "average_reading_speed_wpm": avg_reading_speed,
+            "favorite_genres": favorite_genres,
+            "weekly_activity": weekly_activity,
+            "total_pages_read": total_pages,
+            "total_chapters_read": total_chapters,
+            "avg_minutes_per_day": avg_minutes_per_day,
+            "books_this_month": monthly_stats["books_this_month"],
+            "reading_time_this_month": monthly_stats["reading_time_this_month"],
+            "pages_this_month": monthly_stats["pages_this_month"],
+        }
+
+    @staticmethod
+    async def invalidate_user_stats_cache(user_id: UUID) -> bool:
+        """
+        Invalidate cached statistics for a user.
+
+        Call this method when user data changes that would affect statistics:
+        - Reading session ended
+        - Book added/deleted
+        - Reading progress updated
+
+        Args:
+            user_id: UUID of the user
+
+        Returns:
+            True if cache was invalidated, False on error
+
+        Example:
+            >>> await UserStatisticsService.invalidate_user_stats_cache(user_id)
+        """
+        cache_key = UserStatisticsService._get_cache_key(user_id)
+
+        try:
+            result = await cache_manager.delete(cache_key)
+            if result:
+                logger.debug(f"User statistics cache invalidated for user {user_id}")
+            return result
+        except Exception as e:
+            logger.warning(f"Redis DELETE error for user stats {user_id}: {e}")
+            return False

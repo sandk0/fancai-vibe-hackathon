@@ -346,6 +346,10 @@ export interface UserReadingStatistics {
   total_pages_read: number;
   total_chapters_read: number;
   avg_minutes_per_day: number;  // Унифицированная метрика: total_minutes / days_with_activity
+  // Monthly statistics
+  books_this_month: number;           // Количество книг с активностью в этом месяце
+  reading_time_this_month: number;    // Минуты чтения за этот месяц
+  pages_this_month: number;           // Страницы прочитанные в этом месяце
 }
 
 // Reading Session Types

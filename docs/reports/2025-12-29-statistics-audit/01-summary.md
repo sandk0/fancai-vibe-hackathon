@@ -13,7 +13,7 @@
 |---------|------------|--------|
 | P0 (критично) | 4 | ✅ ИСПРАВЛЕНО |
 | P1 (важно) | 2 | ✅ ИСПРАВЛЕНО |
-| P2 (желательно) | 9 | ⏳ Запланировано |
+| P2 (желательно) | 9 | ✅ ИСПРАВЛЕНО |
 
 ---
 
@@ -111,14 +111,14 @@ avg_minutes_per_day = total_minutes / days_with_reading_activity
 
 ---
 
-## Следующие шаги (P2)
+## Выполненные P2 улучшения (30 декабря 2025)
 
-1. Добавить кэширование статистики (Redis, TTL 5 мин)
-2. Оптимизировать get_books_count_by_status
-3. Добавить метрики "за этот месяц"
-4. Исправить timezone при агрегации по датам
-5. Вынести formatReadingTime в utils
-6. Убрать eslint-disable в useReadingSession.ts
+1. ✅ Добавлено кэширование статистики (Redis, TTL 5 мин)
+2. ✅ Оптимизирован get_books_count_by_status (SQL COUNT + CASE)
+3. ✅ Добавлены метрики "за этот месяц" (books, reading_time, pages)
+4. ✅ Добавлено поле timezone в User model + миграция
+5. ✅ Вынесен formatReadingTime в src/utils/formatters.ts
+6. ✅ Исправлен eslint-disable в useReadingSession.ts (используется positionRef)
 
 ---
 

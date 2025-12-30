@@ -85,6 +85,9 @@ class User(Base):
     # Статистика
     longest_streak_days = Column(Integer, default=0, nullable=False)
 
+    # User preferences
+    timezone = Column(String(50), default="UTC", nullable=False)  # IANA timezone name (e.g., "Europe/Moscow")
+
     # Отношения
     # lazy="raise" предотвращает случайные N+1 queries - требует явного eager loading
     books = relationship("Book", back_populates="user", cascade="all, delete-orphan", lazy="raise")

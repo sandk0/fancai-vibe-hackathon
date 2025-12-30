@@ -383,6 +383,9 @@ async def get_reading_statistics(
     """
     Получает детальную статистику чтения пользователя.
 
+    Performance: Uses Redis caching with 5-minute TTL (December 2025).
+    On cache miss or Redis unavailability, falls back to direct DB queries.
+
     Включает:
     - Общее количество книг и статус чтения
     - Время чтения и скорость
@@ -428,62 +431,10 @@ async def get_reading_statistics(
              -H "Authorization: Bearer <token>"
         ```
     """
-    # Получаем статистику по книгам (total, in_progress, completed)
-    books_stats = await UserStatisticsService.get_books_count_by_status(
-        db, current_user.id
+    # Get all statistics with Redis caching (TTL: 5 minutes)
+    # Falls back to direct DB queries if Redis unavailable
+    stats = await UserStatisticsService.get_all_reading_statistics(
+        db, current_user.id, use_cache=True
     )
 
-    # Общее время чтения в минутах
-    total_reading_time = await UserStatisticsService.get_total_reading_time(
-        db, current_user.id
-    )
-
-    # Reading streak (дни подряд чтения) - текущий и лучший
-    streak_data = await UserStatisticsService.get_reading_streak_with_longest(
-        db, current_user.id
-    )
-    current_streak = streak_data["current"]
-    longest_streak = streak_data["longest"]
-
-    # Средняя скорость чтения (WPM)
-    avg_reading_speed = await UserStatisticsService.get_average_reading_speed(
-        db, current_user.id
-    )
-
-    # Любимые жанры (топ-5)
-    favorite_genres = await UserStatisticsService.get_favorite_genres(
-        db, current_user.id, limit=5
-    )
-
-    # Weekly activity (последние 7 дней)
-    weekly_activity = await UserStatisticsService.get_weekly_activity(
-        db, current_user.id, days=7
-    )
-
-    # Получаем total_pages_read и total_chapters_read
-    total_pages = await UserStatisticsService.get_total_pages_read(db, current_user.id)
-    total_chapters = await UserStatisticsService.get_total_chapters_read(
-        db, current_user.id
-    )
-
-    # Среднее время чтения в день (унифицированная формула)
-    avg_minutes_per_day = await UserStatisticsService.get_average_reading_time_per_day(
-        db, current_user.id
-    )
-
-    return ReadingStatisticsResponse(
-        statistics={
-            "total_books": books_stats["total"],
-            "books_in_progress": books_stats["in_progress"],
-            "books_completed": books_stats["completed"],
-            "total_reading_time_minutes": total_reading_time,
-            "reading_streak_days": current_streak,
-            "longest_streak_days": longest_streak,
-            "average_reading_speed_wpm": avg_reading_speed,
-            "favorite_genres": favorite_genres,
-            "weekly_activity": weekly_activity,
-            "total_pages_read": total_pages,
-            "total_chapters_read": total_chapters,
-            "avg_minutes_per_day": avg_minutes_per_day,
-        }
-    )
+    return ReadingStatisticsResponse(statistics=stats)

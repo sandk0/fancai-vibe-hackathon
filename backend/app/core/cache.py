@@ -442,6 +442,8 @@ CACHE_KEY_PATTERNS = {
     "chapter_descriptions": "book:{book_id}:chapter:{chapter_number}:descriptions",
     # Images
     "description_image": "description:{description_id}:image",
+    # User Statistics (December 2025)
+    "user_stats": "user_stats:{user_id}",
 }
 
 
@@ -454,4 +456,5 @@ CACHE_TTL = {
     "user_progress": 300,  # 5 minutes (updated frequently)
     "book_descriptions": 3600,  # 1 hour
     "book_toc": 3600,  # 1 hour
+    "user_stats": 300,  # 5 minutes (December 2025 - user statistics caching)
 }

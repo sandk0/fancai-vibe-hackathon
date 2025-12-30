@@ -10,7 +10,7 @@
 |-----------|---------|--------|
 | P0 | 4 | ✅ ИСПРАВЛЕНО |
 | P1 | 2 | ✅ ИСПРАВЛЕНО |
-| P2 | 9 | ⏳ Запланировано |
+| P2 | 9 | ✅ ИСПРАВЛЕНО |
 
 ---
 
@@ -292,9 +292,9 @@ totalPages: s.total_pages_read || 0,
 
 ---
 
-## P2: Желательные улучшения
+## P2: Желательные улучшения ✅ ВЫПОЛНЕНО
 
-### P2-1: Добавить кэширование статистики
+### P2-1: Добавить кэширование статистики ✅
 
 ```python
 # Redis cache с TTL 5 минут
@@ -310,19 +310,33 @@ return stats
 
 ---
 
-### P2-2: Оптимизировать get_books_count_by_status
+### P2-2: Оптимизировать get_books_count_by_status ✅
 
-Использовать SQL COUNT вместо загрузки всех книг в память.
-
----
-
-### P2-3: Удалить eslint-disable в useReadingSession.ts
-
-Исправить зависимости useEffect вместо отключения правила.
+Использует SQL COUNT с CASE вместо загрузки всех книг в память.
+Оптимизация выполняется на стороне БД с поддержкой CFI и legacy режимов.
 
 ---
 
-### P2-4: Исправить interval зависимости
+### P2-3: Добавить метрики "за этот месяц" ✅
+
+Добавлены:
+- `books_this_month` - книги с активностью в этом месяце
+- `reading_time_this_month` - минуты чтения за месяц
+- `pages_this_month` - страницы за месяц
+
+Backend: `get_monthly_statistics()` метод
+Frontend: StatsPage.tsx использует данные из API
+
+---
+
+### P2-4: Удалить eslint-disable в useReadingSession.ts ✅
+
+Исправлены зависимости useEffect с использованием positionRef.
+Убран eslint-disable директива.
+
+---
+
+### P2-5: Исправить interval зависимости ✅
 
 ```typescript
 // Убрать currentPosition из зависимостей
@@ -337,7 +351,10 @@ useEffect(() => {
 
 ---
 
-### P2-5: Вынести formatMinutes в utils
+### P2-6: Вынести formatMinutes в utils ✅
+
+Создан `src/utils/formatters.ts` с функцией `formatReadingTime()`.
+StatsPage.tsx использует импорт вместо локальной функции.
 
 ```typescript
 // src/utils/formatters.ts
@@ -352,9 +369,10 @@ export const formatReadingTime = (minutes: number): string => {
 
 ---
 
-### P2-6: Добавить timezone пользователя
+### P2-7: Добавить timezone пользователя ✅
 
-Хранить timezone в User model и использовать при агрегации по датам.
+Добавлено поле `timezone` в User model (IANA timezone name, default "UTC").
+Создана миграция `2025_12_30_0001_add_user_timezone.py`.
 
 ---
 

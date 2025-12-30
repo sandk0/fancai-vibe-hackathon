@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { booksAPI } from '@/api/books';
+import { formatReadingTime } from '@/utils/formatters';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import ErrorMessage from '@/components/UI/ErrorMessage';
 
@@ -67,18 +68,16 @@ const StatsPage: React.FC = () => {
     // Формула на бэкенде: total_minutes / days_with_reading_activity
     const avgMinutesPerDay = s.avg_minutes_per_day || 0;
 
-    // Calculate this month's stats (TODO: need separate fields from backend)
-    const hoursThisMonth = s.weekly_activity && s.weekly_activity.length > 0
-      ? Math.round(s.weekly_activity.reduce((sum, day) => sum + day.minutes, 0) / 60)
-      : 0;
+    // Monthly stats from backend API
+    const hoursThisMonth = Math.round((s.reading_time_this_month || 0) / 60);
 
     return {
       totalBooks: s.total_books || 0,
-      booksThisMonth: 0, // TODO: need backend field
+      booksThisMonth: s.books_this_month || 0,
       totalHours: Math.round((s.total_reading_time_minutes || 0) / 60),
       hoursThisMonth,
       totalPages: s.total_pages_read || (s.total_chapters_read * 20) || 0,
-      pagesThisMonth: 0, // TODO: need backend field
+      pagesThisMonth: s.pages_this_month || 0,
       currentStreak: s.reading_streak_days || 0,
       longestStreak: s.longest_streak_days || s.reading_streak_days || 0,
       averagePerDay: avgMinutesPerDay,
@@ -141,15 +140,6 @@ const StatsPage: React.FC = () => {
     ];
   }, [stats]);
 
-  // Helper function to format minutes
-  const formatMinutes = (minutes: number): string => {
-    if (minutes === 0) return '0 мин';
-    if (minutes < 60) return `${minutes} мин`;
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`;
-  };
-
   // Weekly activity from API
   const weeklyActivity = useMemo(() => {
     if (!detailedStats?.weekly_activity || detailedStats.weekly_activity.length === 0) {
@@ -170,7 +160,7 @@ const StatsPage: React.FC = () => {
     return detailedStats.weekly_activity.map(day => ({
       day: day.day,
       minutes: day.minutes,
-      label: formatMinutes(day.minutes),
+      label: formatReadingTime(day.minutes),
     }));
   }, [detailedStats]);
 
