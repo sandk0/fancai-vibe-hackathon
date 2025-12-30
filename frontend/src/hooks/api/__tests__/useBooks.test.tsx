@@ -425,8 +425,11 @@ describe('useBooks hooks', () => {
         total_chapters_read: 450,
         total_reading_time_minutes: 12000,
         average_reading_speed_wpm: 250,
-        favorite_genres: ['fiction', 'mystery'],
+        favorite_genres: [{ genre: 'fiction', count: 10 }, { genre: 'mystery', count: 5 }],
         reading_streak_days: 7,
+        weekly_activity: [],
+        total_pages_read: 3000,
+        avg_minutes_per_day: 60,
       };
 
       vi.mocked(booksAPI.getUserReadingStatistics).mockResolvedValue(mockStats);

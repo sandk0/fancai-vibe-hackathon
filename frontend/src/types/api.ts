@@ -339,11 +339,13 @@ export interface UserReadingStatistics {
   books_completed: number;
   total_reading_time_minutes: number;
   reading_streak_days: number;
+  longest_streak_days: number;
   average_reading_speed_wpm: number;
   favorite_genres: FavoriteGenre[];
   weekly_activity: WeeklyActivityDay[];
   total_pages_read: number;
   total_chapters_read: number;
+  avg_minutes_per_day: number;  // Унифицированная метрика: total_minutes / days_with_activity
 }
 
 // Reading Session Types

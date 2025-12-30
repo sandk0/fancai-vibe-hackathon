@@ -406,8 +406,11 @@ async def update_reading_session(
                 detail="Cannot update inactive session",
             )
 
-        # Обновляем позицию
+        # Обновляем позицию и рассчитываем текущую длительность
         session.end_position = request.current_position
+        session.duration_minutes = int(
+            (datetime.now(timezone.utc) - session.started_at).total_seconds() / 60
+        )
 
         await db.commit()
         await db.refresh(session)
@@ -820,13 +823,25 @@ async def batch_update_sessions(
 
         # Batch UPDATE используя CASE WHEN
         # Строим CASE выражение для каждой сессии
-        case_conditions = []
+        now = datetime.now(timezone.utc)
+
+        # Создаем словарь session_id -> started_at для расчета duration
+        session_started_at = {session.id: session.started_at for session in verified_sessions}
+
+        position_case_conditions = []
+        duration_case_conditions = []
         for session_id in verified_ids:
             new_position = update_map[session_id]
-            case_conditions.append((ReadingSession.id == session_id, new_position))
+            position_case_conditions.append((ReadingSession.id == session_id, new_position))
 
-        # SQL CASE WHEN statement
-        update_case = case(*case_conditions, else_=ReadingSession.end_position)
+            # Рассчитываем duration_minutes для каждой сессии
+            started_at = session_started_at[session_id]
+            duration_minutes = int((now - started_at).total_seconds() / 60)
+            duration_case_conditions.append((ReadingSession.id == session_id, duration_minutes))
+
+        # SQL CASE WHEN statements
+        position_update_case = case(*position_case_conditions, else_=ReadingSession.end_position)
+        duration_update_case = case(*duration_case_conditions, else_=ReadingSession.duration_minutes)
 
         # Выполняем batch UPDATE
         from sqlalchemy import update
@@ -834,7 +849,7 @@ async def batch_update_sessions(
         stmt = (
             update(ReadingSession)
             .where(ReadingSession.id.in_(verified_ids))
-            .values(end_position=update_case)
+            .values(end_position=position_update_case, duration_minutes=duration_update_case)
         )
 
         await db.execute(stmt)

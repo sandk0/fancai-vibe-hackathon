@@ -331,6 +331,59 @@ class ReadingSessionService:
         }
 
     @staticmethod
+    async def cleanup_orphan_active_sessions(
+        db: AsyncSession, hours_threshold: int = 24
+    ) -> int:
+        """
+        Завершает активные сессии старше N часов.
+
+        Это необходимо для случаев когда:
+        - Браузер был закрыт без корректного завершения
+        - Потеряно соединение
+        - Краш приложения
+
+        Args:
+            db: AsyncSession для БД
+            hours_threshold: Порог в часах (default: 24)
+
+        Returns:
+            Количество завершённых сессий
+        """
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours_threshold)
+
+        query = select(ReadingSession).where(
+            ReadingSession.is_active == True,  # noqa: E712
+            ReadingSession.started_at < cutoff,
+        )
+
+        result = await db.execute(query)
+        orphan_sessions = result.scalars().all()
+
+        count = 0
+        for session in orphan_sessions:
+            # Завершаем сессию с последними известными данными
+            session.is_active = False
+            # Используем started_at как fallback, так как updated_at отсутствует в модели
+            session.ended_at = datetime.now(timezone.utc)
+
+            # Рассчитываем duration на основе started_at и ended_at
+            if session.started_at:
+                session.duration_minutes = int(
+                    (session.ended_at - session.started_at).total_seconds() / 60
+                )
+
+            count += 1
+
+        if count > 0:
+            await db.commit()
+            logger.info(
+                f"Cleaned up {count} orphan active sessions "
+                f"(older than {hours_threshold} hours)"
+            )
+
+        return count
+
+    @staticmethod
     async def cleanup_old_inactive_sessions(
         db: AsyncSession, days_threshold: int = 90
     ) -> int:
@@ -338,6 +391,7 @@ class ReadingSessionService:
         Очищает старые неактивные сессии (архивирование или удаление).
 
         Используется в Celery scheduled task для maintenance.
+        Автоматически завершает осиротевшие активные сессии перед удалением.
 
         Args:
             db: AsyncSession для БД
@@ -346,6 +400,11 @@ class ReadingSessionService:
         Returns:
             Количество удаленных сессий
         """
+        # Сначала завершаем осиротевшие активные сессии
+        orphan_count = await ReadingSessionService.cleanup_orphan_active_sessions(db)
+        if orphan_count > 0:
+            logger.info(f"Pre-cleanup: closed {orphan_count} orphan active sessions")
+
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_threshold)
 
         # Используется idx_reading_sessions_cleanup index
@@ -363,7 +422,8 @@ class ReadingSessionService:
         for session in old_sessions:
             await db.delete(session)
 
-        await db.commit()
+        if count > 0:
+            await db.commit()
 
         logger.info(
             f"Cleaned up {count} old inactive sessions (older than {days_threshold} days)"

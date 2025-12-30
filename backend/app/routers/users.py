@@ -438,8 +438,12 @@ async def get_reading_statistics(
         db, current_user.id
     )
 
-    # Reading streak (дни подряд чтения)
-    reading_streak = await UserStatisticsService.get_reading_streak(db, current_user.id)
+    # Reading streak (дни подряд чтения) - текущий и лучший
+    streak_data = await UserStatisticsService.get_reading_streak_with_longest(
+        db, current_user.id
+    )
+    current_streak = streak_data["current"]
+    longest_streak = streak_data["longest"]
 
     # Средняя скорость чтения (WPM)
     avg_reading_speed = await UserStatisticsService.get_average_reading_speed(
@@ -462,17 +466,24 @@ async def get_reading_statistics(
         db, current_user.id
     )
 
+    # Среднее время чтения в день (унифицированная формула)
+    avg_minutes_per_day = await UserStatisticsService.get_average_reading_time_per_day(
+        db, current_user.id
+    )
+
     return ReadingStatisticsResponse(
         statistics={
             "total_books": books_stats["total"],
             "books_in_progress": books_stats["in_progress"],
             "books_completed": books_stats["completed"],
             "total_reading_time_minutes": total_reading_time,
-            "reading_streak_days": reading_streak,
+            "reading_streak_days": current_streak,
+            "longest_streak_days": longest_streak,
             "average_reading_speed_wpm": avg_reading_speed,
             "favorite_genres": favorite_genres,
             "weekly_activity": weekly_activity,
             "total_pages_read": total_pages,
             "total_chapters_read": total_chapters,
+            "avg_minutes_per_day": avg_minutes_per_day,
         }
     )

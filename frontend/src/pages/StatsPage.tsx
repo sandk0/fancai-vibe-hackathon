@@ -63,10 +63,9 @@ const StatsPage: React.FC = () => {
 
     const s = detailedStats;
 
-    // Calculate average minutes per day from weekly activity
-    const avgMinutesPerDay = s.weekly_activity && s.weekly_activity.length > 0
-      ? Math.round(s.weekly_activity.reduce((sum, day) => sum + day.minutes, 0) / 7)
-      : 0;
+    // Используем унифицированную метрику из API
+    // Формула на бэкенде: total_minutes / days_with_reading_activity
+    const avgMinutesPerDay = s.avg_minutes_per_day || 0;
 
     // Calculate this month's stats (TODO: need separate fields from backend)
     const hoursThisMonth = s.weekly_activity && s.weekly_activity.length > 0
@@ -81,7 +80,7 @@ const StatsPage: React.FC = () => {
       totalPages: s.total_pages_read || (s.total_chapters_read * 20) || 0,
       pagesThisMonth: 0, // TODO: need backend field
       currentStreak: s.reading_streak_days || 0,
-      longestStreak: s.reading_streak_days || 0, // TODO: track separately in backend
+      longestStreak: s.longest_streak_days || s.reading_streak_days || 0,
       averagePerDay: avgMinutesPerDay,
     };
   }, [detailedStats]);

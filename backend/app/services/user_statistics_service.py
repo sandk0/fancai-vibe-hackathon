@@ -358,8 +358,13 @@ class UserStatisticsService:
         """
         Возвращает общее количество прочитанных страниц.
 
-        Расчет: Сумма (total_pages * progress_percent / 100) для всех книг
-        с reading_progress.
+        Использует CFI-aware метод Book.get_reading_progress_percent()
+        для корректного расчёта прогресса как для EPUB (CFI),
+        так и для legacy форматов.
+
+        ИСПРАВЛЕНО: Старая формула `total_pages * current_position / 100`
+        некорректна для legacy записей, где current_position - это
+        процент в ГЛАВЕ, а не общий прогресс по книге.
 
         Args:
             db: Асинхронная сессия БД
@@ -368,29 +373,41 @@ class UserStatisticsService:
         Returns:
             Общее количество прочитанных страниц
         """
-        from ..models.book import Book, ReadingProgress
+        from sqlalchemy.orm import selectinload
 
-        # JOIN книг с прогрессом и суммируем прочитанные страницы
-        query = (
-            select(
-                func.sum(Book.total_pages * ReadingProgress.current_position / 100.0)
-            )
-            .select_from(ReadingProgress)
-            .join(Book, ReadingProgress.book_id == Book.id)
-            .where(ReadingProgress.user_id == user_id)
+        # Загружаем книги с прогрессом и главами для корректного расчёта
+        books_query = (
+            select(Book)
+            .options(selectinload(Book.reading_progress))
+            .options(selectinload(Book.chapters))
+            .where(Book.user_id == user_id)
         )
+        result = await db.execute(books_query)
+        books = result.scalars().all()
 
-        result = await db.execute(query)
-        total_pages = result.scalar()
+        total_pages = 0
+        for book in books:
+            if not book.total_pages or book.total_pages == 0:
+                continue
 
-        return int(total_pages or 0)
+            # Используем CFI-aware метод для получения реального прогресса
+            progress_percent = await book.get_reading_progress_percent(db, user_id)
+            pages_read = int(book.total_pages * progress_percent / 100)
+            total_pages += pages_read
+
+        return total_pages
 
     @staticmethod
     async def get_total_chapters_read(db: AsyncSession, user_id: UUID) -> int:
         """
-        Возвращает общее количество прочитанных глав.
+        Возвращает общее количество ПРОЧИТАННЫХ глав.
 
-        Расчет: Сумма current_chapter для всех книг с reading_progress.
+        current_chapter - это глава, которую ЧИТАЕТ пользователь (1-indexed).
+        Прочитанные главы = current_chapter - 1.
+
+        Пример:
+        - Пользователь на главе 5 -> прочитано 4 главы
+        - Пользователь на главе 1 -> прочитано 0 глав
 
         Args:
             db: Асинхронная сессия БД
@@ -399,11 +416,85 @@ class UserStatisticsService:
         Returns:
             Общее количество прочитанных глав
         """
-        query = select(func.sum(ReadingProgress.current_chapter)).where(
-            ReadingProgress.user_id == user_id
-        )
+        # Используем GREATEST для защиты от отрицательных значений
+        query = select(
+            func.sum(
+                func.greatest(ReadingProgress.current_chapter - 1, 0)
+            )
+        ).where(ReadingProgress.user_id == user_id)
 
         result = await db.execute(query)
         total_chapters = result.scalar()
 
         return int(total_chapters or 0)
+
+    @staticmethod
+    async def get_average_reading_time_per_day(db: AsyncSession, user_id: UUID) -> int:
+        """
+        Возвращает среднее время чтения в минутах за день.
+
+        Формула: total_minutes / days_with_reading_activity
+
+        Это более точная метрика, чем деление на streak или на 7 дней,
+        так как учитывает только дни с реальной активностью.
+
+        Args:
+            db: Асинхронная сессия БД
+            user_id: UUID пользователя
+
+        Returns:
+            Среднее время в минутах (округлённое до целого)
+        """
+        # Получаем количество уникальных дней с активностью
+        days_query = (
+            select(func.count(func.distinct(cast(ReadingSession.started_at, Date))))
+            .where(ReadingSession.user_id == user_id)
+            .where(ReadingSession.is_active == False)  # noqa: E712
+            .where(ReadingSession.duration_minutes >= 1)
+        )
+        days_result = await db.execute(days_query)
+        days_count = days_result.scalar() or 0
+
+        if days_count == 0:
+            return 0
+
+        # Общее время чтения
+        total_minutes = await UserStatisticsService.get_total_reading_time(db, user_id)
+
+        return total_minutes // days_count
+
+    @staticmethod
+    async def get_reading_streak_with_longest(
+        db: AsyncSession, user_id: UUID
+    ) -> Dict[str, int]:
+        """
+        Возвращает текущий и лучший streak.
+
+        Автоматически обновляет longest_streak_days в User если
+        текущий streak превышает сохраненный рекорд.
+
+        Args:
+            db: Асинхронная сессия БД
+            user_id: UUID пользователя
+
+        Returns:
+            Dict с ключами "current" и "longest"
+        """
+        from ..models.user import User
+
+        current_streak = await UserStatisticsService.get_reading_streak(db, user_id)
+
+        # Получаем пользователя для чтения/обновления longest_streak
+        user = await db.get(User, user_id)
+        if not user:
+            return {"current": current_streak, "longest": current_streak}
+
+        longest_streak = user.longest_streak_days or 0
+
+        # Обновляем longest если текущий больше
+        if current_streak > longest_streak:
+            user.longest_streak_days = current_streak
+            await db.commit()
+            longest_streak = current_streak
+
+        return {"current": current_streak, "longest": longest_streak}

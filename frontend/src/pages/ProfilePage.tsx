@@ -105,7 +105,9 @@ const ProfilePage: React.FC = () => {
 
     const s = statsData.statistics;
     const booksInProgress = s.books_in_progress || 0;
-    const avgMinutesPerDay = Math.round((s.total_reading_time_minutes || 0) / Math.max(1, s.reading_streak_days || 1));
+    // Используем унифицированную метрику из API
+    // Формула на бэкенде: total_minutes / days_with_reading_activity
+    const avgMinutesPerDay = s.avg_minutes_per_day || 0;
 
     return [
       { label: 'Цель на месяц', current: booksInProgress, target: 5, unit: 'книг' },

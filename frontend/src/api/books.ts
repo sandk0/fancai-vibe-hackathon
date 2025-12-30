@@ -195,6 +195,7 @@ export const booksAPI = {
       average_reading_speed_wpm: number;
       favorite_genres: string[];
       reading_streak_days: number;
+      avg_minutes_per_day: number;  // Унифицированная метрика: total_minutes / days_with_activity
     };
   }> {
     return apiClient.get('/users/reading-statistics');

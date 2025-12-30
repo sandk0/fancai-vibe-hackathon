@@ -82,6 +82,9 @@ class User(Base):
     )
     last_login = Column(DateTime(timezone=True), nullable=True)
 
+    # Статистика
+    longest_streak_days = Column(Integer, default=0, nullable=False)
+
     # Отношения
     # lazy="raise" предотвращает случайные N+1 queries - требует явного eager loading
     books = relationship("Book", back_populates="user", cascade="all, delete-orphan", lazy="raise")
