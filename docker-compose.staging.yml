@@ -1,15 +1,18 @@
-# Staging Docker Compose for BookReader AI
+# Staging Docker Compose for BookReader AI - LangExtract Architecture
 # Optimized for 4GB RAM / 2 CPU cores server
 # Target memory budget: ~3.5GB (leaving 500MB system overhead)
 #
-# Memory allocation:
-# - PostgreSQL: 512MB-1GB
-# - Redis: 256MB-512MB
-# - Backend: 1-1.5GB (NLP models)
-# - Celery: 512MB-1GB
+# Memory allocation (LangExtract - no NLP models):
+# - PostgreSQL: 512MB-768MB
+# - Redis: 256MB-384MB
+# - Backend: 768MB-1GB (no NLP models)
+# - Celery: 384MB-512MB
 # - Frontend nginx: 128MB-256MB
 # - Nginx reverse proxy: 128MB
 # Total: ~3.5GB
+#
+# Uses LangExtract (Google Gemini API) for description extraction
+# Requires: LANGEXTRACT_API_KEY in .env file
 
 services:
   # Nginx Reverse Proxy - MINIMAL RESOURCES
@@ -78,12 +81,12 @@ services:
       retries: 3
       start_period: 30s
 
-  # Backend API - OPTIMIZED FOR LOW MEMORY
+  # Backend API - LangExtract Optimized (No NLP models)
   backend:
-    image: bookreader-backend:latest
+    image: bookreader-backend:lite
     build:
       context: ./backend
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile.lite.prod
     container_name: bookreader_backend_staging
     environment:
       # Database
@@ -109,6 +112,15 @@ services:
       - CORS_ORIGINS=${DOMAIN_URL:-http://localhost}
       - ALLOWED_HOSTS=${DOMAIN_NAME:-localhost},localhost,127.0.0.1
 
+      # LangExtract (PRIMARY PARSER)
+      - USE_LANGEXTRACT_PRIMARY=true
+      - LANGEXTRACT_API_KEY=${LANGEXTRACT_API_KEY:?LANGEXTRACT_API_KEY is required}
+      - LANGEXTRACT_MODEL=${LANGEXTRACT_MODEL:-gemini-2.0-flash}
+
+      # Disable NLP processors
+      - USE_ADVANCED_PARSER=false
+      - USE_NLP_PROCESSORS=false
+
       # AI Services
       - POLLINATIONS_ENABLED=${POLLINATIONS_ENABLED:-true}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
@@ -117,16 +129,9 @@ services:
       - WORKERS_COUNT=${WORKERS_COUNT:-2}  # Reduced from 4
       - MAX_FILE_SIZE=${MAX_FILE_SIZE:-52428800}
 
-      # NLP model directories
-      - NLTK_DATA=/root/nltk_data
-      - STANZA_RESOURCES_DIR=/root/stanza_resources
-
     volumes:
       - ./backend/storage:/app/storage
       - /dev/shm:/dev/shm  # Shared memory for Gunicorn
-      # NLP models persistence
-      - nlp_nltk_data:/root/nltk_data
-      - nlp_stanza_models:/root/stanza_resources
     depends_on:
       postgres:
         condition: service_healthy
@@ -145,23 +150,23 @@ services:
       resources:
         limits:
           cpus: '1.0'
-          memory: 1.5G  # NLP models need memory
+          memory: 1G  # Reduced from 1.5G (no NLP models needed)
         reservations:
-          memory: 768M
+          memory: 512M
 
-  # Celery Worker - SINGLE CONCURRENCY
+  # Celery Worker - SINGLE CONCURRENCY, LangExtract Optimized
   celery-worker:
-    image: bookreader-backend:latest
+    image: bookreader-backend:lite
     build:
       context: ./backend
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile.lite.prod
     container_name: bookreader_celery_staging
     command: >
       celery -A app.core.celery_app worker
       --loglevel=${LOG_LEVEL:-warning}
       --concurrency=1
       --max-tasks-per-child=50
-      --max-memory-per-child=800000
+      --max-memory-per-child=300000
       --prefetch-multiplier=1
     environment:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
@@ -170,16 +175,18 @@ services:
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/2
       - SECRET_KEY=${SECRET_KEY}
       - ENVIRONMENT=staging
+      - LOG_LEVEL=${LOG_LEVEL:-WARNING}
+      # LangExtract
+      - USE_LANGEXTRACT_PRIMARY=true
+      - LANGEXTRACT_API_KEY=${LANGEXTRACT_API_KEY}
+      - LANGEXTRACT_MODEL=${LANGEXTRACT_MODEL:-gemini-2.0-flash}
+      - USE_ADVANCED_PARSER=false
+      - USE_NLP_PROCESSORS=false
+      # Image generation
       - POLLINATIONS_ENABLED=${POLLINATIONS_ENABLED:-true}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - LOG_LEVEL=${LOG_LEVEL:-WARNING}
-      # NLP model directories
-      - NLTK_DATA=/root/nltk_data
-      - STANZA_RESOURCES_DIR=/root/stanza_resources
     volumes:
       - ./backend/storage:/app/storage
-      - nlp_nltk_data:/root/nltk_data
-      - nlp_stanza_models:/root/stanza_resources
     depends_on:
       backend:
         condition: service_healthy
@@ -194,16 +201,16 @@ services:
       resources:
         limits:
           cpus: '0.8'
-          memory: 1G  # Reduced from 2G
+          memory: 512M  # Reduced from 1G (no NLP models needed)
         reservations:
-          memory: 512M
+          memory: 256M
 
   # Celery Beat Scheduler - MINIMAL
   celery-beat:
-    image: bookreader-backend:latest
+    image: bookreader-backend:lite
     build:
       context: ./backend
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile.lite.prod
     container_name: bookreader_beat_staging
     command: >
       celery -A app.core.celery_app beat
@@ -339,11 +346,6 @@ volumes:
   redis_data:
     driver: local
   beat_schedule:
-    driver: local
-  # NLP models persistence
-  nlp_nltk_data:
-    driver: local
-  nlp_stanza_models:
     driver: local
 
 networks:

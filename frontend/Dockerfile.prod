@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install ALL dependencies (dev and prod) for build
-RUN npm ci --silent
+RUN npm ci --legacy-peer-deps --silent
 
 # Copy source code
 COPY . .
@@ -30,8 +30,8 @@ ENV NODE_ENV=production
 # Security: Disable source maps in production
 ENV GENERATE_SOURCEMAP=false
 
-# Build the application (skip TypeScript checking for production)
-RUN npm run build:unsafe
+# Build the application with TypeScript checking
+RUN npm run build
 
 # Production stage
 FROM nginx:1.25-alpine AS production

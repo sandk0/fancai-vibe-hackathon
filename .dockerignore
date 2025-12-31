@@ -2,6 +2,12 @@
 .git
 .gitignore
 
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
 # Documentation
 README.md
 *.md
@@ -23,6 +29,15 @@ __pycache__/
 .venv/
 venv/
 env/
+
+# Pre-commit
+.husky/
+.pre-commit-config.yaml
+
+# Linter caches
+.mypy_cache/
+.ruff_cache/
+.eslintcache
 
 # IDE files
 .vscode/
