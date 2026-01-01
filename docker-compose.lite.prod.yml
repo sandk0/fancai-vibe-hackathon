@@ -9,13 +9,15 @@
 # - SSL certificates in ./nginx/ssl/
 # - Server in supported region (US, EU, etc.)
 #
-# Memory requirements (total ~3GB for production):
-# - Nginx: 128MB
-# - PostgreSQL: 768MB
-# - Redis: 384MB
-# - Backend: 768MB
-# - Celery: 384MB
-# - Frontend (nginx): 128MB
+# Memory requirements (optimized for 8GB server, 4 cores):
+# - PostgreSQL: 2GB (with shared_buffers=512MB)
+# - Redis: 768MB (maxmemory=640mb)
+# - Backend: 2GB
+# - Celery Worker: 1.5GB
+# - Celery Beat: 256MB
+# - Nginx: 256MB
+# - Frontend: 256MB
+# Total: ~7GB (leaving 1GB for OS)
 #
 # Usage:
 #   docker-compose -f docker-compose.lite.prod.yml up -d
@@ -49,10 +51,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.3'
-          memory: 128M
+          cpus: '0.5'
+          memory: 256M
         reservations:
-          memory: 64M
+          cpus: '0.1'
+          memory: 128M
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
@@ -78,10 +81,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.2'
-          memory: 128M
+          cpus: '0.3'
+          memory: 256M
         reservations:
-          memory: 64M
+          cpus: '0.1'
+          memory: 128M
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80/"]
       interval: 30s
@@ -147,10 +151,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 1G  # Increased for LangExtract API buffering
+          cpus: '2.0'
+          memory: 2G
         reservations:
-          memory: 512M
+          cpus: '0.5'
+          memory: 768M
 
   # Celery Worker (Lite)
   celery-worker:
@@ -199,10 +204,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 384M
+          cpus: '1.5'
+          memory: 1536M
         reservations:
-          memory: 192M
+          cpus: '0.3'
+          memory: 512M
 
   # Celery Beat Scheduler
   celery-beat:
@@ -235,12 +241,13 @@ services:
     deploy:
       resources:
         limits:
+          cpus: '0.3'
+          memory: 256M
+        reservations:
           cpus: '0.1'
           memory: 128M
-        reservations:
-          memory: 64M
 
-  # PostgreSQL Database
+  # PostgreSQL Database (optimized for 8GB server)
   postgres:
     image: postgres:15-alpine
     container_name: bookreader_postgres
@@ -252,10 +259,10 @@ services:
       - PGDATA=/var/lib/postgresql/data/pgdata
     command: >
       postgres
-      -c shared_buffers=256MB
-      -c effective_cache_size=512MB
-      -c work_mem=4MB
-      -c maintenance_work_mem=64MB
+      -c shared_buffers=512MB
+      -c effective_cache_size=1GB
+      -c work_mem=16MB
+      -c maintenance_work_mem=128MB
       -c max_connections=100
       -c random_page_cost=1.1
       -c log_min_duration_statement=1000
@@ -275,12 +282,13 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 768M
+          cpus: '1.5'
+          memory: 2G
         reservations:
-          memory: 384M
+          cpus: '0.5'
+          memory: 1G
 
-  # Redis
+  # Redis Cache & Queue (optimized for 8GB server)
   redis:
     image: redis:7-alpine
     container_name: bookreader_redis
@@ -288,7 +296,7 @@ services:
       redis-server
       --requirepass ${REDIS_PASSWORD}
       --appendonly yes
-      --maxmemory 384mb
+      --maxmemory 640mb
       --maxmemory-policy allkeys-lru
       --save 900 1 300 10 60 10000
     volumes:
@@ -304,10 +312,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.3'
-          memory: 384M
+          cpus: '0.5'
+          memory: 768M
         reservations:
-          memory: 192M
+          cpus: '0.2'
+          memory: 384M
 
 volumes:
   postgres_data:

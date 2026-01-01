@@ -8,13 +8,14 @@
 # - LANGEXTRACT_API_KEY in .env file
 # - Server in supported region (US, EU, etc.) - no proxy needed
 #
-# Memory requirements (total ~5.5GB for 8GB server):
-# - PostgreSQL: 1GB
-# - Redis: 512MB
-# - Backend: 1.5GB
-# - Celery Worker: 1GB
+# Memory requirements (optimized for 8GB server, 4 cores):
+# - PostgreSQL: 2GB (with shared_buffers=512MB)
+# - Redis: 768MB (maxmemory=640mb)
+# - Backend: 2GB
+# - Celery Worker: 1.5GB
 # - Celery Beat: 256MB
-# - Frontend: 1GB
+# - Frontend: 512MB
+# Total: ~7GB (leaving 1GB for OS)
 #
 # Usage:
 #   docker-compose -f docker-compose.lite.yml up -d
@@ -22,7 +23,7 @@
 # =============================================================================
 
 services:
-  # PostgreSQL Database
+  # PostgreSQL Database (optimized for 8GB server)
   postgres:
     image: postgres:15.7-alpine
     container_name: bookreader_postgres_lite
@@ -31,6 +32,14 @@ services:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C
+    command: >
+      postgres
+      -c shared_buffers=512MB
+      -c effective_cache_size=1GB
+      -c work_mem=16MB
+      -c maintenance_work_mem=128MB
+      -c max_connections=100
+      -c random_page_cost=1.1
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -45,13 +54,14 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 1G
+          cpus: '1.5'
+          memory: 2G
         reservations:
-          memory: 512M
+          cpus: '0.5'
+          memory: 1G
     restart: unless-stopped
 
-  # Redis Cache & Queue
+  # Redis Cache & Queue (optimized for 8GB server)
   redis:
     image: redis:7.4-alpine
     container_name: bookreader_redis_lite
@@ -59,8 +69,9 @@ services:
       redis-server
       --appendonly yes
       --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
-      --maxmemory 384mb
+      --maxmemory 640mb
       --maxmemory-policy allkeys-lru
+      --save 900 1 300 10 60 10000
     volumes:
       - redis_data:/data
     networks:
@@ -74,9 +85,10 @@ services:
       resources:
         limits:
           cpus: '0.5'
-          memory: 512M
+          memory: 768M
         reservations:
-          memory: 256M
+          cpus: '0.2'
+          memory: 384M
     restart: unless-stopped
 
   # FastAPI Backend (Lite - LangExtract only)
@@ -132,13 +144,14 @@ services:
       resources:
         limits:
           cpus: '2.0'
-          memory: 1536M
+          memory: 2G
         reservations:
-          memory: 512M
+          cpus: '0.5'
+          memory: 768M
     restart: unless-stopped
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-  # Celery Worker (Lite)
+  # Celery Worker (Lite - optimized for 8GB server)
   celery-worker:
     build:
       context: ./backend
@@ -181,10 +194,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 1G
+          cpus: '1.5'
+          memory: 1536M
         reservations:
-          memory: 384M
+          cpus: '0.3'
+          memory: 512M
     restart: unless-stopped
     command: celery -A app.core.celery_app worker --loglevel=info --concurrency=4
 
@@ -220,11 +234,12 @@ services:
           cpus: '0.3'
           memory: 256M
         reservations:
+          cpus: '0.1'
           memory: 128M
     restart: unless-stopped
     command: celery -A app.core.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
 
-  # React + Vite Frontend
+  # React + Vite Frontend (dev server - light resources)
   frontend:
     build:
       context: ./frontend
@@ -256,10 +271,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
+          cpus: '0.5'
           memory: 512M
+        reservations:
+          cpus: '0.2'
+          memory: 256M
     restart: unless-stopped
     command: npm run dev -- --host 0.0.0.0
 
