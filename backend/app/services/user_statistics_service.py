@@ -27,6 +27,10 @@ from ..core.cache import cache_manager
 USER_STATS_CACHE_TTL = 300  # 5 minutes
 USER_STATS_CACHE_KEY_PREFIX = "user_stats"
 
+# Maximum valid session duration for statistics (in minutes)
+# Sessions longer than this are considered invalid/orphaned
+MAX_VALID_SESSION_DURATION = 480  # 8 hours
+
 
 class UserStatisticsService:
     """Сервис для подсчета детальной статистики чтения пользователей."""
@@ -90,6 +94,7 @@ class UserStatisticsService:
         )
 
         # SQL запрос для агрегации сессий по дням
+        # Фильтруем аномальные сессии (> MAX_VALID_SESSION_DURATION)
         query = (
             select(
                 cast(ReadingSession.started_at, Date).label("reading_date"),
@@ -102,6 +107,7 @@ class UserStatisticsService:
             .where(ReadingSession.user_id == user_id)
             .where(ReadingSession.started_at >= start_date)
             .where(ReadingSession.is_active == False)  # noqa: E712
+            .where(ReadingSession.duration_minutes <= MAX_VALID_SESSION_DURATION)
             .group_by(cast(ReadingSession.started_at, Date))
             .order_by(cast(ReadingSession.started_at, Date).desc())
         )
@@ -222,6 +228,8 @@ class UserStatisticsService:
         """
         Возвращает общее время чтения в минутах.
 
+        Фильтрует сессии с аномальной длительностью (> MAX_VALID_SESSION_DURATION).
+
         Args:
             db: Асинхронная сессия БД
             user_id: UUID пользователя
@@ -232,6 +240,8 @@ class UserStatisticsService:
         query = select(func.sum(ReadingSession.duration_minutes)).where(
             ReadingSession.user_id == user_id,
             ReadingSession.is_active == False,  # noqa: E712
+            # Filter out orphaned/invalid sessions with unreasonable duration
+            ReadingSession.duration_minutes <= MAX_VALID_SESSION_DURATION,
         )
 
         result = await db.execute(query)
@@ -530,11 +540,13 @@ class UserStatisticsService:
             Среднее время в минутах (округлённое до целого)
         """
         # Получаем количество уникальных дней с активностью
+        # Фильтруем аномальные сессии (> MAX_VALID_SESSION_DURATION)
         days_query = (
             select(func.count(func.distinct(cast(ReadingSession.started_at, Date))))
             .where(ReadingSession.user_id == user_id)
             .where(ReadingSession.is_active == False)  # noqa: E712
             .where(ReadingSession.duration_minutes >= 1)
+            .where(ReadingSession.duration_minutes <= MAX_VALID_SESSION_DURATION)
         )
         days_result = await db.execute(days_query)
         days_count = days_result.scalar() or 0
@@ -610,12 +622,14 @@ class UserStatisticsService:
         start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
         # 1. Время чтения за этот месяц (из reading_sessions)
+        # Фильтруем аномальные сессии (> MAX_VALID_SESSION_DURATION)
         reading_time_query = select(
             func.sum(ReadingSession.duration_minutes)
         ).where(
             ReadingSession.user_id == user_id,
             ReadingSession.started_at >= start_of_month,
             ReadingSession.is_active == False,  # noqa: E712
+            ReadingSession.duration_minutes <= MAX_VALID_SESSION_DURATION,
         )
         reading_time_result = await db.execute(reading_time_query)
         reading_time_this_month = int(reading_time_result.scalar() or 0)
@@ -632,12 +646,14 @@ class UserStatisticsService:
 
         # 3. Страницы за этот месяц
         # Считаем прогресс на основе позиций в сессиях
+        # Фильтруем аномальные сессии
         pages_query = select(
             func.sum(ReadingSession.end_position - ReadingSession.start_position)
         ).where(
             ReadingSession.user_id == user_id,
             ReadingSession.started_at >= start_of_month,
             ReadingSession.is_active == False,  # noqa: E712
+            ReadingSession.duration_minutes <= MAX_VALID_SESSION_DURATION,
         )
         pages_result = await db.execute(pages_query)
         progress_this_month = int(pages_result.scalar() or 0)

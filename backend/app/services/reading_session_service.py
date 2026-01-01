@@ -21,6 +21,14 @@ from ..core.exceptions import ReadingSessionNotFoundException
 
 logger = logging.getLogger(__name__)
 
+# ============================================================================
+# Constants
+# ============================================================================
+
+# Maximum duration for a single reading session (in minutes)
+# Sessions longer than this are considered orphaned/invalid
+MAX_SESSION_DURATION_MINUTES = 240  # 4 hours
+
 
 # ============================================================================
 # Cursor Encoding/Decoding для pagination
@@ -367,10 +375,12 @@ class ReadingSessionService:
             session.ended_at = datetime.now(timezone.utc)
 
             # Рассчитываем duration на основе started_at и ended_at
+            # Cap to MAX_SESSION_DURATION_MINUTES to avoid stats pollution
             if session.started_at:
-                session.duration_minutes = int(
+                raw_duration = int(
                     (session.ended_at - session.started_at).total_seconds() / 60
                 )
+                session.duration_minutes = min(raw_duration, MAX_SESSION_DURATION_MINUTES)
 
             count += 1
 
