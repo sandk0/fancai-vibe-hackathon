@@ -32,10 +32,10 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ checked, onChange, label, d
   return (
     <div className="flex items-center justify-between py-4">
       <div className="flex-1">
-        <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
+        <p className="font-medium text-foreground">
           {label}
         </p>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-sm mt-1 text-muted-foreground">
           {description}
         </p>
       </div>
@@ -43,7 +43,7 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ checked, onChange, label, d
         onClick={() => onChange(!checked)}
         className={cn(
           'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-          checked ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+          checked ? 'bg-green-500' : 'bg-muted'
         )}
       >
         <span
@@ -109,52 +109,36 @@ const SettingsPage: React.FC = () => {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
+              <h3 className="text-xl font-bold mb-6 text-foreground">
                 {t('profile.personalInfo')}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  <label className="block text-sm font-medium mb-2 text-muted-foreground">
                     {t('profile.fullName')}
                   </label>
                   <input
                     type="text"
                     value={user?.full_name || ''}
-                    className="w-full px-4 py-3 rounded-xl border-2"
-                    style={{
-                      backgroundColor: 'var(--bg-secondary)',
-                      borderColor: 'var(--border-color)',
-                      color: 'var(--text-primary)',
-                    }}
+                    className="w-full px-4 py-3 rounded-xl border-2 bg-muted border-border text-foreground"
                     readOnly
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  <label className="block text-sm font-medium mb-2 text-muted-foreground">
                     {t('profile.email')}
                   </label>
                   <input
                     type="email"
                     value={user?.email || ''}
-                    className="w-full px-4 py-3 rounded-xl border-2"
-                    style={{
-                      backgroundColor: 'var(--bg-secondary)',
-                      borderColor: 'var(--border-color)',
-                      color: 'var(--text-primary)',
-                    }}
+                    className="w-full px-4 py-3 rounded-xl border-2 bg-muted border-border text-foreground"
                     readOnly
                   />
                 </div>
               </div>
-              <div
-                className="mt-6 p-4 rounded-xl border-2"
-                style={{
-                  backgroundColor: 'var(--bg-secondary)',
-                  borderColor: 'var(--border-color)',
-                }}
-              >
-                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  ℹ️ Настройки аккаунта доступны только для чтения. Свяжитесь с поддержкой для изменений.
+              <div className="mt-6 p-4 rounded-xl border-2 bg-muted border-border">
+                <p className="text-sm text-muted-foreground">
+                  Настройки аккаунта доступны только для чтения. Свяжитесь с поддержкой для изменений.
                 </p>
               </div>
             </div>
@@ -165,7 +149,7 @@ const SettingsPage: React.FC = () => {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
+              <h3 className="text-xl font-bold mb-6 text-foreground">
                 Настройки уведомлений
               </h3>
               <div className="space-y-2">
@@ -175,7 +159,7 @@ const SettingsPage: React.FC = () => {
                   label="Обработка книги"
                   description="Получать уведомление когда обработка книги завершена"
                 />
-                <div className="h-px" style={{ backgroundColor: 'var(--border-color)' }} />
+                <div className="h-px bg-border" />
 
                 <ToggleSwitch
                   checked={imageGeneration}
@@ -183,7 +167,7 @@ const SettingsPage: React.FC = () => {
                   label="Генерация изображений"
                   description="Получать уведомление когда создаются новые изображения"
                 />
-                <div className="h-px" style={{ backgroundColor: 'var(--border-color)' }} />
+                <div className="h-px bg-border" />
 
                 <ToggleSwitch
                   checked={readingReminders}
@@ -200,21 +184,15 @@ const SettingsPage: React.FC = () => {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
+              <h3 className="text-xl font-bold mb-6 text-foreground">
                 Конфиденциальность и безопасность
               </h3>
               <div className="space-y-6">
                 {/* Info Box */}
-                <div
-                  className="p-6 rounded-2xl border-2"
-                  style={{
-                    backgroundColor: 'var(--bg-secondary)',
-                    borderColor: 'var(--accent-color)',
-                  }}
-                >
+                <div className="p-6 rounded-2xl border-2 bg-muted border-primary">
                   <div className="flex items-start gap-3">
-                    <Shield className="w-6 h-6 flex-shrink-0 mt-0.5" style={{ color: 'var(--accent-color)' }} />
-                    <p style={{ color: 'var(--text-primary)' }}>
+                    <Shield className="w-6 h-6 flex-shrink-0 mt-0.5 text-primary" />
+                    <p className="text-foreground">
                       Ваши книги и данные чтения хранятся безопасно и не передаются третьим лицам.
                     </p>
                   </div>
@@ -222,7 +200,7 @@ const SettingsPage: React.FC = () => {
 
                 {/* Data Collection */}
                 <div>
-                  <h4 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+                  <h4 className="font-semibold mb-3 text-foreground">
                     Сбор данных
                   </h4>
                   <div className="space-y-2">
@@ -232,8 +210,8 @@ const SettingsPage: React.FC = () => {
                       'Статистика использования приложения (анонимизированная)',
                     ].map((item, index) => (
                       <div key={index} className="flex items-start gap-2">
-                        <Check className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--accent-color)' }} />
-                        <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                        <Check className="w-5 h-5 flex-shrink-0 mt-0.5 text-primary" />
+                        <span className="text-sm text-muted-foreground">
                           {item}
                         </span>
                       </div>
@@ -249,26 +227,26 @@ const SettingsPage: React.FC = () => {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
+              <h3 className="text-xl font-bold mb-6 text-foreground">
                 О fancai
               </h3>
               <div className="space-y-6">
                 {/* Version */}
                 <div>
-                  <p className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+                  <p className="font-semibold mb-2 text-foreground">
                     Версия
                   </p>
-                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <p className="text-sm text-muted-foreground">
                     1.0.0 (Бета)
                   </p>
                 </div>
 
                 {/* Description */}
                 <div>
-                  <p className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+                  <p className="font-semibold mb-2 text-foreground">
                     Описание
                   </p>
-                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <p className="text-sm text-muted-foreground">
                     Преобразите ваше чтение с AI-генерацией изображений из описаний книг.
                     Умная система распознавания текста находит описания локаций, персонажей
                     и атмосферы, создавая уникальные визуализации для каждой книги.
@@ -277,7 +255,7 @@ const SettingsPage: React.FC = () => {
 
                 {/* Tech Stack */}
                 <div>
-                  <p className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+                  <p className="font-semibold mb-3 text-foreground">
                     Технологический стек
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -289,16 +267,12 @@ const SettingsPage: React.FC = () => {
                     ].map((item, index) => (
                       <div
                         key={index}
-                        className="p-3 rounded-xl border-2"
-                        style={{
-                          backgroundColor: 'var(--bg-secondary)',
-                          borderColor: 'var(--border-color)',
-                        }}
+                        className="p-3 rounded-xl border-2 bg-muted border-border"
                       >
-                        <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                        <p className="text-xs font-medium mb-1 text-muted-foreground">
                           {item.label}
                         </p>
-                        <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                        <p className="text-sm font-semibold text-foreground">
                           {item.value}
                         </p>
                       </div>
@@ -307,28 +281,25 @@ const SettingsPage: React.FC = () => {
                 </div>
 
                 {/* Links */}
-                <div className="pt-6 border-t" style={{ borderColor: 'var(--border-color)' }}>
+                <div className="pt-6 border-t border-border">
                   <div className="flex flex-wrap gap-4">
                     <a
                       href="https://github.com"
-                      className="text-sm font-medium hover:underline"
-                      style={{ color: 'var(--accent-color)' }}
+                      className="text-sm font-medium hover:underline text-primary"
                     >
-                      GitHub →
+                      GitHub
                     </a>
                     <a
                       href="#"
-                      className="text-sm font-medium hover:underline"
-                      style={{ color: 'var(--accent-color)' }}
+                      className="text-sm font-medium hover:underline text-primary"
                     >
-                      Документация →
+                      Документация
                     </a>
                     <a
                       href="#"
-                      className="text-sm font-medium hover:underline"
-                      style={{ color: 'var(--accent-color)' }}
+                      className="text-sm font-medium hover:underline text-primary"
                     >
-                      Поддержка →
+                      Поддержка
                     </a>
                   </div>
                 </div>
@@ -346,10 +317,10 @@ const SettingsPage: React.FC = () => {
     <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+        <h1 className="text-3xl md:text-4xl font-bold mb-2 text-foreground">
           {t('settings.title')}
         </h1>
-        <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-lg text-muted-foreground">
           Настройте ваш процесс чтения и управляйте настройками аккаунта
         </p>
       </div>
@@ -365,24 +336,22 @@ const SettingsPage: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className="w-full text-left px-4 py-3 rounded-xl transition-all"
-                  style={{
-                    backgroundColor: isActive ? 'var(--accent-color)' : 'var(--bg-primary)',
-                    color: isActive ? 'white' : 'var(--text-primary)',
-                    borderWidth: '2px',
-                    borderStyle: 'solid',
-                    borderColor: isActive ? 'var(--accent-color)' : 'var(--border-color)',
-                  }}
+                  className={cn(
+                    'w-full text-left px-4 py-3 rounded-xl transition-all border-2',
+                    isActive
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-foreground border-border hover:bg-muted'
+                  )}
                 >
                   <div className="flex items-center gap-3">
                     <Icon className="h-5 w-5 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold">{tab.label}</p>
                       <p
-                        className="text-xs truncate mt-0.5"
-                        style={{
-                          color: isActive ? 'rgba(255,255,255,0.8)' : 'var(--text-secondary)'
-                        }}
+                        className={cn(
+                          'text-xs truncate mt-0.5',
+                          isActive ? 'text-primary-foreground/80' : 'text-muted-foreground'
+                        )}
                       >
                         {tab.description}
                       </p>
@@ -396,13 +365,7 @@ const SettingsPage: React.FC = () => {
 
         {/* Main Content */}
         <main className="lg:col-span-9">
-          <div
-            className="rounded-2xl border-2 p-6 lg:p-8"
-            style={{
-              backgroundColor: 'var(--bg-primary)',
-              borderColor: 'var(--border-color)',
-            }}
-          >
+          <div className="rounded-2xl border-2 p-6 lg:p-8 bg-background border-border">
             {renderTabContent()}
           </div>
         </main>

@@ -74,7 +74,7 @@ const Sidebar: React.FC = () => {
         <div className="flex flex-col w-64">
           <div className="flex flex-col flex-grow pt-5 pb-4 overflow-y-auto bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
             <div className="flex items-center flex-shrink-0 px-4 mb-8">
-              <BookOpen className="w-8 h-8 text-primary-600" />
+              <BookOpen className="w-8 h-8 text-primary" />
               <span className="ml-2 text-xl font-bold text-gray-900 dark:text-white">
                 fancai
               </span>
@@ -92,7 +92,7 @@ const Sidebar: React.FC = () => {
                     className={cn(
                       'group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors',
                       isActive
-                        ? 'bg-primary-100 dark:bg-primary-900 text-primary-900 dark:text-primary-100'
+                        ? 'bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary-foreground'
                         : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                     )}
                   >
@@ -100,7 +100,7 @@ const Sidebar: React.FC = () => {
                       className={cn(
                         'mr-3 flex-shrink-0 h-5 w-5',
                         isActive
-                          ? 'text-primary-600 dark:text-primary-400'
+                          ? 'text-primary dark:text-primary/70'
                           : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300'
                       )}
                     />
@@ -111,24 +111,20 @@ const Sidebar: React.FC = () => {
             </nav>
 
             {/* User info section */}
-            <div className="flex-shrink-0 px-4 py-4 border-t" style={{
-              borderColor: 'var(--border-color)',
-            }}>
+            <div className="flex-shrink-0 px-4 py-4 border-t border-border">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{
-                    backgroundColor: 'var(--accent-color)',
-                  }}>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary">
                     <span className="text-sm font-medium text-white">
                       {user?.full_name ? user.full_name.charAt(0).toUpperCase() : user?.email.charAt(0).toUpperCase()}
                     </span>
                   </div>
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  <p className="text-sm font-medium text-foreground">
                     {user?.full_name || 'User'}
                   </p>
-                  <p className="text-xs flex items-center" style={{ color: 'var(--text-secondary)' }}>
+                  <p className="text-xs flex items-center text-muted-foreground">
                     <Sparkles className="w-3 h-3 mr-1" />
                     Free Plan
                   </p>
@@ -148,7 +144,7 @@ const Sidebar: React.FC = () => {
       >
         <div className="flex flex-col h-full pt-5 pb-4 overflow-y-auto border-r border-gray-200 dark:border-gray-700">
           <div className="flex items-center flex-shrink-0 px-4 mb-8">
-            <BookOpen className="w-8 h-8 text-primary-600" />
+            <BookOpen className="w-8 h-8 text-primary" />
             <span className="ml-2 text-xl font-bold text-gray-900 dark:text-white">
               fancai
             </span>
@@ -167,7 +163,7 @@ const Sidebar: React.FC = () => {
                   className={cn(
                     'group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors',
                     isActive
-                      ? 'bg-primary-100 dark:bg-primary-900 text-primary-900 dark:text-primary-100'
+                      ? 'bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary-foreground'
                       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                   )}
                 >
@@ -175,7 +171,7 @@ const Sidebar: React.FC = () => {
                     className={cn(
                       'mr-3 flex-shrink-0 h-5 w-5',
                       isActive
-                        ? 'text-primary-600 dark:text-primary-400'
+                        ? 'text-primary dark:text-primary/70'
                         : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300'
                     )}
                   />
@@ -186,24 +182,20 @@ const Sidebar: React.FC = () => {
           </nav>
 
           {/* Bottom section */}
-          <div className="flex-shrink-0 px-4 py-4 border-t" style={{
-            borderColor: 'var(--border-color)',
-          }}>
+          <div className="flex-shrink-0 px-4 py-4 border-t border-border">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{
-                  backgroundColor: 'var(--accent-color)',
-                }}>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary">
                   <span className="text-sm font-medium text-white">
                     {user?.full_name ? user.full_name.charAt(0).toUpperCase() : user?.email.charAt(0).toUpperCase()}
                   </span>
                 </div>
               </div>
               <div className="ml-3">
-                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                <p className="text-sm font-medium text-foreground">
                   {user?.full_name || t('nav.user')}
                 </p>
-                <p className="text-xs flex items-center" style={{ color: 'var(--text-secondary)' }}>
+                <p className="text-xs flex items-center text-muted-foreground">
                   <Sparkles className="w-3 h-3 mr-1" />
                   {t('nav.freePlan')}
                 </p>

@@ -70,8 +70,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="relative rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden"
-          style={{ backgroundColor: 'var(--bg-primary)' }}
+          className="relative rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden bg-background"
           onClick={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
@@ -80,25 +79,22 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
         >
           {/* Header */}
           <div
-            className="flex items-center justify-between p-6 border-b"
-            style={{ borderColor: 'var(--border-color)' }}
+            className="flex items-center justify-between p-6 border-b border-border"
           >
             <div className="flex items-center space-x-3">
-              <div className="p-2 rounded-full bg-red-100 dark:bg-red-900/30">
-                <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+              <div className="p-2 rounded-full bg-destructive/10">
+                <AlertTriangle className="h-6 w-6 text-destructive" />
               </div>
               <h2
                 id="delete-modal-title"
-                className="text-xl font-semibold"
-                style={{ color: 'var(--text-primary)' }}
+                className="text-xl font-semibold text-foreground"
               >
                 Удалить книгу?
               </h2>
             </div>
             <button
               onClick={onCancel}
-              className="p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
-              style={{ color: 'var(--text-tertiary)' }}
+              className="p-2 rounded-lg transition-colors hover:bg-muted text-muted-foreground/70"
               disabled={isDeleting}
             >
               <X className="h-5 w-5" />
@@ -107,20 +103,14 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
 
           {/* Content */}
           <div id="delete-modal-description" className="p-6">
-            <p style={{ color: 'var(--text-secondary)' }}>
+            <p className="text-muted-foreground">
               Вы уверены, что хотите удалить книгу{' '}
-              <span
-                className="font-semibold"
-                style={{ color: 'var(--text-primary)' }}
-              >
+              <span className="font-semibold text-foreground">
                 "{bookTitle}"
               </span>
               ?
             </p>
-            <p
-              className="mt-3 text-sm"
-              style={{ color: 'var(--text-tertiary)' }}
-            >
+            <p className="mt-3 text-sm text-muted-foreground/70">
               Это действие необратимо. Все данные книги, включая прогресс чтения
               и сгенерированные изображения, будут удалены.
             </p>
@@ -128,15 +118,13 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
 
           {/* Actions */}
           <div
-            className="flex justify-end gap-3 p-6 border-t"
-            style={{ borderColor: 'var(--border-color)' }}
+            className="flex justify-end gap-3 p-6 border-t border-border"
           >
             <button
               ref={cancelButtonRef}
               onClick={onCancel}
               disabled={isDeleting}
-              className="px-4 py-2 rounded-lg font-medium transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
-              style={{ color: 'var(--text-secondary)' }}
+              className="px-4 py-2 rounded-lg font-medium transition-colors hover:bg-muted disabled:opacity-50 text-muted-foreground"
             >
               Отмена
             </button>

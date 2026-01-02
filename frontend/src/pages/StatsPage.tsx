@@ -190,12 +190,12 @@ const StatsPage: React.FC = () => {
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-3">
-          <BarChart3 className="w-8 h-8" style={{ color: 'var(--accent-color)' }} />
-          <h1 className="text-3xl md:text-4xl font-bold" style={{ color: 'var(--text-primary)' }}>
+          <BarChart3 className="w-8 h-8 text-primary" />
+          <h1 className="text-3xl md:text-4xl font-bold text-foreground">
             Статистика чтения
           </h1>
         </div>
-        <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-lg text-muted-foreground">
           Ваш прогресс и достижения
         </p>
       </div>
@@ -203,20 +203,14 @@ const StatsPage: React.FC = () => {
       {/* Main Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         {/* Books */}
-        <div
-          className="p-6 rounded-2xl border-2 transition-all hover:-translate-y-1 hover:shadow-xl"
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
+        <div className="p-6 rounded-2xl border-2 border-border bg-card transition-all hover:-translate-y-1 hover:shadow-xl">
           <div className="flex items-center justify-between mb-4">
-            <BookOpen className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+            <BookOpen className="w-10 h-10 text-primary" />
             <div className="text-right">
-              <p className="text-4xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              <p className="text-4xl font-bold text-foreground">
                 {stats.totalBooks}
               </p>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-sm font-medium text-muted-foreground">
                 всего книг
               </p>
             </div>
@@ -230,20 +224,14 @@ const StatsPage: React.FC = () => {
         </div>
 
         {/* Hours */}
-        <div
-          className="p-6 rounded-2xl border-2 transition-all hover:-translate-y-1 hover:shadow-xl"
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
+        <div className="p-6 rounded-2xl border-2 border-border bg-card transition-all hover:-translate-y-1 hover:shadow-xl">
           <div className="flex items-center justify-between mb-4">
-            <Clock className="w-10 h-10 text-purple-600 dark:text-purple-400" />
+            <Clock className="w-10 h-10 text-purple-600" />
             <div className="text-right">
-              <p className="text-4xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              <p className="text-4xl font-bold text-foreground">
                 {stats.totalHours}
               </p>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-sm font-medium text-muted-foreground">
                 часов чтения
               </p>
             </div>
@@ -257,20 +245,14 @@ const StatsPage: React.FC = () => {
         </div>
 
         {/* Pages */}
-        <div
-          className="p-6 rounded-2xl border-2 transition-all hover:-translate-y-1 hover:shadow-xl"
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
+        <div className="p-6 rounded-2xl border-2 border-border bg-card transition-all hover:-translate-y-1 hover:shadow-xl">
           <div className="flex items-center justify-between mb-4">
-            <Award className="w-10 h-10 text-amber-600 dark:text-amber-400" />
+            <Award className="w-10 h-10 text-amber-600" />
             <div className="text-right">
-              <p className="text-4xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              <p className="text-4xl font-bold text-foreground">
                 {stats.totalPages.toLocaleString()}
               </p>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-sm font-medium text-muted-foreground">
                 страниц прочитано
               </p>
             </div>
@@ -287,68 +269,50 @@ const StatsPage: React.FC = () => {
       {/* Streak and Weekly Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
         {/* Reading Streak */}
-        <div
-          className="p-6 rounded-2xl border-2"
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
+        <div className="p-6 rounded-2xl border-2 border-border bg-card">
           <div className="flex items-center gap-3 mb-6">
-            <Flame className="w-6 h-6" style={{ color: 'var(--accent-color)' }} />
-            <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            <Flame className="w-6 h-6 text-primary" />
+            <h2 className="text-xl font-bold text-foreground">
               Серия чтения
             </h2>
           </div>
 
           <div className="flex items-center justify-around mb-6">
             <div className="text-center">
-              <div className="w-24 h-24 rounded-full flex items-center justify-center mb-3 border-4" style={{
-                borderColor: 'var(--accent-color)',
-                backgroundColor: 'var(--bg-secondary)',
-              }}>
-                <span className="text-3xl font-bold" style={{ color: 'var(--accent-color)' }}>
+              <div className="w-24 h-24 rounded-full flex items-center justify-center mb-3 border-4 border-primary bg-muted">
+                <span className="text-3xl font-bold text-primary">
                   {stats.currentStreak}
                 </span>
               </div>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-sm font-medium text-muted-foreground">
                 Текущая серия
               </p>
             </div>
 
             <div className="text-center">
-              <div className="w-24 h-24 rounded-full flex items-center justify-center mb-3 border-4" style={{
-                borderColor: 'var(--border-color)',
-                backgroundColor: 'var(--bg-secondary)',
-              }}>
-                <span className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              <div className="w-24 h-24 rounded-full flex items-center justify-center mb-3 border-4 border-border bg-muted">
+                <span className="text-3xl font-bold text-foreground">
                   {stats.longestStreak}
                 </span>
               </div>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-sm font-medium text-muted-foreground">
                 Лучшая серия
               </p>
             </div>
           </div>
 
-          <div className="p-4 rounded-xl" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-            <p className="text-center font-medium" style={{ color: 'var(--text-primary)' }}>
+          <div className="p-4 rounded-xl bg-muted">
+            <p className="text-center font-medium text-foreground">
               В среднем {stats.averagePerDay} минут в день
             </p>
           </div>
         </div>
 
         {/* Weekly Activity Chart */}
-        <div
-          className="p-6 rounded-2xl border-2"
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
+        <div className="p-6 rounded-2xl border-2 border-border bg-card">
           <div className="flex items-center gap-3 mb-6">
-            <Calendar className="w-6 h-6" style={{ color: 'var(--accent-color)' }} />
-            <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            <Calendar className="w-6 h-6 text-primary" />
+            <h2 className="text-xl font-bold text-foreground">
               Активность за неделю
             </h2>
           </div>
@@ -356,11 +320,11 @@ const StatsPage: React.FC = () => {
           {weeklyActivity.every((d) => d.minutes === 0) ? (
             // Empty state - no reading activity
             <div className="h-48 flex flex-col items-center justify-center">
-              <Calendar className="w-12 h-12 mb-3" style={{ color: 'var(--text-secondary)', opacity: 0.3 }} />
-              <p className="text-center font-medium" style={{ color: 'var(--text-secondary)' }}>
+              <Calendar className="w-12 h-12 mb-3 text-muted-foreground opacity-30" />
+              <p className="text-center font-medium text-muted-foreground">
                 Нет данных о чтении за последнюю неделю
               </p>
-              <p className="text-sm text-center mt-2" style={{ color: 'var(--text-secondary)', opacity: 0.7 }}>
+              <p className="text-sm text-center mt-2 text-muted-foreground opacity-70">
                 Начните читать, чтобы увидеть статистику
               </p>
             </div>
@@ -371,16 +335,15 @@ const StatsPage: React.FC = () => {
                 <div key={index} className="flex-1 flex flex-col items-center gap-2">
                   <div className="relative flex-1 w-full flex flex-col justify-end">
                     <div
-                      className="w-full rounded-t-lg transition-all hover:opacity-80 cursor-pointer"
+                      className="w-full rounded-t-lg transition-all hover:opacity-80 cursor-pointer bg-primary"
                       style={{
-                        backgroundColor: 'var(--accent-color)',
                         height: `${(day.minutes / maxMinutes) * 100}%`,
                         minHeight: day.minutes > 0 ? '8px' : '0',
                       }}
                       title={day.label}
                     />
                   </div>
-                  <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  <span className="text-xs font-medium text-muted-foreground">
                     {day.day}
                   </span>
                 </div>
@@ -393,14 +356,8 @@ const StatsPage: React.FC = () => {
       {/* Genre Distribution and Top Books */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
         {/* Genre Distribution */}
-        <div
-          className="p-6 rounded-2xl border-2"
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
-          <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
+        <div className="p-6 rounded-2xl border-2 border-border bg-card">
+          <h2 className="text-xl font-bold mb-6 text-foreground">
             Распределение по жанрам
           </h2>
 
@@ -408,14 +365,14 @@ const StatsPage: React.FC = () => {
             {genreDistribution.map((genre, index) => (
               <div key={index}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                  <span className="font-medium text-foreground">
                     {genre.genre}
                   </span>
-                  <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  <span className="text-sm font-medium text-muted-foreground">
                     {genre.count} книг ({genre.percentage}%)
                   </span>
                 </div>
-                <div className="h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                <div className="h-3 rounded-full overflow-hidden bg-muted">
                   <div
                     className={cn('h-full rounded-full transition-all', genre.color)}
                     style={{ width: `${genre.percentage}%` }}
@@ -427,14 +384,8 @@ const StatsPage: React.FC = () => {
         </div>
 
         {/* Top Books */}
-        <div
-          className="p-6 rounded-2xl border-2"
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
-          <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
+        <div className="p-6 rounded-2xl border-2 border-border bg-card">
+          <h2 className="text-xl font-bold mb-6 text-foreground">
             Топ книг по времени чтения
           </h2>
 
@@ -442,36 +393,27 @@ const StatsPage: React.FC = () => {
             {topBooks.map((book, index) => (
               <div
                 key={index}
-                className="p-4 rounded-xl transition-all hover:scale-[1.02]"
-                style={{
-                  backgroundColor: 'var(--bg-secondary)',
-                }}
+                className="p-4 rounded-xl transition-all hover:scale-[1.02] bg-muted"
               >
                 <div className="flex items-start gap-3">
-                  <span
-                    className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-white"
-                    style={{ backgroundColor: 'var(--accent-color)' }}
-                  >
+                  <span className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-primary-foreground bg-primary">
                     {index + 1}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold mb-1 truncate" style={{ color: 'var(--text-primary)' }}>
+                    <h3 className="font-semibold mb-1 truncate text-foreground">
                       {book.title}
                     </h3>
-                    <p className="text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
+                    <p className="text-sm mb-2 text-muted-foreground">
                       {book.author} • {book.hours}ч
                     </p>
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+                      <div className="flex-1 h-2 rounded-full overflow-hidden bg-secondary">
                         <div
-                          className="h-full rounded-full"
-                          style={{
-                            backgroundColor: 'var(--accent-color)',
-                            width: `${book.progress}%`,
-                          }}
+                          className="h-full rounded-full bg-primary"
+                          style={{ width: `${book.progress}%` }}
                         />
                       </div>
-                      <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                      <span className="text-xs font-medium text-muted-foreground">
                         {book.progress}%
                       </span>
                     </div>
@@ -484,16 +426,10 @@ const StatsPage: React.FC = () => {
       </div>
 
       {/* Achievements */}
-      <div
-        className="p-6 rounded-2xl border-2"
-        style={{
-          backgroundColor: 'var(--bg-primary)',
-          borderColor: 'var(--border-color)',
-        }}
-      >
+      <div className="p-6 rounded-2xl border-2 border-border bg-card">
         <div className="flex items-center gap-3 mb-6">
-          <Award className="w-6 h-6" style={{ color: 'var(--accent-color)' }} />
-          <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+          <Award className="w-6 h-6 text-primary" />
+          <h2 className="text-xl font-bold text-foreground">
             Достижения
           </h2>
         </div>
@@ -504,27 +440,30 @@ const StatsPage: React.FC = () => {
               key={index}
               className={cn(
                 'p-4 rounded-xl border-2 transition-all',
-                achievement.earned ? 'hover:-translate-y-1' : 'opacity-50'
+                achievement.earned
+                  ? 'hover:-translate-y-1 bg-muted border-primary'
+                  : 'opacity-50 bg-secondary border-border'
               )}
-              style={{
-                backgroundColor: achievement.earned ? 'var(--bg-secondary)' : 'var(--bg-tertiary)',
-                borderColor: achievement.earned ? 'var(--accent-color)' : 'var(--border-color)',
-              }}
             >
               <div className="flex items-start gap-3">
                 <div
-                  className="p-2 rounded-lg"
-                  style={{
-                    backgroundColor: achievement.earned ? 'var(--accent-color)' : 'var(--bg-secondary)',
-                  }}
+                  className={cn(
+                    'p-2 rounded-lg',
+                    achievement.earned ? 'bg-primary' : 'bg-muted'
+                  )}
                 >
-                  <achievement.icon className="w-6 h-6" style={{ color: achievement.earned ? 'white' : 'var(--text-secondary)' }} />
+                  <achievement.icon
+                    className={cn(
+                      'w-6 h-6',
+                      achievement.earned ? 'text-primary-foreground' : 'text-muted-foreground'
+                    )}
+                  />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+                  <h3 className="font-semibold mb-1 text-foreground">
                     {achievement.name}
                   </h3>
-                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <p className="text-sm text-muted-foreground">
                     {achievement.description}
                   </p>
                 </div>

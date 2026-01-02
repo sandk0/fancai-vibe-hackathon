@@ -128,15 +128,15 @@ const AdminDashboard: React.FC = () => {
   if (!user || !user.is_admin) {
     return (
       <div className="max-w-md mx-auto mt-20 text-center">
-        <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">{t('admin.accessDenied')}</h2>
-        <p className="text-gray-600 dark:text-gray-400">{t('admin.accessDeniedDesc')}</p>
+        <AlertTriangle className="w-16 h-16 text-destructive mx-auto mb-4" />
+        <h2 className="text-2xl font-bold text-foreground mb-4">{t('admin.accessDenied')}</h2>
+        <p className="text-muted-foreground">{t('admin.accessDeniedDesc')}</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <AdminHeader
@@ -198,27 +198,27 @@ const AdminDashboard: React.FC = () => {
           {/* Images Tab */}
           {activeTab === 'images' && (
             <div className="text-center py-12">
-              <Image className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t('admin.images')}</h3>
-              <p className="text-gray-600 dark:text-gray-400">{t('admin.imageSettings')}</p>
+              <Image className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">{t('admin.images')}</h3>
+              <p className="text-muted-foreground">{t('admin.imageSettings')}</p>
             </div>
           )}
 
           {/* System Tab */}
           {activeTab === 'system' && (
             <div className="text-center py-12">
-              <Server className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t('admin.system')}</h3>
-              <p className="text-gray-600 dark:text-gray-400">{t('admin.systemSettings')}</p>
+              <Server className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">{t('admin.system')}</h3>
+              <p className="text-muted-foreground">{t('admin.systemSettings')}</p>
             </div>
           )}
 
           {/* Users Tab */}
           {activeTab === 'users' && (
             <div className="text-center py-12">
-              <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t('admin.users')}</h3>
-              <p className="text-gray-600 dark:text-gray-400">{t('admin.userManagement')}</p>
+              <Users className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">{t('admin.users')}</h3>
+              <p className="text-muted-foreground">{t('admin.userManagement')}</p>
             </div>
           )}
         </div>

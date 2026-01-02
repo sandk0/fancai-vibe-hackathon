@@ -90,16 +90,52 @@
         body {
           background-color: #111827;
         }
-        
+
         #initial-loading {
           background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
         }
-        
+
         .loading-text {
           color: #9ca3af;
         }
       }
+
+      /* Theme class support */
+      .dark body, html.dark body {
+        background-color: #111827;
+      }
+
+      .sepia body, html.sepia body {
+        background-color: #f7f3e9;
+      }
+
+      html.dark #initial-loading {
+        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      }
+
+      html.sepia #initial-loading {
+        background: linear-gradient(135deg, #f7f3e9 0%, #f0e6d2 100%);
+      }
+
+      html.sepia .loading-text {
+        color: #8d6e63;
+      }
     </style>
+    <!-- Theme initialization (prevents FOUC) -->
+    <script>
+      (function() {
+        try {
+          var theme = localStorage.getItem('app-theme');
+          if (theme === 'system' || !theme) {
+            theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          if (theme && theme !== 'light') {
+            document.documentElement.classList.add(theme);
+          }
+          document.documentElement.style.colorScheme = theme === 'dark' ? 'dark' : 'light';
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <!-- Initial loading screen -->

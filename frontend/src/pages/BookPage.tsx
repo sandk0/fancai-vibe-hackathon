@@ -46,11 +46,8 @@ const BookPage: React.FC = () => {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <div
-            className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 mb-4"
-            style={{ borderColor: 'var(--accent-color)' }}
-          ></div>
-          <p style={{ color: 'var(--text-secondary)' }}>Загрузка книги...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 mb-4 border-primary"></div>
+          <p className="text-muted-foreground">Загрузка книги...</p>
         </div>
       </div>
     );
@@ -60,25 +57,18 @@ const BookPage: React.FC = () => {
     return (
       <div className="max-w-4xl mx-auto">
         <div className="text-center py-20">
-          <div
-            className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: 'var(--bg-secondary)' }}
-          >
-            <Book className="w-10 h-10" style={{ color: 'var(--text-tertiary)' }} />
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center bg-muted">
+            <Book className="w-10 h-10 text-muted-foreground/70" />
           </div>
-          <h1 className="text-3xl font-bold mb-3" style={{ color: 'var(--text-primary)' }}>
+          <h1 className="text-3xl font-bold mb-3 text-foreground">
             Книга не найдена
           </h1>
-          <p className="mb-6 max-w-sm mx-auto" style={{ color: 'var(--text-secondary)' }}>
+          <p className="mb-6 max-w-sm mx-auto text-muted-foreground">
             Запрошенная книга не существует или была удалена
           </p>
           <button
             onClick={() => navigate('/library')}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all hover:scale-105"
-            style={{
-              backgroundColor: 'var(--accent-color)',
-              color: 'white',
-            }}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all hover:scale-105 bg-primary text-primary-foreground"
           >
             <ArrowLeft className="w-5 h-5" />
             Вернуться в библиотеку
@@ -99,8 +89,7 @@ const BookPage: React.FC = () => {
       {/* Back Button */}
       <button
         onClick={() => navigate('/library')}
-        className="inline-flex items-center gap-2 mb-6 transition-colors"
-        style={{ color: 'var(--text-secondary)' }}
+        className="inline-flex items-center gap-2 mb-6 transition-colors text-muted-foreground"
       >
         <ArrowLeft className="w-4 h-4" />
         <span className="hover:underline">Назад в библиотеку</span>
@@ -108,21 +97,12 @@ const BookPage: React.FC = () => {
 
       {/* Hero Section */}
       <div className="relative mb-6 sm:mb-8 lg:mb-12 overflow-hidden rounded-2xl sm:rounded-3xl">
-        <div
-          className="absolute inset-0 opacity-30"
-          style={{
-            background:
-              'linear-gradient(135deg, var(--accent-color) 0%, rgba(147, 51, 234, 0.5) 100%)',
-          }}
-        />
+        <div className="absolute inset-0 opacity-30 bg-gradient-to-br from-primary to-purple-500/50" />
         <div className="relative">
           <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8 p-4 sm:p-6 lg:p-12">
             {/* Book Cover */}
             <div className="flex-shrink-0">
-              <div
-                className="w-36 h-52 sm:w-48 sm:h-72 lg:w-64 lg:h-96 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden mx-auto lg:mx-0"
-                style={{ backgroundColor: 'var(--bg-secondary)' }}
-              >
+              <div className="w-36 h-52 sm:w-48 sm:h-72 lg:w-64 lg:h-96 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden mx-auto lg:mx-0 bg-muted">
                 <AuthenticatedImage
                   src={
                     book.has_cover
@@ -133,7 +113,7 @@ const BookPage: React.FC = () => {
                   className="w-full h-full object-cover"
                   fallback={
                     <div className="w-full h-full flex items-center justify-center">
-                      <Book className="w-16 h-16" style={{ color: 'var(--text-tertiary)' }} />
+                      <Book className="w-16 h-16 text-muted-foreground/70" />
                     </div>
                   }
                 />
@@ -142,20 +122,17 @@ const BookPage: React.FC = () => {
 
             {/* Book Info */}
             <div className="flex-1 text-center lg:text-left">
-              <h1
-                className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold mb-2 sm:mb-4"
-                style={{ color: 'var(--text-primary)' }}
-              >
+              <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold mb-2 sm:mb-4 text-foreground">
                 {book.title}
               </h1>
 
-              <div className="flex items-center justify-center lg:justify-start gap-2 mb-4 sm:mb-6" style={{ color: 'var(--text-secondary)' }}>
+              <div className="flex items-center justify-center lg:justify-start gap-2 mb-4 sm:mb-6 text-muted-foreground">
                 <User className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span className="text-base sm:text-lg">{book.author}</span>
               </div>
 
               {/* Quick Stats */}
-              <div className="flex flex-wrap justify-center lg:justify-start gap-2 sm:gap-4 mb-6 sm:mb-8 text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
+              <div className="flex flex-wrap justify-center lg:justify-start gap-2 sm:gap-4 mb-6 sm:mb-8 text-xs sm:text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <BookOpen className="w-4 h-4" />
                   <span>{book.chapters.length} глав</span>
@@ -169,13 +146,7 @@ const BookPage: React.FC = () => {
                   <Clock className="w-4 h-4" />
                   <span>~{book.estimated_reading_time_hours}ч</span>
                 </div>
-                <div
-                  className="px-3 py-1 rounded-full text-xs uppercase font-semibold"
-                  style={{
-                    backgroundColor: 'var(--bg-primary)',
-                    color: 'var(--text-primary)',
-                  }}
-                >
+                <div className="px-3 py-1 rounded-full text-xs uppercase font-semibold bg-background text-foreground">
                   {book.file_format}
                 </div>
               </div>
@@ -184,27 +155,17 @@ const BookPage: React.FC = () => {
               {/* FIX #2: Change threshold from > 0 to >= 0.1 to show progress earlier */}
               {book.reading_progress.progress_percent >= 0.1 && (
                 <div className="mb-6 sm:mb-8">
-                  <div
-                    className="flex items-center justify-between text-xs sm:text-sm mb-2"
-                    style={{ color: 'var(--text-secondary)' }}
-                  >
+                  <div className="flex items-center justify-between text-xs sm:text-sm mb-2 text-muted-foreground">
                     <span>Прогресс чтения</span>
-                    <span
-                      className="font-semibold"
-                      style={{ color: 'var(--accent-color)' }}
-                    >
+                    <span className="font-semibold text-primary">
                       {book.reading_progress.progress_percent.toFixed(1)}%
                     </span>
                   </div>
-                  <div
-                    className="w-full h-3 rounded-full overflow-hidden"
-                    style={{ backgroundColor: 'var(--bg-tertiary)' }}
-                  >
+                  <div className="w-full h-3 rounded-full overflow-hidden bg-muted/50">
                     <div
-                      className="h-full rounded-full transition-all"
+                      className="h-full rounded-full transition-all bg-primary"
                       style={{
                         width: `${book.reading_progress.progress_percent}%`,
-                        backgroundColor: 'var(--accent-color)',
                       }}
                     />
                   </div>
@@ -215,11 +176,7 @@ const BookPage: React.FC = () => {
               <div className="flex flex-col sm:flex-row flex-wrap justify-center lg:justify-start gap-3 sm:gap-4">
                 <button
                   onClick={() => navigate(`/book/${book.id}/read`)}
-                  className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-semibold text-sm sm:text-base lg:text-lg transition-all hover:scale-105 shadow-lg"
-                  style={{
-                    backgroundColor: 'var(--accent-color)',
-                    color: 'white',
-                  }}
+                  className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-semibold text-sm sm:text-base lg:text-lg transition-all hover:scale-105 shadow-lg bg-primary text-primary-foreground"
                 >
                   <Play className="w-4 h-4 sm:w-5 sm:h-5" />
                   {/* FIX #2: Change threshold from > 0 to >= 0.1 for "Continue Reading" button */}
@@ -231,12 +188,7 @@ const BookPage: React.FC = () => {
 
                 <button
                   onClick={() => navigate(`/book/${book.id}/images`)}
-                  className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 sm:px-6 py-3 sm:py-4 rounded-xl font-semibold text-sm sm:text-base transition-all hover:scale-105 border-2"
-                  style={{
-                    backgroundColor: 'var(--bg-primary)',
-                    borderColor: 'var(--border-color)',
-                    color: 'var(--text-primary)',
-                  }}
+                  className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 sm:px-6 py-3 sm:py-4 rounded-xl font-semibold text-sm sm:text-base transition-all hover:scale-105 border-2 bg-background border-border text-foreground"
                 >
                   <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                   AI Галерея
@@ -249,56 +201,38 @@ const BookPage: React.FC = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8 lg:mb-12">
-        <div
-          className="p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border-2 transition-all hover:scale-105"
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
+        <div className="p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border-2 transition-all hover:scale-105 bg-background border-border">
           <div className="flex items-center justify-between mb-2 sm:mb-3">
-            <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8" style={{ color: 'var(--accent-color)' }} />
+            <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-primary" />
           </div>
-          <div className="text-xl sm:text-2xl lg:text-3xl font-bold mb-0.5 sm:mb-1" style={{ color: 'var(--text-primary)' }}>
+          <div className="text-xl sm:text-2xl lg:text-3xl font-bold mb-0.5 sm:mb-1 text-foreground">
             {book.chapters.length}
           </div>
-          <div className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
+          <div className="text-xs sm:text-sm text-muted-foreground">
             {book.chapters.length === 1 ? 'Глава' : 'Глав'}
           </div>
         </div>
 
-        <div
-          className="p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border-2 transition-all hover:scale-105"
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
+        <div className="p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border-2 transition-all hover:scale-105 bg-background border-border">
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-green-600 dark:text-green-400" />
           </div>
-          <div className="text-xl sm:text-2xl lg:text-3xl font-bold mb-0.5 sm:mb-1" style={{ color: 'var(--text-primary)' }}>
+          <div className="text-xl sm:text-2xl lg:text-3xl font-bold mb-0.5 sm:mb-1 text-foreground">
             {parsedChapters}
           </div>
-          <div className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
+          <div className="text-xs sm:text-sm text-muted-foreground">
             Обработано AI
           </div>
         </div>
 
-        <div
-          className="p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border-2 transition-all hover:scale-105"
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
+        <div className="p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border-2 transition-all hover:scale-105 bg-background border-border">
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-purple-600 dark:text-purple-400" />
           </div>
-          <div className="text-xl sm:text-2xl lg:text-3xl font-bold mb-0.5 sm:mb-1" style={{ color: 'var(--text-primary)' }}>
+          <div className="text-xl sm:text-2xl lg:text-3xl font-bold mb-0.5 sm:mb-1 text-foreground">
             {totalDescriptions}
           </div>
-          <div className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
+          <div className="text-xs sm:text-sm text-muted-foreground">
             Описаний найдено
           </div>
         </div>
@@ -306,17 +240,11 @@ const BookPage: React.FC = () => {
 
       {/* Description */}
       {book.description && (
-        <div
-          className="p-4 sm:p-6 lg:p-8 rounded-xl sm:rounded-2xl border-2 mb-6 sm:mb-8 lg:mb-12"
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
-          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold mb-2 sm:mb-4" style={{ color: 'var(--text-primary)' }}>
+        <div className="p-4 sm:p-6 lg:p-8 rounded-xl sm:rounded-2xl border-2 mb-6 sm:mb-8 lg:mb-12 bg-background border-border">
+          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold mb-2 sm:mb-4 text-foreground">
             Описание
           </h2>
-          <p className="text-sm sm:text-base leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+          <p className="text-sm sm:text-base leading-relaxed text-muted-foreground">
             {book.description}
           </p>
         </div>
@@ -324,7 +252,7 @@ const BookPage: React.FC = () => {
 
       {/* Chapters List */}
       <div>
-        <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6" style={{ color: 'var(--text-primary)' }}>
+        <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6 text-foreground">
           Главы ({book.chapters.length})
         </h2>
 
@@ -333,38 +261,22 @@ const BookPage: React.FC = () => {
             <div
               key={chapter.id}
               onClick={() => navigate(`/book/${book.id}/chapter/${chapter.number}`)}
-              className="group p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border-2 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg"
-              style={{
-                backgroundColor: 'var(--bg-primary)',
-                borderColor: 'var(--border-color)',
-              }}
+              className="group p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border-2 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg bg-background border-border"
             >
               <div className="flex items-start justify-between gap-2 sm:gap-4">
                 <div className="flex items-start gap-2 sm:gap-4 flex-1 min-w-0">
                   {/* Chapter Number Badge */}
-                  <div
-                    className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl flex items-center justify-center font-bold text-sm sm:text-base"
-                    style={{
-                      backgroundColor: 'var(--bg-secondary)',
-                      color: 'var(--accent-color)',
-                    }}
-                  >
+                  <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl flex items-center justify-center font-bold text-sm sm:text-base bg-muted text-primary">
                     {chapter.number}
                   </div>
 
                   {/* Chapter Info */}
                   <div className="flex-1 min-w-0">
-                    <h3
-                      className="font-semibold text-sm sm:text-base lg:text-lg mb-1 sm:mb-2 line-clamp-2"
-                      style={{ color: 'var(--text-primary)' }}
-                    >
+                    <h3 className="font-semibold text-sm sm:text-base lg:text-lg mb-1 sm:mb-2 line-clamp-2 text-foreground">
                       {chapter.title}
                     </h3>
 
-                    <div
-                      className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm mb-2 sm:mb-3"
-                      style={{ color: 'var(--text-secondary)' }}
-                    >
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm mb-2 sm:mb-3 text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
                         <span>{chapter.word_count.toLocaleString()} слов</span>

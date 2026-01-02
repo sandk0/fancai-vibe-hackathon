@@ -35,23 +35,28 @@ interface UseEpubThemesReturn {
   decreaseFontSize: () => void;
 }
 
-const THEME_STORAGE_KEY = 'epub_reader_theme';
+/**
+ * NOTE: This hook shares the same localStorage key as useTheme.ts
+ * This ensures EPUB reader theme stays in sync with app theme.
+ * The 'system' preference from useTheme is resolved to 'light' or 'dark' before reaching here.
+ */
+const THEME_STORAGE_KEY = 'app-theme'; // Sync with useTheme.ts
 const FONT_SIZE_STORAGE_KEY = 'epub_reader_font_size';
 
-const DEFAULT_THEME: ThemeName = 'dark';
+const DEFAULT_THEME: ThemeName = 'light';
 const DEFAULT_FONT_SIZE = 100; // percentage
 const MIN_FONT_SIZE = 75;
 const MAX_FONT_SIZE = 200;
 const FONT_SIZE_STEP = 10;
 
 /**
- * Theme definitions
+ * Theme definitions - colors match globals.css CSS variables
  */
 const THEMES: Record<ThemeName, ThemeStyles> = {
   light: {
     body: {
-      color: '#1f2937',
-      background: '#ffffff',
+      color: 'hsl(222.2, 84%, 4.9%)', // --foreground
+      background: 'hsl(0, 0%, 100%)', // --background
       'font-family': 'Georgia, serif',
       'line-height': '1.6',
     },
@@ -59,22 +64,16 @@ const THEMES: Record<ThemeName, ThemeStyles> = {
       'margin-bottom': '1em',
     },
     a: {
-      color: '#2563eb',
+      color: 'hsl(221.2, 83.2%, 53.3%)', // --primary
     },
-    h1: {
-      color: '#111827',
-    },
-    h2: {
-      color: '#111827',
-    },
-    h3: {
-      color: '#111827',
-    },
+    h1: { color: 'hsl(222.2, 84%, 4.9%)' },
+    h2: { color: 'hsl(222.2, 84%, 4.9%)' },
+    h3: { color: 'hsl(222.2, 84%, 4.9%)' },
   },
   dark: {
     body: {
-      color: '#e5e7eb',
-      background: '#1f2937',
+      color: 'hsl(210, 40%, 98%)', // --foreground (dark)
+      background: 'hsl(222.2, 84%, 4.9%)', // --background (dark)
       'font-family': 'Georgia, serif',
       'line-height': '1.6',
     },
@@ -82,22 +81,16 @@ const THEMES: Record<ThemeName, ThemeStyles> = {
       'margin-bottom': '1em',
     },
     a: {
-      color: '#60a5fa',
+      color: 'hsl(217.2, 91.2%, 59.8%)', // --primary (dark)
     },
-    h1: {
-      color: '#f3f4f6',
-    },
-    h2: {
-      color: '#f3f4f6',
-    },
-    h3: {
-      color: '#f3f4f6',
-    },
+    h1: { color: 'hsl(210, 40%, 98%)' },
+    h2: { color: 'hsl(210, 40%, 98%)' },
+    h3: { color: 'hsl(210, 40%, 98%)' },
   },
   sepia: {
     body: {
-      color: '#5c4a3c',
-      background: '#f4ecd8',
+      color: 'hsl(18, 28%, 29%)', // --foreground (sepia)
+      background: 'hsl(39, 39%, 94%)', // --background (sepia)
       'font-family': 'Georgia, serif',
       'line-height': '1.6',
     },
@@ -105,17 +98,11 @@ const THEMES: Record<ThemeName, ThemeStyles> = {
       'margin-bottom': '1em',
     },
     a: {
-      color: '#8b5a2b',
+      color: 'hsl(28, 79%, 45%)', // --primary (sepia)
     },
-    h1: {
-      color: '#3d2f24',
-    },
-    h2: {
-      color: '#3d2f24',
-    },
-    h3: {
-      color: '#3d2f24',
-    },
+    h1: { color: 'hsl(18, 28%, 29%)' },
+    h2: { color: 'hsl(18, 28%, 29%)' },
+    h3: { color: 'hsl(18, 28%, 29%)' },
   },
 };
 

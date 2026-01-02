@@ -13,15 +13,12 @@
  * @component
  */
 
-import { memo, useMemo } from 'react';
+import { memo } from 'react';
 import { ArrowLeft, List, Info, Settings } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { ThemeName } from '@/hooks/epub/useEpubThemes';
 
 interface ReaderHeaderProps {
   title: string;
   author: string;
-  theme: ThemeName;
   progress: number;
   currentPage?: number;
   totalPages?: number;
@@ -36,13 +33,11 @@ interface ReaderHeaderProps {
  *
  * Optimization rationale:
  * - Rendered on every progress update (frequent) - memo prevents full re-renders
- * - getThemeColors memoized - creates new object on each render
  * - Callbacks come from parent (EpubReader) which already uses useCallback
  */
 export const ReaderHeader = memo(function ReaderHeader({
   title,
   author,
-  theme,
   progress,
   currentPage,
   totalPages,
@@ -51,56 +46,9 @@ export const ReaderHeader = memo(function ReaderHeader({
   onInfoOpen,
   onSettingsOpen,
 }: ReaderHeaderProps) {
-  // Theme-aware colors - memoized to prevent object recreation on each render
-  const colors = useMemo(() => {
-    switch (theme) {
-      case 'light':
-        return {
-          bg: 'bg-white/95',
-          text: 'text-gray-900',
-          textSecondary: 'text-gray-600',
-          border: 'border-gray-200',
-          buttonBg: 'bg-gray-100',
-          buttonHover: 'hover:bg-gray-200',
-          buttonText: 'text-gray-900',
-          progressBg: 'bg-gray-200',
-          progressFill: 'bg-blue-500',
-        };
-      case 'sepia':
-        return {
-          bg: 'bg-amber-50/95',
-          text: 'text-amber-900',
-          textSecondary: 'text-amber-700',
-          border: 'border-amber-200',
-          buttonBg: 'bg-amber-100',
-          buttonHover: 'hover:bg-amber-200',
-          buttonText: 'text-amber-900',
-          progressBg: 'bg-amber-200',
-          progressFill: 'bg-amber-600',
-        };
-      case 'dark':
-      default:
-        return {
-          bg: 'bg-gray-800/95',
-          text: 'text-gray-100',
-          textSecondary: 'text-gray-400',
-          border: 'border-gray-700',
-          buttonBg: 'bg-gray-700',
-          buttonHover: 'hover:bg-gray-600',
-          buttonText: 'text-gray-100',
-          progressBg: 'bg-gray-700',
-          progressFill: 'bg-blue-400',
-        };
-    }
-  }, [theme]);
-
   return (
     <div
-      className={cn(
-        'absolute left-0 right-0 z-10 backdrop-blur-md border-b',
-        colors.bg,
-        colors.border
-      )}
+      className="absolute left-0 right-0 z-10 backdrop-blur-md border-b bg-card/95 border-border"
       style={{ top: 'env(safe-area-inset-top)' }}
     >
       <div className="flex items-center justify-between px-4 py-3 gap-3">
@@ -108,12 +56,7 @@ export const ReaderHeader = memo(function ReaderHeader({
         <div className="flex items-center gap-2">
           <button
             onClick={onBack}
-            className={cn(
-              'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors',
-              colors.buttonBg,
-              colors.buttonHover,
-              colors.buttonText
-            )}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-muted hover:bg-muted/80 text-foreground"
             title="Назад к книге"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -122,12 +65,7 @@ export const ReaderHeader = memo(function ReaderHeader({
 
           <button
             onClick={onTocToggle}
-            className={cn(
-              'flex items-center justify-center w-11 h-11 rounded-lg transition-colors',
-              colors.buttonBg,
-              colors.buttonHover,
-              colors.buttonText
-            )}
+            className="flex items-center justify-center w-11 h-11 rounded-lg transition-colors bg-muted hover:bg-muted/80 text-foreground"
             title="Содержание"
           >
             <List className="w-5 h-5" />
@@ -135,12 +73,7 @@ export const ReaderHeader = memo(function ReaderHeader({
 
           <button
             onClick={onInfoOpen}
-            className={cn(
-              'flex items-center justify-center w-11 h-11 rounded-lg transition-colors',
-              colors.buttonBg,
-              colors.buttonHover,
-              colors.buttonText
-            )}
+            className="flex items-center justify-center w-11 h-11 rounded-lg transition-colors bg-muted hover:bg-muted/80 text-foreground"
             title="О книге"
           >
             <Info className="w-5 h-5" />
@@ -149,10 +82,10 @@ export const ReaderHeader = memo(function ReaderHeader({
 
         {/* Center: Book title and author - hidden on mobile */}
         <div className="hidden md:block flex-1 px-2 text-center min-w-0">
-          <h1 className={cn('text-lg font-semibold truncate', colors.text)}>
+          <h1 className="text-lg font-semibold truncate text-foreground">
             {title}
           </h1>
-          <p className={cn('text-sm truncate', colors.textSecondary)}>
+          <p className="text-sm truncate text-muted-foreground">
             {author}
           </p>
         </div>
@@ -162,21 +95,21 @@ export const ReaderHeader = memo(function ReaderHeader({
           {/* Compact Progress Bar */}
           <div className="flex flex-col items-end gap-1 min-w-[100px] sm:min-w-[140px]">
             {/* Progress Info - Above the bar */}
-            <div className={cn('flex items-center gap-1.5 sm:gap-2 text-xs', colors.textSecondary)}>
+            <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-muted-foreground">
               {currentPage !== undefined && totalPages !== undefined && (
                 <span className="font-medium text-[10px] sm:text-xs">
                   {currentPage}/{totalPages}
                 </span>
               )}
-              <span className={cn('font-bold text-sm sm:text-base tabular-nums', colors.text)}>
+              <span className="font-bold text-sm sm:text-base tabular-nums text-foreground">
                 {progress < 10 ? progress.toFixed(1) : Math.round(progress)}%
               </span>
             </div>
 
             {/* Progress Bar */}
-            <div className={cn('w-full h-2 sm:h-1.5 rounded-full overflow-hidden', colors.progressBg)}>
+            <div className="w-full h-2 sm:h-1.5 rounded-full overflow-hidden bg-muted">
               <div
-                className={cn('h-full rounded-full', colors.progressFill)}
+                className="h-full rounded-full bg-primary"
                 style={{
                   width: `${Math.min(100, Math.max(0, progress))}%`,
                   transition: 'width 150ms ease-out'
@@ -188,12 +121,7 @@ export const ReaderHeader = memo(function ReaderHeader({
           {/* Settings Button */}
           <button
             onClick={onSettingsOpen}
-            className={cn(
-              'flex items-center justify-center w-11 h-11 rounded-lg transition-colors',
-              colors.buttonBg,
-              colors.buttonHover,
-              colors.buttonText
-            )}
+            className="flex items-center justify-center w-11 h-11 rounded-lg transition-colors bg-muted hover:bg-muted/80 text-foreground"
             title="Настройки"
           >
             <Settings className="w-5 h-5" />

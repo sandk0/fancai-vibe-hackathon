@@ -104,7 +104,7 @@ export const AuthenticatedImage = memo(function AuthenticatedImage({
   if (isLoading) {
     // Show a loading placeholder or the fallback
     return fallback ? <>{fallback}</> : (
-      <div className={className} style={{ backgroundColor: 'var(--bg-secondary)' }} />
+      <div className={`${className} bg-muted`} />
     );
   }
 

@@ -62,23 +62,19 @@ export const BookGrid = memo(function BookGrid({
   if (books.length === 0 && searchQuery) {
     return (
       <div className="text-center py-20">
-        <div className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-          <Search className="w-10 h-10" style={{ color: 'var(--text-tertiary)' }} />
+        <div className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center bg-muted">
+          <Search className="w-10 h-10 text-muted-foreground/70" />
         </div>
-        <h3 className="text-2xl font-bold mb-3" style={{ color: 'var(--text-primary)' }}>
+        <h3 className="text-2xl font-bold mb-3 text-foreground">
           Ничего не найдено
         </h3>
-        <p className="mb-6 max-w-sm mx-auto" style={{ color: 'var(--text-secondary)' }}>
+        <p className="mb-6 max-w-sm mx-auto text-muted-foreground">
           По запросу "{searchQuery}" книги не найдены
         </p>
         {onClearSearch && (
           <button
             onClick={onClearSearch}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all hover:scale-105"
-            style={{
-              backgroundColor: 'var(--accent-color)',
-              color: 'white',
-            }}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all hover:scale-105 bg-primary text-white"
           >
             Очистить поиск
           </button>
@@ -91,23 +87,19 @@ export const BookGrid = memo(function BookGrid({
   if (books.length === 0) {
     return (
       <div className="text-center py-20">
-        <div className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-          <Book className="w-10 h-10" style={{ color: 'var(--text-tertiary)' }} />
+        <div className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center bg-muted">
+          <Book className="w-10 h-10 text-muted-foreground/70" />
         </div>
-        <h3 className="text-2xl font-bold mb-3" style={{ color: 'var(--text-primary)' }}>
+        <h3 className="text-2xl font-bold mb-3 text-foreground">
           Библиотека пуста
         </h3>
-        <p className="mb-6 max-w-sm mx-auto" style={{ color: 'var(--text-secondary)' }}>
+        <p className="mb-6 max-w-sm mx-auto text-muted-foreground">
           Загрузите вашу первую книгу и начните увлекательное путешествие с AI-визуализацией
         </p>
         {onUploadClick && (
           <button
             onClick={onUploadClick}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all hover:scale-105 shadow-lg"
-            style={{
-              backgroundColor: 'var(--accent-color)',
-              color: 'white',
-            }}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all hover:scale-105 shadow-lg bg-primary text-white"
           >
             <Plus className="w-5 h-5" />
             Загрузить первую книгу

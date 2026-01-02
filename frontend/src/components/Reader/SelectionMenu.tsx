@@ -7,16 +7,15 @@
  * - Highlight button (prepared for Task 3.1)
  * - Note button (prepared for Task 3.1)
  * - Smart positioning (above/below selection)
- * - Theme-aware styling
+ * - Uses semantic CSS tokens for automatic theme support
  * - Mobile-friendly touch targets
  * - Click outside to close
  *
  * @component
  */
 
-import { useEffect, useRef, useCallback, useMemo, memo } from 'react';
+import { useEffect, useRef, useCallback, memo } from 'react';
 import type { Selection } from '@/hooks/epub/useTextSelection';
-import type { ThemeName } from '@/hooks/epub/useEpubThemes';
 
 interface SelectionMenuProps {
   selection: Selection | null;
@@ -24,7 +23,6 @@ interface SelectionMenuProps {
   onHighlight?: () => void; // For Task 3.1
   onNote?: () => void; // For Task 3.1
   onClose: () => void;
-  theme?: ThemeName;
 }
 
 /**
@@ -32,7 +30,6 @@ interface SelectionMenuProps {
  *
  * Optimization rationale:
  * - Rendered on every selection event - memoization prevents redundant renders
- * - getThemeStyles memoized - object is recreated on each render
  * - getMenuStyle already uses useCallback (correct)
  * - Event handlers memoized to prevent effect re-subscriptions
  */
@@ -42,7 +39,6 @@ export const SelectionMenu = memo(function SelectionMenu({
   onHighlight,
   onNote,
   onClose,
-  theme = 'dark',
 }: SelectionMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -127,38 +123,6 @@ export const SelectionMenu = memo(function SelectionMenu({
     };
   }, [selection]);
 
-  /**
-   * Get theme-specific styles - memoized to prevent object recreation
-   */
-  const themeStyles = useMemo(() => {
-    switch (theme) {
-      case 'light':
-        return {
-          background: 'bg-white',
-          border: 'border-gray-300',
-          text: 'text-gray-900',
-          buttonHover: 'hover:bg-gray-100',
-          buttonActive: 'active:bg-gray-200',
-        };
-      case 'sepia':
-        return {
-          background: 'bg-amber-50',
-          border: 'border-amber-300',
-          text: 'text-amber-900',
-          buttonHover: 'hover:bg-amber-100',
-          buttonActive: 'active:bg-amber-200',
-        };
-      case 'dark':
-      default:
-        return {
-          background: 'bg-gray-800',
-          border: 'border-gray-600',
-          text: 'text-gray-100',
-          buttonHover: 'hover:bg-gray-700',
-          buttonActive: 'active:bg-gray-600',
-        };
-    }
-  }, [theme]);
 
   /**
    * Handle copy with close - memoized to prevent button re-renders
@@ -198,34 +162,15 @@ export const SelectionMenu = memo(function SelectionMenu({
     <div
       ref={menuRef}
       style={getMenuStyle()}
-      className={`
-        ${themeStyles.background}
-        ${themeStyles.border}
-        ${themeStyles.text}
-        border
-        rounded-lg
-        shadow-lg
-        backdrop-blur-sm
-        overflow-hidden
-      `}
+      className="bg-popover text-popover-foreground border border-border rounded-lg shadow-lg backdrop-blur-sm overflow-hidden"
       role="menu"
       aria-label="Text selection menu"
     >
-      <div className="flex items-stretch divide-x divide-gray-600">
+      <div className="flex items-stretch divide-x divide-border">
         {/* Copy Button */}
         <button
           onClick={handleCopy}
-          className={`
-            flex
-            items-center
-            gap-2
-            px-4
-            py-3
-            ${themeStyles.buttonHover}
-            ${themeStyles.buttonActive}
-            transition-colors
-            min-w-[100px]
-          `}
+          className="flex items-center gap-2 px-4 py-3 hover:bg-muted active:bg-muted/80 transition-colors min-w-[100px]"
           title="Copy to clipboard"
           aria-label="Copy text"
         >
@@ -251,17 +196,7 @@ export const SelectionMenu = memo(function SelectionMenu({
         {onHighlight && (
           <button
             onClick={handleHighlight}
-            className={`
-              flex
-              items-center
-              gap-2
-              px-4
-              py-3
-              ${themeStyles.buttonHover}
-              ${themeStyles.buttonActive}
-              transition-colors
-              min-w-[120px]
-            `}
+            className="flex items-center gap-2 px-4 py-3 hover:bg-muted active:bg-muted/80 transition-colors min-w-[120px]"
             title="Highlight text"
             aria-label="Highlight text"
           >
@@ -288,17 +223,7 @@ export const SelectionMenu = memo(function SelectionMenu({
         {onNote && (
           <button
             onClick={handleNote}
-            className={`
-              flex
-              items-center
-              gap-2
-              px-4
-              py-3
-              ${themeStyles.buttonHover}
-              ${themeStyles.buttonActive}
-              transition-colors
-              min-w-[100px]
-            `}
+            className="flex items-center gap-2 px-4 py-3 hover:bg-muted active:bg-muted/80 transition-colors min-w-[100px]"
             title="Add note"
             aria-label="Add note"
           >
@@ -324,17 +249,7 @@ export const SelectionMenu = memo(function SelectionMenu({
 
       {/* Character count (helpful for long selections) */}
       {selection.text.length > 100 && (
-        <div
-          className={`
-            px-3
-            py-1
-            text-xs
-            ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}
-            border-t
-            ${themeStyles.border}
-            bg-opacity-50
-          `}
-        >
+        <div className="px-3 py-1 text-xs text-muted-foreground border-t border-border bg-opacity-50">
           {selection.text.length} characters selected
         </div>
       )}

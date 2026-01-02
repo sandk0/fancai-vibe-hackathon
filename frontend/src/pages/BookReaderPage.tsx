@@ -24,10 +24,10 @@ const BookReaderPage = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900">
+      <div className="flex items-center justify-center h-screen bg-background">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-          <p className="text-gray-300">Загрузка книги...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+          <p className="text-muted-foreground">Загрузка книги...</p>
         </div>
       </div>
     );
@@ -35,12 +35,12 @@ const BookReaderPage = () => {
 
   if (error || !bookData) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900">
+      <div className="flex items-center justify-center h-screen bg-background">
         <div className="text-center">
-          <p className="text-red-400 mb-4">Ошибка загрузки книги</p>
+          <p className="text-destructive mb-4">Ошибка загрузки книги</p>
           <button
             onClick={() => navigate('/library')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
           >
             Вернуться в библиотеку
           </button>
@@ -51,7 +51,7 @@ const BookReaderPage = () => {
 
   return (
     <div
-      className="fixed inset-0 overflow-hidden bg-gray-900"
+      className="fixed inset-0 overflow-hidden bg-background"
       style={{
         paddingTop: 'env(safe-area-inset-top)',
         paddingLeft: 'env(safe-area-inset-left)',
@@ -62,10 +62,10 @@ const BookReaderPage = () => {
       {/* Parsing Status Indicator - shown while Celery is processing */}
       {isParsing && (
         <div
-          className="fixed left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-blue-600/90 backdrop-blur-sm text-white text-sm flex items-center gap-2 shadow-lg"
+          className="fixed left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-primary/90 backdrop-blur-sm text-primary-foreground text-sm flex items-center gap-2 shadow-lg"
           style={{ bottom: 'calc(20px + env(safe-area-inset-bottom))' }}
         >
-          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
           <span>Подготовка книги... {progress}%</span>
         </div>
       )}
@@ -74,18 +74,18 @@ const BookReaderPage = () => {
       <ErrorBoundary
         level="page"
         fallback={
-          <div className="flex items-center justify-center h-screen bg-gray-900">
+          <div className="flex items-center justify-center h-screen bg-background">
             <div className="text-center max-w-md px-4">
               <div className="text-6xl mb-4">📖</div>
-              <h2 className="text-2xl font-bold text-white mb-2">
+              <h2 className="text-2xl font-bold text-foreground mb-2">
                 Ошибка загрузки читалки
               </h2>
-              <p className="text-gray-400 mb-6">
+              <p className="text-muted-foreground mb-6">
                 Не удалось открыть книгу. Попробуйте вернуться в библиотеку и открыть книгу снова.
               </p>
               <button
                 onClick={() => navigate('/library')}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
               >
                 Вернуться в библиотеку
               </button>

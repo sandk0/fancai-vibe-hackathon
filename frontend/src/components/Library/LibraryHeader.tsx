@@ -47,18 +47,18 @@ export const LibraryHeader: React.FC<LibraryHeaderProps> = ({
   return (
     <div className="relative mb-6 sm:mb-12 overflow-hidden rounded-2xl sm:rounded-3xl">
       <div
-        className="absolute inset-0 opacity-50"
+        className="absolute inset-0 bg-primary/50"
         style={{
-          background: 'linear-gradient(135deg, var(--accent-color) 0%, rgba(147, 51, 234, 0.3) 100%)',
+          background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.3) 100%)',
         }}
       />
       <div className="relative px-4 sm:px-8 py-6 sm:py-12">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6">
           <div>
-            <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold mb-2 sm:mb-3" style={{ color: 'var(--text-primary)' }}>
-              Моя библиотека 📚
+            <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold mb-2 sm:mb-3 text-foreground">
+              Моя библиотека
             </h1>
-            <p className="text-base sm:text-lg" style={{ color: 'var(--text-secondary)' }}>
+            <p className="text-base sm:text-lg text-muted-foreground">
               {getSubtitle()}
             </p>
           </div>
@@ -68,12 +68,9 @@ export const LibraryHeader: React.FC<LibraryHeaderProps> = ({
             className={cn(
               "group inline-flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg sm:rounded-xl",
               "text-sm sm:text-base font-semibold transition-all duration-200",
-              "shadow-lg hover:shadow-xl hover:scale-105"
+              "shadow-lg hover:shadow-xl hover:scale-105",
+              "bg-primary text-primary-foreground"
             )}
-            style={{
-              backgroundColor: 'var(--accent-color)',
-              color: 'white',
-            }}
           >
             <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
             <span>Загрузить книгу</span>

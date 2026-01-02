@@ -27,6 +27,9 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
+    --highlight-bg: 217 91% 60% / 0.25;
+    --highlight-border: 217 91% 60% / 0.5;
+    --highlight-active: 217 91% 60% / 0.4;
   }
 
   .dark {
@@ -49,6 +52,34 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 48%;
+    --highlight-bg: 217 91% 60% / 0.35;
+    --highlight-border: 217 91% 60% / 0.6;
+    --highlight-active: 217 91% 60% / 0.5;
+  }
+
+  .sepia {
+    --background: 39 39% 94%;
+    --foreground: 18 28% 29%;
+    --card: 39 35% 92%;
+    --card-foreground: 18 28% 29%;
+    --popover: 39 35% 92%;
+    --popover-foreground: 18 28% 29%;
+    --primary: 28 79% 45%;
+    --primary-foreground: 39 39% 98%;
+    --secondary: 33 35% 85%;
+    --secondary-foreground: 18 28% 29%;
+    --muted: 33 35% 85%;
+    --muted-foreground: 17 22% 45%;
+    --accent: 33 35% 85%;
+    --accent-foreground: 18 28% 29%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 39 39% 98%;
+    --border: 23 20% 82%;
+    --input: 30 25% 88%;
+    --ring: 28 79% 45%;
+    --highlight-bg: 36 80% 50% / 0.25;
+    --highlight-border: 36 80% 50% / 0.5;
+    --highlight-active: 36 80% 50% / 0.4;
   }
 }
 
@@ -58,6 +89,13 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Theme transition (respects reduced-motion) */
+  @media (prefers-reduced-motion: no-preference) {
+    * {
+      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    }
   }
 }
 
@@ -79,59 +117,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Global Application Themes */
-:root.light {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8fafc;
-  --bg-tertiary: #f1f5f9;
-  --text-primary: #1f2937;
-  --text-secondary: #6b7280;
-  --text-tertiary: #9ca3af;
-  --border-color: #e5e7eb;
-  --accent-color: #3b82f6;
-  --accent-hover: #2563eb;
-}
-
-:root.dark {
-  --bg-primary: #1f2937;
-  --bg-secondary: #111827;
-  --bg-tertiary: #0f172a;
-  --text-primary: #f9fafb;
-  --text-secondary: #d1d5db;
-  --text-tertiary: #9ca3af;
-  --border-color: #374151;
-  --accent-color: #60a5fa;
-  --accent-hover: #3b82f6;
-}
-
-:root.sepia {
-  --bg-primary: #f7f3e9;
-  --bg-secondary: #f0e6d2;
-  --bg-tertiary: #e8dcc0;
-  --text-primary: #5d4037;
-  --text-secondary: #8d6e63;
-  --text-tertiary: #a1887f;
-  --border-color: #d7ccc8;
-  --accent-color: #d97706;
-  --accent-hover: #b45309;
-}
-
-/* Reader container */
-.reader-container {
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  border-color: var(--border-color);
-}
-
+/* Reader text styles (used by EPUB renderer) */
 .reader-text {
-  color: var(--text-primary);
   line-height: var(--line-height, 1.6);
   font-size: var(--font-size, 16px);
   font-family: var(--font-family, 'Crimson Text', serif);
-}
-
-.reader-secondary {
-  color: var(--text-secondary);
 }
 
 /* Scrollbar styles */

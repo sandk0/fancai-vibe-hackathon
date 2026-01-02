@@ -69,12 +69,7 @@ const BookImagesPage: React.FC = () => {
       {/* Hero Section */}
       <div className="relative mb-12 overflow-hidden rounded-3xl">
         {/* Gradient Background */}
-        <div
-          className="absolute inset-0 opacity-40"
-          style={{
-            background: 'linear-gradient(135deg, var(--accent-color) 0%, rgba(147, 51, 234, 0.5) 100%)',
-          }}
-        />
+        <div className="absolute inset-0 opacity-40 bg-gradient-to-br from-primary to-purple-600/50" />
 
         {/* Content */}
         <div className="relative px-8 py-12">
@@ -99,10 +94,7 @@ const BookImagesPage: React.FC = () => {
                 alt={`${book.title} cover`}
                 className="w-full h-full object-cover"
                 fallback={
-                  <div
-                    className="w-full h-full flex items-center justify-center"
-                    style={{ backgroundColor: 'var(--accent-color)' }}
-                  >
+                  <div className="w-full h-full flex items-center justify-center bg-primary">
                     <BookOpen className="w-16 h-16 text-white" />
                   </div>
                 }
@@ -134,56 +126,38 @@ const BookImagesPage: React.FC = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        <div
-          className="p-6 rounded-2xl border-2 transition-all hover:-translate-y-1 hover:shadow-xl"
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
+        <div className="p-6 rounded-2xl border-2 transition-all hover:-translate-y-1 hover:shadow-xl bg-card border-border">
           <div className="flex items-center justify-between mb-3">
             <BookOpen className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-            <span className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            <span className="text-3xl font-bold text-foreground">
               {book.total_chapters}
             </span>
           </div>
-          <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+          <p className="text-sm font-medium text-muted-foreground">
             {t('images.chapters')}
           </p>
         </div>
 
-        <div
-          className="p-6 rounded-2xl border-2 transition-all hover:-translate-y-1 hover:shadow-xl"
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
+        <div className="p-6 rounded-2xl border-2 transition-all hover:-translate-y-1 hover:shadow-xl bg-card border-border">
           <div className="flex items-center justify-between mb-3">
             <TrendingUp className="w-8 h-8 text-purple-600 dark:text-purple-400" />
-            <span className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            <span className="text-3xl font-bold text-foreground">
               {Math.round(book.reading_progress_percent || 0)}%
             </span>
           </div>
-          <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+          <p className="text-sm font-medium text-muted-foreground">
             {t('images.progress')}
           </p>
         </div>
 
-        <div
-          className="p-6 rounded-2xl border-2 transition-all hover:-translate-y-1 hover:shadow-xl"
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
+        <div className="p-6 rounded-2xl border-2 transition-all hover:-translate-y-1 hover:shadow-xl bg-card border-border">
           <div className="flex items-center justify-between mb-3">
             <Sparkles className="w-8 h-8 text-amber-600 dark:text-amber-400" />
-            <span className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            <span className="text-2xl font-bold text-foreground">
               {book.genre || t('images.unknown')}
             </span>
           </div>
-          <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+          <p className="text-sm font-medium text-muted-foreground">
             {t('images.genre')}
           </p>
         </div>
@@ -191,17 +165,11 @@ const BookImagesPage: React.FC = () => {
 
       {/* Description (if available) */}
       {book.description && (
-        <div
-          className="p-6 rounded-2xl border-2 mb-12"
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
-          <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+        <div className="p-6 rounded-2xl border-2 mb-12 bg-card border-border">
+          <h3 className="text-lg font-semibold mb-3 text-foreground">
             Описание
           </h3>
-          <p className="leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+          <p className="leading-relaxed text-muted-foreground">
             {book.description}
           </p>
         </div>
@@ -209,20 +177,14 @@ const BookImagesPage: React.FC = () => {
 
       {/* Gallery Header */}
       <div className="flex items-center gap-3 mb-6">
-        <ImageIcon className="w-7 h-7" style={{ color: 'var(--accent-color)' }} />
-        <h2 className="text-2xl md:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+        <ImageIcon className="w-7 h-7 text-primary" />
+        <h2 className="text-2xl md:text-3xl font-bold text-foreground">
           AI Галерея
         </h2>
       </div>
 
       {/* Image Gallery */}
-      <div
-        className="rounded-2xl border-2 p-6"
-        style={{
-          backgroundColor: 'var(--bg-primary)',
-          borderColor: 'var(--border-color)',
-        }}
-      >
+      <div className="rounded-2xl border-2 p-6 bg-card border-border">
         <ImageGallery bookId={bookId} />
       </div>
     </div>

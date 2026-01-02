@@ -24,28 +24,28 @@ const NotificationContainer: React.FC = () => {
   const getStyles = (type: string) => {
     switch (type) {
       case 'success':
-        return 'bg-green-50 border-green-200 text-green-800';
+        return 'bg-green-50 dark:bg-green-950/50 sepia-theme:bg-green-50/80 border-green-200 dark:border-green-800 sepia-theme:border-green-300 text-green-800 dark:text-green-200 sepia-theme:text-green-900';
       case 'error':
-        return 'bg-red-50 border-red-200 text-red-800';
+        return 'bg-red-50 dark:bg-red-950/50 sepia-theme:bg-red-50/80 border-red-200 dark:border-red-800 sepia-theme:border-red-300 text-red-800 dark:text-red-200 sepia-theme:text-red-900';
       case 'warning':
-        return 'bg-yellow-50 border-yellow-200 text-yellow-800';
+        return 'bg-yellow-50 dark:bg-yellow-950/50 sepia-theme:bg-yellow-50/80 border-yellow-200 dark:border-yellow-800 sepia-theme:border-yellow-300 text-yellow-800 dark:text-yellow-200 sepia-theme:text-yellow-900';
       case 'info':
       default:
-        return 'bg-blue-50 border-blue-200 text-blue-800';
+        return 'bg-blue-50 dark:bg-blue-950/50 sepia-theme:bg-blue-50/80 border-blue-200 dark:border-blue-800 sepia-theme:border-blue-300 text-blue-800 dark:text-blue-200 sepia-theme:text-blue-900';
     }
   };
 
   const getIconStyles = (type: string) => {
     switch (type) {
       case 'success':
-        return 'text-green-400';
+        return 'text-green-500 dark:text-green-400 sepia-theme:text-green-600';
       case 'error':
-        return 'text-red-400';
+        return 'text-red-500 dark:text-red-400 sepia-theme:text-red-600';
       case 'warning':
-        return 'text-yellow-400';
+        return 'text-yellow-500 dark:text-yellow-400 sepia-theme:text-yellow-600';
       case 'info':
       default:
-        return 'text-blue-400';
+        return 'text-blue-500 dark:text-blue-400 sepia-theme:text-blue-600';
     }
   };
 

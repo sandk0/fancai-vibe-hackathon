@@ -70,30 +70,24 @@ const LoginPage: React.FC = () => {
       }}
     >
       {/* Left Side - Login Form */}
-      <div
-        className="flex items-center justify-center p-8 lg:p-12"
-        style={{ backgroundColor: 'var(--bg-primary)' }}
-      >
+      <div className="flex items-center justify-center p-8 lg:p-12 bg-background">
         <div className="max-w-md w-full">
           {/* Logo and Title */}
           <div className="mb-10">
             <div className="flex items-center gap-3 mb-6">
-              <div
-                className="p-3 rounded-xl"
-                style={{ backgroundColor: 'var(--accent-color)' }}
-              >
+              <div className="p-3 rounded-xl bg-primary">
                 <BookOpen className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                <h1 className="text-3xl font-bold text-foreground">
                   fancai
                 </h1>
               </div>
             </div>
-            <h2 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
-              С возвращением! 👋
+            <h2 className="text-3xl font-bold mb-2 text-foreground">
+              С возвращением!
             </h2>
-            <p style={{ color: 'var(--text-secondary)' }}>
+            <p className="text-muted-foreground">
               Войдите, чтобы продолжить читать
             </p>
           </div>
@@ -104,30 +98,21 @@ const LoginPage: React.FC = () => {
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium mb-2"
-                style={{ color: 'var(--text-primary)' }}
+                className="block text-sm font-medium mb-2 text-foreground"
               >
                 Email
               </label>
               <div className="relative">
-                <Mail
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5"
-                  style={{ color: 'var(--text-tertiary)' }}
-                />
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
                 <input
                   {...register('email')}
                   type="email"
                   id="email"
                   placeholder="your@email.com"
                   className={cn(
-                    'w-full pl-11 pr-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2',
-                    errors.email && 'border-red-500'
+                    'w-full pl-11 pr-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 bg-muted text-foreground',
+                    errors.email ? 'border-red-500' : 'border-border'
                   )}
-                  style={{
-                    backgroundColor: 'var(--bg-secondary)',
-                    borderColor: errors.email ? '#ef4444' : 'var(--border-color)',
-                    color: 'var(--text-primary)',
-                  }}
                 />
               </div>
               {errors.email && (
@@ -139,36 +124,26 @@ const LoginPage: React.FC = () => {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium mb-2"
-                style={{ color: 'var(--text-primary)' }}
+                className="block text-sm font-medium mb-2 text-foreground"
               >
                 Пароль
               </label>
               <div className="relative">
-                <Lock
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5"
-                  style={{ color: 'var(--text-tertiary)' }}
-                />
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
                 <input
                   {...register('password')}
                   type={showPassword ? 'text' : 'password'}
                   id="password"
-                  placeholder="••••••••"
+                  placeholder="********"
                   className={cn(
-                    'w-full pl-11 pr-11 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2',
-                    errors.password && 'border-red-500'
+                    'w-full pl-11 pr-11 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 bg-muted text-foreground',
+                    errors.password ? 'border-red-500' : 'border-border'
                   )}
-                  style={{
-                    backgroundColor: 'var(--bg-secondary)',
-                    borderColor: errors.password ? '#ef4444' : 'var(--border-color)',
-                    color: 'var(--text-primary)',
-                  }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                  style={{ color: 'var(--text-tertiary)' }}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground/70"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -182,8 +157,7 @@ const LoginPage: React.FC = () => {
             <div className="flex justify-end">
               <Link
                 to="/forgot-password"
-                className="text-sm hover:underline"
-                style={{ color: 'var(--accent-color)' }}
+                className="text-sm hover:underline text-primary"
               >
                 Забыли пароль?
               </Link>
@@ -194,12 +168,9 @@ const LoginPage: React.FC = () => {
               type="submit"
               disabled={isLoading}
               className={cn(
-                'w-full py-3 px-4 rounded-xl font-semibold text-white transition-all',
+                'w-full py-3 px-4 rounded-xl font-semibold text-white transition-all bg-primary hover:bg-primary/90',
                 isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 shadow-lg'
               )}
-              style={{
-                backgroundColor: 'var(--accent-color)',
-              }}
             >
               {isLoading ? (
                 <div className="flex items-center justify-center gap-2">
@@ -214,12 +185,11 @@ const LoginPage: React.FC = () => {
 
           {/* Sign Up Link */}
           <div className="mt-8 text-center">
-            <p style={{ color: 'var(--text-secondary)' }}>
+            <p className="text-muted-foreground">
               Нет аккаунта?{' '}
               <Link
                 to="/register"
-                className="font-semibold hover:underline"
-                style={{ color: 'var(--accent-color)' }}
+                className="font-semibold hover:underline text-primary"
               >
                 Зарегистрироваться
               </Link>
@@ -229,12 +199,7 @@ const LoginPage: React.FC = () => {
       </div>
 
       {/* Right Side - Gradient Benefits */}
-      <div
-        className="hidden lg:flex items-center justify-center p-12 relative overflow-hidden"
-        style={{
-          background: `linear-gradient(135deg, var(--accent-color) 0%, rgba(147, 51, 234, 0.9) 100%)`,
-        }}
-      >
+      <div className="hidden lg:flex items-center justify-center p-12 relative overflow-hidden bg-gradient-to-br from-primary to-purple-600/90">
         <div className="relative z-10 max-w-md text-white">
           <div className="mb-8">
             <Sparkles className="w-16 h-16 mb-6" />

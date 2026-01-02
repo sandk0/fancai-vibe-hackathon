@@ -67,37 +67,37 @@ export const PositionConflictDialog: React.FC<PositionConflictDialogProps> = ({
       aria-modal="true"
       aria-labelledby="position-conflict-title"
     >
-      <div className="bg-gray-800 rounded-lg p-6 max-w-md mx-4 shadow-xl">
+      <div className="bg-popover rounded-lg p-6 max-w-md mx-4 shadow-xl">
         <h3
           id="position-conflict-title"
-          className="text-lg font-semibold text-white mb-4"
+          className="text-lg font-semibold text-popover-foreground mb-4"
         >
           Обнаружена разница в позициях чтения
         </h3>
 
-        <p className="text-gray-400 text-sm mb-4">
+        <p className="text-muted-foreground text-sm mb-4">
           Вы читали эту книгу на другом устройстве. Выберите, с какой позиции продолжить.
         </p>
 
         <div className="space-y-3 mb-6">
           {/* Server position */}
-          <div className="p-3 bg-gray-700 rounded">
-            <div className="text-sm text-gray-400">Другое устройство</div>
-            <div className="text-white text-lg font-medium">
+          <div className="p-3 bg-muted rounded">
+            <div className="text-sm text-muted-foreground">Другое устройство</div>
+            <div className="text-popover-foreground text-lg font-medium">
               {Math.round(serverPosition.progress)}%
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-muted-foreground/70">
               {formatDistanceToNow(serverPosition.lastReadAt)} назад
             </div>
           </div>
 
           {/* Local position */}
-          <div className="p-3 bg-gray-700 rounded">
-            <div className="text-sm text-gray-400">Это устройство</div>
-            <div className="text-white text-lg font-medium">
+          <div className="p-3 bg-muted rounded">
+            <div className="text-sm text-muted-foreground">Это устройство</div>
+            <div className="text-popover-foreground text-lg font-medium">
               {Math.round(localPosition.progress)}%
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-muted-foreground/70">
               {formatDistanceToNow(localPosition.savedAt)} назад
             </div>
           </div>
@@ -106,13 +106,13 @@ export const PositionConflictDialog: React.FC<PositionConflictDialogProps> = ({
         <div className="flex gap-3">
           <button
             onClick={onUseServer}
-            className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800"
+            className="flex-1 px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-popover"
           >
             Продолжить с {Math.round(serverPosition.progress)}%
           </button>
           <button
             onClick={onUseLocal}
-            className="flex-1 px-4 py-2.5 bg-gray-600 hover:bg-gray-500 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 focus:ring-offset-gray-800"
+            className="flex-1 px-4 py-2.5 bg-muted hover:bg-accent text-popover-foreground font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-popover"
           >
             Остаться на {Math.round(localPosition.progress)}%
           </button>

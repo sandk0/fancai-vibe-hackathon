@@ -44,10 +44,7 @@ const Header: React.FC = () => {
   }, [showUserMenu]);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 transition-colors" style={{
-      backgroundColor: 'var(--bg-primary)',
-      borderBottom: '1px solid var(--border-color)',
-    }}>
+    <header className="fixed top-0 left-0 right-0 z-40 transition-colors bg-background border-b border-border">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Left side - Logo and Navigation */}
@@ -55,7 +52,7 @@ const Header: React.FC = () => {
             {/* Mobile menu button */}
             <button
               type="button"
-              className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary"
               onClick={() => setSidebarOpen(!sidebarOpen)}
             >
               <Menu className="w-6 h-6" />
@@ -64,7 +61,7 @@ const Header: React.FC = () => {
             {/* Logo */}
             <Link to="/" className="flex items-center ml-4 lg:ml-0">
               <div className="flex items-center">
-                <BookOpen className="w-8 h-8 text-primary-600" />
+                <BookOpen className="w-8 h-8 text-primary" />
                 <span className="ml-2 text-xl font-bold text-gray-900 dark:text-white hidden sm:block">
                   fancai
                 </span>
@@ -81,7 +78,7 @@ const Header: React.FC = () => {
               <input
                 type="text"
                 placeholder={t('nav.searchBooks')}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-700 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-700 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary focus:border-primary"
               />
             </div>
           </div>
@@ -92,10 +89,7 @@ const Header: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowUploadModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-white transition-all hover:scale-105"
-              style={{
-                backgroundColor: 'var(--accent-color)',
-              }}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-white transition-all hover:scale-105 bg-primary hover:bg-primary/90"
             >
               <Upload className="w-4 h-4" />
               <span className="hidden sm:block">{t('nav.uploadBook')}</span>
@@ -108,20 +102,11 @@ const Header: React.FC = () => {
             <div className="relative" ref={menuRef}>
               <button
                 type="button"
-                className="flex items-center justify-center rounded-full border-2 p-0.5 transition-all hover:scale-105"
-                style={{
-                  borderColor: 'var(--border-color)',
-                  backgroundColor: 'transparent',
-                }}
+                className="flex items-center justify-center rounded-full border-2 p-0.5 transition-all hover:scale-105 border-border bg-transparent"
                 onClick={() => setShowUserMenu(!showUserMenu)}
               >
                 <span className="sr-only">{t('nav.openUserMenu')}</span>
-                <div
-                  className="w-9 h-9 rounded-full flex items-center justify-center"
-                  style={{
-                    backgroundColor: 'var(--accent-color)',
-                  }}
-                >
+                <div className="w-9 h-9 rounded-full flex items-center justify-center bg-primary">
                   <span className="text-sm font-medium text-white">
                     {user?.full_name ? user.full_name.charAt(0).toUpperCase() : user?.email.charAt(0).toUpperCase()}
                   </span>
@@ -130,25 +115,16 @@ const Header: React.FC = () => {
 
               {/* User dropdown */}
               {showUserMenu && (
-                <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 focus:outline-none" style={{
-                  backgroundColor: 'var(--bg-primary)',
-                  borderColor: 'var(--border-color)',
-                }}>
-                  <div className="px-4 py-2 text-sm border-b" style={{
-                    color: 'var(--text-primary)',
-                    borderColor: 'var(--border-color)',
-                  }}>
+                <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 focus:outline-none bg-background border border-border">
+                  <div className="px-4 py-2 text-sm border-b border-border text-foreground">
                     <div className="font-medium">{user?.full_name || 'User'}</div>
-                    <div style={{ color: 'var(--text-secondary)' }}>{user?.email}</div>
+                    <div className="text-muted-foreground">{user?.email}</div>
                   </div>
 
                   <Link
                     to="/profile"
                     onClick={() => setShowUserMenu(false)}
-                    className="flex items-center px-4 py-2 text-sm transition-colors"
-                    style={{ color: 'var(--text-primary)' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    className="flex items-center px-4 py-2 text-sm transition-colors text-foreground hover:bg-muted"
                   >
                     <User className="w-4 h-4 mr-3" />
                     {t('nav.profile')}
@@ -157,10 +133,7 @@ const Header: React.FC = () => {
                   <Link
                     to="/settings"
                     onClick={() => setShowUserMenu(false)}
-                    className="flex items-center px-4 py-2 text-sm transition-colors"
-                    style={{ color: 'var(--text-primary)' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    className="flex items-center px-4 py-2 text-sm transition-colors text-foreground hover:bg-muted"
                   >
                     <Settings className="w-4 h-4 mr-3" />
                     {t('nav.settings')}
@@ -168,10 +141,7 @@ const Header: React.FC = () => {
 
                   <button
                     onClick={handleLogout}
-                    className="flex items-center w-full px-4 py-2 text-sm transition-colors"
-                    style={{ color: 'var(--text-primary)' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    className="flex items-center w-full px-4 py-2 text-sm transition-colors text-foreground hover:bg-muted"
                   >
                     <LogOut className="w-4 h-4 mr-3" />
                     {t('nav.signOut')}

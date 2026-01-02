@@ -56,22 +56,22 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden"
+          className="relative bg-card rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between p-6 border-b border-border">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
                 <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
               </div>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              <h2 className="text-xl font-semibold text-card-foreground">
                 {t('deleteModal.title')}
               </h2>
             </div>
             <button
               onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors"
+              className="p-2 text-muted-foreground hover:text-card-foreground rounded-lg transition-colors"
               disabled={isDeleting}
             >
               <X className="h-5 w-5" />
@@ -81,15 +81,15 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
           {/* Content */}
           <div className="p-6">
             <div className="mb-4">
-              <p className="text-gray-700 dark:text-gray-300 mb-2">
+              <p className="text-card-foreground/80 mb-2">
                 {t('deleteModal.confirmText')}
               </p>
-              <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                <p className="font-semibold text-gray-900 dark:text-white truncate">
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="font-semibold text-card-foreground truncate">
                   {book.title}
                 </p>
                 {book.author && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                  <p className="text-sm text-muted-foreground truncate">
                     {book.author}
                   </p>
                 )}
@@ -115,7 +115,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+          <div className="flex items-center justify-end gap-3 p-6 border-t border-border bg-muted/50">
             <Button
               variant="outline"
               onClick={onClose}

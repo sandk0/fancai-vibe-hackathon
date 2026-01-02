@@ -147,11 +147,11 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
   if (images.length === 0) {
     return (
       <div className={`text-center py-12 ${className}`}>
-        <Image className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+        <Image className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-foreground mb-2">
           No Images Generated Yet
         </h3>
-        <p className="text-gray-600 dark:text-gray-400 max-w-sm mx-auto">
+        <p className="text-muted-foreground max-w-sm mx-auto">
           AI images will appear here as they are generated from the book's descriptions
         </p>
       </div>
@@ -163,10 +163,10 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">
+          <h2 className="text-xl font-semibold text-foreground mb-1">
             Generated Images
           </h2>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-muted-foreground">
             {filteredImages.length} of {images.length} images
           </p>
         </div>
@@ -174,7 +174,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
         <div className="flex items-center space-x-2 mt-4 sm:mt-0">
           <button
             onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-            className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg transition-colors"
+            className="p-2 text-muted-foreground hover:text-foreground rounded-lg transition-colors"
             title={`Switch to ${viewMode === 'grid' ? 'list' : 'grid'} view`}
           >
             {viewMode === 'grid' ? (
@@ -194,14 +194,14 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
             placeholder="Search descriptions..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-card text-foreground"
           />
         </div>
         
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value as FilterType)}
-          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          className="px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-card text-foreground"
         >
           <option value="all">All Types</option>
           {availableTypes.map(type => (
@@ -221,7 +221,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="group relative bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-shadow"
+              className="group relative bg-card rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-shadow"
             >
               <div 
                 className="aspect-square cursor-pointer overflow-hidden"
@@ -266,11 +266,11 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
               
               {/* Info */}
               <div className="p-3">
-                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                <p className="text-sm text-muted-foreground line-clamp-2">
                   {image.description?.content || 'Generated image'}
                 </p>
                 {image.description?.type && (
-                  <span className="inline-block mt-2 px-2 py-1 text-xs bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-200 rounded-full">
+                  <span className="inline-block mt-2 px-2 py-1 text-xs bg-primary/10 text-primary rounded-full">
                     {image.description.type}
                   </span>
                 )}
@@ -286,7 +286,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="flex items-center space-x-4 bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm hover:shadow-lg transition-shadow"
+              className="flex items-center space-x-4 bg-card rounded-lg p-4 shadow-sm hover:shadow-lg transition-shadow"
             >
               <div 
                 className="w-20 h-20 flex-shrink-0 cursor-pointer rounded-lg overflow-hidden"
@@ -301,11 +301,11 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
               </div>
               
               <div className="flex-1 min-w-0">
-                <p className="text-gray-900 dark:text-white text-sm font-medium line-clamp-2">
+                <p className="text-foreground text-sm font-medium line-clamp-2">
                   {image.description?.content || 'Generated image'}
                 </p>
                 {image.description?.type && (
-                  <span className="inline-block mt-1 px-2 py-1 text-xs bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-200 rounded-full">
+                  <span className="inline-block mt-1 px-2 py-1 text-xs bg-primary/10 text-primary rounded-full">
                     {image.description.type}
                   </span>
                 )}
@@ -314,21 +314,21 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => handleImageClick(image)}
-                  className="p-2 text-gray-600 dark:text-gray-400 hover:text-primary-600 transition-colors"
+                  className="p-2 text-muted-foreground hover:text-primary transition-colors"
                   title="View"
                 >
                   <Eye className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => handleDownload(image)}
-                  className="p-2 text-gray-600 dark:text-gray-400 hover:text-primary-600 transition-colors"
+                  className="p-2 text-muted-foreground hover:text-primary transition-colors"
                   title="Download"
                 >
                   <Download className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => handleShare(image)}
-                  className="p-2 text-gray-600 dark:text-gray-400 hover:text-primary-600 transition-colors"
+                  className="p-2 text-muted-foreground hover:text-primary transition-colors"
                   title="Share"
                 >
                   <Share2 className="h-4 w-4" />
@@ -342,11 +342,11 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
       {/* Empty state for filtered results */}
       {filteredImages.length === 0 && images.length > 0 && (
         <div className="text-center py-12">
-          <Filter className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+          <Filter className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-foreground mb-2">
             No Images Match Your Filters
           </h3>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-muted-foreground">
             Try adjusting your search or filter criteria
           </p>
         </div>

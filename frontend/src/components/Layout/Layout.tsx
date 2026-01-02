@@ -27,10 +27,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen transition-colors" style={{
-      backgroundColor: 'var(--bg-primary)',
-      color: 'var(--text-primary)',
-    }}>
+    <div className="min-h-screen transition-colors bg-background text-foreground">
       {/* Header */}
       <Header />
 
@@ -48,9 +45,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         )}
 
         {/* Main Content */}
-        <main className="flex-1 min-h-screen pt-16" style={{
-          backgroundColor: 'var(--bg-secondary)',
-        }}>
+        <main className="flex-1 min-h-screen pt-16 bg-muted">
           <div className="container mx-auto px-4 py-6">
             {children}
           </div>

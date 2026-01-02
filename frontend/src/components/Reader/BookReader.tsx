@@ -296,7 +296,6 @@ export const BookReader: React.FC<BookReaderProps> = ({
         <ReaderHeader
           title={book.title}
           author={book.author}
-          theme={theme}
           progress={book.reading_progress?.progress_percent || 0}
           currentPage={currentPage}
           totalPages={pages.length}

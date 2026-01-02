@@ -36,7 +36,7 @@ export const LibraryStats: React.FC<LibraryStatsProps> = ({
       icon: BookOpen,
       value: totalBooks,
       label: 'Всего книг',
-      color: 'var(--accent-color)',
+      color: 'hsl(var(--primary))',
     },
     {
       icon: Clock,
@@ -65,19 +65,15 @@ export const LibraryStats: React.FC<LibraryStatsProps> = ({
         return (
           <div
             key={index}
-            className="p-4 sm:p-6 rounded-2xl border-2 transition-all duration-300 hover:scale-105"
-            style={{
-              backgroundColor: 'var(--bg-primary)',
-              borderColor: 'var(--border-color)',
-            }}
+            className="p-4 sm:p-6 rounded-2xl border-2 transition-all duration-300 hover:scale-105 bg-card border-border"
           >
             <div className="flex items-center justify-between mb-2">
               <Icon className="w-8 h-8" style={{ color: stat.color }} />
             </div>
-            <div className="text-2xl sm:text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
+            <div className="text-2xl sm:text-3xl font-bold mb-1 text-foreground">
               {stat.value}
             </div>
-            <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            <div className="text-sm text-muted-foreground">
               {stat.label}
             </div>
           </div>

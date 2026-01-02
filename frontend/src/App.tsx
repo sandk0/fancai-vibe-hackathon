@@ -46,10 +46,7 @@ import '@/styles/globals.css';
  * Shown while lazy-loaded chunks are being fetched
  */
 const PageLoadingFallback = () => (
-  <div className="flex items-center justify-center min-h-screen" style={{
-    backgroundColor: 'var(--bg-primary)',
-    color: 'var(--text-primary)',
-  }}>
+  <div className="flex items-center justify-center min-h-screen bg-background text-foreground">
     <div className="text-center">
       <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
       <p className="text-gray-400">Загрузка...</p>
@@ -72,10 +69,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
-        <div className="App min-h-screen transition-colors" style={{
-          backgroundColor: 'var(--bg-primary)',
-          color: 'var(--text-primary)',
-        }}>
+        <div className="App min-h-screen transition-colors bg-background text-foreground">
           <Routes>
             {/* Public routes */}
             <Route path="/login" element={<LoginPage />} />

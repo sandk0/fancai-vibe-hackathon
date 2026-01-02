@@ -48,20 +48,14 @@ export const LibrarySearch: React.FC<LibrarySearchProps> = ({
       <div className="flex-1">
         <div className="relative">
           <Search
-            className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5"
-            style={{ color: 'var(--text-tertiary)' }}
+            className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground"
           />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Поиск по названию, автору, жанру..."
-            className="w-full pl-12 pr-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2"
-            style={{
-              backgroundColor: 'var(--bg-primary)',
-              borderColor: 'var(--border-color)',
-              color: 'var(--text-primary)',
-            }}
+            className="w-full pl-12 pr-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 bg-card text-foreground border-border focus:ring-ring"
           />
         </div>
       </div>
@@ -72,15 +66,11 @@ export const LibrarySearch: React.FC<LibrarySearchProps> = ({
         <button
           onClick={() => onViewModeChange('grid')}
           className={cn(
-            "p-3 rounded-xl border-2 transition-all",
-            viewMode === 'grid' && "ring-2"
+            "p-3 rounded-xl border-2 transition-all border-border",
+            viewMode === 'grid'
+              ? "bg-primary text-primary-foreground ring-2 ring-ring"
+              : "bg-card text-foreground hover:bg-muted"
           )}
-          style={{
-            backgroundColor: viewMode === 'grid' ? 'var(--accent-color)' : 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-            color: viewMode === 'grid' ? 'white' : 'var(--text-primary)',
-            ...(viewMode === 'grid' && { ringColor: 'var(--accent-color)' }),
-          }}
           aria-label="Режим сетки"
         >
           <Grid3x3 className="w-5 h-5" />
@@ -90,15 +80,11 @@ export const LibrarySearch: React.FC<LibrarySearchProps> = ({
         <button
           onClick={() => onViewModeChange('list')}
           className={cn(
-            "p-3 rounded-xl border-2 transition-all",
-            viewMode === 'list' && "ring-2"
+            "p-3 rounded-xl border-2 transition-all border-border",
+            viewMode === 'list'
+              ? "bg-primary text-primary-foreground ring-2 ring-ring"
+              : "bg-card text-foreground hover:bg-muted"
           )}
-          style={{
-            backgroundColor: viewMode === 'list' ? 'var(--accent-color)' : 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-            color: viewMode === 'list' ? 'white' : 'var(--text-primary)',
-            ...(viewMode === 'list' && { ringColor: 'var(--accent-color)' }),
-          }}
           aria-label="Режим списка"
         >
           <List className="w-5 h-5" />
@@ -109,25 +95,19 @@ export const LibrarySearch: React.FC<LibrarySearchProps> = ({
           <select
             value={sortBy}
             onChange={(e) => onSortChange(e.target.value)}
-            className="appearance-none pl-10 pr-8 py-3 rounded-xl border-2 transition-all cursor-pointer focus:outline-none focus:ring-2"
-            style={{
-              backgroundColor: 'var(--bg-primary)',
-              borderColor: 'var(--border-color)',
-              color: 'var(--text-primary)',
-            }}
+            className="appearance-none pl-10 pr-8 py-3 rounded-xl border-2 transition-all cursor-pointer focus:outline-none focus:ring-2 bg-card border-border text-foreground focus:ring-ring"
             aria-label="Сортировка"
           >
-            <option value="created_desc">Новые → Старые</option>
-            <option value="created_asc">Старые → Новые</option>
-            <option value="title_asc">Название А → Я</option>
-            <option value="title_desc">Название Я → А</option>
-            <option value="author_asc">Автор А → Я</option>
-            <option value="author_desc">Автор Я → А</option>
+            <option value="created_desc">Новые - Старые</option>
+            <option value="created_asc">Старые - Новые</option>
+            <option value="title_asc">Название А - Я</option>
+            <option value="title_desc">Название Я - А</option>
+            <option value="author_asc">Автор А - Я</option>
+            <option value="author_desc">Автор Я - А</option>
             <option value="accessed_desc">Недавно читал</option>
           </select>
           <ArrowUpDown
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none"
-            style={{ color: 'var(--text-tertiary)' }}
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none text-muted-foreground"
           />
         </div>
 
@@ -135,15 +115,11 @@ export const LibrarySearch: React.FC<LibrarySearchProps> = ({
         <button
           onClick={onToggleFilters}
           className={cn(
-            "inline-flex items-center gap-2 px-4 py-3 rounded-xl border-2 transition-all",
-            showFilters && "ring-2"
+            "inline-flex items-center gap-2 px-4 py-3 rounded-xl border-2 transition-all border-border",
+            showFilters
+              ? "bg-primary text-primary-foreground ring-2 ring-ring"
+              : "bg-card text-foreground hover:bg-muted"
           )}
-          style={{
-            backgroundColor: showFilters ? 'var(--accent-color)' : 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-            color: showFilters ? 'white' : 'var(--text-primary)',
-            ...(showFilters && { ringColor: 'var(--accent-color)' }),
-          }}
           aria-label="Переключить фильтры"
         >
           <Filter className="w-5 h-5" />

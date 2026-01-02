@@ -7,7 +7,7 @@
  * - Highlight current chapter
  * - Expand/collapse nested chapters
  * - Search/filter chapters (optional)
- * - Theme-aware styling (light/dark/sepia)
+ * - Theme-aware styling via CSS variables (light/dark/sepia)
  * - Responsive design (mobile overlay, desktop sidebar)
  *
  * @component
@@ -15,7 +15,6 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import type { NavItem } from 'epubjs';
-import type { ThemeName } from '@/hooks/epub';
 
 interface TocSidebarProps {
   toc: NavItem[];
@@ -23,14 +22,12 @@ interface TocSidebarProps {
   onChapterClick: (href: string) => void;
   isOpen: boolean;
   onClose: () => void;
-  theme: ThemeName;
 }
 
 interface ChapterItemProps {
   item: NavItem;
   currentHref: string | null;
   onChapterClick: (href: string) => void;
-  theme: ThemeName;
   level: number;
 }
 
@@ -41,7 +38,6 @@ const ChapterItem: React.FC<ChapterItemProps> = ({
   item,
   currentHref,
   onChapterClick,
-  theme,
   level,
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -53,39 +49,6 @@ const ChapterItem: React.FC<ChapterItemProps> = ({
   };
 
   const isActive = currentHref && normalizeHref(item.href) === normalizeHref(currentHref);
-
-  // Theme-based colors
-  const getColors = () => {
-    switch (theme) {
-      case 'light':
-        return {
-          text: 'text-gray-800',
-          textHover: 'hover:text-blue-600',
-          active: 'bg-blue-100 text-blue-700 font-semibold',
-          inactive: 'text-gray-700 hover:bg-gray-100',
-          border: 'border-gray-200',
-        };
-      case 'sepia':
-        return {
-          text: 'text-amber-900',
-          textHover: 'hover:text-amber-700',
-          active: 'bg-amber-200 text-amber-900 font-semibold',
-          inactive: 'text-amber-800 hover:bg-amber-100',
-          border: 'border-amber-300',
-        };
-      case 'dark':
-      default:
-        return {
-          text: 'text-gray-200',
-          textHover: 'hover:text-blue-400',
-          active: 'bg-blue-900/50 text-blue-300 font-semibold',
-          inactive: 'text-gray-300 hover:bg-gray-700',
-          border: 'border-gray-600',
-        };
-    }
-  };
-
-  const colors = getColors();
 
   const handleClick = useCallback(() => {
     onChapterClick(item.href);
@@ -101,7 +64,9 @@ const ChapterItem: React.FC<ChapterItemProps> = ({
       <div
         className={`
           flex items-center gap-2 px-3 py-2 rounded cursor-pointer transition-colors
-          ${isActive ? colors.active : colors.inactive}
+          ${isActive
+            ? 'bg-primary/20 text-primary font-semibold'
+            : 'text-foreground hover:bg-muted'}
         `}
         onClick={handleClick}
         role="button"
@@ -119,7 +84,7 @@ const ChapterItem: React.FC<ChapterItemProps> = ({
         {hasSubitems && (
           <button
             onClick={toggleExpand}
-            className="text-sm"
+            className="text-sm text-muted-foreground"
             aria-label={isExpanded ? 'Collapse' : 'Expand'}
           >
             {isExpanded ? '▼' : '▶'}
@@ -127,7 +92,7 @@ const ChapterItem: React.FC<ChapterItemProps> = ({
         )}
 
         {/* Chapter label */}
-        <span className={`flex-1 text-sm ${colors.text}`}>
+        <span className="flex-1 text-sm">
           {item.label || 'Untitled Chapter'}
         </span>
       </div>
@@ -141,7 +106,6 @@ const ChapterItem: React.FC<ChapterItemProps> = ({
               item={subitem}
               currentHref={currentHref}
               onChapterClick={onChapterClick}
-              theme={theme}
               level={level + 1}
             />
           ))}
@@ -160,45 +124,8 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
   onChapterClick,
   isOpen,
   onClose,
-  theme,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Theme-based colors
-  const getColors = () => {
-    switch (theme) {
-      case 'light':
-        return {
-          bg: 'bg-white',
-          text: 'text-gray-800',
-          subtext: 'text-gray-600',
-          border: 'border-gray-300',
-          overlay: 'bg-black/30',
-          input: 'bg-gray-100 text-gray-800 border-gray-300',
-        };
-      case 'sepia':
-        return {
-          bg: 'bg-amber-50',
-          text: 'text-amber-900',
-          subtext: 'text-amber-700',
-          border: 'border-amber-300',
-          overlay: 'bg-black/30',
-          input: 'bg-amber-100 text-amber-900 border-amber-300',
-        };
-      case 'dark':
-      default:
-        return {
-          bg: 'bg-gray-800',
-          text: 'text-gray-100',
-          subtext: 'text-gray-400',
-          border: 'border-gray-600',
-          overlay: 'bg-black/50',
-          input: 'bg-gray-700 text-gray-100 border-gray-600',
-        };
-    }
-  };
-
-  const colors = getColors();
 
   // Filter TOC by search query
   const filteredToc = useMemo(() => {
@@ -261,7 +188,7 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
     <>
       {/* Mobile overlay */}
       <div
-        className={`fixed inset-0 z-30 ${colors.overlay} md:hidden`}
+        className="fixed inset-0 z-30 bg-black/40 md:hidden"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -270,7 +197,7 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
       <div
         className={`
           fixed top-0 left-0 z-40 h-full
-          ${colors.bg} ${colors.text}
+          bg-card text-card-foreground
           shadow-2xl
           transition-transform duration-300
           w-full md:w-80
@@ -280,11 +207,11 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
         `}
       >
         {/* Header */}
-        <div className={`flex items-center justify-between p-3 sm:p-4 border-b ${colors.border}`}>
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border">
           <h2 className="text-lg font-bold">Содержание</h2>
           <button
             onClick={onClose}
-            className={`text-2xl ${colors.subtext} hover:opacity-70 transition-opacity`}
+            className="text-2xl text-muted-foreground hover:opacity-70 transition-opacity"
             aria-label="Close table of contents"
           >
             ×
@@ -292,18 +219,18 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
         </div>
 
         {/* Search */}
-        <div className="p-3 sm:p-4 border-b border-gray-700">
+        <div className="p-3 sm:p-4 border-b border-border">
           <input
             type="text"
             placeholder="Поиск глав..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className={`
+            className="
               w-full px-3 py-2 rounded border
-              ${colors.input}
-              focus:outline-none focus:ring-2 focus:ring-blue-500
+              bg-input text-foreground border-border
+              focus:outline-none focus:ring-2 focus:ring-ring
               transition-shadow
-            `}
+            "
             aria-label="Search chapters"
           />
         </div>
@@ -311,7 +238,7 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
         {/* TOC List */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-4">
           {filteredToc.length === 0 && (
-            <p className={`text-center ${colors.subtext} py-8`}>
+            <p className="text-center text-muted-foreground py-8">
               {searchQuery ? 'Главы не найдены' : 'Содержание отсутствует'}
             </p>
           )}
@@ -328,14 +255,13 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
                   onClose();
                 }
               }}
-              theme={theme}
               level={0}
             />
           ))}
         </div>
 
         {/* Footer info */}
-        <div className={`p-3 sm:p-4 border-t ${colors.border} ${colors.subtext} text-xs text-center`}>
+        <div className="p-3 sm:p-4 border-t border-border text-muted-foreground text-xs text-center">
           {filteredToc.length} глав{searchQuery && ' (фильтровано)'}
         </div>
       </div>

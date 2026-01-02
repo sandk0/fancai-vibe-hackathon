@@ -66,8 +66,8 @@ export const LibraryPagination: React.FC<LibraryPaginationProps> = ({
   return (
     <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4">
       {/* Page info */}
-      <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-        Страница {currentPage} из {totalPages} • Показано {currentItems} из {totalItems} книг
+      <div className="text-sm text-muted-foreground">
+        Страница {currentPage} из {totalPages} - Показано {currentItems} из {totalItems} книг
       </div>
 
       {/* Pagination controls */}
@@ -77,16 +77,11 @@ export const LibraryPagination: React.FC<LibraryPaginationProps> = ({
           onClick={onPrevPage}
           disabled={!canGoPrev}
           className={cn(
-            "p-2 rounded-lg border-2 transition-all",
+            "p-2 rounded-lg border-2 transition-all bg-card border-border text-foreground",
             !canGoPrev
               ? "opacity-50 cursor-not-allowed"
-              : "hover:scale-105"
+              : "hover:scale-105 hover:bg-muted"
           )}
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-            color: 'var(--text-primary)',
-          }}
           aria-label="Предыдущая страница"
         >
           <ChevronLeft className="w-5 h-5" />
@@ -99,17 +94,11 @@ export const LibraryPagination: React.FC<LibraryPaginationProps> = ({
               key={pageNum}
               onClick={() => onPageChange(pageNum)}
               className={cn(
-                "w-10 h-10 rounded-lg border-2 transition-all font-semibold",
+                "w-10 h-10 rounded-lg border-2 transition-all font-semibold border-border",
                 currentPage === pageNum
-                  ? "ring-2"
-                  : "hover:scale-105"
+                  ? "bg-primary text-primary-foreground ring-2 ring-ring"
+                  : "bg-card text-foreground hover:scale-105 hover:bg-muted"
               )}
-              style={{
-                backgroundColor: currentPage === pageNum ? 'var(--accent-color)' : 'var(--bg-primary)',
-                borderColor: 'var(--border-color)',
-                color: currentPage === pageNum ? 'white' : 'var(--text-primary)',
-                ...(currentPage === pageNum && { ringColor: 'var(--accent-color)' }),
-              }}
               aria-label={`Страница ${pageNum}`}
               aria-current={currentPage === pageNum ? 'page' : undefined}
             >
@@ -123,16 +112,11 @@ export const LibraryPagination: React.FC<LibraryPaginationProps> = ({
           onClick={onNextPage}
           disabled={!canGoNext}
           className={cn(
-            "p-2 rounded-lg border-2 transition-all",
+            "p-2 rounded-lg border-2 transition-all bg-card border-border text-foreground",
             !canGoNext
               ? "opacity-50 cursor-not-allowed"
-              : "hover:scale-105"
+              : "hover:scale-105 hover:bg-muted"
           )}
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-            color: 'var(--text-primary)',
-          }}
           aria-label="Следующая страница"
         >
           <ChevronRight className="w-5 h-5" />

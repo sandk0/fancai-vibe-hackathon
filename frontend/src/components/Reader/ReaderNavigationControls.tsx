@@ -50,7 +50,7 @@ export const ReaderNavigationControls: React.FC<ReaderNavigationControlsProps> =
         <button
           onClick={onPrevPage}
           disabled={!canGoPrev}
-          className="flex items-center space-x-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="flex items-center space-x-2 px-4 py-2 bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           aria-label={t('reader.previous')}
         >
           <ChevronLeft className="h-5 w-5" />
@@ -61,7 +61,7 @@ export const ReaderNavigationControls: React.FC<ReaderNavigationControlsProps> =
           <select
             value={currentChapter}
             onChange={(e) => onJumpToChapter(parseInt(e.target.value))}
-            className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+            className="px-3 py-2 bg-card border border-border rounded-lg text-foreground"
             aria-label="Select chapter"
           >
             {Array.from({ length: totalChapters }, (_, i) => i + 1).map(num => (
@@ -75,7 +75,7 @@ export const ReaderNavigationControls: React.FC<ReaderNavigationControlsProps> =
         <button
           onClick={onNextPage}
           disabled={!canGoNext}
-          className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="flex items-center space-x-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           aria-label={t('reader.next')}
         >
           <span>{t('reader.next')}</span>
@@ -85,13 +85,13 @@ export const ReaderNavigationControls: React.FC<ReaderNavigationControlsProps> =
 
       {/* Progress Bar */}
       <div className="mt-6">
-        <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
+        <div className="flex justify-between text-sm text-muted-foreground mb-2">
           <span>{t('reader.progress')}</span>
           <span>{overallProgress}%</span>
         </div>
-        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+        <div className="w-full bg-muted rounded-full h-2">
           <div
-            className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+            className="bg-primary h-2 rounded-full transition-all duration-300"
             style={{
               width: `${Math.min(overallProgress, 100)}%`
             }}

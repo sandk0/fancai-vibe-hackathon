@@ -789,7 +789,6 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
         <ReaderHeader
           title={metadata.title}
           author={metadata.creator}
-          theme={theme}
           progress={progress}
           currentPage={currentPage ?? undefined}
           totalPages={totalPages ?? undefined}
@@ -819,7 +818,6 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
       <ExtractionIndicator
         isExtracting={isExtractingDescriptions}
         onCancel={cancelExtraction}
-        theme={theme}
       />
 
       {/* Image Generation Status */}
@@ -884,7 +882,6 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
         selection={selection}
         onCopy={handleCopy}
         onClose={clearSelection}
-        theme={theme}
       />
 
       {/* TOC Sidebar */}
@@ -894,7 +891,6 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
         onChapterClick={handleTocChapterClick}
         isOpen={isTocOpen}
         onClose={() => setIsTocOpen(false)}
-        theme={theme}
       />
 
     </div>

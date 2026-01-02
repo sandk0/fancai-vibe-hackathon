@@ -1,3 +1,5 @@
+import plugin from 'tailwindcss/plugin';
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -50,6 +52,11 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        highlight: {
+          DEFAULT: "hsl(var(--highlight-bg))",
+          border: "hsl(var(--highlight-border))",
+          active: "hsl(var(--highlight-active))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -90,6 +97,10 @@ export default {
       }
     },
   },
-  plugins: [],
+  plugins: [
+    plugin(function({ addVariant }) {
+      addVariant('sepia-theme', '.sepia &');
+    }),
+  ],
   darkMode: 'class',
 }

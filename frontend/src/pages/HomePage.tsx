@@ -157,18 +157,7 @@ const HomePage: React.FC = () => {
 
               <button
                 onClick={() => setShowUploadModal(true)}
-                className="group inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 sm:px-6 py-3 rounded-xl border-2 font-semibold text-sm sm:text-base transition-all duration-200 hover:scale-105"
-                style={{
-                  backgroundColor: 'var(--bg-primary)',
-                  borderColor: 'var(--border-color)',
-                  color: 'var(--text-primary)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--accent-color)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--border-color)';
-                }}
+                className="group inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 sm:px-6 py-3 rounded-xl border-2 font-semibold text-sm sm:text-base transition-all duration-200 hover:scale-105 bg-background border-border text-foreground hover:border-primary"
               >
                 <Upload className="w-5 h-5" />
                 <span>Загрузить книгу</span>

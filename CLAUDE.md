@@ -50,6 +50,29 @@ ENABLE_IMAGE_CACHING = True       # Image generation cache
 ```
 Admin API: `GET/POST/PUT/DELETE /api/v1/admin/feature-flags`
 
+### Theme System (January 2026)
+
+**Single Source of Truth:** shadcn/ui CSS variables in `globals.css`
+
+**Themes:**
+- Light (default)
+- Dark (`.dark` class)
+- Sepia (`.sepia` class)
+- System (auto-detect via `prefers-color-scheme`)
+
+**CSS Variables Location:** `frontend/src/styles/globals.css`
+
+**Tailwind Integration:**
+- Semantic tokens: `bg-background`, `text-foreground`, `border-border`, etc.
+- Sepia variant: `sepia-theme:` for sepia-specific styles
+- Highlight colors: `bg-highlight`, `border-highlight-border`
+
+**Theme Hooks:**
+- `useTheme()` - returns theme, resolvedTheme, setTheme
+- `useEpubThemes()` - syncs EPUB reader with app theme
+
+**Storage:** `localStorage` key `app-theme`
+
 ## Key Files
 
 ### Backend Services (Total: 8,400+ lines in 17+ services)
@@ -75,16 +98,19 @@ Admin API: `GET/POST/PUT/DELETE /api/v1/admin/feature-flags`
 
 > **REMOVED December 2025:** `multi_nlp_manager.py`, `nlp/` directory, NLP processors
 
-### Frontend Components (December 2025)
+### Frontend Components (January 2026)
 | File | Lines | Purpose |
 |------|-------|---------|
 | `src/components/Reader/EpubReader.tsx` | 573 | epub.js EPUB reader with CFI navigation |
+| `src/styles/globals.css` | ~300 | **NEW:** Theme CSS variables (shadcn/ui) |
 | `src/pages/LibraryPage.tsx` | 195 | Book library (refactored from 739) |
 | `src/hooks/epub/useDescriptionHighlighting.ts` | 566 | 9 search strategies for highlighting |
-| `src/utils/retryWithBackoff.ts` | 442 | **NEW:** Exponential backoff for API calls |
-| `src/services/syncQueue.ts` | 312 | **NEW:** Offline sync queue (localStorage) |
-| `src/components/Reader/PositionConflictDialog.tsx` | 123 | **NEW:** Reading position conflict resolution |
-| `src/hooks/useOnlineStatus.ts` | 87 | **NEW:** Online/offline status detection |
+| `src/utils/retryWithBackoff.ts` | 442 | Exponential backoff for API calls |
+| `src/services/syncQueue.ts` | 312 | Offline sync queue (localStorage) |
+| `src/components/Reader/PositionConflictDialog.tsx` | 123 | Reading position conflict resolution |
+| `src/hooks/useOnlineStatus.ts` | 87 | Online/offline status detection |
+| `src/hooks/useTheme.ts` | ~80 | **NEW:** Theme management hook |
+| `src/hooks/epub/useEpubThemes.ts` | ~60 | **NEW:** EPUB reader theme sync |
 
 ### Frontend Caching Services
 | File | Lines | Purpose |
@@ -223,28 +249,32 @@ Types: feat, fix, docs, style, refactor, test, chore
 - Frontend: TypeScript strict mode
 - Pre-commit hooks: mypy, ruff, black, eslint
 
-## File Structure (December 2025)
+## File Structure (January 2026)
 
 ```
 fancai-vibe-hackathon/
 ├── frontend/
 │   ├── src/components/
 │   │   ├── Reader/               # EPUB reader components (14 files)
-│   │   │   └── PositionConflictDialog.tsx  # NEW: Sync conflict UI
+│   │   │   └── PositionConflictDialog.tsx  # Sync conflict UI
 │   │   ├── Library/              # Modular library components (6 files)
 │   │   ├── Admin/                # Modular admin components (5 files)
 │   │   └── UI/                   # Shared UI components (12 files)
+│   ├── src/styles/
+│   │   └── globals.css           # NEW: Theme CSS variables (shadcn/ui)
 │   ├── src/hooks/
 │   │   ├── api/                  # TanStack Query hooks (5 files + tests)
 │   │   ├── epub/                 # EPUB reader hooks (17 files + tests)
+│   │   │   └── useEpubThemes.ts  # NEW: EPUB theme sync
 │   │   ├── reader/               # Reader business logic (7 files)
 │   │   ├── library/              # Library filters (1 file)
-│   │   ├── useOnlineStatus.ts    # NEW: Online/offline detection
+│   │   ├── useOnlineStatus.ts    # Online/offline detection
+│   │   ├── useTheme.ts           # NEW: Theme management
 │   │   └── __tests__/            # Hook tests
 │   ├── src/services/             # API clients + caching (4 files)
-│   │   └── syncQueue.ts          # NEW: Offline sync queue
+│   │   └── syncQueue.ts          # Offline sync queue
 │   ├── src/utils/
-│   │   └── retryWithBackoff.ts   # NEW: Exponential backoff
+│   │   └── retryWithBackoff.ts   # Exponential backoff
 │   └── src/pages/                # Page components (11 files)
 ├── backend/
 │   ├── app/core/                 # Config, DB, exceptions
@@ -300,17 +330,24 @@ fancai-vibe-hackathon/
 - CFI-based reading progress
 - 9-strategy description highlighting
 - Offline support with IndexedDB
-- **NEW:** Exponential backoff retry (API calls, image generation, LLM)
-- **NEW:** JWT token blacklist (secure logout)
-- **NEW:** Offline sync queue (progress, bookmarks, highlights)
-- **NEW:** Position conflict resolution dialog
+- Exponential backoff retry (API calls, image generation, LLM)
+- JWT token blacklist (secure logout)
+- Offline sync queue (progress, bookmarks, highlights)
+- Position conflict resolution dialog
+- **NEW:** Theme system (Light/Dark/Sepia/System) with EPUB sync
 
-## Frontend Architecture (December 2025)
+## Frontend Architecture (January 2026)
 
 ### Caching Strategy
 - **TanStack Query (v5)** - Server state with auto-invalidation
 - **IndexedDB** - Offline storage (chapterCache, imageCache)
 - **Stale-while-revalidate** - Optimal UX pattern
+
+### Theme Architecture
+- **CSS Variables** - shadcn/ui design tokens in `globals.css`
+- **Tailwind Integration** - Semantic classes (`bg-background`, `text-foreground`)
+- **EPUB Sync** - Reader theme synchronized with app theme via `useEpubThemes`
+- **Persistence** - `localStorage` with system preference fallback
 
 ### Data Flow
 ```

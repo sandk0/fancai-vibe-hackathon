@@ -128,41 +128,29 @@ const ImagesGalleryPage: React.FC = () => {
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-3">
-          <ImageIcon className="w-8 h-8" style={{ color: 'var(--accent-color)' }} />
-          <h1 className="text-3xl md:text-4xl font-bold" style={{ color: 'var(--text-primary)' }}>
+          <ImageIcon className="w-8 h-8 text-primary" />
+          <h1 className="text-3xl md:text-4xl font-bold text-foreground">
             Галерея изображений
           </h1>
         </div>
-        <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-lg text-muted-foreground">
           Все AI-сгенерированные изображения из ваших книг
         </p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div
-          className="p-4 rounded-xl border-2"
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
-          <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+        <div className="p-4 rounded-xl border-2 bg-background border-border">
+          <p className="text-sm font-medium mb-1 text-muted-foreground">
             Всего изображений
           </p>
-          <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+          <p className="text-2xl font-bold text-foreground">
             {allImages.length}
           </p>
         </div>
 
-        <div
-          className="p-4 rounded-xl border-2"
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
-          <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+        <div className="p-4 rounded-xl border-2 bg-background border-border">
+          <p className="text-sm font-medium mb-1 text-muted-foreground">
             Локации
           </p>
           <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
@@ -170,14 +158,8 @@ const ImagesGalleryPage: React.FC = () => {
           </p>
         </div>
 
-        <div
-          className="p-4 rounded-xl border-2"
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
-          <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+        <div className="p-4 rounded-xl border-2 bg-background border-border">
+          <p className="text-sm font-medium mb-1 text-muted-foreground">
             Персонажи
           </p>
           <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
@@ -185,14 +167,8 @@ const ImagesGalleryPage: React.FC = () => {
           </p>
         </div>
 
-        <div
-          className="p-4 rounded-xl border-2"
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
-          <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+        <div className="p-4 rounded-xl border-2 bg-background border-border">
+          <p className="text-sm font-medium mb-1 text-muted-foreground">
             Атмосфера
           </p>
           <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
@@ -202,28 +178,17 @@ const ImagesGalleryPage: React.FC = () => {
       </div>
 
       {/* Filters and Search */}
-      <div
-        className="p-6 rounded-2xl border-2 mb-8"
-        style={{
-          backgroundColor: 'var(--bg-primary)',
-          borderColor: 'var(--border-color)',
-        }}
-      >
+      <div className="p-6 rounded-2xl border-2 mb-8 bg-background border-border">
         {/* Search Bar */}
         <div className="mb-4">
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Поиск по описанию..."
-              className="w-full pl-12 pr-4 py-3 rounded-xl border-2"
-              style={{
-                backgroundColor: 'var(--bg-secondary)',
-                borderColor: 'var(--border-color)',
-                color: 'var(--text-primary)',
-              }}
+              className="w-full pl-12 pr-4 py-3 rounded-xl border-2 bg-muted border-border text-foreground"
             />
           </div>
         </div>
@@ -231,12 +196,10 @@ const ImagesGalleryPage: React.FC = () => {
         {/* Filter Toggle Button */}
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all"
-          style={{
-            backgroundColor: showFilters ? 'var(--accent-color)' : 'var(--bg-secondary)',
-            borderColor: 'var(--border-color)',
-            color: showFilters ? 'white' : 'var(--text-primary)',
-          }}
+          className={cn(
+            'flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all border-border',
+            showFilters ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
+          )}
         >
           <Filter className="w-4 h-4" />
           <span className="font-medium">Фильтры</span>
@@ -245,22 +208,17 @@ const ImagesGalleryPage: React.FC = () => {
 
         {/* Filters Panel */}
         {showFilters && (
-          <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
+          <div className="mt-4 pt-4 border-t border-border">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Book Filter */}
               <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                <label className="block text-sm font-medium mb-2 text-muted-foreground">
                   Книга
                 </label>
                 <select
                   value={selectedBook}
                   onChange={(e) => setSelectedBook(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg border-2"
-                  style={{
-                    backgroundColor: 'var(--bg-secondary)',
-                    borderColor: 'var(--border-color)',
-                    color: 'var(--text-primary)',
-                  }}
+                  className="w-full px-4 py-2 rounded-lg border-2 bg-muted border-border text-foreground"
                 >
                   <option value="all">Все книги</option>
                   {booksData?.books?.map((book) => (
@@ -273,18 +231,13 @@ const ImagesGalleryPage: React.FC = () => {
 
               {/* Type Filter */}
               <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                <label className="block text-sm font-medium mb-2 text-muted-foreground">
                   Тип описания
                 </label>
                 <select
                   value={descriptionType}
                   onChange={(e) => setDescriptionType(e.target.value as DescriptionType)}
-                  className="w-full px-4 py-2 rounded-lg border-2"
-                  style={{
-                    backgroundColor: 'var(--bg-secondary)',
-                    borderColor: 'var(--border-color)',
-                    color: 'var(--text-primary)',
-                  }}
+                  className="w-full px-4 py-2 rounded-lg border-2 bg-muted border-border text-foreground"
                 >
                   {descriptionTypes.map((type) => (
                     <option key={type.value} value={type.value}>
@@ -296,18 +249,13 @@ const ImagesGalleryPage: React.FC = () => {
 
               {/* Sort */}
               <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                <label className="block text-sm font-medium mb-2 text-muted-foreground">
                   Сортировка
                 </label>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  className="w-full px-4 py-2 rounded-lg border-2"
-                  style={{
-                    backgroundColor: 'var(--bg-secondary)',
-                    borderColor: 'var(--border-color)',
-                    color: 'var(--text-primary)',
-                  }}
+                  className="w-full px-4 py-2 rounded-lg border-2 bg-muted border-border text-foreground"
                 >
                   {sortOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -323,7 +271,7 @@ const ImagesGalleryPage: React.FC = () => {
 
       {/* Results Count */}
       <div className="flex items-center justify-between mb-6">
-        <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-sm font-medium text-muted-foreground">
           Найдено изображений: {filteredImages.length}
         </p>
         {(selectedBook !== 'all' || descriptionType !== 'all' || searchQuery) && (
@@ -333,11 +281,7 @@ const ImagesGalleryPage: React.FC = () => {
               setDescriptionType('all');
               setSearchQuery('');
             }}
-            className="flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium transition-colors"
-            style={{
-              backgroundColor: 'var(--bg-secondary)',
-              color: 'var(--text-primary)',
-            }}
+            className="flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium transition-colors bg-muted text-foreground"
           >
             <X className="w-4 h-4" />
             Сбросить фильтры
@@ -347,18 +291,12 @@ const ImagesGalleryPage: React.FC = () => {
 
       {/* Gallery Grid */}
       {filteredImages.length === 0 ? (
-        <div
-          className="text-center py-16 rounded-2xl border-2"
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
-          <ImageIcon className="w-16 h-16 mx-auto mb-4" style={{ color: 'var(--text-secondary)' }} />
-          <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+        <div className="text-center py-16 rounded-2xl border-2 bg-background border-border">
+          <ImageIcon className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+          <h3 className="text-xl font-bold mb-2 text-foreground">
             Изображений не найдено
           </h3>
-          <p style={{ color: 'var(--text-secondary)' }}>
+          <p className="text-muted-foreground">
             Попробуйте изменить фильтры или загрузите новые книги
           </p>
         </div>
@@ -368,11 +306,7 @@ const ImagesGalleryPage: React.FC = () => {
             <div
               key={image.id}
               onClick={() => setSelectedImage(image)}
-              className="group cursor-pointer rounded-xl overflow-hidden border-2 transition-all hover:-translate-y-1 hover:shadow-xl"
-              style={{
-                backgroundColor: 'var(--bg-primary)',
-                borderColor: 'var(--border-color)',
-              }}
+              className="group cursor-pointer rounded-xl overflow-hidden border-2 transition-all hover:-translate-y-1 hover:shadow-xl bg-background border-border"
             >
               {/* Image */}
               <div className="aspect-[4/3] overflow-hidden">
@@ -386,21 +320,15 @@ const ImagesGalleryPage: React.FC = () => {
               {/* Info */}
               <div className="p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <BookOpen className="w-4 h-4" style={{ color: 'var(--accent-color)' }} />
-                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                  <BookOpen className="w-4 h-4 text-primary" />
+                  <p className="text-sm font-semibold truncate text-foreground">
                     {image.book_title}
                   </p>
                 </div>
-                <p className="text-sm line-clamp-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                <p className="text-sm line-clamp-2 mb-2 text-muted-foreground">
                   {image.description?.text || image.description?.content}
                 </p>
-                <span
-                  className="inline-block px-2 py-1 rounded text-xs font-medium"
-                  style={{
-                    backgroundColor: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                  }}
-                >
+                <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-muted text-foreground">
                   {descriptionTypes.find((t) => t.value === image.description?.type)?.label}
                 </span>
               </div>
@@ -412,23 +340,18 @@ const ImagesGalleryPage: React.FC = () => {
       {/* Image Modal */}
       {selectedImage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
           onClick={() => setSelectedImage(null)}
         >
           <div
-            className="relative max-w-4xl w-full rounded-2xl overflow-hidden"
+            className="relative max-w-4xl w-full rounded-2xl overflow-hidden bg-background"
             onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: 'var(--bg-primary)',
-            }}
           >
             <button
               onClick={() => setSelectedImage(null)}
-              className="absolute top-4 right-4 p-2 rounded-lg z-10"
-              style={{ backgroundColor: 'var(--bg-secondary)' }}
+              className="absolute top-4 right-4 p-2 rounded-lg z-10 bg-muted"
             >
-              <X className="w-6 h-6" style={{ color: 'var(--text-primary)' }} />
+              <X className="w-6 h-6 text-foreground" />
             </button>
 
             <img
@@ -438,23 +361,17 @@ const ImagesGalleryPage: React.FC = () => {
             />
 
             <div className="p-6">
-              <h3 className="text-2xl font-bold mb-3" style={{ color: 'var(--text-primary)' }}>
+              <h3 className="text-2xl font-bold mb-3 text-foreground">
                 {selectedImage.book_title}
               </h3>
-              <p className="text-lg mb-4" style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-lg mb-4 text-muted-foreground">
                 {selectedImage.description?.text || selectedImage.description?.content}
               </p>
               <div className="flex items-center gap-3">
-                <span
-                  className="px-3 py-1 rounded-lg text-sm font-medium"
-                  style={{
-                    backgroundColor: 'var(--accent-color)',
-                    color: 'white',
-                  }}
-                >
+                <span className="px-3 py-1 rounded-lg text-sm font-medium bg-primary text-primary-foreground">
                   {descriptionTypes.find((t) => t.value === selectedImage.description?.type)?.label}
                 </span>
-                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                <span className="text-sm text-muted-foreground">
                   {new Date(selectedImage.created_at).toLocaleDateString('ru-RU')}
                 </span>
               </div>

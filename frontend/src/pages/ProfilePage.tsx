@@ -77,9 +77,9 @@ const ProfilePage: React.FC = () => {
   const stats = useMemo(() => {
     if (!statsData?.statistics) {
       return [
-        { label: 'Книг прочитано', value: '0', icon: BookOpen, color: 'text-blue-600 dark:text-blue-400' },
-        { label: 'Часов чтения', value: '0', icon: Clock, color: 'text-purple-600 dark:text-purple-400' },
-        { label: 'Достижений', value: '0', icon: Award, color: 'text-amber-600 dark:text-amber-400' },
+        { label: 'Книг прочитано', value: '0', icon: BookOpen, color: 'text-primary' },
+        { label: 'Часов чтения', value: '0', icon: Clock, color: 'text-primary' },
+        { label: 'Достижений', value: '0', icon: Award, color: 'text-primary' },
       ];
     }
 
@@ -88,9 +88,9 @@ const ProfilePage: React.FC = () => {
     const achievements = calculateAchievements(s.total_books || 0, s.reading_streak_days || 0);
 
     return [
-      { label: 'Книг прочитано', value: String(s.total_books || 0), icon: BookOpen, color: 'text-blue-600 dark:text-blue-400' },
-      { label: 'Часов чтения', value: String(totalHours), icon: Clock, color: 'text-purple-600 dark:text-purple-400' },
-      { label: 'Достижений', value: String(achievements.earned), icon: Award, color: 'text-amber-600 dark:text-amber-400' },
+      { label: 'Книг прочитано', value: String(s.total_books || 0), icon: BookOpen, color: 'text-primary' },
+      { label: 'Часов чтения', value: String(totalHours), icon: Clock, color: 'text-primary' },
+      { label: 'Достижений', value: String(achievements.earned), icon: Award, color: 'text-primary' },
     ];
   }, [statsData]);
 
@@ -141,38 +141,25 @@ const ProfilePage: React.FC = () => {
       {/* Hero Section with Avatar */}
       <div className="relative mb-12 overflow-hidden rounded-3xl">
         {/* Gradient Background */}
-        <div
-          className="absolute inset-0 opacity-50"
-          style={{
-            background: 'linear-gradient(135deg, var(--accent-color) 0%, rgba(147, 51, 234, 0.5) 100%)',
-          }}
-        />
+        <div className="absolute inset-0 opacity-50 bg-gradient-to-br from-primary to-primary/50" />
 
         {/* Content */}
         <div className="relative px-8 py-12">
           <div className="flex flex-col md:flex-row items-center gap-8">
             {/* Avatar */}
             <div className="relative group">
-              <div
-                className="w-32 h-32 rounded-full flex items-center justify-center border-4 border-white/20 shadow-2xl transition-transform group-hover:scale-105"
-                style={{
-                  backgroundColor: 'var(--accent-color)',
-                }}
-              >
-                <span className="text-5xl font-bold text-white">
+              <div className="w-32 h-32 rounded-full flex items-center justify-center border-4 border-white/20 shadow-2xl transition-transform group-hover:scale-105 bg-primary">
+                <span className="text-5xl font-bold text-primary-foreground">
                   {user?.full_name ? user.full_name.charAt(0).toUpperCase() : user?.email.charAt(0).toUpperCase()}
                 </span>
               </div>
 
               {/* Upload Avatar Button */}
               <button
-                className="absolute bottom-0 right-0 p-2 rounded-full bg-white dark:bg-gray-800 shadow-lg transition-all hover:scale-110"
-                style={{
-                  borderColor: 'var(--border-color)',
-                }}
+                className="absolute bottom-0 right-0 p-2 rounded-full bg-card border border-border shadow-lg transition-all hover:scale-110"
                 onClick={() => console.log('Upload avatar')}
               >
-                <Camera className="w-5 h-5" style={{ color: 'var(--accent-color)' }} />
+                <Camera className="w-5 h-5 text-primary" />
               </button>
             </div>
 
@@ -184,29 +171,19 @@ const ProfilePage: React.FC = () => {
                     type="text"
                     value={editedName}
                     onChange={(e) => setEditedName(e.target.value)}
-                    className="text-3xl font-bold px-4 py-2 rounded-xl border-2"
-                    style={{
-                      backgroundColor: 'var(--bg-primary)',
-                      borderColor: 'var(--accent-color)',
-                      color: 'var(--text-primary)',
-                    }}
+                    className="text-3xl font-bold px-4 py-2 rounded-xl border-2 bg-background border-primary text-foreground"
                   />
                   <button
                     onClick={handleSave}
-                    className="p-2 rounded-lg transition-all hover:scale-110"
-                    style={{ backgroundColor: 'var(--accent-color)' }}
+                    className="p-2 rounded-lg transition-all hover:scale-110 bg-primary"
                   >
-                    <Save className="w-5 h-5 text-white" />
+                    <Save className="w-5 h-5 text-primary-foreground" />
                   </button>
                   <button
                     onClick={handleCancel}
-                    className="p-2 rounded-lg border-2 transition-all hover:scale-110"
-                    style={{
-                      backgroundColor: 'var(--bg-primary)',
-                      borderColor: 'var(--border-color)',
-                    }}
+                    className="p-2 rounded-lg border-2 transition-all hover:scale-110 bg-background border-border"
                   >
-                    <X className="w-5 h-5" style={{ color: 'var(--text-primary)' }} />
+                    <X className="w-5 h-5 text-foreground" />
                   </button>
                 </div>
               ) : (
@@ -256,19 +233,15 @@ const ProfilePage: React.FC = () => {
         {stats.map((stat, index) => (
           <div
             key={index}
-            className="p-6 rounded-2xl border-2 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
-            style={{
-              backgroundColor: 'var(--bg-primary)',
-              borderColor: 'var(--border-color)',
-            }}
+            className="p-6 rounded-2xl border-2 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl bg-card border-border"
           >
             <div className="flex items-center justify-between mb-4">
               <stat.icon className={cn('w-10 h-10', stat.color)} />
-              <span className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              <span className="text-3xl font-bold text-foreground">
                 {stat.value}
               </span>
             </div>
-            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+            <p className="text-sm font-medium text-muted-foreground">
               {stat.label}
             </p>
           </div>
@@ -278,8 +251,8 @@ const ProfilePage: React.FC = () => {
       {/* Reading Goals */}
       <div className="mb-12">
         <div className="flex items-center gap-3 mb-6">
-          <Target className="w-6 h-6" style={{ color: 'var(--accent-color)' }} />
-          <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+          <Target className="w-6 h-6 text-primary" />
+          <h2 className="text-2xl font-bold text-foreground">
             Цели чтения
           </h2>
         </div>
@@ -288,37 +261,30 @@ const ProfilePage: React.FC = () => {
           {readingGoals.map((goal, index) => (
             <div
               key={index}
-              className="p-6 rounded-2xl border-2"
-              style={{
-                backgroundColor: 'var(--bg-primary)',
-                borderColor: 'var(--border-color)',
-              }}
+              className="p-6 rounded-2xl border-2 bg-card border-border"
             >
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                <h3 className="font-semibold text-foreground">
                   {goal.label}
                 </h3>
-                <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                <span className="text-sm font-medium text-muted-foreground">
                   {goal.current} / {goal.target} {goal.unit}
                 </span>
               </div>
 
               {/* Progress Bar */}
-              <div className="relative h-3 rounded-full overflow-hidden" style={{
-                backgroundColor: 'var(--bg-secondary)',
-              }}>
+              <div className="relative h-3 rounded-full overflow-hidden bg-muted">
                 <div
-                  className="h-full rounded-full transition-all duration-500"
+                  className="h-full rounded-full transition-all duration-500 bg-primary"
                   style={{
-                    backgroundColor: 'var(--accent-color)',
                     width: `${(goal.current / goal.target) * 100}%`,
                   }}
                 />
               </div>
 
               <div className="mt-2 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" style={{ color: 'var(--accent-color)' }} />
-                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                <TrendingUp className="w-4 h-4 text-primary" />
+                <span className="text-sm text-muted-foreground">
                   {Math.round((goal.current / goal.target) * 100)}% выполнено
                 </span>
               </div>
@@ -328,16 +294,10 @@ const ProfilePage: React.FC = () => {
       </div>
 
       {/* Profile Information */}
-      <div
-        className="p-8 rounded-2xl border-2"
-        style={{
-          backgroundColor: 'var(--bg-primary)',
-          borderColor: 'var(--border-color)',
-        }}
-      >
+      <div className="p-8 rounded-2xl border-2 bg-card border-border">
         <div className="flex items-center gap-3 mb-6">
-          <User className="w-6 h-6" style={{ color: 'var(--accent-color)' }} />
-          <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+          <User className="w-6 h-6 text-primary" />
+          <h2 className="text-2xl font-bold text-foreground">
             Информация профиля
           </h2>
         </div>
@@ -345,68 +305,40 @@ const ProfilePage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Full Name */}
           <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+            <label className="block text-sm font-medium mb-2 text-muted-foreground">
               Полное имя
             </label>
-            <div
-              className="px-4 py-3 rounded-xl border-2"
-              style={{
-                backgroundColor: 'var(--bg-secondary)',
-                borderColor: 'var(--border-color)',
-                color: 'var(--text-primary)',
-              }}
-            >
+            <div className="px-4 py-3 rounded-xl border-2 bg-muted border-border text-foreground">
               {user?.full_name || 'Не указано'}
             </div>
           </div>
 
           {/* Email */}
           <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+            <label className="block text-sm font-medium mb-2 text-muted-foreground">
               Email
             </label>
-            <div
-              className="px-4 py-3 rounded-xl border-2"
-              style={{
-                backgroundColor: 'var(--bg-secondary)',
-                borderColor: 'var(--border-color)',
-                color: 'var(--text-primary)',
-              }}
-            >
+            <div className="px-4 py-3 rounded-xl border-2 bg-muted border-border text-foreground">
               {user?.email}
             </div>
           </div>
 
           {/* Account Type */}
           <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+            <label className="block text-sm font-medium mb-2 text-muted-foreground">
               Тип аккаунта
             </label>
-            <div
-              className="px-4 py-3 rounded-xl border-2"
-              style={{
-                backgroundColor: 'var(--bg-secondary)',
-                borderColor: 'var(--border-color)',
-                color: 'var(--text-primary)',
-              }}
-            >
+            <div className="px-4 py-3 rounded-xl border-2 bg-muted border-border text-foreground">
               {user?.is_admin ? 'Администратор' : 'Обычный пользователь'}
             </div>
           </div>
 
           {/* Member Since */}
           <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+            <label className="block text-sm font-medium mb-2 text-muted-foreground">
               Дата регистрации
             </label>
-            <div
-              className="px-4 py-3 rounded-xl border-2"
-              style={{
-                backgroundColor: 'var(--bg-secondary)',
-                borderColor: 'var(--border-color)',
-                color: 'var(--text-primary)',
-              }}
-            >
+            <div className="px-4 py-3 rounded-xl border-2 bg-muted border-border text-foreground">
               {new Date().toLocaleDateString('ru-RU', {
                 year: 'numeric',
                 month: 'long',

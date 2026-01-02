@@ -96,7 +96,7 @@ export const BookCard = memo(function BookCard({
       >
         <div className="flex flex-col h-full">
           {/* Book Cover */}
-          <div className="aspect-[2/3] mb-3 relative rounded-xl overflow-hidden shadow-lg group-hover:shadow-xl transition-shadow flex-shrink-0" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+          <div className="aspect-[2/3] mb-3 relative rounded-xl overflow-hidden shadow-lg group-hover:shadow-xl transition-shadow flex-shrink-0 bg-muted">
             {book.is_processing && onParsingComplete && (
               <ParsingOverlay
                 bookId={book.id}
@@ -110,7 +110,7 @@ export const BookCard = memo(function BookCard({
               className="w-full h-full object-cover"
               fallback={
                 <div className="w-full h-full flex items-center justify-center">
-                  <Book className="w-12 h-12" style={{ color: 'var(--text-tertiary)' }} />
+                  <Book className="w-12 h-12 text-muted-foreground/70" />
                 </div>
               }
             />
@@ -134,19 +134,16 @@ export const BookCard = memo(function BookCard({
           <div className="flex flex-col flex-1 min-h-0">
             {/* Title & Author */}
             <div className="mb-2 flex-shrink-0">
-              <h3
-                className="font-semibold text-sm line-clamp-2 mb-1 transition-colors"
-                style={{ color: 'var(--text-primary)' }}
-              >
+              <h3 className="font-semibold text-sm line-clamp-2 mb-1 transition-colors text-foreground">
                 {book.title}
               </h3>
-              <p className="text-xs line-clamp-1" style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-xs line-clamp-1 text-muted-foreground">
                 {book.author}
               </p>
             </div>
 
             {/* Metadata with Icons */}
-            <div className="space-y-1.5 text-xs mb-3 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>
+            <div className="space-y-1.5 text-xs mb-3 flex-shrink-0 text-muted-foreground/70">
               {/* Genre */}
               {book.genre && (
                 <div className="flex items-center gap-1.5">
@@ -171,27 +168,26 @@ export const BookCard = memo(function BookCard({
             {/* Progress Section */}
             <div className="mt-auto">
               {book.is_processing ? (
-                <div className="flex items-center gap-1.5 text-xs text-yellow-600 dark:text-yellow-400">
+                <div className="flex items-center gap-1.5 text-xs text-amber-600 sepia-theme:text-amber-700">
                   <AlertCircle className="w-3.5 h-3.5" />
                   <span>Обработка AI...</span>
                 </div>
               ) : book.reading_progress_percent !== undefined && book.reading_progress_percent > 0 ? (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                    <div className="flex items-center gap-1.5 text-muted-foreground/70">
                       <BarChart3 className="w-3.5 h-3.5" />
                       <span>{getCurrentPage(book.total_pages, book.reading_progress_percent)}/{book.total_pages} стр</span>
                     </div>
-                    <span style={{ color: 'var(--accent-color)' }} className="font-semibold">
+                    <span className="font-semibold text-primary">
                       {Math.round(book.reading_progress_percent)}%
                     </span>
                   </div>
-                  <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+                  <div className="w-full h-1.5 rounded-full overflow-hidden bg-muted/50">
                     <div
-                      className="h-full rounded-full transition-all"
+                      className="h-full rounded-full transition-all bg-primary"
                       style={{
                         width: `${Math.min(book.reading_progress_percent, 100)}%`,
-                        backgroundColor: 'var(--accent-color)',
                       }}
                     />
                   </div>
@@ -208,14 +204,10 @@ export const BookCard = memo(function BookCard({
   return (
     <div
       className={cn(
-        "group cursor-pointer p-3 sm:p-4 rounded-2xl border-2 hover:shadow-lg transition-all duration-300 relative",
+        "group cursor-pointer p-3 sm:p-4 rounded-2xl border-2 hover:shadow-lg transition-all duration-300 relative bg-card border-border",
         !isClickable && "pointer-events-none"
       )}
       onClick={handleClick}
-      style={{
-        backgroundColor: 'var(--bg-primary)',
-        borderColor: 'var(--border-color)',
-      }}
     >
       {/* Delete Button for List View */}
       {onDelete && (
@@ -233,14 +225,14 @@ export const BookCard = memo(function BookCard({
       )}
       <div className="flex gap-4">
         {/* Cover */}
-        <div className="w-20 h-28 sm:w-24 sm:h-32 flex-shrink-0 rounded-xl overflow-hidden shadow-md" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+        <div className="w-20 h-28 sm:w-24 sm:h-32 flex-shrink-0 rounded-xl overflow-hidden shadow-md bg-muted">
           <AuthenticatedImage
             src={coverUrl}
             alt={`${book.title} cover`}
             className="w-full h-full object-cover"
             fallback={
               <div className="w-full h-full flex items-center justify-center">
-                <Book className="w-8 h-8" style={{ color: 'var(--text-tertiary)' }} />
+                <Book className="w-8 h-8 text-muted-foreground/70" />
               </div>
             }
           />
@@ -249,15 +241,15 @@ export const BookCard = memo(function BookCard({
         {/* Book Info */}
         <div className="flex-1 min-w-0">
           {/* Title & Author */}
-          <h3 className="font-bold text-lg mb-1 line-clamp-1" style={{ color: 'var(--text-primary)' }}>
+          <h3 className="font-bold text-lg mb-1 line-clamp-1 text-foreground">
             {book.title}
           </h3>
-          <p className="text-sm mb-3 line-clamp-1" style={{ color: 'var(--text-secondary)' }}>
+          <p className="text-sm mb-3 line-clamp-1 text-muted-foreground">
             {book.author}
           </p>
 
           {/* Metadata with Icons */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 text-sm mb-3" style={{ color: 'var(--text-tertiary)' }}>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 text-sm mb-3 text-muted-foreground/70">
             {/* Genre */}
             {book.genre && (
               <div className="flex items-center gap-1.5">
@@ -281,27 +273,26 @@ export const BookCard = memo(function BookCard({
 
           {/* Progress Section */}
           {book.is_processing ? (
-            <div className="flex items-center gap-1.5 text-sm text-yellow-600 dark:text-yellow-400">
+            <div className="flex items-center gap-1.5 text-sm text-amber-600 sepia-theme:text-amber-700">
               <AlertCircle className="w-4 h-4" />
               <span>Обработка AI...</span>
             </div>
           ) : book.reading_progress_percent !== undefined && book.reading_progress_percent > 0 ? (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                <div className="flex items-center gap-1.5 text-muted-foreground/70">
                   <BarChart3 className="w-4 h-4" />
                   <span>{getCurrentPage(book.total_pages, book.reading_progress_percent)} из {book.total_pages} стр</span>
                 </div>
-                <span style={{ color: 'var(--accent-color)' }} className="font-semibold">
+                <span className="font-semibold text-primary">
                   {Math.round(book.reading_progress_percent)}%
                 </span>
               </div>
-              <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+              <div className="w-full h-2 rounded-full overflow-hidden bg-muted/50">
                 <div
-                  className="h-full rounded-full transition-all"
+                  className="h-full rounded-full transition-all bg-primary"
                   style={{
                     width: `${Math.min(book.reading_progress_percent, 100)}%`,
-                    backgroundColor: 'var(--accent-color)',
                   }}
                 />
               </div>

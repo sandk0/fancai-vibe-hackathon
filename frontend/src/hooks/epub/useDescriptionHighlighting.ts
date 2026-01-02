@@ -56,6 +56,34 @@ interface UseDescriptionHighlightingOptions {
 }
 
 /**
+ * Get computed highlight colors from CSS variables
+ * Falls back to blue if variables not defined
+ */
+const getHighlightColors = (): { bg: string; border: string; active: string } => {
+  if (typeof window === 'undefined') {
+    return {
+      bg: 'rgba(96, 165, 250, 0.25)',
+      border: 'rgba(96, 165, 250, 0.5)',
+      active: 'rgba(96, 165, 250, 0.4)',
+    };
+  }
+
+  const root = document.documentElement;
+  const style = getComputedStyle(root);
+
+  // Get CSS variable values and convert to usable format
+  const bgVar = style.getPropertyValue('--highlight-bg').trim();
+  const borderVar = style.getPropertyValue('--highlight-border').trim();
+  const activeVar = style.getPropertyValue('--highlight-active').trim();
+
+  return {
+    bg: bgVar ? `hsl(${bgVar})` : 'rgba(96, 165, 250, 0.25)',
+    border: borderVar ? `hsl(${borderVar})` : 'rgba(96, 165, 250, 0.5)',
+    active: activeVar ? `hsl(${activeVar})` : 'rgba(96, 165, 250, 0.4)',
+  };
+};
+
+/**
  * Performance thresholds (v2.2 - stricter targets)
  */
 const PERFORMANCE_WARNING_MS = 100;
@@ -620,19 +648,22 @@ export const useDescriptionHighlighting = ({
               span.setAttribute('data-description-id', desc.id);
               span.setAttribute('data-description-type', desc.type);
               span.setAttribute('data-strategy', strategyUsed);
+              const colors = getHighlightColors();
               span.style.cssText = `
-                background-color: rgba(96, 165, 250, 0.2);
-                border-bottom: 2px solid #60a5fa;
+                background-color: ${colors.bg};
+                border-bottom: 2px solid ${colors.border};
                 cursor: pointer;
                 transition: background-color 0.2s;
               `;
 
               // Hover effects (memoized handler)
               const handleMouseEnter = () => {
-                span.style.backgroundColor = 'rgba(96, 165, 250, 0.3)';
+                const hoverColors = getHighlightColors();
+                span.style.backgroundColor = hoverColors.active;
               };
               const handleMouseLeave = () => {
-                span.style.backgroundColor = 'rgba(96, 165, 250, 0.2)';
+                const hoverColors = getHighlightColors();
+                span.style.backgroundColor = hoverColors.bg;
               };
               span.addEventListener('mouseenter', handleMouseEnter);
               span.addEventListener('mouseleave', handleMouseLeave);

@@ -178,8 +178,8 @@ const LibraryPage: React.FC = () => {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 mb-4" style={{ borderColor: 'var(--accent-color)' }}></div>
-          <p style={{ color: 'var(--text-secondary)' }}>Загрузка библиотеки...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+          <p className="text-muted-foreground">Загрузка библиотеки...</p>
         </div>
       </div>
     );
@@ -217,14 +217,8 @@ const LibraryPage: React.FC = () => {
 
       {/* Filters Panel */}
       {showFilters && (
-        <div
-          className="mb-6 p-6 rounded-2xl border-2"
-          style={{
-            backgroundColor: 'var(--bg-secondary)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+        <div className="mb-6 p-6 rounded-2xl border-2 bg-muted border-border">
+          <p className="text-sm text-muted-foreground">
             Фильтры скоро появятся...
           </p>
         </div>
@@ -232,8 +226,8 @@ const LibraryPage: React.FC = () => {
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-2xl p-4 mb-6">
-          <p className="text-red-600 dark:text-red-400">
+        <div className="bg-destructive/10 border-2 border-destructive/30 rounded-2xl p-4 mb-6">
+          <p className="text-destructive">
             {error instanceof Error ? error.message : 'Ошибка загрузки книг'}
           </p>
         </div>

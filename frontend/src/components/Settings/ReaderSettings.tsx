@@ -49,7 +49,7 @@ const ReaderSettings: React.FC = () => {
       {/* Font Settings */}
       <div>
         <div className="flex items-center space-x-2 mb-4">
-          <Type className="h-5 w-5 text-primary-600" />
+          <Type className="h-5 w-5 text-primary" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
             {t('readerSettings.fontSettings')}
           </h3>
@@ -106,7 +106,7 @@ const ReaderSettings: React.FC = () => {
             <select
               value={fontFamily}
               onChange={(e) => updateFontFamily(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             >
               <optgroup label={t('readerSettings.serifFonts')}>
                 {fontFamilyOptions.filter(f => f.category === 'serif').map(font => (
@@ -137,7 +137,7 @@ const ReaderSettings: React.FC = () => {
       {/* Theme Settings */}
       <div>
         <div className="flex items-center space-x-2 mb-4">
-          <Palette className="h-5 w-5 text-primary-600" />
+          <Palette className="h-5 w-5 text-primary" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
             {t('readerSettings.themeSettings')}
           </h3>
@@ -149,7 +149,7 @@ const ReaderSettings: React.FC = () => {
               key={themeOption.value}
               className={`relative p-4 border-2 rounded-lg cursor-pointer transition-colors ${
                 theme === themeOption.value
-                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                  ? 'border-primary bg-primary/5 dark:bg-primary/20'
                   : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
               }`}
               onClick={() => updateTheme(themeOption.value as 'light' | 'dark' | 'sepia')}
@@ -170,7 +170,7 @@ const ReaderSettings: React.FC = () => {
                 </div>
               </div>
               {theme === themeOption.value && (
-                <div className="absolute top-2 right-2 w-4 h-4 bg-primary-500 rounded-full" />
+                <div className="absolute top-2 right-2 w-4 h-4 bg-primary rounded-full" />
               )}
             </div>
           ))}
@@ -180,7 +180,7 @@ const ReaderSettings: React.FC = () => {
       {/* Preview */}
       <div>
         <div className="flex items-center space-x-2 mb-4">
-          <Monitor className="h-5 w-5 text-primary-600" />
+          <Monitor className="h-5 w-5 text-primary" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
             {t('readerSettings.preview')}
           </h3>
@@ -267,7 +267,7 @@ const ReaderSettings: React.FC = () => {
       <div className="flex justify-end pt-6 border-t border-gray-200 dark:border-gray-700">
         <button
           onClick={handleReset}
-          className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
+          className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
         >
           <RotateCcw className="h-4 w-4 mr-2" />
           {t('readerSettings.resetToDefaults')}
