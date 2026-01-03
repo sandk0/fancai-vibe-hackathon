@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Library, Images, BarChart3, User } from 'lucide-react';
+import { Home, Library, Image, BarChart3, User } from 'lucide-react';
 
 interface NavItem {
   path: string;
@@ -10,7 +10,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { path: '/', label: 'Главная', icon: Home },
   { path: '/library', label: 'Библиотека', icon: Library },
-  { path: '/images', label: 'Галерея', icon: Images },
+  { path: '/images', label: 'Галерея', icon: Image },
   { path: '/stats', label: 'Статистика', icon: BarChart3 },
   { path: '/profile', label: 'Профиль', icon: User },
 ];
