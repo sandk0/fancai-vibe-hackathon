@@ -80,7 +80,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick: _onMenuClick }) => {
   };
 
   return (
-    <header className="sticky top-0 left-0 right-0 z-40 pt-safe border-b border-border bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 left-0 right-0 z-[200] pt-safe border-b border-border bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 md:h-16">
           {/* Left side - Logo and Mobile Menu */}
@@ -88,7 +88,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick: _onMenuClick }) => {
             {/* Mobile menu button */}
             <button
               type="button"
-              className="md:hidden flex items-center justify-center w-10 h-10 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors touch-target"
+              className="md:hidden flex items-center justify-center w-11 h-11 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors touch-target"
               onClick={() => setSidebarOpen(!sidebarOpen)}
               aria-label={t('nav.openMenu')}
             >
@@ -109,7 +109,11 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick: _onMenuClick }) => {
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-1 ml-6" aria-label={t('nav.mainNavigation') || 'Main navigation'}>
+            <nav
+              role="navigation"
+              aria-label="Навигация по сайту"
+              className="hidden md:flex items-center gap-1 ml-6"
+            >
               {navLinks.map((link) => {
                 const Icon = link.icon;
                 const isActive = isActiveLink(link.to);
@@ -155,13 +159,13 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick: _onMenuClick }) => {
             <div className="relative" ref={menuRef}>
               <button
                 type="button"
-                className="flex items-center gap-2 p-1 rounded-full transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+                className="flex items-center gap-2 p-1 min-w-[44px] min-h-[44px] rounded-full transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 aria-expanded={showUserMenu}
                 aria-haspopup="true"
               >
                 <span className="sr-only">{t('nav.openUserMenu')}</span>
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center bg-primary text-primary-foreground">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center bg-primary text-primary-foreground">
                   <span className="text-sm font-medium">
                     {user?.full_name
                       ? user.full_name.charAt(0).toUpperCase()

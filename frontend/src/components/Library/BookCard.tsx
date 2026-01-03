@@ -17,7 +17,7 @@
  */
 
 import { memo, useCallback, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import {
   Book,
   BookOpen,
@@ -101,7 +101,7 @@ export const BookCard = memo(function BookCard({
   }, []);
 
   return (
-    <motion.div
+    <m.div
       className="group relative"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -150,7 +150,7 @@ export const BookCard = memo(function BookCard({
                 <span className="font-medium">{Math.round(progressPercent)}%</span>
               </div>
               <div className="w-full h-1.5 rounded-full bg-white/30 overflow-hidden">
-                <motion.div
+                <m.div
                   className="h-full rounded-full bg-primary"
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.min(progressPercent, 100)}%` }}
@@ -173,7 +173,7 @@ export const BookCard = memo(function BookCard({
           {/* Hover Overlay with Actions - Desktop only */}
           <AnimatePresence>
             {isHovered && isClickable && !book.is_processing && (
-              <motion.div
+              <m.div
                 className="absolute inset-0 bg-black/60 hidden md:flex flex-col items-center justify-center gap-3 p-4"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -181,7 +181,7 @@ export const BookCard = memo(function BookCard({
                 transition={{ duration: 0.2 }}
               >
                 {/* Read Button */}
-                <motion.button
+                <m.button
                   className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold shadow-lg min-h-[44px] min-w-[120px] justify-center"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -189,11 +189,11 @@ export const BookCard = memo(function BookCard({
                 >
                   <BookOpen className="w-5 h-5" />
                   <span>Читать</span>
-                </motion.button>
+                </m.button>
 
                 {/* Delete Button */}
                 {onDelete && (
-                  <motion.button
+                  <m.button
                     className="flex items-center gap-2 px-4 py-2 rounded-xl bg-destructive/90 text-white font-medium shadow-lg min-h-[44px] min-w-[100px] justify-center"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -201,9 +201,9 @@ export const BookCard = memo(function BookCard({
                   >
                     <Trash2 className="w-4 h-4" />
                     <span>Удалить</span>
-                  </motion.button>
+                  </m.button>
                 )}
-              </motion.div>
+              </m.div>
             )}
           </AnimatePresence>
 
@@ -221,7 +221,7 @@ export const BookCard = memo(function BookCard({
             {showMobileMenu && (
               <>
                 {/* Backdrop */}
-                <motion.div
+                <m.div
                   className="fixed inset-0 z-40 md:hidden"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -229,8 +229,8 @@ export const BookCard = memo(function BookCard({
                   onClick={handleCloseMobileMenu}
                 />
                 {/* Menu */}
-                <motion.div
-                  className="absolute top-12 right-2 z-50 bg-card border border-border rounded-xl shadow-xl overflow-hidden min-w-[140px] md:hidden"
+                <m.div
+                  className="absolute top-12 right-2 z-[100] bg-card border border-border rounded-xl shadow-xl overflow-hidden min-w-[140px] md:hidden"
                   initial={{ opacity: 0, scale: 0.9, y: -10 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.9, y: -10 }}
@@ -261,7 +261,7 @@ export const BookCard = memo(function BookCard({
                     <X className="w-5 h-5" />
                     <span>Закрыть</span>
                   </button>
-                </motion.div>
+                </m.div>
               </>
             )}
           </AnimatePresence>
@@ -279,6 +279,6 @@ export const BookCard = memo(function BookCard({
           </p>
         </div>
       </div>
-    </motion.div>
+    </m.div>
   );
 });

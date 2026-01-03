@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Eye, Download, Share2, Image, Filter, Grid, List } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { imagesAPI } from '@/api/images';
 import { useUIStore } from '@/stores/ui';
@@ -216,7 +216,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {filteredImages.map((image, index) => (
-            <motion.div
+            <m.div
               key={image.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -275,13 +275,13 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
                   </span>
                 )}
               </div>
-            </motion.div>
+            </m.div>
           ))}
         </div>
       ) : (
         <div className="space-y-4">
           {filteredImages.map((image, index) => (
-            <motion.div
+            <m.div
               key={image.id}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -334,7 +334,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
                   <Share2 className="h-4 w-4" />
                 </button>
               </div>
-            </motion.div>
+            </m.div>
           ))}
         </div>
       )}

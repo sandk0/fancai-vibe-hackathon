@@ -278,14 +278,14 @@ export const WebSocketStatus: React.FC<{ className?: string }> = ({ className = 
       case 'CONNECTING': return 'bg-yellow-500';
       case 'CLOSING': return 'bg-orange-500';
       case 'CLOSED': return 'bg-red-500';
-      default: return 'bg-gray-500';
+      default: return 'bg-muted';
     }
   };
   
   return (
     <div className={`flex items-center space-x-2 ${className}`}>
       <div className={`w-2 h-2 rounded-full ${getStatusColor()}`} />
-      <span className="text-xs text-gray-600 dark:text-gray-400">
+      <span className="text-xs text-muted-foreground">
         {connectionState === 'OPEN' ? 'Connected' : connectionState}
       </span>
     </div>

@@ -151,7 +151,7 @@ export const ImageGenerationStatus: React.FC<ImageGenerationStatusProps> = ({
   return (
     <div
       className={`
-        fixed top-20 right-4 z-50
+        fixed top-20 right-4 z-[800]
         ${colors.bg} ${colors.border} border
         rounded-lg shadow-lg
         px-4 py-3
@@ -188,12 +188,9 @@ export const ImageGenerationStatus: React.FC<ImageGenerationStatusProps> = ({
 
       {/* Progress bar animation (only when generating) */}
       {status === 'generating' && (
-        <div className="mt-2 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+        <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
           <div
             className={`h-full ${colors.spinner.replace('border-', 'bg-')} animate-progress-bar`}
-            style={{
-              animation: 'progress-bar 2s ease-in-out infinite',
-            }}
           />
         </div>
       )}
@@ -201,25 +198,3 @@ export const ImageGenerationStatus: React.FC<ImageGenerationStatusProps> = ({
   );
 };
 
-// Add CSS animation for progress bar
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes progress-bar {
-    0% {
-      width: 0%;
-      margin-left: 0%;
-    }
-    50% {
-      width: 50%;
-      margin-left: 25%;
-    }
-    100% {
-      width: 0%;
-      margin-left: 100%;
-    }
-  }
-`;
-if (typeof document !== 'undefined' && !document.getElementById('image-generation-status-styles')) {
-  style.id = 'image-generation-status-styles';
-  document.head.appendChild(style);
-}

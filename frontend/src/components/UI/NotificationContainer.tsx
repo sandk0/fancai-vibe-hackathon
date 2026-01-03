@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { X, CheckCircle, XCircle, AlertTriangle, Info, Bell } from 'lucide-react';
 import { useUIStore } from '@/stores/ui';
 import { cn } from '@/utils/cn';
@@ -143,7 +143,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
 
   return (
     <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/10 dark:bg-white/10 overflow-hidden rounded-b-lg">
-      <motion.div
+      <m.div
         className={cn('h-full', config.progressClasses)}
         initial={{ width: '100%' }}
         animate={{ width: `${progress}%` }}
@@ -191,7 +191,7 @@ const Toast: React.FC<ToastProps> = ({
     : toastAnimationVariants.desktop;
 
   return (
-    <motion.div
+    <m.div
       layout
       initial={animationVariant.initial}
       animate={animationVariant.animate}
@@ -263,7 +263,7 @@ const Toast: React.FC<ToastProps> = ({
           onComplete={handleDismiss}
         />
       )}
-    </motion.div>
+    </m.div>
   );
 };
 

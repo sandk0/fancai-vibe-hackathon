@@ -51,24 +51,28 @@ export const AdminStats: React.FC<AdminStatsProps> = ({ stats, isLoading, t }) =
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div
+      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+      aria-busy={isLoading}
+      aria-live="polite"
+    >
       {statCards.map((stat, index) => {
         const Icon = stat.icon;
         return (
           <div
             key={index}
-            className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700"
+            className="bg-card rounded-lg p-6 shadow-sm border border-border"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                <p className="text-sm font-medium text-muted-foreground">
                   {stat.title}
                 </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="text-2xl font-bold text-foreground">
                   {isLoading ? '...' : stat.value.toLocaleString()}
                 </p>
               </div>
-              <Icon className={`w-8 h-8 text-${stat.color}-500`} />
+              <Icon className={`w-8 h-8 text-${stat.color}-500`} aria-hidden="true" />
             </div>
           </div>
         );

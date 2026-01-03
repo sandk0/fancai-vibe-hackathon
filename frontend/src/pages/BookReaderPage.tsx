@@ -62,7 +62,7 @@ const BookReaderPage = () => {
       {/* Parsing Status Indicator - shown while Celery is processing */}
       {isParsing && (
         <div
-          className="fixed left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-primary/90 backdrop-blur-sm text-primary-foreground text-sm flex items-center gap-2 shadow-lg"
+          className="fixed left-1/2 -translate-x-1/2 z-[800] px-4 py-2 rounded-full bg-primary/90 backdrop-blur-sm text-primary-foreground text-sm flex items-center gap-2 shadow-lg"
           style={{ bottom: 'calc(20px + env(safe-area-inset-bottom))' }}
         >
           <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />

@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import DOMPurify from 'dompurify';
 import type { Description } from '@/types/api';
 
@@ -51,7 +51,7 @@ export const ReaderContent: React.FC<ReaderContentProps> = React.memo(({
   };
 
   return (
-    <motion.div
+    <m.div
       ref={contentRef}
       className="prose prose-lg dark:prose-invert max-w-none"
       style={{
@@ -72,7 +72,7 @@ export const ReaderContent: React.FC<ReaderContentProps> = React.memo(({
         }}
         className="select-text epub-content"
       />
-    </motion.div>
+    </m.div>
   );
 });
 

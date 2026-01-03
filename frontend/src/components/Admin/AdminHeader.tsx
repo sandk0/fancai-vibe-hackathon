@@ -20,11 +20,11 @@ interface AdminHeaderProps {
 export const AdminHeader: React.FC<AdminHeaderProps> = ({ title, subtitle }) => {
   return (
     <div className="mb-8">
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+      <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
         <Shield className="w-8 h-8" />
         {title}
       </h1>
-      <p className="mt-2 text-gray-600 dark:text-gray-400">
+      <p className="mt-2 text-muted-foreground">
         {subtitle}
       </p>
     </div>

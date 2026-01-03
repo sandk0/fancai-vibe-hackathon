@@ -139,7 +139,7 @@ const ProfilePage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto">
       {/* Hero Section with Avatar */}
-      <div className="relative mb-12 overflow-hidden rounded-3xl">
+      <div className="relative mb-12 overflow-hidden rounded-xl">
         {/* Gradient Background */}
         <div className="absolute inset-0 opacity-50 bg-gradient-to-br from-primary to-primary/50" />
 
@@ -237,7 +237,7 @@ const ProfilePage: React.FC = () => {
         {stats.map((stat, index) => (
           <div
             key={index}
-            className="p-6 rounded-2xl border-2 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl bg-card border-border"
+            className="p-6 rounded-xl border-2 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl bg-card border-border"
           >
             <div className="flex items-center justify-between mb-4">
               <stat.icon className={cn('w-10 h-10', stat.color)} />
@@ -265,7 +265,7 @@ const ProfilePage: React.FC = () => {
           {readingGoals.map((goal, index) => (
             <div
               key={index}
-              className="p-6 rounded-2xl border-2 bg-card border-border"
+              className="p-6 rounded-xl border-2 bg-card border-border"
             >
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-foreground">
@@ -298,7 +298,7 @@ const ProfilePage: React.FC = () => {
       </div>
 
       {/* Profile Information */}
-      <div className="p-8 rounded-2xl border-2 bg-card border-border">
+      <div className="p-8 rounded-xl border-2 bg-card border-border">
         <div className="flex items-center gap-3 mb-6">
           <User className="w-6 h-6 text-primary" />
           <h2 className="text-2xl font-bold text-foreground">

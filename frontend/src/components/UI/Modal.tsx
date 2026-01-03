@@ -23,7 +23,7 @@ import React, {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 // --- Types ---
@@ -250,8 +250,8 @@ export function Modal({
       {isOpen && (
         <ModalContext.Provider value={{ onClose, variant }}>
           {/* Backdrop */}
-          <motion.div
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+          <m.div
+            className="fixed inset-0 z-[400] bg-black/50 backdrop-blur-sm"
             variants={backdropVariants}
             initial="hidden"
             animate="visible"
@@ -264,7 +264,7 @@ export function Modal({
           {/* Modal Container */}
           <div
             className={cn(
-              'fixed inset-0 z-50 flex overflow-y-auto',
+              'fixed inset-0 z-[500] flex overflow-y-auto',
               variant === 'drawer' ? 'items-end' : 'items-center justify-center',
               variant === 'fullscreen' && 'p-0',
               variant === 'default' && 'p-4'
@@ -272,7 +272,7 @@ export function Modal({
             onClick={handleBackdropClick}
           >
             {/* Modal Content */}
-            <motion.div
+            <m.div
               ref={modalRef}
               role="dialog"
               aria-modal="true"
@@ -314,7 +314,7 @@ export function Modal({
               onKeyDown={handleFocusTrapKeyDown}
             >
               {children}
-            </motion.div>
+            </m.div>
           </div>
         </ModalContext.Provider>
       )}

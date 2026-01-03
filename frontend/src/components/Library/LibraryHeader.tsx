@@ -45,13 +45,8 @@ export const LibraryHeader: React.FC<LibraryHeaderProps> = ({
   };
 
   return (
-    <div className="relative mb-6 sm:mb-12 overflow-hidden rounded-2xl sm:rounded-3xl">
-      <div
-        className="absolute inset-0 bg-primary/50"
-        style={{
-          background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.3) 100%)',
-        }}
-      />
+    <div className="relative mb-6 sm:mb-12 overflow-hidden rounded-xl">
+      <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary/30" />
       <div className="relative px-4 sm:px-8 py-6 sm:py-12">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6">
           <div>

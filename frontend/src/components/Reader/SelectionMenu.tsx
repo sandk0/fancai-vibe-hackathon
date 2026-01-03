@@ -170,7 +170,7 @@ export const SelectionMenu = memo(function SelectionMenu({
         {/* Copy Button */}
         <button
           onClick={handleCopy}
-          className="flex items-center gap-2 px-4 py-3 hover:bg-muted active:bg-muted/80 transition-colors min-w-[100px]"
+          className="flex items-center gap-2 px-4 py-3 min-h-[44px] hover:bg-muted active:bg-muted/80 transition-colors min-w-[100px]"
           title="Copy to clipboard"
           aria-label="Copy text"
         >
@@ -196,7 +196,7 @@ export const SelectionMenu = memo(function SelectionMenu({
         {onHighlight && (
           <button
             onClick={handleHighlight}
-            className="flex items-center gap-2 px-4 py-3 hover:bg-muted active:bg-muted/80 transition-colors min-w-[120px]"
+            className="flex items-center gap-2 px-4 py-3 min-h-[44px] hover:bg-muted active:bg-muted/80 transition-colors min-w-[120px]"
             title="Highlight text"
             aria-label="Highlight text"
           >
@@ -223,7 +223,7 @@ export const SelectionMenu = memo(function SelectionMenu({
         {onNote && (
           <button
             onClick={handleNote}
-            className="flex items-center gap-2 px-4 py-3 hover:bg-muted active:bg-muted/80 transition-colors min-w-[100px]"
+            className="flex items-center gap-2 px-4 py-3 min-h-[44px] hover:bg-muted active:bg-muted/80 transition-colors min-w-[100px]"
             title="Add note"
             aria-label="Add note"
           >

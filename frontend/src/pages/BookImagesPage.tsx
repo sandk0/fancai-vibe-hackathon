@@ -67,7 +67,7 @@ const BookImagesPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto">
       {/* Hero Section */}
-      <div className="relative mb-12 overflow-hidden rounded-3xl">
+      <div className="relative mb-12 overflow-hidden rounded-xl">
         {/* Gradient Background */}
         <div className="absolute inset-0 opacity-40 bg-gradient-to-br from-primary to-purple-600/50" />
 
@@ -84,7 +84,7 @@ const BookImagesPage: React.FC = () => {
 
           <div className="flex flex-col lg:flex-row items-center gap-8">
             {/* Book Cover */}
-            <div className="w-40 h-56 rounded-2xl overflow-hidden shadow-2xl flex-shrink-0 border-4 border-white/20">
+            <div className="w-40 h-56 rounded-xl overflow-hidden shadow-2xl flex-shrink-0 border-4 border-white/20">
               <AuthenticatedImage
                 src={
                   book.has_cover
@@ -113,8 +113,7 @@ const BookImagesPage: React.FC = () => {
               {/* Action Button */}
               <Link
                 to={`/books/${bookId}`}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white transition-all hover:scale-105 shadow-lg"
-                style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white transition-all hover:scale-105 shadow-lg bg-white/20 hover:bg-white/30"
               >
                 <BookOpen className="w-5 h-5" />
                 <span>{t('images.readBook')}</span>
@@ -126,7 +125,7 @@ const BookImagesPage: React.FC = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        <div className="p-6 rounded-2xl border-2 transition-all hover:-translate-y-1 hover:shadow-xl bg-card border-border">
+        <div className="p-6 rounded-xl border-2 transition-all hover:-translate-y-1 hover:shadow-xl bg-card border-border">
           <div className="flex items-center justify-between mb-3">
             <BookOpen className="w-8 h-8 text-blue-600 dark:text-blue-400" />
             <span className="text-3xl font-bold text-foreground">
@@ -138,7 +137,7 @@ const BookImagesPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="p-6 rounded-2xl border-2 transition-all hover:-translate-y-1 hover:shadow-xl bg-card border-border">
+        <div className="p-6 rounded-xl border-2 transition-all hover:-translate-y-1 hover:shadow-xl bg-card border-border">
           <div className="flex items-center justify-between mb-3">
             <TrendingUp className="w-8 h-8 text-purple-600 dark:text-purple-400" />
             <span className="text-3xl font-bold text-foreground">
@@ -150,7 +149,7 @@ const BookImagesPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="p-6 rounded-2xl border-2 transition-all hover:-translate-y-1 hover:shadow-xl bg-card border-border">
+        <div className="p-6 rounded-xl border-2 transition-all hover:-translate-y-1 hover:shadow-xl bg-card border-border">
           <div className="flex items-center justify-between mb-3">
             <Sparkles className="w-8 h-8 text-amber-600 dark:text-amber-400" />
             <span className="text-2xl font-bold text-foreground">
@@ -165,7 +164,7 @@ const BookImagesPage: React.FC = () => {
 
       {/* Description (if available) */}
       {book.description && (
-        <div className="p-6 rounded-2xl border-2 mb-12 bg-card border-border">
+        <div className="p-6 rounded-xl border-2 mb-12 bg-card border-border">
           <h3 className="text-lg font-semibold mb-3 text-foreground">
             Описание
           </h3>
@@ -184,7 +183,7 @@ const BookImagesPage: React.FC = () => {
       </div>
 
       {/* Image Gallery */}
-      <div className="rounded-2xl border-2 p-6 bg-card border-border">
+      <div className="rounded-xl border-2 p-6 bg-card border-border">
         <ImageGallery bookId={bookId} />
       </div>
     </div>

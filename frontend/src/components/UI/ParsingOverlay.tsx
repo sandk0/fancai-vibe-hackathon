@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { booksAPI } from '@/api/books';
 
 interface ParsingOverlayProps {
@@ -100,11 +100,11 @@ export const ParsingOverlay: React.FC<ParsingOverlayProps> = ({
   }
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="absolute inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 rounded-lg"
+      className="absolute inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-[100] rounded-lg"
     >
       {/* Круговой прогресс */}
       <div className="relative">
@@ -119,7 +119,7 @@ export const ParsingOverlay: React.FC<ParsingOverlayProps> = ({
             fill="none"
           />
           {/* Прогресс */}
-          <motion.circle
+          <m.circle
             cx="40"
             cy="40"
             r="36"
@@ -129,13 +129,13 @@ export const ParsingOverlay: React.FC<ParsingOverlayProps> = ({
             strokeLinecap="round"
             strokeDasharray={226.2} // 2 * PI * r
             initial={{ strokeDashoffset: 226.2 }}
-            animate={{ 
+            animate={{
               strokeDashoffset: 226.2 - (226.2 * progress) / 100
             }}
             transition={{ duration: 0.5, ease: "easeInOut" }}
           />
         </svg>
-        
+
         {/* Процент в центре */}
         <div className="absolute inset-0 flex items-center justify-center">
           <span className="text-white font-bold text-lg">
@@ -143,6 +143,6 @@ export const ParsingOverlay: React.FC<ParsingOverlayProps> = ({
           </span>
         </div>
       </div>
-    </motion.div>
+    </m.div>
   );
 };

@@ -16,10 +16,10 @@
  * - Optimistic updates
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useDeferredValue } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import {
   Search,
   Filter,
@@ -90,6 +90,10 @@ const LibraryPage: React.FC = () => {
   const [selectedBookForDelete, setSelectedBookForDelete] = useState<Book | null>(null);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
 
+  // Debounce search query using useDeferredValue to prevent excessive filtering
+  // This allows the input to remain responsive while deferring the expensive filtering operation
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+
   // Calculate skip for pagination
   const skip = (currentPage - 1) * BOOKS_PER_PAGE;
 
@@ -123,8 +127,8 @@ const LibraryPage: React.FC = () => {
     },
   });
 
-  // Filter books locally
-  const { filteredBooks, stats } = useLibraryFilters(books, searchQuery);
+  // Filter books locally using deferred search query to prevent excessive re-renders
+  const { filteredBooks, stats } = useLibraryFilters(books, deferredSearchQuery);
 
   // Apply additional filters
   const displayBooks = useMemo(() => {
@@ -246,7 +250,7 @@ const LibraryPage: React.FC = () => {
           </div>
 
           {/* Desktop Upload Button */}
-          <motion.button
+          <m.button
             className="hidden md:flex items-center gap-2 px-6 py-3 rounded-xl font-semibold bg-primary text-primary-foreground shadow-lg min-h-[44px]"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -254,7 +258,7 @@ const LibraryPage: React.FC = () => {
           >
             <Plus className="w-5 h-5" />
             <span>Загрузить книгу</span>
-          </motion.button>
+          </m.button>
         </div>
 
         {/* Search and Filters Bar */}
@@ -267,12 +271,12 @@ const LibraryPage: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Поиск по названию или автору..."
-              className="w-full pl-12 pr-10 py-3 rounded-xl border-2 border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all min-h-[44px]"
+              className="w-full pl-12 pr-10 py-3 rounded-xl border-2 border-border bg-card text-foreground text-base placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all min-h-[44px]"
             />
             {searchQuery && (
               <button
                 onClick={handleClearSearch}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-muted transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-full hover:bg-muted transition-colors"
                 aria-label="Clear search"
               >
                 <X className="w-4 h-4 text-muted-foreground" />
@@ -307,15 +311,15 @@ const LibraryPage: React.FC = () => {
             <AnimatePresence>
               {showSortDropdown && (
                 <>
-                  <motion.div
+                  <m.div
                     className="fixed inset-0 z-40"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onClick={() => setShowSortDropdown(false)}
                   />
-                  <motion.div
-                    className="absolute top-full right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-xl overflow-hidden z-50"
+                  <m.div
+                    className="absolute top-full right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-xl overflow-hidden z-[100]"
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
@@ -339,7 +343,7 @@ const LibraryPage: React.FC = () => {
                         <span>{option.label}</span>
                       </button>
                     ))}
-                  </motion.div>
+                  </m.div>
                 </>
               )}
             </AnimatePresence>
@@ -371,8 +375,8 @@ const LibraryPage: React.FC = () => {
         {/* Filters Panel */}
         <AnimatePresence>
           {showFilters && (
-            <motion.div
-              className="mb-6 p-4 sm:p-6 rounded-2xl border-2 border-border bg-card"
+            <m.div
+              className="mb-6 p-4 sm:p-6 rounded-xl border-2 border-border bg-card"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
@@ -435,34 +439,36 @@ const LibraryPage: React.FC = () => {
                   </button>
                 </div>
               )}
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
 
         {/* Error Message */}
         {error && (
-          <motion.div
-            className="bg-destructive/10 border-2 border-destructive/30 rounded-2xl p-4 mb-6"
+          <m.div
+            className="bg-destructive/10 border-2 border-destructive/30 rounded-xl p-4 mb-6"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
           >
             <p className="text-destructive">
               {error instanceof Error ? error.message : 'Failed to load books'}
             </p>
-          </motion.div>
+          </m.div>
         )}
 
         {/* Books Grid */}
-        <BookGrid
-          books={displayBooks}
-          isLoading={isLoading && books.length === 0}
-          searchQuery={searchQuery}
-          onBookClick={handleBookClick}
-          onClearSearch={handleClearSearch}
-          onUploadClick={handleUploadClick}
-          onParsingComplete={handleParsingComplete}
-          onDelete={handleDeleteClick}
-        />
+        <div aria-busy={isLoading && books.length === 0} aria-live="polite">
+          <BookGrid
+            books={displayBooks}
+            isLoading={isLoading && books.length === 0}
+            searchQuery={searchQuery}
+            onBookClick={handleBookClick}
+            onClearSearch={handleClearSearch}
+            onUploadClick={handleUploadClick}
+            onParsingComplete={handleParsingComplete}
+            onDelete={handleDeleteClick}
+          />
+        </div>
 
         {/* Pagination */}
         {totalPages > 1 && displayBooks.length > 0 && (
@@ -489,7 +495,7 @@ const LibraryPage: React.FC = () => {
       </div>
 
       {/* Mobile FAB (Floating Action Button) */}
-      <motion.button
+      <m.button
         className="fixed bottom-6 right-6 md:hidden w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-xl flex items-center justify-center z-30"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
@@ -497,7 +503,7 @@ const LibraryPage: React.FC = () => {
         aria-label="Загрузить книгу"
       >
         <Plus className="w-7 h-7" />
-      </motion.button>
+      </m.button>
 
       {/* Upload Modal */}
       <BookUploadModal

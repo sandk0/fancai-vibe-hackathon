@@ -123,142 +123,65 @@ class ErrorBoundary extends Component<Props, State> {
         return fallback;
       }
 
-      // Получаем тему из localStorage для правильного отображения
-      const isDarkTheme = localStorage.getItem('theme') === 'dark';
-      const bgColor = isDarkTheme ? '#1a1a1a' : '#ffffff';
-      const textColor = isDarkTheme ? '#e5e5e5' : '#1a1a1a';
-      const borderColor = isDarkTheme ? '#333' : '#e5e5e5';
-      const cardBg = isDarkTheme ? '#2a2a2a' : '#f9f9f9';
-
       // Разные UI для разных уровней
       const isAppLevel = level === 'app';
       const isPageLevel = level === 'page';
 
       return (
         <div
-          className="error-boundary-container"
-          style={{
-            backgroundColor: bgColor,
-            color: textColor,
-            minHeight: isAppLevel ? '100vh' : 'auto',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '2rem',
-          }}
+          className={`error-boundary-container bg-background text-foreground flex items-center justify-center p-8 ${
+            isAppLevel ? 'min-h-screen' : ''
+          }`}
         >
           <div
-            className="error-boundary-content"
-            style={{
-              maxWidth: isAppLevel ? '600px' : '100%',
-              width: '100%',
-              textAlign: 'center',
-            }}
+            className={`error-boundary-content w-full text-center ${
+              isAppLevel ? 'max-w-[600px]' : 'max-w-full'
+            }`}
           >
             {/* Error Icon */}
-            <div
-              style={{
-                fontSize: isAppLevel ? '4rem' : '3rem',
-                marginBottom: '1.5rem',
-              }}
-            >
-              {isAppLevel ? '💥' : '⚠️'}
+            <div className={`mb-6 ${isAppLevel ? 'text-6xl' : 'text-5xl'}`}>
+              {isAppLevel ? '!' : '!'}
             </div>
 
             {/* Error Title */}
             <h1
-              style={{
-                fontSize: isAppLevel ? '2rem' : '1.5rem',
-                fontWeight: 'bold',
-                marginBottom: '1rem',
-                color: textColor,
-              }}
+              className={`font-bold mb-4 text-foreground ${
+                isAppLevel ? 'text-3xl' : 'text-2xl'
+              }`}
             >
-              {isAppLevel && 'Упс! Что-то пошло не так'}
-              {isPageLevel && 'Ошибка загрузки страницы'}
-              {!isAppLevel && !isPageLevel && 'Ошибка компонента'}
+              {isAppLevel && 'Ups! Something went wrong'}
+              {isPageLevel && 'Page load error'}
+              {!isAppLevel && !isPageLevel && 'Component error'}
             </h1>
 
             {/* Error Message */}
-            <p
-              style={{
-                fontSize: '1rem',
-                marginBottom: '2rem',
-                color: isDarkTheme ? '#999' : '#666',
-                lineHeight: '1.6',
-              }}
-            >
-              {isAppLevel && 'Приносим извинения за неудобства. Пожалуйста, попробуйте обновить страницу или вернуться на главную.'}
-              {isPageLevel && 'Не удалось загрузить содержимое страницы. Попробуйте обновить или вернуться назад.'}
-              {!isAppLevel && !isPageLevel && 'Возникла ошибка при отображении этого компонента.'}
+            <p className="text-base mb-8 text-muted-foreground leading-relaxed">
+              {isAppLevel && 'We apologize for the inconvenience. Please try refreshing the page or return to the home page.'}
+              {isPageLevel && 'Failed to load page content. Try refreshing or going back.'}
+              {!isAppLevel && !isPageLevel && 'An error occurred while rendering this component.'}
             </p>
 
             {/* Error Details (только в dev mode) */}
             {import.meta.env.DEV && error && (
-              <details
-                style={{
-                  marginBottom: '2rem',
-                  textAlign: 'left',
-                  backgroundColor: cardBg,
-                  border: `1px solid ${borderColor}`,
-                  borderRadius: '8px',
-                  padding: '1rem',
-                  overflow: 'auto',
-                }}
-              >
-                <summary
-                  style={{
-                    cursor: 'pointer',
-                    fontWeight: '600',
-                    marginBottom: '0.5rem',
-                    color: '#ef4444',
-                  }}
-                >
-                  🔍 Детали ошибки (dev mode)
+              <details className="mb-8 text-left bg-card border border-border rounded-lg p-4 overflow-auto">
+                <summary className="cursor-pointer font-semibold mb-2 text-destructive">
+                  Error details (dev mode)
                 </summary>
 
-                <div style={{ marginTop: '1rem' }}>
-                  <p style={{
-                    fontWeight: '600',
-                    marginBottom: '0.5rem',
-                    fontSize: '0.875rem',
-                  }}>
+                <div className="mt-4">
+                  <p className="font-semibold mb-2 text-sm">
                     Error:
                   </p>
-                  <pre
-                    style={{
-                      backgroundColor: isDarkTheme ? '#1a1a1a' : '#fff',
-                      padding: '0.75rem',
-                      borderRadius: '4px',
-                      fontSize: '0.75rem',
-                      overflow: 'auto',
-                      border: `1px solid ${borderColor}`,
-                      marginBottom: '1rem',
-                    }}
-                  >
+                  <pre className="bg-background p-3 rounded text-xs overflow-auto border border-border mb-4">
                     {error.toString()}
                   </pre>
 
                   {errorInfo?.componentStack && (
                     <>
-                      <p style={{
-                        fontWeight: '600',
-                        marginBottom: '0.5rem',
-                        fontSize: '0.875rem',
-                      }}>
+                      <p className="font-semibold mb-2 text-sm">
                         Component Stack:
                       </p>
-                      <pre
-                        style={{
-                          backgroundColor: isDarkTheme ? '#1a1a1a' : '#fff',
-                          padding: '0.75rem',
-                          borderRadius: '4px',
-                          fontSize: '0.75rem',
-                          overflow: 'auto',
-                          border: `1px solid ${borderColor}`,
-                          maxHeight: '200px',
-                        }}
-                      >
+                      <pre className="bg-background p-3 rounded text-xs overflow-auto border border-border max-h-[200px]">
                         {errorInfo.componentStack}
                       </pre>
                     </>
@@ -268,77 +191,28 @@ class ErrorBoundary extends Component<Props, State> {
             )}
 
             {/* Action Buttons */}
-            <div
-              style={{
-                display: 'flex',
-                gap: '1rem',
-                justifyContent: 'center',
-                flexWrap: 'wrap',
-              }}
-            >
+            <div className="flex gap-4 justify-center flex-wrap">
               <button
                 onClick={this.handleReset}
-                style={{
-                  backgroundColor: '#3b82f6',
-                  color: '#fff',
-                  padding: '0.75rem 1.5rem',
-                  borderRadius: '8px',
-                  border: 'none',
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#2563eb';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#3b82f6';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
+                className="bg-primary text-primary-foreground px-6 py-3 rounded-lg text-base font-semibold cursor-pointer transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5 border-none"
               >
-                {isAppLevel ? '🔄 Перезагрузить страницу' : '🔄 Попробовать снова'}
+                {isAppLevel ? 'Reload page' : 'Try again'}
               </button>
 
               {isAppLevel && (
                 <button
                   onClick={this.handleGoHome}
-                  style={{
-                    backgroundColor: isDarkTheme ? '#374151' : '#f3f4f6',
-                    color: textColor,
-                    padding: '0.75rem 1.5rem',
-                    borderRadius: '8px',
-                    border: `1px solid ${borderColor}`,
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = isDarkTheme ? '#4b5563' : '#e5e7eb';
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = isDarkTheme ? '#374151' : '#f3f4f6';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                  }}
+                  className="bg-secondary text-foreground px-6 py-3 rounded-lg text-base font-semibold cursor-pointer transition-all duration-200 border border-border hover:bg-muted hover:-translate-y-0.5"
                 >
-                  🏠 На главную
+                  Home
                 </button>
               )}
             </div>
 
             {/* Help Text */}
             {isAppLevel && (
-              <p
-                style={{
-                  marginTop: '2rem',
-                  fontSize: '0.875rem',
-                  color: isDarkTheme ? '#666' : '#999',
-                }}
-              >
-                Если проблема повторяется, пожалуйста, обратитесь в поддержку
+              <p className="mt-8 text-sm text-muted-foreground">
+                If the problem persists, please contact support
               </p>
             )}
           </div>

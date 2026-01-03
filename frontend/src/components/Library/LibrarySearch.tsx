@@ -2,22 +2,23 @@
  * LibrarySearch - Панель поиска, сортировки и фильтрации
  *
  * Включает:
- * - Поле поиска по названию, автору, жанру
+ * - Поле поиска по названию, автору, жанру с debounce (300ms)
  * - Переключение режима отображения (grid/list)
  * - Dropdown сортировки
  * - Кнопка фильтров (с индикатором активности)
  *
  * @param searchQuery - Текущий поисковый запрос
- * @param onSearchChange - Callback при изменении поиска
+ * @param onSearchChange - Callback при изменении поиска (debounced)
  * @param viewMode - Режим отображения (grid/list)
  * @param onViewModeChange - Callback при изменении режима
  * @param sortBy - Текущий критерий сортировки
  * @param onSortChange - Callback при изменении сортировки
  * @param showFilters - Показаны ли фильтры
  * @param onToggleFilters - Callback для переключения фильтров
+ * @param debounceDelay - Задержка debounce в мс (default: 300)
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Grid3x3, List, ArrowUpDown, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +31,8 @@ interface LibrarySearchProps {
   onSortChange: (sortBy: string) => void;
   showFilters: boolean;
   onToggleFilters: () => void;
+  /** Debounce delay in milliseconds (default: 300) */
+  debounceDelay?: number;
 }
 
 export const LibrarySearch: React.FC<LibrarySearchProps> = ({
@@ -41,7 +44,33 @@ export const LibrarySearch: React.FC<LibrarySearchProps> = ({
   onSortChange,
   showFilters,
   onToggleFilters,
+  debounceDelay = 300,
 }) => {
+  // Local state for immediate input display
+  const [localQuery, setLocalQuery] = useState(searchQuery);
+
+  // Sync local state when external searchQuery changes (e.g., clear button)
+  useEffect(() => {
+    setLocalQuery(searchQuery);
+  }, [searchQuery]);
+
+  // Debounce the search query using useEffect with timeout
+  useEffect(() => {
+    // Skip if local query matches external query (already synced)
+    if (localQuery === searchQuery) return;
+
+    const timer = setTimeout(() => {
+      onSearchChange(localQuery);
+    }, debounceDelay);
+
+    return () => clearTimeout(timer);
+  }, [localQuery, debounceDelay, onSearchChange, searchQuery]);
+
+  // Handle input change - update local state immediately for responsive UI
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalQuery(e.target.value);
+  };
+
   return (
     <div className="flex flex-col sm:flex-row gap-4 mb-8">
       {/* Search Input */}
@@ -49,13 +78,15 @@ export const LibrarySearch: React.FC<LibrarySearchProps> = ({
         <div className="relative">
           <Search
             className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground"
+            aria-hidden="true"
           />
           <input
             type="text"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
+            value={localQuery}
+            onChange={handleInputChange}
             placeholder="Поиск по названию, автору, жанру..."
-            className="w-full pl-12 pr-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 bg-card text-foreground border-border focus:ring-ring"
+            className="w-full pl-12 pr-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 bg-card text-foreground text-base border-border focus:ring-ring"
+            aria-label="Поиск по названию, автору, жанру"
           />
         </div>
       </div>

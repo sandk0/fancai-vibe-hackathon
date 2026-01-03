@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { X, AlertTriangle, Trash2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/hooks/useTranslation';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import { Button } from '@/components/UI/button';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 interface DeleteConfirmModalProps {
   book: { id: string; title: string; author?: string };
@@ -21,6 +22,10 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   isDeleting,
 }) => {
   const { t } = useTranslation();
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Focus trap for accessibility
+  useFocusTrap(isOpen, modalRef);
 
   // Close on escape key
   React.useEffect(() => {
@@ -45,14 +50,19 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
 
   return (
     <AnimatePresence>
-      <motion.div
+      <m.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 backdrop-blur-sm"
         onClick={isDeleting ? undefined : onClose}
       >
-        <motion.div
+        <m.div
+          ref={modalRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-modal-title"
+          aria-describedby="delete-modal-description"
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
@@ -63,9 +73,9 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
           <div className="flex items-center justify-between p-6 border-b border-border">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-                <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" aria-hidden="true" />
               </div>
-              <h2 className="text-xl font-semibold text-card-foreground">
+              <h2 id="delete-modal-title" className="text-xl font-semibold text-card-foreground">
                 {t('deleteModal.title')}
               </h2>
             </div>
@@ -73,13 +83,14 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
               onClick={onClose}
               className="p-2 text-muted-foreground hover:text-card-foreground rounded-lg transition-colors"
               disabled={isDeleting}
+              aria-label={t('common.close')}
             >
-              <X className="h-5 w-5" />
+              <X className="h-5 w-5" aria-hidden="true" />
             </button>
           </div>
 
           {/* Content */}
-          <div className="p-6">
+          <div id="delete-modal-description" className="p-6">
             <div className="mb-4">
               <p className="text-card-foreground/80 mb-2">
                 {t('deleteModal.confirmText')}
@@ -99,7 +110,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
             {/* Warning */}
             <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
               <div className="flex items-start space-x-3">
-                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
                 <div className="text-sm">
                   <p className="text-red-800 dark:text-red-200 font-medium mb-1">
                     {t('deleteModal.warningTitle')}
@@ -135,14 +146,14 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
                 </>
               ) : (
                 <>
-                  <Trash2 className="h-4 w-4 mr-2" />
+                  <Trash2 className="h-4 w-4 mr-2" aria-hidden="true" />
                   {t('common.delete')}
                 </>
               )}
             </Button>
           </div>
-        </motion.div>
-      </motion.div>
+        </m.div>
+      </m.div>
     </AnimatePresence>
   );
 };

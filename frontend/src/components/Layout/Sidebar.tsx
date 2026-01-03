@@ -93,7 +93,7 @@ const Sidebar: React.FC = () => {
       <aside
         className={cn(
           'hidden md:flex md:flex-shrink-0 md:flex-col',
-          'fixed left-0 top-0 h-screen z-30',
+          'fixed left-0 top-16 h-[calc(100vh-4rem)] z-[300]',
           'transition-all duration-300 ease-in-out'
         )}
         style={{
@@ -106,26 +106,12 @@ const Sidebar: React.FC = () => {
             'bg-[var(--color-bg-base)] border-r border-[var(--color-border-default)]'
           )}
         >
-          {/* Logo Section */}
-          <div className={cn(
-            'flex items-center flex-shrink-0 h-16',
-            'border-b border-[var(--color-border-default)]',
-            isCollapsed ? 'justify-center px-2' : 'px-4'
-          )}>
-            <BookOpen className="w-8 h-8 text-[var(--color-accent-500)] flex-shrink-0" />
-            <span
-              className={cn(
-                'ml-2 text-xl font-bold text-[var(--color-text-default)]',
-                'transition-opacity duration-200',
-                isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'
-              )}
-            >
-              fancai
-            </span>
-          </div>
-
           {/* Navigation */}
-          <nav className="flex-1 py-4 overflow-y-auto">
+          <nav
+            role="navigation"
+            aria-label="Главное меню"
+            className="flex-1 py-4 overflow-y-auto"
+          >
             <ul className="space-y-1 px-2">
               {navigation.map((item) => {
                 const isActive = location.pathname === item.href;
@@ -261,7 +247,7 @@ const Sidebar: React.FC = () => {
       {/* Mobile Sidebar */}
       <div
         className={cn(
-          'fixed inset-y-0 left-0 z-40 w-64 md:hidden',
+          'fixed inset-y-0 left-0 z-[500] w-64 md:hidden',
           'transition-transform duration-300 ease-in-out',
           'bg-[var(--color-bg-base)] border-r border-[var(--color-border-default)]',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -277,7 +263,11 @@ const Sidebar: React.FC = () => {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 py-4">
+          <nav
+            role="navigation"
+            aria-label="Мобильное меню"
+            className="flex-1 py-4"
+          >
             <ul className="space-y-1 px-2">
               {navigation.map((item) => {
                 const isActive = location.pathname === item.href;
@@ -340,7 +330,7 @@ const Sidebar: React.FC = () => {
       {/* Mobile backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          className="fixed inset-0 z-[400] bg-black/50 md:hidden"
           onClick={() => setSidebarOpen(false)}
           aria-hidden="true"
         />

@@ -178,7 +178,7 @@ const ImagesGalleryPage: React.FC = () => {
       </div>
 
       {/* Filters and Search */}
-      <div className="p-6 rounded-2xl border-2 mb-8 bg-background border-border">
+      <div className="p-6 rounded-xl border-2 mb-8 bg-background border-border">
         {/* Search Bar */}
         <div className="mb-4">
           <div className="relative">
@@ -188,7 +188,7 @@ const ImagesGalleryPage: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Поиск по описанию..."
-              className="w-full pl-12 pr-4 py-3 rounded-xl border-2 bg-muted border-border text-foreground"
+              className="w-full pl-12 pr-4 py-3 min-h-[44px] rounded-xl border-2 bg-muted border-border text-foreground text-base"
             />
           </div>
         </div>
@@ -197,7 +197,7 @@ const ImagesGalleryPage: React.FC = () => {
         <button
           onClick={() => setShowFilters(!showFilters)}
           className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all border-border',
+            'flex items-center gap-2 px-4 py-2 min-h-[44px] rounded-lg border-2 transition-all border-border',
             showFilters ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
           )}
         >
@@ -218,7 +218,7 @@ const ImagesGalleryPage: React.FC = () => {
                 <select
                   value={selectedBook}
                   onChange={(e) => setSelectedBook(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg border-2 bg-muted border-border text-foreground"
+                  className="w-full px-4 py-2 min-h-[44px] rounded-lg border-2 bg-muted border-border text-foreground"
                 >
                   <option value="all">Все книги</option>
                   {booksData?.books?.map((book) => (
@@ -237,7 +237,7 @@ const ImagesGalleryPage: React.FC = () => {
                 <select
                   value={descriptionType}
                   onChange={(e) => setDescriptionType(e.target.value as DescriptionType)}
-                  className="w-full px-4 py-2 rounded-lg border-2 bg-muted border-border text-foreground"
+                  className="w-full px-4 py-2 min-h-[44px] rounded-lg border-2 bg-muted border-border text-foreground"
                 >
                   {descriptionTypes.map((type) => (
                     <option key={type.value} value={type.value}>
@@ -255,7 +255,7 @@ const ImagesGalleryPage: React.FC = () => {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  className="w-full px-4 py-2 rounded-lg border-2 bg-muted border-border text-foreground"
+                  className="w-full px-4 py-2 min-h-[44px] rounded-lg border-2 bg-muted border-border text-foreground"
                 >
                   {sortOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -281,7 +281,7 @@ const ImagesGalleryPage: React.FC = () => {
               setDescriptionType('all');
               setSearchQuery('');
             }}
-            className="flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium transition-colors bg-muted text-foreground"
+            className="flex items-center gap-2 px-4 py-2 min-h-[44px] rounded-lg text-sm font-medium transition-colors bg-muted text-foreground"
           >
             <X className="w-4 h-4" />
             Сбросить фильтры
@@ -291,7 +291,7 @@ const ImagesGalleryPage: React.FC = () => {
 
       {/* Gallery Grid */}
       {filteredImages.length === 0 ? (
-        <div className="text-center py-16 rounded-2xl border-2 bg-background border-border">
+        <div className="text-center py-16 rounded-xl border-2 bg-background border-border">
           <ImageIcon className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
           <h3 className="text-xl font-bold mb-2 text-foreground">
             Изображений не найдено
@@ -340,16 +340,16 @@ const ImagesGalleryPage: React.FC = () => {
       {/* Image Modal */}
       {selectedImage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
+          className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/80"
           onClick={() => setSelectedImage(null)}
         >
           <div
-            className="relative max-w-4xl w-full rounded-2xl overflow-hidden bg-background"
+            className="relative max-w-4xl w-full rounded-xl overflow-hidden bg-background"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setSelectedImage(null)}
-              className="absolute top-4 right-4 p-2 rounded-lg z-10 bg-muted"
+              className="absolute top-4 right-4 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg z-10 bg-muted"
             >
               <X className="w-6 h-6 text-foreground" />
             </button>

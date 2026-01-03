@@ -61,40 +61,32 @@ const LoginPage: React.FC = () => {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4 py-8"
-      style={{
-        backgroundColor: 'var(--color-bg-base)',
-        paddingTop: 'max(env(safe-area-inset-top), 2rem)',
-        paddingBottom: 'max(env(safe-area-inset-bottom), 2rem)',
-      }}
+      className="min-h-screen flex items-center justify-center px-4 py-8 bg-background pt-[max(env(safe-area-inset-top),2rem)] pb-[max(env(safe-area-inset-bottom),2rem)]"
     >
       <div className="w-full max-w-sm">
         {/* Logo/Brand */}
         <div className="flex flex-col items-center mb-8">
-          <div
-            className="flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
-            style={{ backgroundColor: 'var(--color-accent-600)' }}
-          >
+          <div className="flex items-center justify-center w-14 h-14 rounded-xl mb-4 bg-accent-600">
             <BookOpen className="w-7 h-7 text-white" />
           </div>
-          <h1
-            className="text-2xl font-bold"
-            style={{ color: 'var(--color-text-default)' }}
-          >
+          <h1 className="text-2xl font-bold text-foreground">
             fancai
           </h1>
         </div>
 
         {/* Title */}
-        <h2
-          className="text-xl font-semibold text-center mb-6"
-          style={{ color: 'var(--color-text-default)' }}
-        >
+        <h2 className="text-xl font-semibold text-center mb-6 text-foreground">
           Вход в аккаунт
         </h2>
 
         {/* Login Form */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {/* Screen reader announcement for form errors */}
+          <div role="alert" aria-live="assertive" className="sr-only">
+            {errors.email && <span>{errors.email.message}</span>}
+            {errors.password && <span>{errors.password.message}</span>}
+          </div>
+
           {/* Email Input */}
           <Input
             {...register('email')}
@@ -105,6 +97,7 @@ const LoginPage: React.FC = () => {
             error={errors.email?.message}
             autoComplete="email"
             inputSize="md"
+            required
           />
 
           {/* Password Input */}
@@ -117,12 +110,12 @@ const LoginPage: React.FC = () => {
             error={errors.password?.message}
             autoComplete="current-password"
             inputSize="md"
+            required
             rightIcon={
               <button
                 type="button"
                 onClick={togglePasswordVisibility}
-                className="flex items-center justify-center focus:outline-none"
-                style={{ color: 'var(--color-text-subtle)' }}
+                className="flex items-center justify-center focus:outline-none text-muted-foreground hover:text-foreground transition-colors"
                 aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -134,8 +127,7 @@ const LoginPage: React.FC = () => {
           <div className="flex justify-end">
             <Link
               to="/forgot-password"
-              className="text-sm font-medium transition-colors hover:underline"
-              style={{ color: 'var(--color-accent-600)' }}
+              className="text-sm font-medium transition-colors hover:underline text-primary"
             >
               Забыли пароль?
             </Link>
@@ -155,15 +147,11 @@ const LoginPage: React.FC = () => {
         </form>
 
         {/* Register Link */}
-        <p
-          className="mt-8 text-center text-sm"
-          style={{ color: 'var(--color-text-muted)' }}
-        >
+        <p className="mt-8 text-center text-sm text-muted-foreground">
           Нет аккаунта?{' '}
           <Link
             to="/register"
-            className="font-semibold transition-colors hover:underline"
-            style={{ color: 'var(--color-accent-600)' }}
+            className="font-semibold transition-colors hover:underline text-primary"
           >
             Зарегистрироваться
           </Link>

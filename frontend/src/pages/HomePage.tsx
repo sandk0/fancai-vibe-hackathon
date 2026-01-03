@@ -15,7 +15,7 @@
 import React, { useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import {
   BookOpen,
   Upload,
@@ -92,8 +92,8 @@ const GuestHero: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <motion.section
-      className="relative overflow-hidden rounded-2xl sm:rounded-3xl mb-8 sm:mb-12"
+    <m.section
+      className="relative overflow-hidden rounded-xl mb-8 sm:mb-12"
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}
@@ -104,7 +104,7 @@ const GuestHero: React.FC = () => {
 
       <div className="relative px-6 py-12 sm:px-10 sm:py-16 lg:py-24">
         <div className="max-w-3xl mx-auto text-center">
-          <motion.div
+          <m.div
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-6"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -112,9 +112,9 @@ const GuestHero: React.FC = () => {
           >
             <Sparkles className="w-4 h-4" />
             <span className="text-sm font-medium">AI-визуализация книг</span>
-          </motion.div>
+          </m.div>
 
-          <motion.h1
+          <m.h1
             className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 text-foreground"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -124,9 +124,9 @@ const GuestHero: React.FC = () => {
             <span className="bg-gradient-to-r from-primary via-amber-500 to-orange-500 bg-clip-text text-transparent">
               AI-иллюстрациями
             </span>
-          </motion.h1>
+          </m.h1>
 
-          <motion.p
+          <m.p
             className="text-base sm:text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -134,15 +134,15 @@ const GuestHero: React.FC = () => {
           >
             Загружайте любимые книги и наслаждайтесь автоматически сгенерированными
             иллюстрациями к каждому описанию. Искусственный интеллект оживит ваше чтение.
-          </motion.p>
+          </m.p>
 
-          <motion.div
+          <m.div
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
           >
-            <motion.button
+            <m.button
               onClick={() => navigate('/register')}
               className={cn(
                 'group inline-flex items-center justify-center gap-2 w-full sm:w-auto',
@@ -156,9 +156,9 @@ const GuestHero: React.FC = () => {
               <BookOpen className="w-5 h-5" />
               <span>Начать бесплатно</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </motion.button>
+            </m.button>
 
-            <motion.button
+            <m.button
               onClick={() => navigate('/login')}
               className={cn(
                 'inline-flex items-center justify-center gap-2 w-full sm:w-auto',
@@ -170,11 +170,11 @@ const GuestHero: React.FC = () => {
               {...scaleOnHover}
             >
               <span>Войти</span>
-            </motion.button>
-          </motion.div>
+            </m.button>
+          </m.div>
         </div>
       </div>
-    </motion.section>
+    </m.section>
   );
 };
 
@@ -183,7 +183,7 @@ const UserGreeting: React.FC<{ userName?: string }> = ({ userName }) => {
   const setShowUploadModal = useUIStore((state) => state.setShowUploadModal);
 
   return (
-    <motion.section
+    <m.section
       className="mb-8 sm:mb-10"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -212,7 +212,7 @@ const UserGreeting: React.FC<{ userName?: string }> = ({ userName }) => {
             <span className="hidden sm:inline">Библиотека</span>
           </Link>
 
-          <motion.button
+          <m.button
             onClick={() => setShowUploadModal(true)}
             className={cn(
               'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl',
@@ -223,10 +223,10 @@ const UserGreeting: React.FC<{ userName?: string }> = ({ userName }) => {
           >
             <Upload className="w-4 h-4" />
             <span>Загрузить</span>
-          </motion.button>
+          </m.button>
         </div>
       </div>
-    </motion.section>
+    </m.section>
   );
 };
 
@@ -239,11 +239,11 @@ const ContinueReadingCard: React.FC<{ book: Book; isLoading: boolean }> = ({
 
   if (isLoading) {
     return (
-      <div className="mb-8 sm:mb-10">
+      <div className="mb-8 sm:mb-10" aria-busy="true" aria-live="polite">
         <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
           Продолжить чтение
         </h2>
-        <SkeletonCard className="h-32 sm:h-40 rounded-2xl" />
+        <SkeletonCard className="h-32 sm:h-40 rounded-xl" />
       </div>
     );
   }
@@ -251,7 +251,7 @@ const ContinueReadingCard: React.FC<{ book: Book; isLoading: boolean }> = ({
   if (!book) return null;
 
   return (
-    <motion.section
+    <m.section
       className="mb-8 sm:mb-10"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -261,7 +261,7 @@ const ContinueReadingCard: React.FC<{ book: Book; isLoading: boolean }> = ({
         Продолжить чтение
       </h2>
 
-      <motion.div
+      <m.div
         onClick={() => navigate(`/book/${book.id}`)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -273,7 +273,7 @@ const ContinueReadingCard: React.FC<{ book: Book; isLoading: boolean }> = ({
         tabIndex={0}
         aria-label={`Continue reading ${book.title} by ${book.author}, ${Math.round(book.reading_progress_percent)}% complete`}
         className={cn(
-          'relative overflow-hidden rounded-2xl cursor-pointer',
+          'relative overflow-hidden rounded-xl cursor-pointer',
           'bg-gradient-to-r from-card via-card to-accent/20',
           'border border-border hover:border-primary/50',
           'transition-all duration-300',
@@ -321,7 +321,7 @@ const ContinueReadingCard: React.FC<{ book: Book; isLoading: boolean }> = ({
                 </span>
               </div>
               <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <motion.div
+                <m.div
                   className="h-full bg-gradient-to-r from-primary to-amber-500 rounded-full"
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.min(book.reading_progress_percent, 100)}%` }}
@@ -340,8 +340,8 @@ const ContinueReadingCard: React.FC<{ book: Book; isLoading: boolean }> = ({
             <ArrowRight className="w-5 h-5 text-muted-foreground" />
           </div>
         </div>
-      </motion.div>
-    </motion.section>
+      </m.div>
+    </m.section>
   );
 };
 
@@ -365,7 +365,7 @@ const RecentBooksSection: React.FC<{ books: Book[]; isLoading: boolean }> = ({
 
   if (isLoading) {
     return (
-      <section className="mb-8 sm:mb-10">
+      <section className="mb-8 sm:mb-10" aria-busy="true" aria-live="polite">
         <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
           Недавно добавленные
         </h2>
@@ -381,7 +381,7 @@ const RecentBooksSection: React.FC<{ books: Book[]; isLoading: boolean }> = ({
   if (!books || books.length === 0) return null;
 
   return (
-    <motion.section
+    <m.section
       className="mb-8 sm:mb-10"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -423,10 +423,9 @@ const RecentBooksSection: React.FC<{ books: Book[]; isLoading: boolean }> = ({
           'scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent',
           'snap-x snap-proximity sm:snap-none'
         )}
-        style={{ scrollbarWidth: 'thin' }}
       >
         {books.map((book, index) => (
-          <motion.div
+          <m.div
             key={book.id}
             className="flex-shrink-0 w-36 sm:w-44 snap-start cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl"
             onClick={() => navigate(`/book/${book.id}`)}
@@ -485,7 +484,7 @@ const RecentBooksSection: React.FC<{ books: Book[]; isLoading: boolean }> = ({
                 />
               </div>
             )}
-          </motion.div>
+          </m.div>
         ))}
 
         {/* "See all" link */}
@@ -503,7 +502,7 @@ const RecentBooksSection: React.FC<{ books: Book[]; isLoading: boolean }> = ({
           <span className="text-sm font-medium">Все книги</span>
         </Link>
       </div>
-    </motion.section>
+    </m.section>
   );
 };
 
@@ -522,35 +521,35 @@ const StatisticsSection: React.FC<{
       label: 'Книг в библиотеке',
       value: stats.totalBooks,
       icon: Library,
-      color: 'text-blue-500 dark:text-blue-400',
-      bgColor: 'bg-blue-500/10',
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
     },
     {
       label: 'Часов чтения',
       value: stats.totalHours,
       icon: Clock,
-      color: 'text-purple-500 dark:text-purple-400',
-      bgColor: 'bg-purple-500/10',
+      color: 'text-info',
+      bgColor: 'bg-info/10',
     },
     {
       label: 'Описаний найдено',
       value: stats.totalDescriptions,
       icon: FileText,
-      color: 'text-green-500 dark:text-green-400',
-      bgColor: 'bg-green-500/10',
+      color: 'text-success',
+      bgColor: 'bg-success/10',
     },
     {
       label: 'Изображений создано',
       value: stats.totalImages,
       icon: Wand2,
-      color: 'text-amber-500 dark:text-amber-400',
-      bgColor: 'bg-amber-500/10',
+      color: 'text-warning',
+      bgColor: 'bg-warning/10',
     },
   ];
 
   if (isLoading) {
     return (
-      <section className="mb-8 sm:mb-10">
+      <section className="mb-8 sm:mb-10" aria-busy="true" aria-live="polite">
         <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
           Статистика чтения
         </h2>
@@ -564,7 +563,7 @@ const StatisticsSection: React.FC<{
   }
 
   return (
-    <motion.section
+    <m.section
       className="mb-8 sm:mb-10"
       variants={staggerContainer}
       initial="initial"
@@ -579,7 +578,7 @@ const StatisticsSection: React.FC<{
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {statItems.map((item, index) => (
-          <motion.div
+          <m.div
             key={item.label}
             className={cn(
               'p-4 rounded-xl border border-border bg-card',
@@ -601,10 +600,10 @@ const StatisticsSection: React.FC<{
             <div className="text-xs sm:text-sm text-muted-foreground">
               {item.label}
             </div>
-          </motion.div>
+          </m.div>
         ))}
       </div>
-    </motion.section>
+    </m.section>
   );
 };
 
@@ -665,7 +664,7 @@ const HomePage: React.FC = () => {
         <GuestHero />
 
         {/* Feature highlights for guests */}
-        <motion.section
+        <m.section
           className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -688,7 +687,7 @@ const HomePage: React.FC = () => {
               description: 'Уникальные изображения к каждому описанию',
             },
           ].map((feature, index) => (
-            <motion.div
+            <m.div
               key={feature.title}
               className={cn(
                 'p-6 rounded-xl border border-border bg-card',
@@ -705,9 +704,9 @@ const HomePage: React.FC = () => {
                 {feature.title}
               </h3>
               <p className="text-sm text-muted-foreground">{feature.description}</p>
-            </motion.div>
+            </m.div>
           ))}
-        </motion.section>
+        </m.section>
       </div>
     );
   }

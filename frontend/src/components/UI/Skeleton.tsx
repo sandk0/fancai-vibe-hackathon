@@ -122,6 +122,7 @@ const BookCardSkeleton = React.forwardRef<HTMLDivElement, BookCardSkeletonProps>
           className
         )}
         aria-label="Loading book card"
+        aria-busy="true"
         {...props}
       >
         {/* Book cover image */}
@@ -177,6 +178,7 @@ const TableRowSkeleton = React.forwardRef<
       ref={ref}
       className={cn("border-b border-[var(--color-border-default)]", className)}
       aria-label="Loading table row"
+      aria-busy="true"
       {...props}
     >
       {showCheckbox && (
@@ -223,6 +225,7 @@ const TextBlockSkeleton = React.forwardRef<HTMLDivElement, TextBlockSkeletonProp
         ref={ref}
         className={cn("space-y-2", className)}
         aria-label="Loading text content"
+        aria-busy="true"
         {...props}
       >
         {Array.from({ length: lines }).map((_, index) => (
@@ -274,6 +277,7 @@ const AvatarSkeleton = React.forwardRef<HTMLDivElement, AvatarSkeletonProps>(
         ref={ref}
         className={cn("flex items-center gap-3", className)}
         aria-label="Loading avatar"
+        aria-busy="true"
         {...props}
       >
         <Skeleton
@@ -326,6 +330,7 @@ const CardSkeleton = React.forwardRef<HTMLDivElement, CardSkeletonProps>(
           className
         )}
         aria-label="Loading card"
+        aria-busy="true"
         {...props}
       >
         {showHeader && (
@@ -371,6 +376,7 @@ const ListItemSkeleton = React.forwardRef<HTMLDivElement, ListItemSkeletonProps>
           className
         )}
         aria-label="Loading list item"
+        aria-busy="true"
         {...props}
       >
         {showAvatar && (

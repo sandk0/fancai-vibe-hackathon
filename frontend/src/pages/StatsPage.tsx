@@ -203,7 +203,7 @@ const StatsPage: React.FC = () => {
       {/* Main Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         {/* Books */}
-        <div className="p-6 rounded-2xl border-2 border-border bg-card transition-all hover:-translate-y-1 hover:shadow-xl">
+        <div className="p-6 rounded-xl border-2 border-border bg-card transition-all hover:-translate-y-1 hover:shadow-xl">
           <div className="flex items-center justify-between mb-4">
             <BookOpen className="w-10 h-10 text-primary" />
             <div className="text-right">
@@ -224,7 +224,7 @@ const StatsPage: React.FC = () => {
         </div>
 
         {/* Hours */}
-        <div className="p-6 rounded-2xl border-2 border-border bg-card transition-all hover:-translate-y-1 hover:shadow-xl">
+        <div className="p-6 rounded-xl border-2 border-border bg-card transition-all hover:-translate-y-1 hover:shadow-xl">
           <div className="flex items-center justify-between mb-4">
             <Clock className="w-10 h-10 text-purple-600" />
             <div className="text-right">
@@ -245,7 +245,7 @@ const StatsPage: React.FC = () => {
         </div>
 
         {/* Pages */}
-        <div className="p-6 rounded-2xl border-2 border-border bg-card transition-all hover:-translate-y-1 hover:shadow-xl">
+        <div className="p-6 rounded-xl border-2 border-border bg-card transition-all hover:-translate-y-1 hover:shadow-xl">
           <div className="flex items-center justify-between mb-4">
             <Award className="w-10 h-10 text-amber-600" />
             <div className="text-right">
@@ -269,7 +269,7 @@ const StatsPage: React.FC = () => {
       {/* Streak and Weekly Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
         {/* Reading Streak */}
-        <div className="p-6 rounded-2xl border-2 border-border bg-card">
+        <div className="p-6 rounded-xl border-2 border-border bg-card">
           <div className="flex items-center gap-3 mb-6">
             <Flame className="w-6 h-6 text-primary" />
             <h2 className="text-xl font-bold text-foreground">
@@ -309,7 +309,7 @@ const StatsPage: React.FC = () => {
         </div>
 
         {/* Weekly Activity Chart */}
-        <div className="p-6 rounded-2xl border-2 border-border bg-card">
+        <div className="p-6 rounded-xl border-2 border-border bg-card">
           <div className="flex items-center gap-3 mb-6">
             <Calendar className="w-6 h-6 text-primary" />
             <h2 className="text-xl font-bold text-foreground">
@@ -357,7 +357,7 @@ const StatsPage: React.FC = () => {
       {/* Genre Distribution and Top Books */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
         {/* Genre Distribution */}
-        <div className="p-6 rounded-2xl border-2 border-border bg-card">
+        <div className="p-6 rounded-xl border-2 border-border bg-card">
           <h2 className="text-xl font-bold mb-6 text-foreground">
             Распределение по жанрам
           </h2>
@@ -385,7 +385,7 @@ const StatsPage: React.FC = () => {
         </div>
 
         {/* Top Books */}
-        <div className="p-6 rounded-2xl border-2 border-border bg-card">
+        <div className="p-6 rounded-xl border-2 border-border bg-card">
           <h2 className="text-xl font-bold mb-6 text-foreground">
             Топ книг по времени чтения
           </h2>
@@ -427,7 +427,7 @@ const StatsPage: React.FC = () => {
       </div>
 
       {/* Achievements */}
-      <div className="p-6 rounded-2xl border-2 border-border bg-card">
+      <div className="p-6 rounded-xl border-2 border-border bg-card">
         <div className="flex items-center gap-3 mb-6">
           <Award className="w-6 h-6 text-primary" />
           <h2 className="text-xl font-bold text-foreground">

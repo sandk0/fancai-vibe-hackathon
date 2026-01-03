@@ -208,7 +208,7 @@ const SettingsPage: React.FC = () => {
               </h3>
               <div className="space-y-6">
                 {/* Info Box */}
-                <div className="p-6 rounded-2xl border-2 bg-muted border-primary">
+                <div className="p-6 rounded-xl border-2 bg-muted border-primary">
                   <div className="flex items-start gap-3">
                     <Shield className="w-6 h-6 flex-shrink-0 mt-0.5 text-primary" />
                     <p className="text-foreground">
@@ -384,7 +384,7 @@ const SettingsPage: React.FC = () => {
 
         {/* Main Content */}
         <main className="lg:col-span-9">
-          <div className="rounded-2xl border-2 p-6 lg:p-8 bg-background border-border">
+          <div className="rounded-xl border-2 p-6 lg:p-8 bg-background border-border">
             {renderTabContent()}
           </div>
         </main>

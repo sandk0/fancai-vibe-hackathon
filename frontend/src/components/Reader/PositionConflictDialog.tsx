@@ -62,7 +62,7 @@ export const PositionConflictDialog: React.FC<PositionConflictDialogProps> = ({
 }) => {
   return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-[500]"
       role="dialog"
       aria-modal="true"
       aria-labelledby="position-conflict-title"
@@ -106,13 +106,13 @@ export const PositionConflictDialog: React.FC<PositionConflictDialogProps> = ({
         <div className="flex gap-3">
           <button
             onClick={onUseServer}
-            className="flex-1 px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-popover"
+            className="flex-1 px-4 py-2.5 min-h-[44px] bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-popover"
           >
             Продолжить с {Math.round(serverPosition.progress)}%
           </button>
           <button
             onClick={onUseLocal}
-            className="flex-1 px-4 py-2.5 bg-muted hover:bg-accent text-popover-foreground font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-popover"
+            className="flex-1 px-4 py-2.5 min-h-[44px] bg-muted hover:bg-accent text-popover-foreground font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-popover"
           >
             Остаться на {Math.round(localPosition.progress)}%
           </button>

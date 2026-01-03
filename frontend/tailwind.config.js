@@ -49,48 +49,42 @@ export default {
         },
 
         accent: {
-          DEFAULT: 'var(--color-accent-600)',
+          DEFAULT: 'var(--color-accent-500)',
           foreground: '#FFFFFF',
-          50: 'var(--color-accent-50)',
-          100: 'var(--color-accent-100)',
-          200: 'var(--color-accent-200)',
-          300: 'var(--color-accent-300)',
           400: 'var(--color-accent-400)',
           500: 'var(--color-accent-500)',
           600: 'var(--color-accent-600)',
           700: 'var(--color-accent-700)',
-          800: 'var(--color-accent-800)',
-          900: 'var(--color-accent-900)',
         },
 
         destructive: {
-          DEFAULT: 'var(--color-error-600)',
+          DEFAULT: 'var(--color-error)',
           foreground: '#FFFFFF',
         },
 
         success: {
-          DEFAULT: 'var(--color-success-600)',
+          DEFAULT: 'var(--color-success)',
           foreground: '#FFFFFF',
         },
 
         warning: {
-          DEFAULT: 'var(--color-warning-600)',
+          DEFAULT: 'var(--color-warning)',
           foreground: '#FFFFFF',
         },
 
         info: {
-          DEFAULT: 'var(--color-info-600)',
+          DEFAULT: 'var(--color-info)',
           foreground: '#FFFFFF',
         },
 
         border: 'var(--color-border-default)',
         input: 'var(--color-border-default)',
-        ring: 'var(--color-accent-600)',
+        ring: 'var(--color-accent-500)',
 
         highlight: {
-          DEFAULT: 'var(--color-highlight-bg)',
-          border: 'var(--color-highlight-border)',
-          active: 'var(--color-highlight-active)',
+          DEFAULT: 'hsl(var(--highlight-bg))',
+          border: 'hsl(var(--highlight-border))',
+          active: 'hsl(var(--highlight-active))',
         },
       },
       borderRadius: {
@@ -108,6 +102,7 @@ export default {
         'slide-up': 'slideUp 0.3s ease-out',
         'slide-down': 'slideDown 0.3s ease-out',
         'spin-slow': 'spin 2s linear infinite',
+        'progress-bar': 'progressBar 2s ease-in-out infinite',
       },
       keyframes: {
         fadeIn: {
@@ -121,6 +116,11 @@ export default {
         slideDown: {
           '0%': { transform: 'translateY(-100%)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        progressBar: {
+          '0%': { width: '0%', marginLeft: '0%' },
+          '50%': { width: '50%', marginLeft: '25%' },
+          '100%': { width: '0%', marginLeft: '100%' },
         },
       },
       spacing: {
@@ -151,11 +151,28 @@ export default {
         '.pr-safe': {
           paddingRight: 'env(safe-area-inset-right)',
         },
+        '.px-safe': {
+          paddingLeft: 'env(safe-area-inset-left)',
+          paddingRight: 'env(safe-area-inset-right)',
+        },
+        '.py-safe': {
+          paddingTop: 'env(safe-area-inset-top)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        },
+        '.p-safe': {
+          paddingTop: 'env(safe-area-inset-top)',
+          paddingRight: 'env(safe-area-inset-right)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          paddingLeft: 'env(safe-area-inset-left)',
+        },
         '.mt-safe': {
           marginTop: 'env(safe-area-inset-top)',
         },
         '.mb-safe': {
           marginBottom: 'env(safe-area-inset-bottom)',
+        },
+        '.bottom-safe': {
+          bottom: 'env(safe-area-inset-bottom)',
         },
         // Touch target utility (minimum 44px)
         '.touch-target': {

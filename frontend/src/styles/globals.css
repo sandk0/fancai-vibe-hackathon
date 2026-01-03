@@ -2,11 +2,23 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
-/* Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400;1,600&family=Fira+Code:wght@300;400;500&display=swap');
+/* Google Fonts - loaded via preload in index.html for better performance */
 
 @layer base {
   :root {
+    /* ========================================
+       Z-INDEX SCALE
+       Consistent layering across the application
+       ======================================== */
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-fixed: 300;
+    --z-modal-backdrop: 400;
+    --z-modal: 500;
+    --z-popover: 600;
+    --z-tooltip: 700;
+    --z-toast: 800;
+
     /* ========================================
        LIGHT THEME - Clean & Modern
        ======================================== */
@@ -595,6 +607,15 @@ button, a, [role="button"] {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Prevent iOS zoom on input focus - inputs with font-size < 16px trigger auto-zoom */
+@media screen and (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1rem) !important;
   }
 }
 

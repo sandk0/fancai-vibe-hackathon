@@ -44,9 +44,9 @@ const BookPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex items-center justify-center min-h-[60vh]" aria-busy="true" aria-live="polite">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 mb-4 border-primary"></div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 mb-4 border-primary" aria-hidden="true"></div>
           <p className="text-muted-foreground">Загрузка книги...</p>
         </div>
       </div>
@@ -96,13 +96,13 @@ const BookPage: React.FC = () => {
       </button>
 
       {/* Hero Section */}
-      <div className="relative mb-6 sm:mb-8 lg:mb-12 overflow-hidden rounded-2xl sm:rounded-3xl">
+      <div className="relative mb-6 sm:mb-8 lg:mb-12 overflow-hidden rounded-xl">
         <div className="absolute inset-0 opacity-30 bg-gradient-to-br from-primary to-purple-500/50" />
         <div className="relative">
           <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8 p-4 sm:p-6 lg:p-12">
             {/* Book Cover */}
             <div className="flex-shrink-0">
-              <div className="w-36 h-52 sm:w-48 sm:h-72 lg:w-64 lg:h-96 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden mx-auto lg:mx-0 bg-muted">
+              <div className="w-36 h-52 sm:w-48 sm:h-72 lg:w-64 lg:h-96 rounded-xl shadow-2xl overflow-hidden mx-auto lg:mx-0 bg-muted">
                 <AuthenticatedImage
                   src={
                     book.has_cover
@@ -201,7 +201,7 @@ const BookPage: React.FC = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8 lg:mb-12">
-        <div className="p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border-2 transition-all hover:scale-105 bg-background border-border">
+        <div className="p-3 sm:p-4 lg:p-6 rounded-xl border-2 transition-all hover:scale-105 bg-background border-border">
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-primary" />
           </div>
@@ -213,7 +213,7 @@ const BookPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border-2 transition-all hover:scale-105 bg-background border-border">
+        <div className="p-3 sm:p-4 lg:p-6 rounded-xl border-2 transition-all hover:scale-105 bg-background border-border">
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-green-600 dark:text-green-400" />
           </div>
@@ -225,7 +225,7 @@ const BookPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border-2 transition-all hover:scale-105 bg-background border-border">
+        <div className="p-3 sm:p-4 lg:p-6 rounded-xl border-2 transition-all hover:scale-105 bg-background border-border">
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-purple-600 dark:text-purple-400" />
           </div>
@@ -240,7 +240,7 @@ const BookPage: React.FC = () => {
 
       {/* Description */}
       {book.description && (
-        <div className="p-4 sm:p-6 lg:p-8 rounded-xl sm:rounded-2xl border-2 mb-6 sm:mb-8 lg:mb-12 bg-background border-border">
+        <div className="p-4 sm:p-6 lg:p-8 rounded-xl border-2 mb-6 sm:mb-8 lg:mb-12 bg-background border-border">
           <h2 className="text-lg sm:text-xl lg:text-2xl font-bold mb-2 sm:mb-4 text-foreground">
             Описание
           </h2>
@@ -261,12 +261,12 @@ const BookPage: React.FC = () => {
             <div
               key={chapter.id}
               onClick={() => navigate(`/book/${book.id}/chapter/${chapter.number}`)}
-              className="group p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border-2 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg bg-background border-border"
+              className="group p-3 sm:p-4 lg:p-6 rounded-xl border-2 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg bg-background border-border"
             >
               <div className="flex items-start justify-between gap-2 sm:gap-4">
                 <div className="flex items-start gap-2 sm:gap-4 flex-1 min-w-0">
                   {/* Chapter Number Badge */}
-                  <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl flex items-center justify-center font-bold text-sm sm:text-base bg-muted text-primary">
+                  <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-lg flex items-center justify-center font-bold text-sm sm:text-base bg-muted text-primary">
                     {chapter.number}
                   </div>
 
@@ -289,7 +289,7 @@ const BookPage: React.FC = () => {
 
                     {/* Description Status */}
                     {chapter.is_description_parsed && chapter.descriptions_found > 0 && (
-                      <div className="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-0.5 sm:py-1 rounded-md sm:rounded-lg bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs sm:text-sm font-medium">
+                      <div className="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-0.5 sm:py-1 rounded-md bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs sm:text-sm font-medium">
                         <Sparkles className="w-3 h-3 sm:w-4 sm:h-4" />
                         <span>{chapter.descriptions_found} описаний AI</span>
                       </div>
@@ -298,7 +298,7 @@ const BookPage: React.FC = () => {
                 </div>
 
                 {/* Arrow Icon */}
-                <div className="flex-shrink-0 text-gray-400 group-hover:translate-x-1 transition-transform hidden sm:block">
+                <div className="flex-shrink-0 text-muted-foreground group-hover:translate-x-1 transition-transform hidden sm:block">
                   <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 rotate-180" />
                 </div>
               </div>

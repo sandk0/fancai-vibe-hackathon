@@ -128,7 +128,7 @@ export function OfflineBanner({
   return (
     <div
       className={`
-        fixed top-0 left-0 right-0 z-50
+        fixed top-0 left-0 right-0 z-[800]
         px-4 py-2
         text-center text-sm text-white
         transition-all duration-300 ease-in-out

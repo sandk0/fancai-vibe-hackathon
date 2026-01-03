@@ -20,8 +20,8 @@ export function ProgressSaveIndicator({ lastSaved, isSaving }: Props) {
   if (!visible && !isSaving) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 animate-fade-in">
-      <div className="bg-gray-800/90 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-2">
+    <div className="fixed bottom-4 right-4 z-[800] animate-fade-in">
+      <div className="bg-popover/95 text-popover-foreground px-3 py-2 rounded-lg text-sm flex items-center gap-2 shadow-lg border border-border">
         {isSaving ? (
           <>
             <span className="animate-spin">⏳</span>
@@ -29,7 +29,7 @@ export function ProgressSaveIndicator({ lastSaved, isSaving }: Props) {
           </>
         ) : (
           <>
-            <span className="text-green-400">✓</span>
+            <span className="text-success">✓</span>
             Позиция сохранена
           </>
         )}

@@ -65,12 +65,12 @@ export const AdminMultiNLPSettings: React.FC<AdminMultiNLPSettingsProps> = ({
       </div>
 
       {/* LLM Extraction Info */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+      <div className="bg-card rounded-lg p-6 shadow-sm border border-border">
+        <h3 className="text-lg font-medium text-foreground mb-4 flex items-center gap-2">
           <Cpu className="w-5 h-5" />
           {t('admin.llmExtractionTitle') || 'LLM-Based Extraction'}
         </h3>
-        <div className="space-y-4 text-gray-600 dark:text-gray-300">
+        <div className="space-y-4 text-muted-foreground">
           <p>
             {t('admin.llmExtractionInfo') ||
               'Descriptions are now extracted on-demand using Google Gemini API when a user navigates to a chapter. This approach:'}
@@ -96,9 +96,9 @@ export const AdminMultiNLPSettings: React.FC<AdminMultiNLPSettingsProps> = ({
       </div>
 
       {/* Configuration Note */}
-      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          <strong>Configuration:</strong> Set <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">GOOGLE_API_KEY</code> environment variable to enable LLM extraction.
+      <div className="bg-muted/50 rounded-lg p-4 border border-border">
+        <p className="text-sm text-muted-foreground">
+          <strong>Configuration:</strong> Set <code className="bg-secondary px-1 rounded">GOOGLE_API_KEY</code> environment variable to enable LLM extraction.
         </p>
       </div>
     </div>

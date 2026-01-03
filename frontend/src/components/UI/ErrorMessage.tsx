@@ -51,11 +51,11 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
         <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
       </div>
       
-      <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+      <h3 className="mb-2 text-lg font-semibold text-foreground">
         {title}
       </h3>
-      
-      <p className="mb-6 text-gray-600 dark:text-gray-400 max-w-md">
+
+      <p className="mb-6 text-muted-foreground max-w-md">
         {message}
       </p>
       
@@ -72,7 +72,7 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
       {action && (
         <button
           onClick={action.onClick}
-          className="flex items-center space-x-2 px-4 py-2 text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors dark:bg-gray-800 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/10"
+          className="flex items-center space-x-2 px-4 py-2 text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors dark:bg-card dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/10"
         >
           <span>{action.label}</span>
         </button>

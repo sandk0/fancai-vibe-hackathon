@@ -298,7 +298,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
         }
       `}</style>
 
-      <div className="bg-white dark:bg-gray-900 min-h-screen">
+      <div className="bg-background min-h-screen">
         {/* Header */}
         <ReaderHeader
           title={book.title}
@@ -363,7 +363,7 @@ export const BookReader: React.FC<BookReaderProps> = ({
         </div>
 
         {/* Keyboard Navigation Hint */}
-        <div className="fixed bottom-4 right-4 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-3 py-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="fixed bottom-4 right-4 text-xs text-muted-foreground bg-card px-3 py-2 rounded-lg shadow-sm border border-border">
           {t('reader.navigationHint')}
         </div>
 

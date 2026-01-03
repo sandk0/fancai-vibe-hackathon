@@ -25,7 +25,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
 
   const colorClasses = {
     primary: 'border-primary/20 border-t-primary',
-    secondary: 'border-gray-200 border-t-gray-600',
+    secondary: 'border-muted border-t-muted-foreground',
     white: 'border-white/20 border-t-white',
   };
 
@@ -44,7 +44,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
         <span className="sr-only">Loading...</span>
       </div>
       {text && (
-        <span className="text-gray-600 dark:text-gray-400">{text}</span>
+        <span className="text-muted-foreground">{text}</span>
       )}
     </div>
   );

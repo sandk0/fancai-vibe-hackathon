@@ -47,10 +47,7 @@ export const ReaderHeader = memo(function ReaderHeader({
   onSettingsOpen,
 }: ReaderHeaderProps) {
   return (
-    <div
-      className="absolute left-0 right-0 z-10 backdrop-blur-md border-b bg-card/95 border-border"
-      style={{ top: 'env(safe-area-inset-top)' }}
-    >
+    <div className="absolute left-0 right-0 z-10 backdrop-blur-md border-b bg-card/95 border-border top-0 mt-safe">
       <div className="flex items-center justify-between px-4 py-3 gap-3">
         {/* Left: Back button + TOC + Book Info */}
         <div className="flex items-center gap-2">
@@ -109,11 +106,8 @@ export const ReaderHeader = memo(function ReaderHeader({
             {/* Progress Bar */}
             <div className="w-full h-2 sm:h-1.5 rounded-full overflow-hidden bg-muted">
               <div
-                className="h-full rounded-full bg-primary"
-                style={{
-                  width: `${Math.min(100, Math.max(0, progress))}%`,
-                  transition: 'width 150ms ease-out'
-                }}
+                className="h-full rounded-full bg-primary transition-[width] duration-150 ease-out"
+                style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
               />
             </div>
           </div>

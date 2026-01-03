@@ -46,52 +46,66 @@ export const AdminParsingSettings: React.FC<AdminParsingSettingsProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-6">
+      <div className="bg-card rounded-lg p-6 shadow-sm border border-border">
+        <h3 className="text-lg font-medium text-foreground mb-6">
           {t('admin.parsingConfig')}
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Max Concurrent Parsing */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label
+              htmlFor="max-concurrent-parsing"
+              className="block text-sm font-medium text-muted-foreground mb-2"
+            >
               {t('admin.maxConcurrentTasks')}
             </label>
             <input
+              id="max-concurrent-parsing"
               type="number"
               min="1"
               max="10"
               value={settings.max_concurrent_parsing}
               onChange={(e) => setSettings({ ...settings, max_concurrent_parsing: parseInt(e.target.value) })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground text-base"
+              aria-required="true"
             />
           </div>
 
           {/* Timeout */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label
+              htmlFor="timeout-minutes"
+              className="block text-sm font-medium text-muted-foreground mb-2"
+            >
               {t('admin.timeoutMinutes')}
             </label>
             <input
+              id="timeout-minutes"
               type="number"
               min="10"
               max="120"
               value={settings.timeout_minutes}
               onChange={(e) => setSettings({ ...settings, timeout_minutes: parseInt(e.target.value) })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground text-base"
+              aria-required="true"
             />
           </div>
         </div>
 
         {/* Priority Weights */}
         <div className="mt-6">
-          <h4 className="text-md font-medium text-gray-900 dark:text-white mb-4">{t('admin.priorityWeights')}</h4>
+          <h4 className="text-md font-medium text-foreground mb-4">{t('admin.priorityWeights')}</h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label
+                htmlFor="priority-free-users"
+                className="block text-sm font-medium text-muted-foreground mb-2"
+              >
                 {t('admin.freeUsers')}
               </label>
               <input
+                id="priority-free-users"
                 type="number"
                 min="1"
                 max="10"
@@ -100,15 +114,20 @@ export const AdminParsingSettings: React.FC<AdminParsingSettingsProps> = ({
                   ...settings,
                   queue_priority_weights: { ...settings.queue_priority_weights, free: parseInt(e.target.value) }
                 })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground text-base"
+                aria-required="true"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label
+                htmlFor="priority-premium-users"
+                className="block text-sm font-medium text-muted-foreground mb-2"
+              >
                 {t('admin.premiumUsers')}
               </label>
               <input
+                id="priority-premium-users"
                 type="number"
                 min="1"
                 max="10"
@@ -117,15 +136,20 @@ export const AdminParsingSettings: React.FC<AdminParsingSettingsProps> = ({
                   ...settings,
                   queue_priority_weights: { ...settings.queue_priority_weights, premium: parseInt(e.target.value) }
                 })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground text-base"
+                aria-required="true"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label
+                htmlFor="priority-ultimate-users"
+                className="block text-sm font-medium text-muted-foreground mb-2"
+              >
                 {t('admin.ultimateUsers')}
               </label>
               <input
+                id="priority-ultimate-users"
                 type="number"
                 min="1"
                 max="10"
@@ -134,7 +158,8 @@ export const AdminParsingSettings: React.FC<AdminParsingSettingsProps> = ({
                   ...settings,
                   queue_priority_weights: { ...settings.queue_priority_weights, ultimate: parseInt(e.target.value) }
                 })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground text-base"
+                aria-required="true"
               />
             </div>
           </div>

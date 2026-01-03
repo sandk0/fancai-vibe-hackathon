@@ -247,6 +247,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
             checked={checked}
             defaultChecked={defaultChecked}
             onChange={handleChange}
+            aria-required={props.required}
             aria-describedby={
               [showError && errorId, helperText && helperId]
                 .filter(Boolean)

@@ -12,7 +12,7 @@
  */
 
 import React, { useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, List, Settings, Sun, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme, type AppTheme } from '@/hooks/useTheme';
@@ -85,7 +85,7 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
   return (
     <AnimatePresence>
       {isVisible && (
-        <motion.header
+        <m.header
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -100, opacity: 0 }}
@@ -96,7 +96,7 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
           }}
           className={cn(
             // Positioning
-            'fixed top-0 left-0 right-0 z-50',
+            'fixed top-0 left-0 right-0 z-[200]',
             // Safe area padding
             'pt-safe',
             // Background with blur
@@ -145,7 +145,7 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
               </ToolbarButton>
             </div>
           </div>
-        </motion.header>
+        </m.header>
       )}
     </AnimatePresence>
   );

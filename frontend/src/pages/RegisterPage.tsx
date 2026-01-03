@@ -125,18 +125,18 @@ const PasswordStrengthIndicator: React.FC<{
   const strengthConfig = {
     weak: {
       label: 'Слабый',
-      color: 'var(--color-error)',
-      bgColor: 'var(--color-error-muted)',
+      barClass: 'bg-destructive',
+      textClass: 'text-destructive',
     },
     medium: {
       label: 'Средний',
-      color: 'var(--color-warning)',
-      bgColor: 'var(--color-warning-muted)',
+      barClass: 'bg-warning',
+      textClass: 'text-warning',
     },
     strong: {
       label: 'Надежный',
-      color: 'var(--color-success)',
-      bgColor: 'var(--color-success-muted)',
+      barClass: 'bg-success',
+      textClass: 'text-success',
     },
   };
 
@@ -149,23 +149,18 @@ const PasswordStrengthIndicator: React.FC<{
         {[1, 2, 3].map((level) => (
           <div
             key={level}
-            className="h-1 flex-1 rounded-full transition-all duration-300"
-            style={{
-              backgroundColor:
-                score >= level * 2 - 1 || (level === 1 && score >= 1)
-                  ? config.color
-                  : 'var(--color-border-default)',
-            }}
+            className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+              score >= level * 2 - 1 || (level === 1 && score >= 1)
+                ? config.barClass
+                : 'bg-border'
+            }`}
           />
         ))}
       </div>
 
       {/* Strength label */}
       <div className="flex items-center justify-between">
-        <span
-          className="text-xs font-medium"
-          style={{ color: config.color }}
-        >
+        <span className={`text-xs font-medium ${config.textClass}`}>
           {config.label}
         </span>
       </div>
@@ -191,22 +186,11 @@ const CriteriaItem: React.FC<{ met: boolean; label: string }> = ({
 }) => (
   <div className="flex items-center gap-1.5">
     {met ? (
-      <Check
-        className="size-3.5 shrink-0"
-        style={{ color: 'var(--color-success)' }}
-      />
+      <Check className="size-3.5 shrink-0 text-success" />
     ) : (
-      <X
-        className="size-3.5 shrink-0"
-        style={{ color: 'var(--color-text-disabled)' }}
-      />
+      <X className="size-3.5 shrink-0 text-muted-foreground/50" />
     )}
-    <span
-      className="text-xs"
-      style={{
-        color: met ? 'var(--color-text-muted)' : 'var(--color-text-disabled)',
-      }}
-    >
+    <span className={`text-xs ${met ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>
       {label}
     </span>
   </div>
@@ -225,10 +209,10 @@ const PasswordToggle: React.FC<{
     className={cn(
       'flex items-center justify-center',
       'min-h-[44px] min-w-[44px]',
-      'text-[var(--color-text-subtle)]',
-      'hover:text-[var(--color-text-default)]',
+      'text-muted-foreground',
+      'hover:text-foreground',
       'transition-colors duration-200',
-      'focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-500)] focus:ring-offset-2',
+      'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
       'rounded-md'
     )}
     aria-label={show ? 'Скрыть пароль' : 'Показать пароль'}
@@ -274,55 +258,39 @@ const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4 py-8"
-      style={{
-        backgroundColor: 'var(--color-bg-subtle)',
-        paddingTop: 'max(env(safe-area-inset-top), 2rem)',
-        paddingBottom: 'max(env(safe-area-inset-bottom), 2rem)',
-      }}
-    >
-      <div
-        className="w-full max-w-md rounded-2xl p-6 sm:p-8 shadow-lg"
-        style={{
-          backgroundColor: 'var(--color-bg-base)',
-          border: '1px solid var(--color-border-default)',
-        }}
-      >
+    <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-muted pt-[max(env(safe-area-inset-top),2rem)] pb-[max(env(safe-area-inset-bottom),2rem)]">
+      <div className="w-full max-w-md rounded-xl p-6 sm:p-8 shadow-lg bg-background border border-border">
         {/* Logo and Brand */}
         <div className="flex flex-col items-center mb-8">
-          <div
-            className="flex items-center justify-center w-14 h-14 rounded-xl mb-4"
-            style={{ backgroundColor: 'var(--color-accent-600)' }}
-          >
+          <div className="flex items-center justify-center w-14 h-14 rounded-xl mb-4 bg-accent-600">
             <BookOpen className="w-8 h-8 text-white" />
           </div>
-          <h1
-            className="text-2xl font-bold"
-            style={{ color: 'var(--color-text-default)' }}
-          >
+          <h1 className="text-2xl font-bold text-foreground">
             fancai
           </h1>
         </div>
 
         {/* Header */}
         <div className="text-center mb-6">
-          <h2
-            className="text-xl font-semibold mb-2"
-            style={{ color: 'var(--color-text-default)' }}
-          >
+          <h2 className="text-xl font-semibold mb-2 text-foreground">
             Создать аккаунт
           </h2>
-          <p
-            className="text-sm"
-            style={{ color: 'var(--color-text-muted)' }}
-          >
+          <p className="text-sm text-muted-foreground">
             Начните свое путешествие в мир AI-визуализации
           </p>
         </div>
 
         {/* Register Form */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {/* Screen reader announcement for form errors */}
+          <div role="alert" aria-live="assertive" className="sr-only">
+            {errors.fullName && <span>{errors.fullName.message}</span>}
+            {errors.email && <span>{errors.email.message}</span>}
+            {errors.password && <span>{errors.password.message}</span>}
+            {errors.confirmPassword && <span>{errors.confirmPassword.message}</span>}
+            {errors.acceptTerms && <span>{errors.acceptTerms.message}</span>}
+          </div>
+
           {/* Full Name Input */}
           <Input
             {...register('fullName')}
@@ -332,6 +300,7 @@ const RegisterPage: React.FC = () => {
             error={errors.fullName?.message}
             inputSize="md"
             autoComplete="name"
+            required
           />
 
           {/* Email Input */}
@@ -344,6 +313,7 @@ const RegisterPage: React.FC = () => {
             error={errors.email?.message}
             inputSize="md"
             autoComplete="email"
+            required
           />
 
           {/* Password Input */}
@@ -363,6 +333,7 @@ const RegisterPage: React.FC = () => {
               error={touchedFields.password && errors.password ? errors.password.message : undefined}
               inputSize="md"
               autoComplete="new-password"
+              required
             />
             <PasswordStrengthIndicator password={password || ''} />
           </div>
@@ -383,6 +354,7 @@ const RegisterPage: React.FC = () => {
             error={errors.confirmPassword?.message}
             inputSize="md"
             autoComplete="new-password"
+            required
           />
 
           {/* Terms Checkbox */}
@@ -397,6 +369,7 @@ const RegisterPage: React.FC = () => {
                 label="Согласен с условиями использования"
                 variant={errors.acceptTerms ? 'error' : 'default'}
                 errorMessage={errors.acceptTerms?.message}
+                required
               />
             )}
           />
@@ -417,15 +390,11 @@ const RegisterPage: React.FC = () => {
 
         {/* Login Link */}
         <div className="mt-6 text-center">
-          <p
-            className="text-sm"
-            style={{ color: 'var(--color-text-muted)' }}
-          >
+          <p className="text-sm text-muted-foreground">
             Уже есть аккаунт?{' '}
             <Link
               to="/login"
-              className="font-semibold transition-colors hover:underline"
-              style={{ color: 'var(--color-accent-600)' }}
+              className="font-semibold text-primary transition-colors hover:underline"
             >
               Войти
             </Link>

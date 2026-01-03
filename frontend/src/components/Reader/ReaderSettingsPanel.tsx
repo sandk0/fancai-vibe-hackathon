@@ -13,7 +13,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { motion, AnimatePresence, PanInfo, useDragControls } from 'framer-motion';
+import { m, AnimatePresence, PanInfo, useDragControls } from 'framer-motion';
 import { X, Type, Sun, Moon, Maximize2, RotateCcw, Minus, Plus, GripHorizontal } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { ReaderTheme } from '@/stores/reader';
@@ -230,7 +230,7 @@ const ThemeButton: React.FC<ThemeButtonProps> = ({ theme, isActive, onClick }) =
       </div>
       <span className="text-xs font-medium text-foreground">{config.label}</span>
       {isActive && (
-        <motion.div
+        <m.div
           layoutId="activeTheme"
           className="absolute inset-0 rounded-xl border-2 border-primary"
           initial={false}
@@ -356,7 +356,7 @@ export const ReaderSettingsPanel: React.FC<ReaderSettingsPanelProps> = React.mem
             <GripHorizontal className="w-8 h-1 text-muted-foreground/50" />
           </div>
         )}
-        <h2 className="text-lg font-semibold text-foreground">
+        <h2 id="reader-settings-title" className="text-lg font-semibold text-foreground">
           {t('reader.settings') || 'Reading Settings'}
         </h2>
         <button
@@ -490,7 +490,10 @@ export const ReaderSettingsPanel: React.FC<ReaderSettingsPanelProps> = React.mem
 
   // Mobile bottom sheet
   const mobileSheet = (
-    <motion.div
+    <m.div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="reader-settings-title"
       initial={{ y: '100%' }}
       animate={{ y: dragY }}
       exit={{ y: '100%' }}
@@ -501,9 +504,8 @@ export const ReaderSettingsPanel: React.FC<ReaderSettingsPanelProps> = React.mem
       dragElastic={{ top: 0, bottom: 0.5 }}
       onDrag={(_, info) => setDragY(Math.max(0, info.offset.y))}
       onDragEnd={handleDragEnd}
-      className="fixed inset-x-0 bottom-0 z-50 bg-background rounded-t-3xl shadow-2xl
-                 max-h-[90vh] flex flex-col"
-      style={{ touchAction: 'none' }}
+      className="fixed inset-x-0 bottom-0 z-[500] bg-background rounded-t-xl shadow-2xl
+                 max-h-[90vh] flex flex-col touch-none"
     >
       {/* Drag handle */}
       <div
@@ -513,21 +515,24 @@ export const ReaderSettingsPanel: React.FC<ReaderSettingsPanelProps> = React.mem
         <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
       </div>
       {panelContent}
-    </motion.div>
+    </m.div>
   );
 
   // Desktop side panel
   const desktopPanel = (
-    <motion.div
+    <m.div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="reader-settings-title"
       initial={{ x: '100%', opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: '100%', opacity: 0 }}
       transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-      className="fixed right-0 top-0 bottom-0 z-50 w-[380px] bg-background shadow-2xl
+      className="fixed right-0 top-0 bottom-0 z-[500] w-[380px] bg-background shadow-2xl
                  border-l border-border flex flex-col"
     >
       {panelContent}
-    </motion.div>
+    </m.div>
   );
 
   return (
@@ -535,12 +540,12 @@ export const ReaderSettingsPanel: React.FC<ReaderSettingsPanelProps> = React.mem
       {isOpen && (
         <>
           {/* Backdrop */}
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[400] bg-black/50 backdrop-blur-sm"
             onClick={onClose}
             aria-hidden="true"
           />

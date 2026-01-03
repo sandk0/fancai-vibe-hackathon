@@ -6,7 +6,7 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import {
   Home,
   Library,
@@ -187,13 +187,13 @@ const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
     <AnimatePresence>
       {isOpen && (
         <div
-          className="fixed inset-0 z-50 lg:hidden"
+          className="fixed inset-0 z-[500] lg:hidden"
           role="dialog"
           aria-modal="true"
           aria-labelledby="mobile-drawer-title"
         >
           {/* Backdrop with blur effect */}
-          <motion.div
+          <m.div
             variants={backdropVariants}
             initial="hidden"
             animate="visible"
@@ -205,7 +205,7 @@ const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
           />
 
           {/* Drawer panel */}
-          <motion.div
+          <m.div
             ref={drawerRef}
             variants={drawerVariants}
             initial="hidden"
@@ -213,24 +213,20 @@ const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
             exit="exit"
             className={cn(
               'absolute inset-y-0 left-0 w-[280px] max-w-[85vw]',
-              'bg-white dark:bg-gray-800',
+              'bg-background',
               'shadow-2xl',
               'flex flex-col',
               // Safe area support for notched devices
-              'pb-safe-area-inset-bottom pl-safe-area-inset-left'
+              'pb-safe pl-safe'
             )}
-            style={{
-              paddingBottom: 'env(safe-area-inset-bottom)',
-              paddingLeft: 'env(safe-area-inset-left)',
-            }}
           >
             {/* Header with logo and close button */}
-            <div className="flex items-center justify-between flex-shrink-0 px-4 py-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between flex-shrink-0 px-4 py-4 border-b border-border">
               <div className="flex items-center">
                 <BookOpen className="w-8 h-8 text-primary" />
                 <span
                   id="mobile-drawer-title"
-                  className="ml-2 text-xl font-bold text-gray-900 dark:text-white"
+                  className="ml-2 text-xl font-bold text-foreground"
                 >
                   fancai
                 </span>
@@ -240,8 +236,8 @@ const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
                 onClick={onClose}
                 className={cn(
                   'p-2 rounded-lg',
-                  'text-gray-500 dark:text-gray-400',
-                  'hover:bg-gray-100 dark:hover:bg-gray-700',
+                  'text-muted-foreground',
+                  'hover:bg-muted',
                   'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2',
                   'transition-colors'
                 )}
@@ -266,7 +262,7 @@ const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
                       'group flex items-center px-3 py-3 text-base font-medium rounded-lg transition-colors',
                       isActive
                         ? 'bg-primary/10 dark:bg-primary/20 text-primary'
-                        : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+                        : 'text-foreground hover:bg-muted'
                     )}
                   >
                     <Icon
@@ -274,7 +270,7 @@ const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
                         'mr-4 flex-shrink-0 h-5 w-5',
                         isActive
                           ? 'text-primary'
-                          : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200'
+                          : 'text-muted-foreground group-hover:text-foreground'
                       )}
                     />
                     {item.name}
@@ -284,7 +280,7 @@ const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
             </nav>
 
             {/* User section at the bottom */}
-            <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex-shrink-0 border-t border-border">
               {/* User info */}
               <div className="px-4 py-4">
                 <div className="flex items-center">
@@ -298,10 +294,10 @@ const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
                     </div>
                   </div>
                   <div className="ml-3 flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    <p className="text-sm font-medium text-foreground truncate">
                       {user?.full_name || t('nav.user')}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    <p className="text-xs text-muted-foreground truncate">
                       {user?.email}
                     </p>
                     <p className="text-xs flex items-center text-muted-foreground mt-0.5">
@@ -329,7 +325,7 @@ const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
                 </button>
               </div>
             </div>
-          </motion.div>
+          </m.div>
         </div>
       )}
     </AnimatePresence>

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { X, Upload, BookOpen, FileText, AlertCircle } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { booksAPI } from '@/api/books';
 import { useUIStore } from '@/stores/ui';
@@ -8,6 +8,7 @@ import { bookKeys, getCurrentUserId } from '@/hooks/api/queryKeys';
 import { useTranslation } from '@/hooks/useTranslation';
 import { getErrorMessage } from '@/utils/errors';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 interface BookUploadModalProps {
   isOpen: boolean;
@@ -37,9 +38,13 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { notify } = useUIStore();
   const { t } = useTranslation();
+
+  // Focus trap for accessibility
+  useFocusTrap(isOpen, modalRef);
 
   // Upload mutation
   const uploadMutation = useMutation({
@@ -258,14 +263,18 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
 
   return (
     <AnimatePresence>
-      <motion.div
+      <m.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 backdrop-blur-sm"
         onClick={handleClose}
       >
-        <motion.div
+        <m.div
+          ref={modalRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="upload-modal-title"
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
@@ -275,17 +284,21 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-border">
             <div className="flex items-center space-x-3">
-              <BookOpen className="h-6 w-6 text-primary" />
-              <h2 className="text-xl font-semibold text-card-foreground">
+              <BookOpen className="h-6 w-6 text-primary" aria-hidden="true" />
+              <h2
+                id="upload-modal-title"
+                className="text-xl font-semibold text-card-foreground"
+              >
                 {t('upload.uploadBooks')}
               </h2>
             </div>
             <button
               onClick={handleClose}
-              className="p-2 text-muted-foreground hover:text-foreground rounded-lg transition-colors"
+              className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-muted-foreground hover:text-foreground rounded-lg transition-colors"
               disabled={uploadMutation.isPending}
+              aria-label={t('common.close')}
             >
-              <X className="h-5 w-5" />
+              <X className="h-5 w-5" aria-hidden="true" />
             </button>
           </div>
 
@@ -363,7 +376,8 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
                         ) : (
                           <button
                             onClick={() => removeFile(file.name)}
-                            className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                            className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
+                            aria-label={t('common.remove')}
                           >
                             <X className="h-4 w-4" />
                           </button>
@@ -429,9 +443,10 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
             accept={SUPPORTED_FORMATS.join(',')}
             onChange={handleFileInput}
             className="hidden"
+            aria-label={t('upload.chooseFiles')}
           />
-        </motion.div>
-      </motion.div>
+        </m.div>
+      </m.div>
     </AnimatePresence>
   );
 };

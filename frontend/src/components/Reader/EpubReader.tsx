@@ -843,10 +843,16 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
 
       {/* Loading Overlay */}
       {(isLoading || isGenerating || isRestoringPosition) && (
-        <div className={`absolute inset-0 flex items-center justify-center ${backgroundColor} z-10`} data-testid="loading-overlay">
+        <div
+          className={`absolute inset-0 flex items-center justify-center ${backgroundColor} z-10`}
+          data-testid="loading-overlay"
+          aria-busy="true"
+          aria-live="assertive"
+          role="status"
+        >
           <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-            <p className={theme === 'light' ? 'text-gray-700' : 'text-gray-300'} data-testid="loading-text">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4" aria-hidden="true"></div>
+            <p className={theme === 'light' ? 'text-foreground' : theme === 'sepia' ? 'text-amber-800' : 'text-foreground'} data-testid="loading-text">
               {isRestoringPosition ? 'Восстановление позиции...' : isGenerating ? 'Подготовка книги...' : 'Загрузка книги...'}
             </p>
           </div>
@@ -876,21 +882,21 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
             </div>
 
             {/* Error Title */}
-            <h3 className={`text-xl font-semibold mb-3 ${theme === 'light' ? 'text-gray-800' : 'text-gray-100'}`}>
+            <h3 className={`text-xl font-semibold mb-3 ${theme === 'light' ? 'text-foreground' : theme === 'sepia' ? 'text-amber-900' : 'text-foreground'}`}>
               Не удалось загрузить книгу
             </h3>
 
             {/* Human-readable Error Message */}
-            <p className={`mb-6 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
+            <p className={`mb-6 ${theme === 'light' ? 'text-muted-foreground' : theme === 'sepia' ? 'text-amber-700' : 'text-muted-foreground'}`}>
               {getHumanReadableError(error)}
             </p>
 
             {/* Technical Error (collapsed by default, for debugging) */}
-            <details className={`mb-6 text-left ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>
+            <details className={`mb-6 text-left ${theme === 'light' ? 'text-muted-foreground' : theme === 'sepia' ? 'text-amber-600' : 'text-muted-foreground'}`}>
               <summary className="cursor-pointer text-sm hover:text-blue-500 transition-colors">
                 Техническая информация
               </summary>
-              <pre className={`mt-2 p-3 rounded text-xs overflow-x-auto ${theme === 'light' ? 'bg-gray-100' : 'bg-gray-800'}`}>
+              <pre className={`mt-2 p-3 rounded text-xs overflow-x-auto ${theme === 'light' ? 'bg-muted' : theme === 'sepia' ? 'bg-amber-100' : 'bg-muted'}`}>
                 {error}
               </pre>
             </details>
@@ -907,8 +913,10 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
                 onClick={() => navigate('/library')}
                 className={`px-6 py-2.5 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2
                   ${theme === 'light'
-                    ? 'bg-gray-200 hover:bg-gray-300 text-gray-700 focus:ring-gray-400'
-                    : 'bg-gray-700 hover:bg-gray-600 text-gray-200 focus:ring-gray-500'
+                    ? 'bg-secondary hover:bg-secondary/80 text-foreground focus:ring-border'
+                    : theme === 'sepia'
+                    ? 'bg-amber-200 hover:bg-amber-300 text-amber-900 focus:ring-amber-400'
+                    : 'bg-secondary hover:bg-secondary/80 text-foreground focus:ring-border'
                   }`}
               >
                 В библиотеку
@@ -944,7 +952,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
 
       {/* Settings Dropdown (hidden, triggered by header button) */}
       {renditionReady && !isLoading && !isGenerating && !isRestoringPosition && (
-        <div className="fixed top-16 right-4 z-50">
+        <div className="fixed top-16 right-4 z-[100]">
           <ReaderControls
             theme={theme}
             fontSize={fontSize}

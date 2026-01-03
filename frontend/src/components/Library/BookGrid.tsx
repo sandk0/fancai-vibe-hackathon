@@ -24,7 +24,7 @@
  */
 
 import { memo, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { Search, Plus, BookOpen } from 'lucide-react';
 import { BookCard } from './BookCard';
 import { Skeleton } from '@/components/UI/Skeleton';
@@ -116,7 +116,13 @@ export const BookGrid = memo(function BookGrid({
   // Loading state with skeleton grid
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5 lg:gap-6">
+      <div
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5 lg:gap-6"
+        aria-busy="true"
+        aria-live="polite"
+        role="region"
+        aria-label="Loading books"
+      >
         {Array.from({ length: 12 }).map((_, index) => (
           <BookCardSkeleton key={index} />
         ))}
@@ -127,7 +133,7 @@ export const BookGrid = memo(function BookGrid({
   // Empty state: No results from search
   if (books.length === 0 && searchQuery) {
     return (
-      <motion.div
+      <m.div
         className="text-center py-16 px-4"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -141,23 +147,23 @@ export const BookGrid = memo(function BookGrid({
           Нет результатов для "{searchQuery}". Попробуйте другой запрос.
         </p>
         {onClearSearch && (
-          <motion.button
+          <m.button
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold bg-primary text-primary-foreground shadow-lg min-h-[44px]"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={onClearSearch}
           >
             Очистить поиск
-          </motion.button>
+          </m.button>
         )}
-      </motion.div>
+      </m.div>
     );
   }
 
   // Empty state: No books at all
   if (books.length === 0) {
     return (
-      <motion.div
+      <m.div
         className="text-center py-16 px-4"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -171,7 +177,7 @@ export const BookGrid = memo(function BookGrid({
           Загрузите первую книгу, чтобы начать чтение с AI-иллюстрациями
         </p>
         {onUploadClick && (
-          <motion.button
+          <m.button
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold bg-primary text-primary-foreground shadow-lg min-h-[44px]"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -179,9 +185,9 @@ export const BookGrid = memo(function BookGrid({
           >
             <Plus className="w-5 h-5" />
             Загрузить первую книгу
-          </motion.button>
+          </m.button>
         )}
-      </motion.div>
+      </m.div>
     );
   }
 

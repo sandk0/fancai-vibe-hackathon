@@ -29,17 +29,15 @@ export const ExtractionIndicator: React.FC<ExtractionIndicatorProps> = ({
   return (
     <div
       className={cn(
-        'fixed left-1/2 -translate-x-1/2 z-50',
-        'px-5 py-4 rounded-2xl shadow-xl backdrop-blur-md',
+        'fixed left-1/2 -translate-x-1/2 z-[800]',
+        'top-20 mt-safe',
+        'max-w-[calc(100vw-32px)]',
+        'px-5 py-4 rounded-xl shadow-xl backdrop-blur-md',
         'flex items-center gap-4',
         'border border-border',
         'bg-popover/95',
         'animate-in fade-in slide-in-from-top-4 duration-300'
       )}
-      style={{
-        top: 'calc(80px + env(safe-area-inset-top))',
-        maxWidth: 'calc(100vw - 32px)',
-      }}
     >
       {/* Animated Spinner */}
       <div className="relative flex-shrink-0">

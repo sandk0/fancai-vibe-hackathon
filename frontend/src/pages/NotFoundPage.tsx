@@ -93,7 +93,7 @@ const NotFoundPage: React.FC = () => {
               key={index}
               onClick={() => (link.onClick ? link.onClick() : navigate(link.path!))}
               className={cn(
-                'group p-6 rounded-2xl border-2 transition-all hover:scale-105 hover:shadow-lg',
+                'group p-6 rounded-xl border-2 transition-all hover:scale-105 hover:shadow-lg',
                 'bg-background border-border'
               )}
             >

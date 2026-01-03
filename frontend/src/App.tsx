@@ -1,6 +1,7 @@
 import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { LazyMotion, domAnimation } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
 
 // Shared queryClient for cache management
@@ -48,8 +49,8 @@ import '@/styles/globals.css';
 const PageLoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen bg-background text-foreground">
     <div className="text-center">
-      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-      <p className="text-gray-400">Загрузка...</p>
+      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+      <p className="text-muted-foreground">Загрузка...</p>
     </div>
   </div>
 );
@@ -68,8 +69,9 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Router>
-        <div className="App min-h-screen transition-colors bg-background text-foreground">
+      <LazyMotion features={domAnimation} strict>
+        <Router>
+          <div className="App min-h-screen transition-colors bg-background text-foreground">
           <Routes>
             {/* Public routes */}
             <Route path="/login" element={<LoginPage />} />
@@ -141,8 +143,9 @@ function App() {
               },
             }}
           />
-        </div>
-      </Router>
+          </div>
+        </Router>
+      </LazyMotion>
     </QueryClientProvider>
   );
 }
