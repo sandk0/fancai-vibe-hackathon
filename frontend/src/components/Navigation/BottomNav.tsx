@@ -1,0 +1,98 @@
+import { Link, useLocation } from 'react-router-dom';
+import { Home, Library, Images, BarChart3, User } from 'lucide-react';
+
+interface NavItem {
+  path: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const navItems: NavItem[] = [
+  { path: '/', label: 'Главная', icon: Home },
+  { path: '/library', label: 'Библиотека', icon: Library },
+  { path: '/images', label: 'Галерея', icon: Images },
+  { path: '/stats', label: 'Статистика', icon: BarChart3 },
+  { path: '/profile', label: 'Профиль', icon: User },
+];
+
+/**
+ * BottomNav - Mobile navigation component
+ *
+ * Features:
+ * - Fixed at bottom of screen
+ * - Hidden on desktop (md:hidden)
+ * - Backdrop blur for modern appearance
+ * - Safe area support for iOS notch/home indicator
+ * - Touch targets >= 44px for accessibility
+ * - Smooth transitions for active states
+ */
+export function BottomNav() {
+  const location = useLocation();
+
+  const isActive = (path: string): boolean => {
+    if (path === '/') {
+      return location.pathname === '/';
+    }
+    return location.pathname.startsWith(path);
+  };
+
+  return (
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
+      role="navigation"
+      aria-label="Mobile navigation"
+    >
+      {/* Background with blur */}
+      <div
+        className="absolute inset-0 bg-background/80 backdrop-blur-lg border-t border-border"
+        aria-hidden="true"
+      />
+
+      {/* Navigation items */}
+      <ul className="relative flex items-center justify-around pb-safe">
+        {navItems.map(({ path, label, icon: Icon }) => {
+          const active = isActive(path);
+
+          return (
+            <li key={path} className="flex-1">
+              <Link
+                to={path}
+                className={`
+                  flex flex-col items-center justify-center
+                  min-h-[56px] py-2 px-1
+                  touch-target
+                  transition-colors duration-200 ease-out
+                  ${active
+                    ? 'text-[var(--color-accent-500)]'
+                    : 'text-muted-foreground hover:text-foreground'
+                  }
+                `}
+                aria-current={active ? 'page' : undefined}
+              >
+                <Icon
+                  className={`
+                    w-6 h-6 mb-1
+                    transition-transform duration-200 ease-out
+                    ${active ? 'scale-110' : 'scale-100'}
+                  `}
+                  aria-hidden="true"
+                />
+                <span
+                  className={`
+                    text-[10px] font-medium leading-tight
+                    transition-opacity duration-200
+                    ${active ? 'opacity-100' : 'opacity-80'}
+                  `}
+                >
+                  {label}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
+export default BottomNav;

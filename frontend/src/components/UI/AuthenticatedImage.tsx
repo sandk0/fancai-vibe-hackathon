@@ -117,6 +117,8 @@ export const AuthenticatedImage = memo(function AuthenticatedImage({
       src={blobUrl}
       alt={alt}
       className={className}
+      loading="lazy"
+      decoding="async"
     />
   );
 });

@@ -136,6 +136,16 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   // State for settings dropdown
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+  // Immersive mode state - hides toolbar for distraction-free reading
+  const [isImmersive, setIsImmersive] = useState(true);
+  const immersiveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Touch/swipe navigation state
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+
+  // Tap zone visual feedback state
+  const [tapFeedback, setTapFeedback] = useState<'left' | 'right' | null>(null);
+
   // State for position conflict dialog (sync between devices)
   const [positionConflict, setPositionConflict] = useState<PositionConflict | null>(null);
 
@@ -629,8 +639,67 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   // Ref to prevent double-firing on touch devices (touchend + click)
   const lastTapTimeRef = useRef<number>(0);
 
-  // Handle tap zones for mobile navigation with debounce
-  const handleTapZone = useCallback((zone: 'left' | 'right', isTouch: boolean = false) => {
+  /**
+   * Show toolbar temporarily (exit immersive mode with auto-hide)
+   */
+  const showToolbarTemporarily = useCallback(() => {
+    // Clear any existing timeout
+    if (immersiveTimeoutRef.current) {
+      clearTimeout(immersiveTimeoutRef.current);
+    }
+
+    // Show toolbar
+    setIsImmersive(false);
+
+    // Auto-hide after 3 seconds
+    immersiveTimeoutRef.current = setTimeout(() => {
+      setIsImmersive(true);
+    }, 3000);
+  }, []);
+
+  /**
+   * Toggle immersive mode (center tap zone action)
+   */
+  const toggleImmersiveMode = useCallback(() => {
+    // Clear any existing timeout
+    if (immersiveTimeoutRef.current) {
+      clearTimeout(immersiveTimeoutRef.current);
+      immersiveTimeoutRef.current = null;
+    }
+
+    if (isImmersive) {
+      // Exit immersive mode with auto-hide
+      showToolbarTemporarily();
+    } else {
+      // Enter immersive mode immediately
+      setIsImmersive(true);
+    }
+  }, [isImmersive, showToolbarTemporarily]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (immersiveTimeoutRef.current) {
+        clearTimeout(immersiveTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  /**
+   * Show tap feedback with auto-clear
+   */
+  const showTapFeedback = useCallback((zone: 'left' | 'right') => {
+    setTapFeedback(zone);
+    setTimeout(() => setTapFeedback(null), 150);
+  }, []);
+
+  /**
+   * Handle tap zones for navigation (EasyReach Kindle-style)
+   * - Left 20%: Previous page
+   * - Center 60%: Toggle UI (immersive mode)
+   * - Right 20%: Next page
+   */
+  const handleTapZone = useCallback((zone: 'left' | 'center' | 'right', isTouch: boolean = false) => {
     if (!renditionReady || isModalOpen || isTocOpen || isSettingsOpen || isBookInfoOpen || positionConflict) return;
 
     const now = Date.now();
@@ -643,67 +712,207 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
 
     if (zone === 'left') {
       console.log(`[EpubReader] Left tap zone ${isTouch ? 'touched' : 'clicked'}, going to previous page`);
+      showTapFeedback('left');
       prevPage();
-    } else {
+    } else if (zone === 'right') {
       console.log(`[EpubReader] Right tap zone ${isTouch ? 'touched' : 'clicked'}, going to next page`);
+      showTapFeedback('right');
       nextPage();
+    } else {
+      console.log(`[EpubReader] Center tap zone ${isTouch ? 'touched' : 'clicked'}, toggling immersive mode`);
+      toggleImmersiveMode();
     }
-  }, [renditionReady, isModalOpen, isTocOpen, isSettingsOpen, isBookInfoOpen, positionConflict, prevPage, nextPage]);
+  }, [renditionReady, isModalOpen, isTocOpen, isSettingsOpen, isBookInfoOpen, positionConflict, prevPage, nextPage, showTapFeedback, toggleImmersiveMode]);
+
+  /**
+   * Handle touch start for swipe gesture detection
+   */
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!renditionReady || isModalOpen || isTocOpen || isSettingsOpen || isBookInfoOpen || positionConflict) return;
+
+    const touch = e.touches[0];
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      time: Date.now(),
+    };
+  }, [renditionReady, isModalOpen, isTocOpen, isSettingsOpen, isBookInfoOpen, positionConflict]);
+
+  /**
+   * Handle touch end for swipe gesture navigation
+   * - Swipe left: Next page
+   * - Swipe right: Previous page
+   * - Min swipe distance: 50px
+   * - Max swipe time: 300ms (fast gesture)
+   */
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    if (!renditionReady || isModalOpen || isTocOpen || isSettingsOpen || isBookInfoOpen || positionConflict) {
+      touchStartRef.current = null;
+      return;
+    }
+
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+    const deltaTime = Date.now() - touchStartRef.current.time;
+
+    // Reset touch start
+    touchStartRef.current = null;
+
+    // Minimum swipe distance: 50px
+    const MIN_SWIPE_DISTANCE = 50;
+    // Maximum swipe time: 500ms
+    const MAX_SWIPE_TIME = 500;
+
+    // Check if it's a valid horizontal swipe (not vertical scroll)
+    const isHorizontalSwipe = Math.abs(deltaX) > Math.abs(deltaY) * 1.5;
+
+    if (Math.abs(deltaX) >= MIN_SWIPE_DISTANCE && deltaTime <= MAX_SWIPE_TIME && isHorizontalSwipe) {
+      if (deltaX < 0) {
+        // Swipe left -> Next page
+        console.log('[EpubReader] Swipe left detected, going to next page');
+        showTapFeedback('right');
+        nextPage();
+      } else {
+        // Swipe right -> Previous page
+        console.log('[EpubReader] Swipe right detected, going to previous page');
+        showTapFeedback('left');
+        prevPage();
+      }
+    }
+  }, [renditionReady, isModalOpen, isTocOpen, isSettingsOpen, isBookInfoOpen, positionConflict, nextPage, prevPage, showTapFeedback]);
 
   // Main render - viewerRef MUST stay in same DOM location to prevent rendition destruction
   return (
     <div className={`relative h-full w-full transition-colors ${backgroundColor}`}>
       {/* EPUB Viewer - Maximum reading space, with safe-area support */}
+      {/* In immersive mode on mobile, expand to full height */}
       <div
         ref={viewerRef}
-        className={`h-full w-full ${backgroundColor}`}
+        className={`h-full w-full ${backgroundColor} transition-[padding] duration-300`}
         style={{
-          paddingTop: 'calc(70px + env(safe-area-inset-top))', // Header + notch
+          // In immersive mode on mobile, use only safe-area padding
+          // On desktop (md+), always show header
+          paddingTop: isImmersive
+            ? 'env(safe-area-inset-top)'
+            : 'calc(70px + env(safe-area-inset-top))',
           paddingLeft: 'env(safe-area-inset-left)',
           paddingRight: 'env(safe-area-inset-right)',
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}
       />
 
-      {/* Mobile Tap Zones - invisible touch areas for page navigation */}
+      {/* EasyReach Tap Zones (Kindle-style) - invisible touch areas for page navigation */}
+      {/* Layout: Left 20% | Center 60% | Right 20% */}
       {renditionReady && !isLoading && !isGenerating && !isRestoringPosition && (
         <>
-          {/* Left tap zone - previous page */}
+          {/* Left tap zone (20%) - previous page */}
           <div
-            className="fixed left-0 bottom-0 w-[25%] z-[5] md:hidden active:bg-black/5"
+            className="fixed left-0 bottom-0 w-[20%] z-[5] md:hidden"
             style={{
               background: 'transparent',
               pointerEvents: 'auto',
-              top: 'calc(70px + env(safe-area-inset-top))',
+              top: isImmersive ? '0' : 'calc(70px + env(safe-area-inset-top))',
               paddingBottom: 'env(safe-area-inset-bottom)',
               WebkitTapHighlightColor: 'transparent',
+              transition: 'top 0.3s ease',
             }}
             onClick={() => handleTapZone('left', false)}
+            onTouchStart={handleTouchStart}
             onTouchEnd={(e) => {
-              e.preventDefault();
-              handleTapZone('left', true);
+              handleTouchEnd(e);
+              // Only trigger tap if it wasn't a swipe
+              if (!touchStartRef.current) {
+                const touch = e.changedTouches[0];
+                const rect = e.currentTarget.getBoundingClientRect();
+                const isInsideZone = touch.clientX >= rect.left && touch.clientX <= rect.right;
+                if (isInsideZone) {
+                  e.preventDefault();
+                  handleTapZone('left', true);
+                }
+              }
             }}
             aria-label="Previous page"
             role="button"
           />
-          {/* Right tap zone - next page */}
+
+          {/* Center tap zone (60%) - toggle immersive mode */}
           <div
-            className="fixed right-0 bottom-0 w-[25%] z-[5] md:hidden active:bg-black/5"
+            className="fixed left-[20%] bottom-0 w-[60%] z-[5] md:hidden"
             style={{
               background: 'transparent',
               pointerEvents: 'auto',
-              top: 'calc(70px + env(safe-area-inset-top))',
+              top: isImmersive ? '0' : 'calc(70px + env(safe-area-inset-top))',
               paddingBottom: 'env(safe-area-inset-bottom)',
               WebkitTapHighlightColor: 'transparent',
+              transition: 'top 0.3s ease',
+            }}
+            onClick={() => handleTapZone('center', false)}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={(e) => {
+              handleTouchEnd(e);
+              // Only trigger tap if it wasn't a swipe
+              if (!touchStartRef.current) {
+                e.preventDefault();
+                handleTapZone('center', true);
+              }
+            }}
+            aria-label="Toggle toolbar"
+            role="button"
+          />
+
+          {/* Right tap zone (20%) - next page */}
+          <div
+            className="fixed right-0 bottom-0 w-[20%] z-[5] md:hidden"
+            style={{
+              background: 'transparent',
+              pointerEvents: 'auto',
+              top: isImmersive ? '0' : 'calc(70px + env(safe-area-inset-top))',
+              paddingBottom: 'env(safe-area-inset-bottom)',
+              WebkitTapHighlightColor: 'transparent',
+              transition: 'top 0.3s ease',
             }}
             onClick={() => handleTapZone('right', false)}
+            onTouchStart={handleTouchStart}
             onTouchEnd={(e) => {
-              e.preventDefault();
-              handleTapZone('right', true);
+              handleTouchEnd(e);
+              // Only trigger tap if it wasn't a swipe
+              if (!touchStartRef.current) {
+                const touch = e.changedTouches[0];
+                const rect = e.currentTarget.getBoundingClientRect();
+                const isInsideZone = touch.clientX >= rect.left && touch.clientX <= rect.right;
+                if (isInsideZone) {
+                  e.preventDefault();
+                  handleTapZone('right', true);
+                }
+              }
             }}
             aria-label="Next page"
             role="button"
           />
+
+          {/* Visual feedback overlay for tap zones */}
+          {tapFeedback === 'left' && (
+            <div
+              className="fixed left-0 bottom-0 w-[20%] z-[4] pointer-events-none md:hidden animate-pulse"
+              style={{
+                top: isImmersive ? '0' : 'calc(70px + env(safe-area-inset-top))',
+                paddingBottom: 'env(safe-area-inset-bottom)',
+                background: theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+              }}
+            />
+          )}
+          {tapFeedback === 'right' && (
+            <div
+              className="fixed right-0 bottom-0 w-[20%] z-[4] pointer-events-none md:hidden animate-pulse"
+              style={{
+                top: isImmersive ? '0' : 'calc(70px + env(safe-area-inset-top))',
+                paddingBottom: 'env(safe-area-inset-bottom)',
+                background: theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+              }}
+            />
+          )}
         </>
       )}
 
@@ -785,18 +994,25 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
       )}
 
       {/* Modern Reader Header - Theme-aware with all controls and progress */}
+      {/* Hidden in immersive mode on mobile */}
       {renditionReady && !isLoading && !isGenerating && !isRestoringPosition && metadata && (
-        <ReaderHeader
-          title={metadata.title}
-          author={metadata.creator}
-          progress={progress}
-          currentPage={currentPage ?? undefined}
-          totalPages={totalPages ?? undefined}
-          onBack={() => navigate(`/book/${book.id}`)}
-          onTocToggle={() => setIsTocOpen(!isTocOpen)}
-          onInfoOpen={() => setIsBookInfoOpen(true)}
-          onSettingsOpen={() => setIsSettingsOpen(true)}
-        />
+        <div
+          className={`transition-all duration-300 ease-in-out ${
+            isImmersive ? 'md:opacity-100 md:translate-y-0 opacity-0 -translate-y-full pointer-events-none md:pointer-events-auto' : 'opacity-100 translate-y-0'
+          }`}
+        >
+          <ReaderHeader
+            title={metadata.title}
+            author={metadata.creator}
+            progress={progress}
+            currentPage={currentPage ?? undefined}
+            totalPages={totalPages ?? undefined}
+            onBack={() => navigate(`/book/${book.id}`)}
+            onTocToggle={() => setIsTocOpen(!isTocOpen)}
+            onInfoOpen={() => setIsBookInfoOpen(true)}
+            onSettingsOpen={() => setIsSettingsOpen(true)}
+          />
+        </div>
       )}
 
       {/* Settings Dropdown (hidden, triggered by header button) */}

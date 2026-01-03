@@ -1,67 +1,620 @@
 /**
- * HomePage - Modern redesign with shadcn UI components
+ * HomePage - Redesigned with hero section, continue reading, and user statistics
  *
  * Features:
- * - Hero section with gradient background
- * - Feature cards with hover effects
- * - Stats dashboard
- * - Quick action buttons
- * - Fully theme-aware (Light/Dark/Sepia)
- * - Responsive design
- * - Modern typography and spacing
+ * - Hero section for guests with CTA
+ * - Personalized greeting for authenticated users
+ * - "Continue reading" featured book card
+ * - "Recently added" horizontal scroll section
+ * - Reading statistics dashboard
+ * - Skeleton loading states
+ * - Mobile-first responsive design
+ * - Framer Motion animations
  */
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 import {
   BookOpen,
   Upload,
-  Sparkles,
-  TrendingUp,
-  Zap,
-  Image as ImageIcon,
-  Brain,
-  ArrowRight,
-  Library,
   Clock,
+  BarChart3,
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  Library,
   FileText,
   Wand2,
+  Sparkles,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
 import { useUIStore } from '@/stores/ui';
 import { booksAPI } from '@/api/books';
 import { imagesAPI } from '@/api/images';
 import { cn } from '@/lib/utils';
+import type { Book } from '@/types/api';
 
-const HomePage: React.FC = () => {
-  const { user } = useAuthStore();
-  const setShowUploadModal = useUIStore(state => state.setShowUploadModal);
+// Animation variants
+const fadeInUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.5 },
+};
+
+const staggerContainer = {
+  animate: {
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const scaleOnHover = {
+  whileHover: { scale: 1.02 },
+  whileTap: { scale: 0.98 },
+};
+
+// Time-based greeting
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return 'Доброе утро';
+  if (hour >= 12 && hour < 17) return 'Добрый день';
+  if (hour >= 17 && hour < 22) return 'Добрый вечер';
+  return 'Доброй ночи';
+}
+
+// Skeleton components
+const SkeletonCard: React.FC<{ className?: string }> = ({ className }) => (
+  <div className={cn('animate-pulse rounded-xl bg-muted', className)} />
+);
+
+const SkeletonBookCard: React.FC = () => (
+  <div className="flex-shrink-0 w-36 sm:w-44">
+    <SkeletonCard className="aspect-[2/3] mb-2" />
+    <SkeletonCard className="h-4 w-3/4 mb-1" />
+    <SkeletonCard className="h-3 w-1/2" />
+  </div>
+);
+
+const SkeletonStatCard: React.FC = () => (
+  <div className="p-4 rounded-xl border border-border bg-card animate-pulse">
+    <SkeletonCard className="h-8 w-8 rounded-lg mb-3" />
+    <SkeletonCard className="h-8 w-16 mb-2" />
+    <SkeletonCard className="h-4 w-24" />
+  </div>
+);
+
+// Hero section for guests
+const GuestHero: React.FC = () => {
   const navigate = useNavigate();
 
+  return (
+    <motion.section
+      className="relative overflow-hidden rounded-2xl sm:rounded-3xl mb-8 sm:mb-12"
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+    >
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-accent/10 to-secondary" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(251,191,36,0.15),transparent_50%)]" />
+
+      <div className="relative px-6 py-12 sm:px-10 sm:py-16 lg:py-24">
+        <div className="max-w-3xl mx-auto text-center">
+          <motion.div
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-6"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span className="text-sm font-medium">AI-визуализация книг</span>
+          </motion.div>
+
+          <motion.h1
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 text-foreground"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            Читайте книги с{' '}
+            <span className="bg-gradient-to-r from-primary via-amber-500 to-orange-500 bg-clip-text text-transparent">
+              AI-иллюстрациями
+            </span>
+          </motion.h1>
+
+          <motion.p
+            className="text-base sm:text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            Загружайте любимые книги и наслаждайтесь автоматически сгенерированными
+            иллюстрациями к каждому описанию. Искусственный интеллект оживит ваше чтение.
+          </motion.p>
+
+          <motion.div
+            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <motion.button
+              onClick={() => navigate('/register')}
+              className={cn(
+                'group inline-flex items-center justify-center gap-2 w-full sm:w-auto',
+                'px-6 py-3.5 rounded-xl font-semibold text-base',
+                'bg-primary text-primary-foreground',
+                'shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40',
+                'transition-all duration-200'
+              )}
+              {...scaleOnHover}
+            >
+              <BookOpen className="w-5 h-5" />
+              <span>Начать бесплатно</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </motion.button>
+
+            <motion.button
+              onClick={() => navigate('/login')}
+              className={cn(
+                'inline-flex items-center justify-center gap-2 w-full sm:w-auto',
+                'px-6 py-3.5 rounded-xl font-semibold text-base',
+                'border-2 border-border bg-background text-foreground',
+                'hover:border-primary hover:bg-accent',
+                'transition-all duration-200'
+              )}
+              {...scaleOnHover}
+            >
+              <span>Войти</span>
+            </motion.button>
+          </motion.div>
+        </div>
+      </div>
+    </motion.section>
+  );
+};
+
+// User greeting section
+const UserGreeting: React.FC<{ userName?: string }> = ({ userName }) => {
+  const setShowUploadModal = useUIStore((state) => state.setShowUploadModal);
+
+  return (
+    <motion.section
+      className="mb-8 sm:mb-10"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
+            {getGreeting()}, {userName || 'Читатель'}!
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Что будем читать сегодня?
+          </p>
+        </div>
+
+        <div className="flex gap-3">
+          <Link
+            to="/library"
+            className={cn(
+              'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl',
+              'bg-secondary text-secondary-foreground font-medium',
+              'hover:bg-secondary/80 transition-colors'
+            )}
+          >
+            <Library className="w-4 h-4" />
+            <span className="hidden sm:inline">Библиотека</span>
+          </Link>
+
+          <motion.button
+            onClick={() => setShowUploadModal(true)}
+            className={cn(
+              'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl',
+              'bg-primary text-primary-foreground font-medium',
+              'hover:bg-primary/90 transition-colors'
+            )}
+            {...scaleOnHover}
+          >
+            <Upload className="w-4 h-4" />
+            <span>Загрузить</span>
+          </motion.button>
+        </div>
+      </div>
+    </motion.section>
+  );
+};
+
+// Continue reading card
+const ContinueReadingCard: React.FC<{ book: Book; isLoading: boolean }> = ({
+  book,
+  isLoading,
+}) => {
+  const navigate = useNavigate();
+
+  if (isLoading) {
+    return (
+      <div className="mb-8 sm:mb-10">
+        <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
+          Продолжить чтение
+        </h2>
+        <SkeletonCard className="h-32 sm:h-40 rounded-2xl" />
+      </div>
+    );
+  }
+
+  if (!book) return null;
+
+  return (
+    <motion.section
+      className="mb-8 sm:mb-10"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.1 }}
+    >
+      <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
+        Продолжить чтение
+      </h2>
+
+      <motion.div
+        onClick={() => navigate(`/book/${book.id}`)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            navigate(`/book/${book.id}`);
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-label={`Continue reading ${book.title} by ${book.author}, ${Math.round(book.reading_progress_percent)}% complete`}
+        className={cn(
+          'relative overflow-hidden rounded-2xl cursor-pointer',
+          'bg-gradient-to-r from-card via-card to-accent/20',
+          'border border-border hover:border-primary/50',
+          'transition-all duration-300',
+          'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+        )}
+        whileHover={{ scale: 1.01 }}
+        whileTap={{ scale: 0.99 }}
+      >
+        <div className="p-5 sm:p-6 flex gap-4 sm:gap-6">
+          {/* Book cover placeholder */}
+          <div
+            className={cn(
+              'flex-shrink-0 w-20 sm:w-24 aspect-[2/3] rounded-lg',
+              'bg-gradient-to-br from-primary/20 via-accent/20 to-secondary',
+              'flex items-center justify-center'
+            )}
+          >
+            <BookOpen className="w-8 h-8 text-primary/60" />
+          </div>
+
+          {/* Book info */}
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg sm:text-xl font-semibold text-foreground truncate mb-1">
+              {book.title}
+            </h3>
+            <p className="text-sm text-muted-foreground truncate mb-3">
+              {book.author}
+            </p>
+
+            {/* Progress bar */}
+            <div className="mb-2">
+              <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                <span>Прогресс</span>
+                <span className="font-medium text-primary">
+                  {Math.round(book.reading_progress_percent)}%
+                </span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-primary to-amber-500 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min(book.reading_progress_percent, 100)}%` }}
+                  transition={{ duration: 0.8, ease: 'easeOut' }}
+                />
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              {book.chapters_count} глав
+            </p>
+          </div>
+
+          {/* Arrow */}
+          <div className="flex items-center">
+            <ArrowRight className="w-5 h-5 text-muted-foreground" />
+          </div>
+        </div>
+      </motion.div>
+    </motion.section>
+  );
+};
+
+// Horizontal scroll book list
+const RecentBooksSection: React.FC<{ books: Book[]; isLoading: boolean }> = ({
+  books,
+  isLoading,
+}) => {
+  const navigate = useNavigate();
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollRef.current) {
+      const scrollAmount = 300;
+      scrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <section className="mb-8 sm:mb-10">
+        <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
+          Недавно добавленные
+        </h2>
+        <div className="flex gap-4 overflow-hidden">
+          {[1, 2, 3, 4].map((i) => (
+            <SkeletonBookCard key={i} />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (!books || books.length === 0) return null;
+
+  return (
+    <motion.section
+      className="mb-8 sm:mb-10"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.2 }}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg sm:text-xl font-semibold text-foreground">
+          Недавно добавленные
+        </h2>
+
+        <div className="hidden sm:flex gap-2">
+          <button
+            onClick={() => scroll('left')}
+            className={cn(
+              'p-2 rounded-lg bg-secondary text-secondary-foreground',
+              'hover:bg-secondary/80 transition-colors'
+            )}
+            aria-label="Scroll left"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => scroll('right')}
+            className={cn(
+              'p-2 rounded-lg bg-secondary text-secondary-foreground',
+              'hover:bg-secondary/80 transition-colors'
+            )}
+            aria-label="Scroll right"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      <div
+        ref={scrollRef}
+        className={cn(
+          'flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0',
+          'scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent',
+          'snap-x snap-mandatory sm:snap-none'
+        )}
+        style={{ scrollbarWidth: 'thin' }}
+      >
+        {books.map((book, index) => (
+          <motion.div
+            key={book.id}
+            className="flex-shrink-0 w-36 sm:w-44 snap-start cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl"
+            onClick={() => navigate(`/book/${book.id}`)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                navigate(`/book/${book.id}`);
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label={`Open ${book.title} by ${book.author}${book.reading_progress_percent > 0 ? `, ${Math.round(book.reading_progress_percent)}% read` : ''}`}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: index * 0.05 }}
+            whileHover={{ y: -4 }}
+          >
+            {/* Book cover */}
+            <div
+              className={cn(
+                'aspect-[2/3] rounded-xl mb-2 overflow-hidden',
+                'bg-gradient-to-br from-primary/20 via-accent/10 to-secondary',
+                'flex items-center justify-center',
+                'border border-border hover:border-primary/30',
+                'transition-all duration-200 shadow-sm hover:shadow-md'
+              )}
+            >
+              <BookOpen className="w-10 h-10 text-primary/40" />
+            </div>
+
+            {/* Book info */}
+            <h3 className="text-sm font-medium text-foreground truncate">
+              {book.title}
+            </h3>
+            <p className="text-xs text-muted-foreground truncate">{book.author}</p>
+
+            {/* Progress indicator */}
+            {book.reading_progress_percent > 0 && (
+              <div className="mt-1 h-1 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full"
+                  style={{ width: `${Math.min(book.reading_progress_percent, 100)}%` }}
+                />
+              </div>
+            )}
+          </motion.div>
+        ))}
+
+        {/* "See all" link */}
+        <Link
+          to="/library"
+          className={cn(
+            'flex-shrink-0 w-36 sm:w-44 aspect-[2/3] snap-start',
+            'rounded-xl border-2 border-dashed border-border',
+            'flex flex-col items-center justify-center gap-2',
+            'text-muted-foreground hover:text-primary hover:border-primary/50',
+            'transition-colors duration-200'
+          )}
+        >
+          <ArrowRight className="w-6 h-6" />
+          <span className="text-sm font-medium">Все книги</span>
+        </Link>
+      </div>
+    </motion.section>
+  );
+};
+
+// Statistics section
+const StatisticsSection: React.FC<{
+  stats: {
+    totalBooks: number;
+    totalHours: number;
+    totalDescriptions: number;
+    totalImages: number;
+  };
+  isLoading: boolean;
+}> = ({ stats, isLoading }) => {
+  const statItems = [
+    {
+      label: 'Книг в библиотеке',
+      value: stats.totalBooks,
+      icon: Library,
+      color: 'text-blue-500 dark:text-blue-400',
+      bgColor: 'bg-blue-500/10',
+    },
+    {
+      label: 'Часов чтения',
+      value: stats.totalHours,
+      icon: Clock,
+      color: 'text-purple-500 dark:text-purple-400',
+      bgColor: 'bg-purple-500/10',
+    },
+    {
+      label: 'Описаний найдено',
+      value: stats.totalDescriptions,
+      icon: FileText,
+      color: 'text-green-500 dark:text-green-400',
+      bgColor: 'bg-green-500/10',
+    },
+    {
+      label: 'Изображений создано',
+      value: stats.totalImages,
+      icon: Wand2,
+      color: 'text-amber-500 dark:text-amber-400',
+      bgColor: 'bg-amber-500/10',
+    },
+  ];
+
+  if (isLoading) {
+    return (
+      <section className="mb-8 sm:mb-10">
+        <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
+          Статистика чтения
+        </h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <SkeletonStatCard key={i} />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <motion.section
+      className="mb-8 sm:mb-10"
+      variants={staggerContainer}
+      initial="initial"
+      animate="animate"
+    >
+      <div className="flex items-center gap-2 mb-4">
+        <BarChart3 className="w-5 h-5 text-primary" />
+        <h2 className="text-lg sm:text-xl font-semibold text-foreground">
+          Статистика чтения
+        </h2>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {statItems.map((item, index) => (
+          <motion.div
+            key={item.label}
+            className={cn(
+              'p-4 rounded-xl border border-border bg-card',
+              'hover:border-primary/30 hover:shadow-sm',
+              'transition-all duration-200'
+            )}
+            variants={fadeInUp}
+            custom={index}
+            whileHover={{ y: -2 }}
+          >
+            <div className={cn('inline-flex p-2 rounded-lg mb-3', item.bgColor)}>
+              <item.icon className={cn('w-5 h-5', item.color)} />
+            </div>
+
+            <div className="text-2xl sm:text-3xl font-bold text-foreground">
+              {item.value}
+            </div>
+
+            <div className="text-xs sm:text-sm text-muted-foreground">
+              {item.label}
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </motion.section>
+  );
+};
+
+// Main HomePage component
+const HomePage: React.FC = () => {
+  const { user, isAuthenticated } = useAuthStore();
+
   // Fetch user reading statistics
-  const { data: readingStats } = useQuery({
+  const { data: readingStats, isLoading: statsLoading } = useQuery({
     queryKey: ['userReadingStatistics'],
     queryFn: () => booksAPI.getUserReadingStatistics(),
-    staleTime: 30000, // 30 seconds
+    staleTime: 30000,
+    enabled: isAuthenticated,
   });
 
   // Fetch books for recent activity
   const { data: booksData, isLoading: booksLoading } = useQuery({
     queryKey: ['books', 'homepage'],
-    queryFn: () => booksAPI.getBooks({ limit: 50, sort_by: 'accessed_desc' }),
-    staleTime: 0, // Always fetch fresh data
-    refetchOnMount: 'always', // Always refetch when component mounts
+    queryFn: () => booksAPI.getBooks({ limit: 20, sort_by: 'accessed_desc' }),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    enabled: isAuthenticated,
   });
 
-  // Fetch user images and descriptions stats
-  const { data: imagesStats } = useQuery({
+  // Fetch user images stats
+  const { data: imagesStats, isLoading: imagesLoading } = useQuery({
     queryKey: ['userImagesStats'],
     queryFn: () => imagesAPI.getUserStats(),
-    staleTime: 30000, // 30 seconds
+    staleTime: 30000,
+    enabled: isAuthenticated,
   });
 
-  // Calculate stats from fetched data
+  // Calculate stats
   const totalBooks = readingStats?.total_books ?? 0;
   const totalHours = readingStats?.total_reading_time_minutes
     ? Math.round(readingStats.total_reading_time_minutes / 60)
@@ -69,308 +622,91 @@ const HomePage: React.FC = () => {
   const totalDescriptions = imagesStats?.total_descriptions_found ?? 0;
   const totalImages = imagesStats?.total_images_generated ?? 0;
 
-  const stats = [
-    { label: 'Книг в библиотеке', value: totalBooks.toString(), icon: Library, color: 'text-blue-600 dark:text-blue-400' },
-    { label: 'Часов чтения', value: totalHours.toString(), icon: Clock, color: 'text-purple-600 dark:text-purple-400' },
-    { label: 'Описаний найдено', value: totalDescriptions.toString(), icon: FileText, color: 'text-green-600 dark:text-green-400' },
-    { label: 'Изображений создано', value: totalImages.toString(), icon: Wand2, color: 'text-amber-600 dark:text-amber-400' },
-  ];
+  // Get books in progress (for continue reading)
+  const booksInProgress =
+    booksData?.books.filter((book) => {
+      const progress = book.reading_progress_percent ?? 0;
+      return progress >= 0.1 && progress < 100;
+    }) ?? [];
 
-  // Get books in progress for recent activity
-  // Note: reading_progress_percent might be 0.0, 0.1, 5.0, etc.
-  const booksInProgress = booksData?.books.filter(book => {
-    const progress = book.reading_progress_percent ?? 0;
-    const hasProgress = progress >= 0.1 && progress < 100;
+  // Get recently added books (sorted by created_at)
+  const recentBooks = booksData?.books.slice(0, 10) ?? [];
 
-    // Debug logging (remove in production)
-    if (progress > 0) {
-      console.log('[HomePage] Book with progress:', {
-        title: book.title,
-        progress,
-        hasProgress,
-      });
-    }
+  // Get the most recently accessed book in progress
+  const continueBook = booksInProgress[0] ?? null;
 
-    return hasProgress;
-  }) ?? [];
+  // Guest view
+  if (!isAuthenticated) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <GuestHero />
 
-  // Debug: log total books in progress
-  console.log('[HomePage] Books in progress:', booksInProgress.length);
-
-  const features = [
-    {
-      icon: Brain,
-      title: 'Умное распознавание',
-      description: 'Multi-NLP система извлекает описания локаций, персонажей и атмосферы из текста',
-      color: 'from-blue-500 to-cyan-500',
-      iconBg: 'bg-blue-500/10 dark:bg-blue-500/20',
-      iconColor: 'text-blue-600 dark:text-blue-400',
-    },
-    {
-      icon: ImageIcon,
-      title: 'AI генерация',
-      description: 'Автоматическое создание изображений для описаний с помощью нейросетей',
-      color: 'from-purple-500 to-pink-500',
-      iconBg: 'bg-purple-500/10 dark:bg-purple-500/20',
-      iconColor: 'text-purple-600 dark:text-purple-400',
-    },
-    {
-      icon: Zap,
-      title: 'Мгновенная обработка',
-      description: 'Параллельная обработка глав и кэширование для максимальной скорости',
-      color: 'from-amber-500 to-orange-500',
-      iconBg: 'bg-amber-500/10 dark:bg-amber-500/20',
-      iconColor: 'text-amber-600 dark:text-amber-400',
-    },
-  ];
-
-  return (
-    <div className="max-w-7xl mx-auto">
-      {/* Hero Section */}
-      <div className="relative mb-8 sm:mb-12 lg:mb-16 overflow-hidden rounded-2xl sm:rounded-3xl">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 dark:from-blue-500/20 dark:via-purple-500/20 dark:to-pink-500/20" />
-        <div className="relative px-4 py-8 sm:px-6 sm:py-12 md:px-8 md:py-16 lg:py-24">
-          <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 dark:from-blue-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
-              Привет, {user?.full_name || 'Читатель'}!
-            </h1>
-            <p className="text-base sm:text-lg md:text-xl text-gray-600 dark:text-gray-300 mb-6 sm:mb-8 max-w-2xl mx-auto px-2">
-              Погружайтесь в мир книг с AI-визуализацией. Каждое описание оживает благодаря искусственному интеллекту.
-            </p>
-
-            {/* Quick Actions */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-              <Link
-                to="/library"
-                className={cn(
-                  "group inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 sm:px-6 py-3 rounded-xl",
-                  "bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600",
-                  "text-white font-semibold text-sm sm:text-base transition-all duration-200",
-                  "shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40",
-                  "hover:scale-105"
-                )}
-              >
-                <BookOpen className="w-5 h-5" />
-                <span>Моя библиотека</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </Link>
-
-              <button
-                onClick={() => setShowUploadModal(true)}
-                className="group inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 sm:px-6 py-3 rounded-xl border-2 font-semibold text-sm sm:text-base transition-all duration-200 hover:scale-105 bg-background border-border text-foreground hover:border-primary"
-              >
-                <Upload className="w-5 h-5" />
-                <span>Загрузить книгу</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-8 sm:mb-12 lg:mb-16">
-        {stats.map((stat, index) => (
-          <div
-            key={index}
-            className={cn(
-              "group p-4 sm:p-6 rounded-xl sm:rounded-2xl border-2 transition-all duration-300",
-              "bg-white dark:bg-gray-800/50",
-              "border-gray-200 dark:border-gray-700",
-              "hover:border-blue-500 dark:hover:border-blue-500",
-              "hover:shadow-lg hover:shadow-blue-500/10",
-              "hover:-translate-y-1"
-            )}
-          >
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 mb-2 sm:mb-3">
-              <stat.icon className={cn("w-6 h-6 sm:w-8 sm:h-8", stat.color)} />
-              <span className="text-[10px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                {stat.label}
-              </span>
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-              {stat.value}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Features */}
-      <div className="mb-8 sm:mb-12 lg:mb-16">
-        <div className="text-center mb-6 sm:mb-8 lg:mb-12">
-          <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-4">
-            Возможности платформы
-          </h2>
-          <p className="text-sm sm:text-base lg:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto px-4">
-            Передовые технологии для лучшего опыта чтения
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-          {features.map((feature, index) => (
-            <div
-              key={index}
+        {/* Feature highlights for guests */}
+        <motion.section
+          className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+        >
+          {[
+            {
+              icon: BookOpen,
+              title: 'Загрузите книгу',
+              description: 'EPUB и FB2 форматы поддерживаются',
+            },
+            {
+              icon: Sparkles,
+              title: 'AI найдет описания',
+              description: 'Автоматическое распознавание локаций и персонажей',
+            },
+            {
+              icon: Wand2,
+              title: 'Получите иллюстрации',
+              description: 'Уникальные изображения к каждому описанию',
+            },
+          ].map((feature, index) => (
+            <motion.div
+              key={feature.title}
               className={cn(
-                "group p-5 sm:p-6 lg:p-8 rounded-xl sm:rounded-2xl border-2 transition-all duration-300",
-                "bg-white dark:bg-gray-800/50",
-                "border-gray-200 dark:border-gray-700",
-                "hover:border-blue-500 dark:hover:border-blue-500",
-                "hover:shadow-xl hover:shadow-blue-500/10",
-                "hover:-translate-y-2"
+                'p-6 rounded-xl border border-border bg-card',
+                'text-center'
               )}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.4 + index * 0.1 }}
             >
-              <div className={cn("inline-flex p-3 sm:p-4 rounded-lg sm:rounded-xl mb-4 sm:mb-6", feature.iconBg)}>
-                <feature.icon className={cn("w-6 h-6 sm:w-8 sm:h-8", feature.iconColor)} />
+              <div className="inline-flex p-3 rounded-xl bg-primary/10 mb-4">
+                <feature.icon className="w-6 h-6 text-primary" />
               </div>
-
-              <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3">
+              <h3 className="text-lg font-semibold text-foreground mb-2">
                 {feature.title}
               </h3>
-
-              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 leading-relaxed">
-                {feature.description}
-              </p>
-            </div>
+              <p className="text-sm text-muted-foreground">{feature.description}</p>
+            </motion.div>
           ))}
-        </div>
+        </motion.section>
       </div>
+    );
+  }
 
-      {/* Reading Progress Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
-        {/* Recent Books */}
-        <div className={cn(
-          "p-5 sm:p-6 lg:p-8 rounded-xl sm:rounded-2xl border-2",
-          "bg-white dark:bg-gray-800/50",
-          "border-gray-200 dark:border-gray-700"
-        )}>
-          <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-            <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
-            <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
-              Недавняя активность
-            </h3>
-          </div>
+  // Authenticated user view
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <UserGreeting userName={user?.full_name} />
 
-          {booksLoading ? (
-            <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400 mb-4"></div>
-              <p className="text-gray-500 dark:text-gray-400">Загрузка активности...</p>
-            </div>
-          ) : booksInProgress.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                <BookOpen className="w-8 h-8 text-gray-400 dark:text-gray-500" />
-              </div>
-              <p className="text-gray-500 dark:text-gray-400 mb-4">
-                Пока нет книг в процессе чтения
-              </p>
-              <Link
-                to="/library"
-                className="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
-              >
-                Начать читать
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {booksInProgress.slice(0, 3).map((book) => (
-                <div
-                  key={book.id}
-                  onClick={() => navigate(`/book/${book.id}`)}
-                  className={cn(
-                    "p-4 rounded-xl border-2 cursor-pointer transition-all duration-200",
-                    "bg-gray-50 dark:bg-gray-800",
-                    "border-gray-200 dark:border-gray-700",
-                    "hover:border-blue-500 dark:hover:border-blue-500",
-                    "hover:shadow-md hover:-translate-y-0.5"
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-gray-900 dark:text-white truncate">
-                        {book.title}
-                      </h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {book.author}
-                      </p>
-                    </div>
-                    <span className="text-sm font-semibold text-blue-600 dark:text-blue-400 flex-shrink-0">
-                      {Math.round(book.reading_progress_percent)}%
-                    </span>
-                  </div>
-                  <div className="w-full h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
-                      style={{ width: `${Math.min(book.reading_progress_percent, 100)}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-              {booksInProgress.length > 3 && (
-                <Link
-                  to="/library"
-                  className="block text-center py-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
-                >
-                  Показать все ({booksInProgress.length})
-                </Link>
-              )}
-            </div>
-          )}
-        </div>
+      <ContinueReadingCard book={continueBook!} isLoading={booksLoading} />
 
-        {/* AI Gallery */}
-        <div className={cn(
-          "p-5 sm:p-6 lg:p-8 rounded-xl sm:rounded-2xl border-2 relative overflow-hidden",
-          "bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20",
-          "border-purple-200 dark:border-purple-700"
-        )}>
-          <div className="relative z-10">
-            <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 dark:text-purple-400" />
-              <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
-                Галерея AI
-              </h3>
-            </div>
+      <RecentBooksSection books={recentBooks} isLoading={booksLoading} />
 
-            <div className="space-y-3 sm:space-y-4">
-              <div className="flex items-start gap-2 sm:gap-3">
-                <div className="w-2 h-2 bg-purple-600 dark:bg-purple-400 rounded-full mt-1.5 sm:mt-2 flex-shrink-0" />
-                <div>
-                  <h4 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-0.5 sm:mb-1">
-                    Автоматическая визуализация
-                  </h4>
-                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                    Каждое описание превращается в уникальное изображение
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2 sm:gap-3">
-                <div className="w-2 h-2 bg-purple-600 dark:bg-purple-400 rounded-full mt-1.5 sm:mt-2 flex-shrink-0" />
-                <div>
-                  <h4 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-0.5 sm:mb-1">
-                    Персональная галерея
-                  </h4>
-                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                    Сохраняйте и делитесь любимыми AI-изображениями
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2 sm:gap-3">
-                <div className="w-2 h-2 bg-purple-600 dark:bg-purple-400 rounded-full mt-1.5 sm:mt-2 flex-shrink-0" />
-                <div>
-                  <h4 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-0.5 sm:mb-1">
-                    Контекстная интеграция
-                  </h4>
-                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                    Изображения появляются прямо в тексте книги
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <StatisticsSection
+        stats={{
+          totalBooks,
+          totalHours,
+          totalDescriptions,
+          totalImages,
+        }}
+        isLoading={statsLoading || imagesLoading}
+      />
     </div>
   );
 };

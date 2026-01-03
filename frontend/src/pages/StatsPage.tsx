@@ -330,20 +330,21 @@ const StatsPage: React.FC = () => {
             </div>
           ) : (
             // Chart with data
-            <div className="flex items-end justify-between gap-2 h-48">
+            <div className="flex items-end justify-between gap-2 h-48" role="img" aria-label="Weekly reading activity chart">
               {weeklyActivity.map((day, index) => (
                 <div key={index} className="flex-1 flex flex-col items-center gap-2">
                   <div className="relative flex-1 w-full flex flex-col justify-end">
                     <div
-                      className="w-full rounded-t-lg transition-all hover:opacity-80 cursor-pointer bg-primary"
+                      className="w-full rounded-t-lg transition-all hover:opacity-80 bg-primary"
                       style={{
                         height: `${(day.minutes / maxMinutes) * 100}%`,
                         minHeight: day.minutes > 0 ? '8px' : '0',
                       }}
-                      title={day.label}
+                      role="presentation"
+                      aria-hidden="true"
                     />
                   </div>
-                  <span className="text-xs font-medium text-muted-foreground">
+                  <span className="text-xs font-medium text-muted-foreground" aria-label={`${day.day}: ${day.label}`}>
                     {day.day}
                   </span>
                 </div>

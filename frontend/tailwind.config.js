@@ -19,43 +19,78 @@ export default {
         'xs': '375px',  // iPhone SE 2nd gen
       },
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
+        // Semantic mappings to CSS variables
+        background: 'var(--color-bg-base)',
+        foreground: 'var(--color-text-default)',
+
         card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+          DEFAULT: 'var(--color-bg-muted)',
+          foreground: 'var(--color-text-default)',
         },
+
+        popover: {
+          DEFAULT: 'var(--color-bg-subtle)',
+          foreground: 'var(--color-text-default)',
+        },
+
+        primary: {
+          DEFAULT: 'var(--color-accent-600)',
+          foreground: '#FFFFFF',
+        },
+
+        secondary: {
+          DEFAULT: 'var(--color-bg-muted)',
+          foreground: 'var(--color-text-default)',
+        },
+
+        muted: {
+          DEFAULT: 'var(--color-bg-subtle)',
+          foreground: 'var(--color-text-muted)',
+        },
+
+        accent: {
+          DEFAULT: 'var(--color-accent-600)',
+          foreground: '#FFFFFF',
+          50: 'var(--color-accent-50)',
+          100: 'var(--color-accent-100)',
+          200: 'var(--color-accent-200)',
+          300: 'var(--color-accent-300)',
+          400: 'var(--color-accent-400)',
+          500: 'var(--color-accent-500)',
+          600: 'var(--color-accent-600)',
+          700: 'var(--color-accent-700)',
+          800: 'var(--color-accent-800)',
+          900: 'var(--color-accent-900)',
+        },
+
+        destructive: {
+          DEFAULT: 'var(--color-error-600)',
+          foreground: '#FFFFFF',
+        },
+
+        success: {
+          DEFAULT: 'var(--color-success-600)',
+          foreground: '#FFFFFF',
+        },
+
+        warning: {
+          DEFAULT: 'var(--color-warning-600)',
+          foreground: '#FFFFFF',
+        },
+
+        info: {
+          DEFAULT: 'var(--color-info-600)',
+          foreground: '#FFFFFF',
+        },
+
+        border: 'var(--color-border-default)',
+        input: 'var(--color-border-default)',
+        ring: 'var(--color-accent-600)',
+
         highlight: {
-          DEFAULT: "hsl(var(--highlight-bg))",
-          border: "hsl(var(--highlight-border))",
-          active: "hsl(var(--highlight-active))",
+          DEFAULT: 'var(--color-highlight-bg)',
+          border: 'var(--color-highlight-border)',
+          active: 'var(--color-highlight-active)',
         },
       },
       borderRadius: {
@@ -101,6 +136,34 @@ export default {
     plugin(function({ addVariant }) {
       addVariant('sepia-theme', '.sepia &');
     }),
+    plugin(function({ addUtilities }) {
+      addUtilities({
+        // Safe area utilities for iOS notch/home indicator
+        '.pt-safe': {
+          paddingTop: 'env(safe-area-inset-top)',
+        },
+        '.pb-safe': {
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        },
+        '.pl-safe': {
+          paddingLeft: 'env(safe-area-inset-left)',
+        },
+        '.pr-safe': {
+          paddingRight: 'env(safe-area-inset-right)',
+        },
+        '.mt-safe': {
+          marginTop: 'env(safe-area-inset-top)',
+        },
+        '.mb-safe': {
+          marginBottom: 'env(safe-area-inset-bottom)',
+        },
+        // Touch target utility (minimum 44px)
+        '.touch-target': {
+          minWidth: '44px',
+          minHeight: '44px',
+        },
+      });
+    }),
   ],
-  darkMode: 'class',
+  darkMode: ['class', '[data-theme="dark"]'],
 }

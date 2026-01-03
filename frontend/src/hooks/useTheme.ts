@@ -49,11 +49,16 @@ export const useTheme = () => {
   const applyTheme = useCallback((resolved: ResolvedTheme) => {
     const root = document.documentElement;
 
-    // Remove all theme classes
+    // Remove all theme classes (for Tailwind compatibility)
     root.classList.remove('light', 'dark', 'sepia');
 
-    // Add current theme class (light is default, no class needed but we add for consistency)
-    root.classList.add(resolved);
+    // Set data-theme attribute for CSS custom properties
+    root.setAttribute('data-theme', resolved);
+
+    // Add theme class for Tailwind compatibility
+    if (resolved === 'dark' || resolved === 'sepia') {
+      root.classList.add(resolved);
+    }
 
     // Set color-scheme for native elements (scrollbars, inputs, etc.)
     root.style.colorScheme = resolved === 'dark' ? 'dark' : 'light';

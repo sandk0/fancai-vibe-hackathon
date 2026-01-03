@@ -13,9 +13,9 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
     <link rel="manifest" href="/site.webmanifest">
     
-    <!-- Theme color -->
-    <meta name="theme-color" content="#0ea5e9" />
-    <meta name="msapplication-TileColor" content="#0ea5e9" />
+    <!-- Theme color (warm orange accent from Phase 1) -->
+    <meta name="theme-color" content="#D97706" />
+    <meta name="msapplication-TileColor" content="#D97706" />
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
@@ -33,6 +33,10 @@
     
     <!-- PWA settings -->
     <link rel="manifest" href="/manifest.json">
+
+    <!-- Google Fonts preconnect (performance optimization) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     
     <!-- Loading styles to prevent flash -->
     <style>
@@ -100,7 +104,7 @@
         }
       }
 
-      /* Theme class support */
+      /* Theme class support (Tailwind compatibility) */
       .dark body, html.dark body {
         background-color: #111827;
       }
@@ -120,6 +124,31 @@
       html.sepia .loading-text {
         color: #8d6e63;
       }
+
+      /* data-theme attribute support (CSS custom properties) */
+      [data-theme="dark"] body {
+        background-color: #111827;
+      }
+
+      [data-theme="sepia"] body {
+        background-color: #f7f3e9;
+      }
+
+      [data-theme="dark"] #initial-loading {
+        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      }
+
+      [data-theme="sepia"] #initial-loading {
+        background: linear-gradient(135deg, #f7f3e9 0%, #f0e6d2 100%);
+      }
+
+      [data-theme="dark"] .loading-text {
+        color: #9ca3af;
+      }
+
+      [data-theme="sepia"] .loading-text {
+        color: #8d6e63;
+      }
     </style>
     <!-- Theme initialization (prevents FOUC) -->
     <script>
@@ -129,9 +158,18 @@
           if (theme === 'system' || !theme) {
             theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
           }
-          if (theme && theme !== 'light') {
-            document.documentElement.classList.add(theme);
+
+          // Set data-theme attribute for CSS custom properties
+          document.documentElement.setAttribute('data-theme', theme);
+
+          // Set class for Tailwind compatibility
+          if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else if (theme === 'sepia') {
+            document.documentElement.classList.add('sepia');
           }
+
+          // Set color-scheme for native elements (scrollbars, inputs, etc.)
           document.documentElement.style.colorScheme = theme === 'dark' ? 'dark' : 'light';
         } catch (e) {}
       })();

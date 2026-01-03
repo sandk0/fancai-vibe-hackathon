@@ -1,44 +1,79 @@
 /**
- * LibraryPage - Страница библиотеки книг
- *
- * Рефакторинг: Мигрировано на TanStack Query для правильного управления кэшем
- * - Использует useBooks hook вместо Zustand store
- * - Автоматическая инвалидация кэша при загрузке новых книг
- * - Поллинг для книг в обработке через refetchInterval
- *
- * Модульные компоненты:
- * - LibraryHeader - Заголовок с кнопкой загрузки
- * - LibraryStats - Статистические карточки
- * - LibrarySearch - Поиск и фильтры
- * - BookGrid - Сетка/список книг
- * - LibraryPagination - Пагинация
- * - useLibraryFilters - Хук для фильтрации
+ * LibraryPage - Redesigned library page with mobile-first design
  *
  * Features:
- * - Поиск и фильтрация книг
- * - Два режима отображения (grid/list)
- * - Автообновление при обработке книг
- * - Пагинация
- * - Responsive design
+ * - Mobile-first responsive grid (2/3-4/5-6 columns)
+ * - Filters panel (genre, progress, date)
+ * - Search bar with icon
+ * - Skeleton loading state
+ * - Empty state with illustration
+ * - Floating action button for upload (mobile)
+ * - CSS variables from design system
+ *
+ * Uses TanStack Query for data fetching with:
+ * - Auto-invalidation on book upload
+ * - Polling for processing books
+ * - Optimistic updates
  */
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Search,
+  Filter,
+  SortAsc,
+  SortDesc,
+  Plus,
+  X,
+  ChevronDown,
+  BookOpen,
+  Clock,
+  CheckCircle,
+  Loader2,
+} from 'lucide-react';
 import { useBooks, useDeleteBook } from '@/hooks/api/useBooks';
 import { bookKeys, getCurrentUserId } from '@/hooks/api/queryKeys';
 import { notify } from '@/stores/ui';
 import { BookUploadModal } from '@/components/Books/BookUploadModal';
-import { LibraryHeader } from '@/components/Library/LibraryHeader';
-import { LibraryStats } from '@/components/Library/LibraryStats';
-import { LibrarySearch } from '@/components/Library/LibrarySearch';
 import { BookGrid } from '@/components/Library/BookGrid';
-import { LibraryPagination } from '@/components/Library/LibraryPagination';
 import { DeleteConfirmModal } from '@/components/Library/DeleteConfirmModal';
 import { useLibraryFilters } from '@/hooks/library/useLibraryFilters';
+import { cn } from '@/lib/utils';
 import type { Book } from '@/types/api';
 
-const BOOKS_PER_PAGE = 10;
+const BOOKS_PER_PAGE = 24;
+
+// Sort options
+const SORT_OPTIONS = [
+  { value: 'created_desc', label: 'Newest First', icon: SortDesc },
+  { value: 'created_asc', label: 'Oldest First', icon: SortAsc },
+  { value: 'title_asc', label: 'Title A-Z', icon: SortAsc },
+  { value: 'title_desc', label: 'Title Z-A', icon: SortDesc },
+  { value: 'author_asc', label: 'Author A-Z', icon: SortAsc },
+  { value: 'accessed_desc', label: 'Recently Read', icon: Clock },
+];
+
+// Genre filter options
+const GENRE_OPTIONS = [
+  { value: 'all', label: 'All Genres' },
+  { value: 'fiction', label: 'Fiction' },
+  { value: 'non-fiction', label: 'Non-Fiction' },
+  { value: 'fantasy', label: 'Fantasy' },
+  { value: 'sci-fi', label: 'Sci-Fi' },
+  { value: 'romance', label: 'Romance' },
+  { value: 'mystery', label: 'Mystery' },
+  { value: 'thriller', label: 'Thriller' },
+];
+
+// Progress filter options
+const PROGRESS_OPTIONS = [
+  { value: 'all', label: 'All Books', icon: BookOpen },
+  { value: 'not_started', label: 'Not Started', icon: BookOpen },
+  { value: 'in_progress', label: 'In Progress', icon: Loader2 },
+  { value: 'completed', label: 'Completed', icon: CheckCircle },
+];
 
 const LibraryPage: React.FC = () => {
   const navigate = useNavigate();
@@ -48,34 +83,25 @@ const LibraryPage: React.FC = () => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState('created_desc');
+  const [genreFilter, setGenreFilter] = useState('all');
+  const [progressFilter, setProgressFilter] = useState('all');
   const [selectedBookForDelete, setSelectedBookForDelete] = useState<Book | null>(null);
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
 
   // Calculate skip for pagination
   const skip = (currentPage - 1) * BOOKS_PER_PAGE;
 
   // Fetch books using TanStack Query
-  const {
-    data,
-    isLoading,
-    error,
-  } = useBooks(
+  const { data, isLoading, error } = useBooks(
     { skip, limit: BOOKS_PER_PAGE, sort_by: sortBy },
     {
-      // CRITICAL: Always refetch when mounting to avoid stale data
-      // This ensures fresh data when navigating back to library
       refetchOnMount: 'always',
-      // Poll every 5 seconds if there are processing books
       refetchInterval: (query) => {
         const books = query.state.data?.books || [];
-        const hasProcessing = books.some(b => b.is_processing);
-        if (hasProcessing) {
-          console.log('📊 [LIBRARY] Found processing books, polling enabled');
-          return 5000;
-        }
-        return false;
+        const hasProcessing = books.some((b) => b.is_processing);
+        return hasProcessing ? 5000 : false;
       },
     }
   );
@@ -86,25 +112,65 @@ const LibraryPage: React.FC = () => {
   // Delete mutation
   const deleteBookMutation = useDeleteBook({
     onSuccess: () => {
-      notify.success('Книга удалена', 'Книга успешно удалена из библиотеки');
+      notify.success('Book deleted', 'The book has been removed from your library');
       setSelectedBookForDelete(null);
     },
     onError: (error) => {
       notify.error(
-        'Ошибка удаления',
-        error instanceof Error ? error.message : 'Не удалось удалить книгу'
+        'Delete failed',
+        error instanceof Error ? error.message : 'Failed to delete book'
       );
     },
   });
 
-  // Filter books and calculate stats
+  // Filter books locally
   const { filteredBooks, stats } = useLibraryFilters(books, searchQuery);
 
-  // Calculate total pages for pagination
-  const totalPages = useMemo(() =>
-    Math.ceil(totalBooks / BOOKS_PER_PAGE),
+  // Apply additional filters
+  const displayBooks = useMemo(() => {
+    let result = filteredBooks;
+
+    // Genre filter
+    if (genreFilter !== 'all') {
+      result = result.filter(
+        (book) =>
+          book.genre?.toLowerCase().includes(genreFilter.toLowerCase())
+      );
+    }
+
+    // Progress filter
+    if (progressFilter !== 'all') {
+      result = result.filter((book) => {
+        const progress = book.reading_progress_percent ?? 0;
+        switch (progressFilter) {
+          case 'not_started':
+            return progress === 0;
+          case 'in_progress':
+            return progress > 0 && progress < 100;
+          case 'completed':
+            return progress >= 100;
+          default:
+            return true;
+        }
+      });
+    }
+
+    return result;
+  }, [filteredBooks, genreFilter, progressFilter]);
+
+  // Calculate total pages
+  const totalPages = useMemo(
+    () => Math.ceil(totalBooks / BOOKS_PER_PAGE),
     [totalBooks]
   );
+
+  // Active filters count
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (genreFilter !== 'all') count++;
+    if (progressFilter !== 'all') count++;
+    return count;
+  }, [genreFilter, progressFilter]);
 
   // Handlers
   const handleUploadClick = () => setShowUploadModal(true);
@@ -112,56 +178,39 @@ const LibraryPage: React.FC = () => {
   const handleClearSearch = () => setSearchQuery('');
 
   const handleParsingComplete = () => {
-    console.log('[LibraryPage] Parsing completed, invalidating cache...');
     const userId = getCurrentUserId();
     queryClient.invalidateQueries({ queryKey: bookKeys.all(userId) });
   };
 
   const handleSortChange = (newSort: string) => {
     setSortBy(newSort);
-    setCurrentPage(1); // Reset to first page when sorting changes
+    setCurrentPage(1);
+    setShowSortDropdown(false);
   };
 
-  const goToPage = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
+  const handleClearFilters = () => {
+    setGenreFilter('all');
+    setProgressFilter('all');
   };
 
-  const nextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
-  const prevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  // Handle successful upload - reset to first page to show new book
-  // Note: Cache invalidation/refetch is handled in BookUploadModal
   const handleUploadSuccess = () => {
-    console.log('[LibraryPage] Book uploaded successfully, resetting to page 1...');
-    // Reset to first page to show the new book (cache already refreshed by modal)
     setCurrentPage(1);
   };
 
   const handleModalClose = () => {
     setShowUploadModal(false);
-    // Note: Do NOT call refetch() here - it causes race condition with handleUploadSuccess
-    // The cache is already invalidated by BookUploadModal's onSuccess mutation handler
-    // Calling refetch() here would use stale query params (before setCurrentPage(1) re-render)
   };
 
   // Delete handlers
-  const handleDeleteClick = useCallback((bookId: string) => {
-    const book = books.find(b => b.id === bookId);
-    if (book) {
-      setSelectedBookForDelete(book);
-    }
-  }, [books]);
+  const handleDeleteClick = useCallback(
+    (bookId: string) => {
+      const book = books.find((b) => b.id === bookId);
+      if (book) {
+        setSelectedBookForDelete(book);
+      }
+    },
+    [books]
+  );
 
   const handleDeleteConfirm = useCallback(() => {
     if (selectedBookForDelete) {
@@ -173,90 +222,282 @@ const LibraryPage: React.FC = () => {
     setSelectedBookForDelete(null);
   }, []);
 
-  // Loading state
-  if (isLoading && books.length === 0) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-          <p className="text-muted-foreground">Загрузка библиотеки...</p>
-        </div>
-      </div>
-    );
-  }
+  // Get current sort option
+  const currentSortOption = SORT_OPTIONS.find((opt) => opt.value === sortBy);
 
   return (
-    <div className="max-w-7xl mx-auto">
-      {/* Header */}
-      <LibraryHeader
-        totalBooks={totalBooks}
-        filteredCount={filteredBooks.length}
-        searchQuery={searchQuery}
-        onUploadClick={handleUploadClick}
-      />
+    <div className="min-h-screen bg-background">
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-8">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+              My Library
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {totalBooks} {totalBooks === 1 ? 'book' : 'books'}
+              {stats.processingBooks > 0 && (
+                <span className="ml-2 text-amber-600">
+                  ({stats.processingBooks} processing)
+                </span>
+              )}
+            </p>
+          </div>
 
-      {/* Stats Cards */}
-      <LibraryStats
-        totalBooks={totalBooks}
-        booksInProgress={stats.booksInProgress}
-        booksCompleted={stats.booksCompleted}
-        processingBooks={stats.processingBooks}
-      />
-
-      {/* Search and View Toggle */}
-      <LibrarySearch
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        sortBy={sortBy}
-        onSortChange={handleSortChange}
-        showFilters={showFilters}
-        onToggleFilters={() => setShowFilters(!showFilters)}
-      />
-
-      {/* Filters Panel */}
-      {showFilters && (
-        <div className="mb-6 p-6 rounded-2xl border-2 bg-muted border-border">
-          <p className="text-sm text-muted-foreground">
-            Фильтры скоро появятся...
-          </p>
+          {/* Desktop Upload Button */}
+          <motion.button
+            className="hidden md:flex items-center gap-2 px-6 py-3 rounded-xl font-semibold bg-primary text-primary-foreground shadow-lg min-h-[44px]"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleUploadClick}
+          >
+            <Plus className="w-5 h-5" />
+            <span>Upload Book</span>
+          </motion.button>
         </div>
-      )}
 
-      {/* Error Message */}
-      {error && (
-        <div className="bg-destructive/10 border-2 border-destructive/30 rounded-2xl p-4 mb-6">
-          <p className="text-destructive">
-            {error instanceof Error ? error.message : 'Ошибка загрузки книг'}
-          </p>
+        {/* Search and Filters Bar */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          {/* Search Input */}
+          <div className="flex-1 relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by title or author..."
+              className="w-full pl-12 pr-10 py-3 rounded-xl border-2 border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all min-h-[44px]"
+            />
+            {searchQuery && (
+              <button
+                onClick={handleClearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-muted transition-colors"
+                aria-label="Clear search"
+              >
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            )}
+          </div>
+
+          {/* Sort Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowSortDropdown(!showSortDropdown)}
+              aria-haspopup="listbox"
+              aria-expanded={showSortDropdown}
+              aria-label={`Sort by: ${currentSortOption?.label || 'Sort'}`}
+              className="flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-border bg-card text-foreground hover:bg-muted transition-colors min-h-[44px] min-w-[160px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              {currentSortOption && (
+                <currentSortOption.icon className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              )}
+              <span className="flex-1 text-left text-sm">
+                {currentSortOption?.label || 'Sort'}
+              </span>
+              <ChevronDown
+                className={cn(
+                  'w-4 h-4 text-muted-foreground transition-transform',
+                  showSortDropdown && 'rotate-180'
+                )}
+                aria-hidden="true"
+              />
+            </button>
+
+            <AnimatePresence>
+              {showSortDropdown && (
+                <>
+                  <motion.div
+                    className="fixed inset-0 z-40"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setShowSortDropdown(false)}
+                  />
+                  <motion.div
+                    className="absolute top-full right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-xl overflow-hidden z-50"
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    {SORT_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        role="option"
+                        aria-selected={sortBy === option.value}
+                        onClick={() => handleSortChange(option.value)}
+                        className={cn(
+                          'w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors min-h-[44px]',
+                          'focus:outline-none focus-visible:bg-muted',
+                          sortBy === option.value
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-foreground hover:bg-muted'
+                        )}
+                      >
+                        <option.icon className="w-4 h-4" aria-hidden="true" />
+                        <span>{option.label}</span>
+                      </button>
+                    ))}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Filter Toggle Button */}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            aria-expanded={showFilters}
+            aria-label={`Filters${activeFiltersCount > 0 ? ` (${activeFiltersCount} active)` : ''}`}
+            className={cn(
+              'flex items-center gap-2 px-4 py-3 rounded-xl border-2 transition-colors min-h-[44px]',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              showFilters || activeFiltersCount > 0
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-card text-foreground border-border hover:bg-muted'
+            )}
+          >
+            <Filter className="w-5 h-5" aria-hidden="true" />
+            <span className="hidden sm:inline">Filters</span>
+            {activeFiltersCount > 0 && (
+              <span className="ml-1 px-2 py-0.5 rounded-full bg-primary-foreground/20 text-xs font-semibold" aria-hidden="true">
+                {activeFiltersCount}
+              </span>
+            )}
+          </button>
         </div>
-      )}
 
-      {/* Books Grid/List */}
-      <BookGrid
-        books={filteredBooks}
-        viewMode={viewMode}
-        searchQuery={searchQuery}
-        onBookClick={handleBookClick}
-        onClearSearch={handleClearSearch}
-        onUploadClick={handleUploadClick}
-        onParsingComplete={handleParsingComplete}
-        onDelete={handleDeleteClick}
-      />
+        {/* Filters Panel */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              className="mb-6 p-4 sm:p-6 rounded-2xl border-2 border-border bg-card"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="flex flex-col sm:flex-row gap-6">
+                {/* Genre Filter */}
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Genre
+                  </label>
+                  <select
+                    value={genreFilter}
+                    onChange={(e) => setGenreFilter(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring min-h-[44px]"
+                  >
+                    {GENRE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-      {/* Pagination */}
-      {filteredBooks.length > 0 && (
-        <LibraryPagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={totalBooks}
-          currentItems={books.length}
-          onPageChange={goToPage}
-          onNextPage={nextPage}
-          onPrevPage={prevPage}
+                {/* Progress Filter */}
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Reading Progress
+                  </label>
+                  <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by reading progress">
+                    {PROGRESS_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => setProgressFilter(option.value)}
+                        aria-pressed={progressFilter === option.value}
+                        className={cn(
+                          'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors min-h-[44px]',
+                          'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                          progressFilter === option.value
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-foreground hover:bg-muted/80'
+                        )}
+                      >
+                        <option.icon className="w-4 h-4" aria-hidden="true" />
+                        <span>{option.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Clear Filters */}
+              {activeFiltersCount > 0 && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <button
+                    onClick={handleClearFilters}
+                    className="text-sm text-primary hover:text-primary/80 font-medium"
+                  >
+                    Clear all filters
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Error Message */}
+        {error && (
+          <motion.div
+            className="bg-destructive/10 border-2 border-destructive/30 rounded-2xl p-4 mb-6"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <p className="text-destructive">
+              {error instanceof Error ? error.message : 'Failed to load books'}
+            </p>
+          </motion.div>
+        )}
+
+        {/* Books Grid */}
+        <BookGrid
+          books={displayBooks}
+          isLoading={isLoading && books.length === 0}
+          searchQuery={searchQuery}
+          onBookClick={handleBookClick}
+          onClearSearch={handleClearSearch}
+          onUploadClick={handleUploadClick}
+          onParsingComplete={handleParsingComplete}
+          onDelete={handleDeleteClick}
         />
-      )}
+
+        {/* Pagination */}
+        {totalPages > 1 && displayBooks.length > 0 && (
+          <div className="flex justify-center items-center gap-2 mt-8">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 rounded-lg border border-border bg-card text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors min-h-[44px]"
+            >
+              Previous
+            </button>
+            <span className="px-4 py-2 text-muted-foreground">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 rounded-lg border border-border bg-card text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors min-h-[44px]"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Mobile FAB (Floating Action Button) */}
+      <motion.button
+        className="fixed bottom-6 right-6 md:hidden w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-xl flex items-center justify-center z-30"
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={handleUploadClick}
+        aria-label="Upload book"
+      >
+        <Plus className="w-7 h-7" />
+      </motion.button>
 
       {/* Upload Modal */}
       <BookUploadModal

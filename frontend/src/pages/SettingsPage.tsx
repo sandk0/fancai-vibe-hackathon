@@ -29,20 +29,38 @@ interface ToggleSwitchProps {
 }
 
 const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ checked, onChange, label, description }) => {
+  const switchId = React.useId();
+  const descriptionId = `${switchId}-description`;
+
   return (
     <div className="flex items-center justify-between py-4">
       <div className="flex-1">
-        <p className="font-medium text-foreground">
+        <label
+          id={switchId}
+          className="font-medium text-foreground cursor-pointer"
+        >
           {label}
-        </p>
-        <p className="text-sm mt-1 text-muted-foreground">
+        </label>
+        <p id={descriptionId} className="text-sm mt-1 text-muted-foreground">
           {description}
         </p>
       </div>
       <button
+        role="switch"
+        aria-checked={checked}
+        aria-labelledby={switchId}
+        aria-describedby={descriptionId}
         onClick={() => onChange(!checked)}
+        onKeyDown={(e) => {
+          if (e.key === ' ' || e.key === 'Enter') {
+            e.preventDefault();
+            onChange(!checked);
+          }
+        }}
         className={cn(
           'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+          'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+          'min-h-[44px] min-w-[44px]',
           checked ? 'bg-green-500' : 'bg-muted'
         )}
       >
@@ -51,6 +69,7 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ checked, onChange, label, d
             'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
             checked ? 'translate-x-6' : 'translate-x-1'
           )}
+          aria-hidden="true"
         />
       </button>
     </div>

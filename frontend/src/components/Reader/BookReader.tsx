@@ -72,8 +72,15 @@ export const BookReader: React.FC<BookReaderProps> = ({
     fontFamily,
     lineHeight,
     theme,
+    maxWidth,
+    margin,
     updateFontSize,
-    updateTheme
+    updateFontFamily,
+    updateLineHeight,
+    updateTheme,
+    updateMaxWidth,
+    updateMargin,
+    resetSettings,
   } = useReaderStore();
 
   // Fetch book data
@@ -306,14 +313,23 @@ export const BookReader: React.FC<BookReaderProps> = ({
         />
 
         {/* Settings Panel */}
-        {showSettings && (
-          <ReaderSettingsPanel
-            fontSize={fontSize}
-            theme={theme}
-            onFontSizeChange={updateFontSize}
-            onThemeChange={updateTheme}
-          />
-        )}
+        <ReaderSettingsPanel
+          isOpen={showSettings}
+          onClose={() => setShowSettings(false)}
+          fontSize={fontSize}
+          fontFamily={fontFamily}
+          lineHeight={lineHeight}
+          theme={theme}
+          maxWidth={maxWidth}
+          margin={margin}
+          onFontSizeChange={updateFontSize}
+          onFontFamilyChange={updateFontFamily}
+          onLineHeightChange={updateLineHeight}
+          onThemeChange={updateTheme}
+          onMaxWidthChange={updateMaxWidth}
+          onMarginChange={updateMargin}
+          onReset={resetSettings}
+        />
 
         {/* Reading Area */}
         <div className="max-w-4xl mx-auto px-4 py-8">

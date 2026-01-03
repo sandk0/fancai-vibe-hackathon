@@ -1,98 +1,341 @@
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CheckCircle, XCircle, AlertTriangle, Info } from 'lucide-react';
+import { X, CheckCircle, XCircle, AlertTriangle, Info, Bell } from 'lucide-react';
 import { useUIStore } from '@/stores/ui';
 import { cn } from '@/utils/cn';
+import type { Notification } from '@/types/state';
 
-const NotificationContainer: React.FC = () => {
-  const { notifications, removeNotification } = useUIStore();
+/**
+ * Toast notification variants
+ */
+type ToastVariant = 'success' | 'warning' | 'error' | 'info' | 'default';
 
-  const getIcon = (type: string) => {
-    switch (type) {
-      case 'success':
-        return <CheckCircle className="w-5 h-5" />;
-      case 'error':
-        return <XCircle className="w-5 h-5" />;
-      case 'warning':
-        return <AlertTriangle className="w-5 h-5" />;
-      case 'info':
-      default:
-        return <Info className="w-5 h-5" />;
-    }
+/**
+ * Configuration for each toast variant
+ */
+interface VariantConfig {
+  icon: React.ReactNode;
+  containerClasses: string;
+  iconClasses: string;
+  progressClasses: string;
+}
+
+/**
+ * Get variant configuration for styling
+ */
+const getVariantConfig = (variant: ToastVariant): VariantConfig => {
+  const configs: Record<ToastVariant, VariantConfig> = {
+    success: {
+      icon: <CheckCircle className="w-5 h-5" />,
+      containerClasses: cn(
+        'bg-[var(--color-success-muted)] border-[var(--color-success)]',
+        'dark:bg-[var(--color-success-muted)] dark:border-[var(--color-success)]',
+        'text-[var(--color-text-default)]'
+      ),
+      iconClasses: 'text-[var(--color-success)]',
+      progressClasses: 'bg-[var(--color-success)]',
+    },
+    warning: {
+      icon: <AlertTriangle className="w-5 h-5" />,
+      containerClasses: cn(
+        'bg-[var(--color-warning-muted)] border-[var(--color-warning)]',
+        'dark:bg-[var(--color-warning-muted)] dark:border-[var(--color-warning)]',
+        'text-[var(--color-text-default)]'
+      ),
+      iconClasses: 'text-[var(--color-warning)]',
+      progressClasses: 'bg-[var(--color-warning)]',
+    },
+    error: {
+      icon: <XCircle className="w-5 h-5" />,
+      containerClasses: cn(
+        'bg-[var(--color-error-muted)] border-[var(--color-error)]',
+        'dark:bg-[var(--color-error-muted)] dark:border-[var(--color-error)]',
+        'text-[var(--color-text-default)]'
+      ),
+      iconClasses: 'text-[var(--color-error)]',
+      progressClasses: 'bg-[var(--color-error)]',
+    },
+    info: {
+      icon: <Info className="w-5 h-5" />,
+      containerClasses: cn(
+        'bg-[var(--color-info-muted)] border-[var(--color-info)]',
+        'dark:bg-[var(--color-info-muted)] dark:border-[var(--color-info)]',
+        'text-[var(--color-text-default)]'
+      ),
+      iconClasses: 'text-[var(--color-info)]',
+      progressClasses: 'bg-[var(--color-info)]',
+    },
+    default: {
+      icon: <Bell className="w-5 h-5" />,
+      containerClasses: cn(
+        'bg-[var(--color-bg-subtle)] border-[var(--color-border-default)]',
+        'text-[var(--color-text-default)]'
+      ),
+      iconClasses: 'text-[var(--color-text-muted)]',
+      progressClasses: 'bg-[var(--color-accent-500)]',
+    },
   };
 
-  const getStyles = (type: string) => {
-    switch (type) {
-      case 'success':
-        return 'bg-green-50 dark:bg-green-950/50 sepia-theme:bg-green-50/80 border-green-200 dark:border-green-800 sepia-theme:border-green-300 text-green-800 dark:text-green-200 sepia-theme:text-green-900';
-      case 'error':
-        return 'bg-red-50 dark:bg-red-950/50 sepia-theme:bg-red-50/80 border-red-200 dark:border-red-800 sepia-theme:border-red-300 text-red-800 dark:text-red-200 sepia-theme:text-red-900';
-      case 'warning':
-        return 'bg-yellow-50 dark:bg-yellow-950/50 sepia-theme:bg-yellow-50/80 border-yellow-200 dark:border-yellow-800 sepia-theme:border-yellow-300 text-yellow-800 dark:text-yellow-200 sepia-theme:text-yellow-900';
-      case 'info':
-      default:
-        return 'bg-blue-50 dark:bg-blue-950/50 sepia-theme:bg-blue-50/80 border-blue-200 dark:border-blue-800 sepia-theme:border-blue-300 text-blue-800 dark:text-blue-200 sepia-theme:text-blue-900';
-    }
-  };
+  return configs[variant] || configs.default;
+};
 
-  const getIconStyles = (type: string) => {
-    switch (type) {
-      case 'success':
-        return 'text-green-500 dark:text-green-400 sepia-theme:text-green-600';
-      case 'error':
-        return 'text-red-500 dark:text-red-400 sepia-theme:text-red-600';
-      case 'warning':
-        return 'text-yellow-500 dark:text-yellow-400 sepia-theme:text-yellow-600';
-      case 'info':
-      default:
-        return 'text-blue-500 dark:text-blue-400 sepia-theme:text-blue-600';
-    }
-  };
+/**
+ * Animation variants for slide in/out
+ */
+const toastAnimationVariants = {
+  // Desktop: slide from right
+  desktop: {
+    initial: { opacity: 0, x: 100, scale: 0.95 },
+    animate: { opacity: 1, x: 0, scale: 1 },
+    exit: { opacity: 0, x: 100, scale: 0.95 },
+  },
+  // Mobile: slide from top center
+  mobile: {
+    initial: { opacity: 0, y: -50, scale: 0.95 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    exit: { opacity: 0, y: -50, scale: 0.95 },
+  },
+};
+
+/**
+ * Progress bar component for auto-dismiss
+ */
+interface ProgressBarProps {
+  duration: number;
+  isPaused: boolean;
+  variant: ToastVariant;
+  onComplete: () => void;
+}
+
+const ProgressBar: React.FC<ProgressBarProps> = ({
+  duration,
+  isPaused,
+  variant,
+  onComplete,
+}) => {
+  const [progress, setProgress] = useState(100);
+  const config = getVariantConfig(variant);
+
+  useEffect(() => {
+    if (isPaused || duration === 0) return;
+
+    const startTime = Date.now();
+    const remainingTime = (progress / 100) * duration;
+
+    const updateProgress = () => {
+      const elapsed = Date.now() - startTime;
+      const newProgress = Math.max(0, progress - (elapsed / remainingTime) * progress);
+
+      if (newProgress <= 0) {
+        setProgress(0);
+        onComplete();
+      } else {
+        setProgress(newProgress);
+        requestAnimationFrame(updateProgress);
+      }
+    };
+
+    const animationId = requestAnimationFrame(updateProgress);
+    return () => cancelAnimationFrame(animationId);
+  }, [duration, isPaused, onComplete, progress]);
+
+  if (duration === 0) return null;
 
   return (
-    <div className="fixed top-20 right-4 z-50 space-y-2 max-w-sm w-full">
-      <AnimatePresence mode="popLayout">
-        {notifications.map((notification) => (
-          <motion.div
-            key={notification.id}
-            initial={{ opacity: 0, x: 300, scale: 0.8 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 300, scale: 0.8 }}
-            transition={{ duration: 0.2 }}
-            className={cn(
-              'p-4 rounded-lg border shadow-lg',
-              getStyles(notification.type)
-            )}
-          >
-            <div className="flex items-start">
-              <div className={cn('flex-shrink-0', getIconStyles(notification.type))}>
-                {getIcon(notification.type)}
-              </div>
-              
-              <div className="ml-3 flex-1">
-                <h4 className="text-sm font-medium">
-                  {notification.title}
-                </h4>
-                {notification.message && (
-                  <p className="mt-1 text-sm opacity-90">
-                    {notification.message}
-                  </p>
-                )}
-              </div>
-              
-              <button
-                type="button"
-                onClick={() => removeNotification(notification.id)}
-                className="ml-4 flex-shrink-0 text-current opacity-60 hover:opacity-80 transition-opacity"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </motion.div>
-        ))}
-      </AnimatePresence>
+    <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/10 dark:bg-white/10 overflow-hidden rounded-b-lg">
+      <motion.div
+        className={cn('h-full', config.progressClasses)}
+        initial={{ width: '100%' }}
+        animate={{ width: `${progress}%` }}
+        transition={{ duration: 0.1, ease: 'linear' }}
+      />
     </div>
   );
 };
 
+/**
+ * Single toast notification component
+ */
+interface ToastProps {
+  notification: Notification;
+  onDismiss: (id: string) => void;
+  showProgressBar?: boolean;
+}
+
+const Toast: React.FC<ToastProps> = ({
+  notification,
+  onDismiss,
+  showProgressBar = true,
+}) => {
+  const [isPaused, setIsPaused] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  const variant = (notification.type || 'default') as ToastVariant;
+  const config = getVariantConfig(variant);
+  const duration = notification.duration || 5000;
+
+  // Detect mobile viewport
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const handleDismiss = useCallback(() => {
+    onDismiss(notification.id);
+  }, [notification.id, onDismiss]);
+
+  const animationVariant = isMobile
+    ? toastAnimationVariants.mobile
+    : toastAnimationVariants.desktop;
+
+  return (
+    <motion.div
+      layout
+      initial={animationVariant.initial}
+      animate={animationVariant.animate}
+      exit={animationVariant.exit}
+      transition={{
+        type: 'spring',
+        stiffness: 400,
+        damping: 30,
+        mass: 1,
+      }}
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onTouchStart={() => setIsPaused(true)}
+      onTouchEnd={() => setIsPaused(false)}
+      className={cn(
+        'relative overflow-hidden',
+        'p-4 rounded-lg border shadow-lg',
+        'backdrop-blur-sm',
+        'min-w-[280px] max-w-[400px]',
+        'transition-shadow duration-200',
+        'hover:shadow-xl',
+        config.containerClasses
+      )}
+      role="alert"
+      aria-live="polite"
+    >
+      <div className="flex items-start gap-3">
+        {/* Icon */}
+        <div className={cn('flex-shrink-0 mt-0.5', config.iconClasses)}>
+          {config.icon}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <h4 className="text-sm font-semibold leading-tight">
+            {notification.title}
+          </h4>
+          {notification.message && (
+            <p className="mt-1 text-sm opacity-80 leading-relaxed">
+              {notification.message}
+            </p>
+          )}
+        </div>
+
+        {/* Close button */}
+        <button
+          type="button"
+          onClick={handleDismiss}
+          className={cn(
+            'flex-shrink-0 p-1 rounded-md',
+            'opacity-60 hover:opacity-100',
+            'transition-all duration-200',
+            'hover:bg-black/10 dark:hover:bg-white/10',
+            'focus:outline-none focus:ring-2 focus:ring-offset-2',
+            'focus:ring-[var(--color-accent-500)]'
+          )}
+          aria-label="Close notification"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Progress bar */}
+      {showProgressBar && duration > 0 && (
+        <ProgressBar
+          duration={duration}
+          isPaused={isPaused}
+          variant={variant}
+          onComplete={handleDismiss}
+        />
+      )}
+    </motion.div>
+  );
+};
+
+/**
+ * Main notification container component
+ * Renders notifications with responsive positioning:
+ * - Desktop: top-right
+ * - Mobile: top-center
+ */
+const NotificationContainer: React.FC = () => {
+  const { notifications, removeNotification } = useUIStore();
+
+  return (
+    <>
+      {/* Desktop container - top-right */}
+      <div
+        className={cn(
+          'fixed z-[9999]',
+          // Desktop positioning
+          'hidden md:flex',
+          'top-4 right-4',
+          'flex-col items-end gap-3',
+          'max-w-[420px] w-full',
+          'pointer-events-none'
+        )}
+        aria-label="Notifications"
+      >
+        <AnimatePresence mode="popLayout">
+          {notifications.map((notification) => (
+            <div key={notification.id} className="pointer-events-auto w-full">
+              <Toast
+                notification={notification}
+                onDismiss={removeNotification}
+                showProgressBar={true}
+              />
+            </div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {/* Mobile container - top-center */}
+      <div
+        className={cn(
+          'fixed z-[9999]',
+          // Mobile positioning
+          'flex md:hidden',
+          'top-4 left-4 right-4',
+          'flex-col items-center gap-3',
+          'pointer-events-none'
+        )}
+        aria-label="Notifications"
+      >
+        <AnimatePresence mode="popLayout">
+          {notifications.map((notification) => (
+            <div key={notification.id} className="pointer-events-auto w-full">
+              <Toast
+                notification={notification}
+                onDismiss={removeNotification}
+                showProgressBar={true}
+              />
+            </div>
+          ))}
+        </AnimatePresence>
+      </div>
+    </>
+  );
+};
+
 export default NotificationContainer;
+
+/**
+ * Standalone Toast component for external use
+ */
+export { Toast };
+export type { ToastVariant, ToastProps };

@@ -156,10 +156,11 @@ const ProfilePage: React.FC = () => {
 
               {/* Upload Avatar Button */}
               <button
-                className="absolute bottom-0 right-0 p-2 rounded-full bg-card border border-border shadow-lg transition-all hover:scale-110"
+                className="absolute bottom-0 right-0 p-2 rounded-full bg-card border border-border shadow-lg transition-all hover:scale-110 min-h-[44px] min-w-[44px] flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 onClick={() => console.log('Upload avatar')}
+                aria-label="Upload profile photo"
               >
-                <Camera className="w-5 h-5 text-primary" />
+                <Camera className="w-5 h-5 text-primary" aria-hidden="true" />
               </button>
             </div>
 
@@ -175,15 +176,17 @@ const ProfilePage: React.FC = () => {
                   />
                   <button
                     onClick={handleSave}
-                    className="p-2 rounded-lg transition-all hover:scale-110 bg-primary"
+                    className="p-2 rounded-lg transition-all hover:scale-110 bg-primary min-h-[44px] min-w-[44px] flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    aria-label="Save name"
                   >
-                    <Save className="w-5 h-5 text-primary-foreground" />
+                    <Save className="w-5 h-5 text-primary-foreground" aria-hidden="true" />
                   </button>
                   <button
                     onClick={handleCancel}
-                    className="p-2 rounded-lg border-2 transition-all hover:scale-110 bg-background border-border"
+                    className="p-2 rounded-lg border-2 transition-all hover:scale-110 bg-background border-border min-h-[44px] min-w-[44px] flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    aria-label="Cancel editing"
                   >
-                    <X className="w-5 h-5 text-foreground" />
+                    <X className="w-5 h-5 text-foreground" aria-hidden="true" />
                   </button>
                 </div>
               ) : (
@@ -193,9 +196,10 @@ const ProfilePage: React.FC = () => {
                   </h1>
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-all"
+                    className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-all min-h-[44px] min-w-[44px] flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary"
+                    aria-label="Edit name"
                   >
-                    <Edit2 className="w-5 h-5 text-white" />
+                    <Edit2 className="w-5 h-5 text-white" aria-hidden="true" />
                   </button>
                 </div>
               )}

@@ -11,27 +11,32 @@ export interface ReadingProgress {
   totalTimeRead: number; // in seconds
 }
 
+// Reader theme type including 'night' mode
+export type ReaderTheme = 'light' | 'dark' | 'sepia' | 'night';
+
 interface ReaderState {
   // Settings
   fontSize: number;
   fontFamily: string;
   lineHeight: number;
-  theme: 'light' | 'dark' | 'sepia';
+  theme: ReaderTheme;
   backgroundColor: string;
   textColor: string;
   maxWidth: number;
   margin: number;
-  
+
   // Reading state
   readingProgress: Record<string, ReadingProgress>;
   bookmarks: Record<string, { chapter: number; page: number; text: string; createdAt: Date }[]>;
   highlights: Record<string, { id: string; chapter: number; text: string; color: string; createdAt: Date }[]>;
-  
+
   // Actions
   updateFontSize: (size: number) => void;
   updateFontFamily: (family: string) => void;
   updateLineHeight: (height: number) => void;
-  updateTheme: (theme: 'light' | 'dark' | 'sepia') => void;
+  updateTheme: (theme: ReaderTheme) => void;
+  updateMaxWidth: (width: number) => void;
+  updateMargin: (margin: number) => void;
   updateReadingProgress: (bookId: string, chapter: number, progress: number, page?: number) => void;
   addBookmark: (bookId: string, chapter: number, page: number, text: string) => void;
   removeBookmark: (bookId: string, index: number) => void;
@@ -43,18 +48,22 @@ interface ReaderState {
   getTotalReadingTime: () => number;
 }
 
-const themeSettings = {
+const themeSettings: Record<ReaderTheme, { backgroundColor: string; textColor: string }> = {
   light: {
-    backgroundColor: '#ffffff',
-    textColor: '#1f2937',
+    backgroundColor: '#FFFFFF',
+    textColor: '#1A1A1A',
   },
   dark: {
-    backgroundColor: '#111827',
-    textColor: '#f9fafb',
+    backgroundColor: '#121212',
+    textColor: '#E0E0E0',
   },
   sepia: {
-    backgroundColor: '#f7f3e4',
-    textColor: '#5d4e37',
+    backgroundColor: '#FBF0D9',
+    textColor: '#3D2914',
+  },
+  night: {
+    backgroundColor: '#000000',
+    textColor: '#B0B0B0',
   },
 };
 
@@ -89,15 +98,23 @@ export const useReaderStore = create<ReaderState>()(
         set({ lineHeight: Math.max(1.2, Math.min(2.5, height)) });
       },
       
-      updateTheme: (theme: 'light' | 'dark' | 'sepia') => {
+      updateTheme: (theme: ReaderTheme) => {
         const settings = themeSettings[theme];
-        set({ 
-          theme, 
+        set({
+          theme,
           backgroundColor: settings.backgroundColor,
           textColor: settings.textColor,
         });
       },
-      
+
+      updateMaxWidth: (width: number) => {
+        set({ maxWidth: Math.max(500, Math.min(1200, width)) });
+      },
+
+      updateMargin: (margin: number) => {
+        set({ margin: Math.max(0, Math.min(100, margin)) });
+      },
+
       // Reading progress actions
       updateReadingProgress: async (bookId: string, chapter: number, progress: number, page?: number) => {
         const currentProgress = get().readingProgress[bookId];

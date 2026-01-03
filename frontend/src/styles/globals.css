@@ -7,79 +7,245 @@
 
 @layer base {
   :root {
+    /* ========================================
+       LIGHT THEME - Clean & Modern
+       ======================================== */
+
+    /* New semantic color system */
+    --color-bg-base: #FFFFFF;
+    --color-bg-subtle: #F9FAFB;
+    --color-bg-muted: #F3F4F6;
+    --color-bg-emphasis: #E5E7EB;
+
+    --color-text-default: #111827;
+    --color-text-muted: #4B5563;
+    --color-text-subtle: #6B7280;
+    --color-text-disabled: #9CA3AF;
+
+    --color-border-default: #E5E7EB;
+    --color-border-muted: #F3F4F6;
+
+    /* Accent - warm orange */
+    --color-accent-400: #FBBF24;
+    --color-accent-500: #F59E0B;
+    --color-accent-600: #D97706;
+    --color-accent-700: #B45309;
+
+    /* Semantic colors */
+    --color-success: #10B981;
+    --color-success-muted: #D1FAE5;
+    --color-warning: #F59E0B;
+    --color-warning-muted: #FEF3C7;
+    --color-error: #EF4444;
+    --color-error-muted: #FEE2E2;
+    --color-info: #3B82F6;
+    --color-info-muted: #DBEAFE;
+
+    /* shadcn/ui compatible variables (HSL format) */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 220 13% 9%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 220 13% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --popover-foreground: 220 13% 9%;
+    --primary: 38 92% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 13% 9%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 220 14% 96%;
+    --accent-foreground: 220 13% 9%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 38 92% 50%;
     --radius: 0.5rem;
-    --highlight-bg: 217 91% 60% / 0.25;
-    --highlight-border: 217 91% 60% / 0.5;
-    --highlight-active: 217 91% 60% / 0.4;
+
+    /* Highlight colors - warm amber for light theme */
+    --highlight-bg: 38 92% 50% / 0.2;
+    --highlight-border: 38 92% 50% / 0.5;
+    --highlight-active: 38 92% 50% / 0.35;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
-    --highlight-bg: 217 91% 60% / 0.35;
-    --highlight-border: 217 91% 60% / 0.6;
-    --highlight-active: 217 91% 60% / 0.5;
+    /* ========================================
+       DARK THEME - NEUTRAL GRAYS (NOT BLUE)
+       Using Material Design dark surface colors
+       ======================================== */
+
+    /* New semantic color system - NEUTRAL GRAYS */
+    --color-bg-base: #121212;
+    --color-bg-subtle: #1A1A1A;
+    --color-bg-muted: #1E1E1E;
+    --color-bg-emphasis: #2A2A2A;
+
+    /* Text - off-white for reduced eye strain */
+    --color-text-default: #E8E8E8;
+    --color-text-muted: #B3B3B3;
+    --color-text-subtle: #808080;
+    --color-text-disabled: #5C5C5C;
+
+    /* Borders - neutral */
+    --color-border-default: #2D2D2D;
+    --color-border-muted: #252525;
+
+    /* Accent - brighter for dark mode */
+    --color-accent-400: #FCD34D;
+    --color-accent-500: #FBBF24;
+    --color-accent-600: #F59E0B;
+    --color-accent-700: #D97706;
+
+    /* Semantic colors - adjusted for dark */
+    --color-success: #34D399;
+    --color-success-muted: #064E3B;
+    --color-warning: #FBBF24;
+    --color-warning-muted: #78350F;
+    --color-error: #F87171;
+    --color-error-muted: #7F1D1D;
+    --color-info: #60A5FA;
+    --color-info-muted: #1E3A5F;
+
+    /* shadcn/ui compatible variables (HSL format) - NEUTRAL */
+    --background: 0 0% 7%;
+    --foreground: 0 0% 91%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 91%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 91%;
+    --primary: 45 93% 58%;
+    --primary-foreground: 0 0% 7%;
+    --secondary: 0 0% 17%;
+    --secondary-foreground: 0 0% 91%;
+    --muted: 0 0% 17%;
+    --muted-foreground: 0 0% 70%;
+    --accent: 0 0% 17%;
+    --accent-foreground: 0 0% 91%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 45 93% 58%;
+
+    /* Highlight colors - warm amber for dark theme */
+    --highlight-bg: 45 93% 58% / 0.25;
+    --highlight-border: 45 93% 58% / 0.5;
+    --highlight-active: 45 93% 58% / 0.4;
   }
 
   .sepia {
-    --background: 39 39% 94%;
-    --foreground: 18 28% 29%;
-    --card: 39 35% 92%;
-    --card-foreground: 18 28% 29%;
-    --popover: 39 35% 92%;
-    --popover-foreground: 18 28% 29%;
-    --primary: 28 79% 45%;
-    --primary-foreground: 39 39% 98%;
-    --secondary: 33 35% 85%;
-    --secondary-foreground: 18 28% 29%;
-    --muted: 33 35% 85%;
-    --muted-foreground: 17 22% 45%;
-    --accent: 33 35% 85%;
-    --accent-foreground: 18 28% 29%;
+    /* ========================================
+       SEPIA THEME - Kindle-inspired warm tones
+       ======================================== */
+
+    /* New semantic color system - Kindle-like */
+    --color-bg-base: #FBF0D9;
+    --color-bg-subtle: #F7EBCF;
+    --color-bg-muted: #F5E6C8;
+    --color-bg-emphasis: #EBD9B5;
+
+    /* Text - warm brown tones */
+    --color-text-default: #3D2914;
+    --color-text-muted: #5F4B32;
+    --color-text-subtle: #7A6347;
+    --color-text-disabled: #9D8B74;
+
+    /* Borders - warm */
+    --color-border-default: #E8D5B5;
+    --color-border-muted: #EFE0C8;
+
+    /* Accent - deep amber/orange */
+    --color-accent-400: #F59E0B;
+    --color-accent-500: #D97706;
+    --color-accent-600: #B45309;
+    --color-accent-700: #92400E;
+
+    /* Semantic colors - sepia adapted */
+    --color-success: #059669;
+    --color-success-muted: #D1E7DD;
+    --color-warning: #D97706;
+    --color-warning-muted: #F5E6C8;
+    --color-error: #DC2626;
+    --color-error-muted: #F5D5D5;
+    --color-info: #2563EB;
+    --color-info-muted: #D5E3F5;
+
+    /* shadcn/ui compatible variables (HSL format) */
+    --background: 43 65% 92%;
+    --foreground: 28 48% 16%;
+    --card: 41 55% 89%;
+    --card-foreground: 28 48% 16%;
+    --popover: 41 55% 89%;
+    --popover-foreground: 28 48% 16%;
+    --primary: 32 95% 37%;
+    --primary-foreground: 43 65% 96%;
+    --secondary: 36 40% 83%;
+    --secondary-foreground: 28 48% 16%;
+    --muted: 36 40% 83%;
+    --muted-foreground: 24 26% 40%;
+    --accent: 36 40% 83%;
+    --accent-foreground: 28 48% 16%;
     --destructive: 0 72% 51%;
-    --destructive-foreground: 39 39% 98%;
-    --border: 23 20% 82%;
-    --input: 30 25% 88%;
-    --ring: 28 79% 45%;
-    --highlight-bg: 36 80% 50% / 0.25;
-    --highlight-border: 36 80% 50% / 0.5;
-    --highlight-active: 36 80% 50% / 0.4;
+    --destructive-foreground: 43 65% 96%;
+    --border: 30 35% 80%;
+    --input: 35 40% 86%;
+    --ring: 32 95% 37%;
+
+    /* Highlight colors - warm orange for sepia */
+    --highlight-bg: 32 95% 44% / 0.25;
+    --highlight-border: 32 95% 44% / 0.5;
+    --highlight-active: 32 95% 44% / 0.4;
+  }
+
+  /* ========================================
+     READER-SPECIFIC THEMES
+     Optimized for reading experience
+     Applied via data-reader-theme attribute
+     ======================================== */
+
+  [data-reader-theme="light"] {
+    /* Reader Light - Optimized for daytime reading */
+    --reader-bg: #FFFFFF;
+    --reader-text: #1A1A1A;
+    --reader-text-muted: #6B7280;
+    --reader-highlight: rgba(251, 191, 36, 0.3);
+    --reader-link: #2563EB;
+    --reader-border: #E5E7EB;
+    --reader-selection: rgba(59, 130, 246, 0.25);
+  }
+
+  [data-reader-theme="dark"] {
+    /* Reader Dark - Material Design dark with minimal blue light */
+    --reader-bg: #121212;
+    --reader-text: #E0E0E0;
+    --reader-text-muted: #9E9E9E;
+    --reader-highlight: rgba(251, 191, 36, 0.35);
+    --reader-link: #90CAF9;
+    --reader-border: #2D2D2D;
+    --reader-selection: rgba(144, 202, 249, 0.3);
+  }
+
+  [data-reader-theme="sepia"] {
+    /* Reader Sepia - Kindle-like warm tones for eye comfort */
+    --reader-bg: #FBF0D9;
+    --reader-text: #3D2914;
+    --reader-text-muted: #7A6347;
+    --reader-highlight: rgba(217, 119, 6, 0.3);
+    --reader-link: #92400E;
+    --reader-border: #E8D5B5;
+    --reader-selection: rgba(146, 64, 14, 0.2);
+  }
+
+  [data-reader-theme="night"] {
+    /* Reader Night - AMOLED black for maximum battery saving and night reading */
+    --reader-bg: #000000;
+    --reader-text: #B0B0B0;
+    --reader-text-muted: #707070;
+    --reader-highlight: rgba(251, 191, 36, 0.25);
+    --reader-link: #7CB3F0;
+    --reader-border: #1A1A1A;
+    --reader-selection: rgba(124, 179, 240, 0.25);
   }
 }
 
@@ -144,11 +310,19 @@ body {
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #475569;
+  background: #404040;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: #525252;
+}
+
+.sepia ::-webkit-scrollbar-thumb {
+  background: #C9B896;
+}
+
+.sepia ::-webkit-scrollbar-thumb:hover {
+  background: #B5A07A;
 }
 
 /* Focus styles */
@@ -271,7 +445,7 @@ body {
 .progress-bar {
   position: relative;
   height: 4px;
-  background-color: #e5e7eb;
+  background-color: var(--color-bg-emphasis, #e5e7eb);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -282,7 +456,7 @@ body {
   top: 0;
   left: 0;
   height: 100%;
-  background-color: #3b82f6;
+  background-color: var(--color-accent-500, #F59E0B);
   border-radius: 2px;
   transition: width 0.3s ease;
   width: var(--progress, 0%);
@@ -300,8 +474,8 @@ body {
   left: 50%;
   transform: translateX(-50%);
   padding: 4px 8px;
-  background-color: rgba(0, 0, 0, 0.8);
-  color: white;
+  background-color: var(--color-bg-emphasis, rgba(0, 0, 0, 0.8));
+  color: var(--color-text-default, white);
   font-size: 12px;
   border-radius: 4px;
   white-space: nowrap;
@@ -310,6 +484,16 @@ body {
   transition: opacity 0.2s, visibility 0.2s;
   pointer-events: none;
   z-index: 1000;
+}
+
+.dark .tooltip::before {
+  background-color: #2A2A2A;
+  color: #E8E8E8;
+}
+
+.sepia .tooltip::before {
+  background-color: #5F4B32;
+  color: #FBF0D9;
 }
 
 .tooltip:hover::before {
@@ -384,7 +568,7 @@ button, a, [role="button"] {
   .no-print {
     display: none !important;
   }
-  
+
   .reader-text {
     font-size: 12pt !important;
     line-height: 1.5 !important;
@@ -397,7 +581,7 @@ button, a, [role="button"] {
   .book-cover {
     border: 2px solid;
   }
-  
+
   button {
     border: 2px solid;
   }
@@ -413,3 +597,45 @@ button, a, [role="button"] {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ========================================
+   Utility classes using new color system
+   ======================================== */
+
+/* Background utilities */
+.bg-base { background-color: var(--color-bg-base); }
+.bg-subtle { background-color: var(--color-bg-subtle); }
+.bg-muted-custom { background-color: var(--color-bg-muted); }
+.bg-emphasis { background-color: var(--color-bg-emphasis); }
+
+/* Text utilities */
+.text-default { color: var(--color-text-default); }
+.text-muted-custom { color: var(--color-text-muted); }
+.text-subtle { color: var(--color-text-subtle); }
+.text-disabled { color: var(--color-text-disabled); }
+
+/* Border utilities */
+.border-default { border-color: var(--color-border-default); }
+.border-muted-custom { border-color: var(--color-border-muted); }
+
+/* Accent utilities */
+.text-accent { color: var(--color-accent-500); }
+.bg-accent-custom { background-color: var(--color-accent-500); }
+.border-accent { border-color: var(--color-accent-500); }
+
+/* Semantic color utilities */
+.text-success { color: var(--color-success); }
+.bg-success { background-color: var(--color-success); }
+.bg-success-muted { background-color: var(--color-success-muted); }
+
+.text-warning { color: var(--color-warning); }
+.bg-warning { background-color: var(--color-warning); }
+.bg-warning-muted { background-color: var(--color-warning-muted); }
+
+.text-error { color: var(--color-error); }
+.bg-error { background-color: var(--color-error); }
+.bg-error-muted { background-color: var(--color-error-muted); }
+
+.text-info { color: var(--color-info); }
+.bg-info { background-color: var(--color-info); }
+.bg-info-muted { background-color: var(--color-info-muted); }

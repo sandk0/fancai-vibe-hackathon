@@ -1,24 +1,31 @@
 /**
- * BookCard - Карточка книги с поддержкой двух режимов отображения
+ * BookCard - Redesigned book card with hover effects, mobile menu, and animations
  *
- * Режимы:
- * - grid - Компактная карточка с обложкой сверху
- * - list - Широкая карточка с обложкой слева
+ * Features:
+ * - Aspect ratio 2:3 for cover
+ * - Progress bar overlay at bottom of cover
+ * - Hover overlay with Read/Delete actions (desktop)
+ * - Always visible MoreVertical menu (mobile)
+ * - Title and author with line-clamp
+ * - Framer-motion animations
+ * - Touch-friendly tap areas (min 44px)
  *
- * Отображает:
- * - Обложку книги или плейсхолдер
- * - Название и автора
- * - Метаданные (жанр, главы, дата загрузки)
- * - Прогресс чтения (если есть)
- * - Индикатор обработки AI
- *
- * @param book - Данные книги
- * @param viewMode - Режим отображения (grid/list)
- * @param onClick - Callback при клике на карточку
+ * @param book - Book data
+ * @param onClick - Callback when clicking to read
+ * @param onParsingComplete - Callback when AI parsing completes
+ * @param onDelete - Callback for delete action
  */
 
-import { memo, useCallback, useMemo } from 'react';
-import { Book, AlertCircle, BookMarked, Layers, Calendar, BarChart3, Trash2 } from 'lucide-react';
+import { memo, useCallback, useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Book,
+  BookOpen,
+  Trash2,
+  MoreVertical,
+  AlertCircle,
+  X,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ParsingOverlay } from '@/components/UI/ParsingOverlay';
 import { AuthenticatedImage } from '@/components/UI/AuthenticatedImage';
@@ -26,43 +33,24 @@ import type { Book as BookType } from '@/types/api';
 
 interface BookCardProps {
   book: BookType;
-  viewMode: 'grid' | 'list';
   onClick: () => void;
   onParsingComplete?: () => void;
   onDelete?: (bookId: string) => void;
 }
 
-// Helper: Format date as "2 ноября 2025г."
-const formatDate = (dateString: string): string => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  }).replace(' г.', 'г.');
-};
-
-// Helper: Calculate current page from progress
-const getCurrentPage = (totalPages: number, progressPercent: number): number => {
-  return Math.round((totalPages * progressPercent) / 100);
-};
-
 /**
- * BookCard - Memoized book card component
- *
- * Optimization rationale:
- * - Rendered in a list via BookGrid.map() - prevents unnecessary re-renders
- * - onClick handler memoized to maintain referential equality
- * - coverUrl memoized as it involves string concatenation
+ * BookCard - Memoized book card component with animations
  */
 export const BookCard = memo(function BookCard({
   book,
-  viewMode,
   onClick,
   onParsingComplete,
   onDelete,
 }: BookCardProps) {
-  // Memoize coverUrl - involves string concatenation on each render
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Memoize coverUrl
   const coverUrl = useMemo(() => {
     return book.has_cover
       ? `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/books/${book.id}/cover`
@@ -70,236 +58,227 @@ export const BookCard = memo(function BookCard({
   }, [book.has_cover, book.id]);
 
   const isClickable = book.is_parsed && !book.is_processing;
+  const progressPercent = book.reading_progress_percent ?? 0;
 
-  // Memoize click handler to prevent child re-renders
+  // Memoize click handler
   const handleClick = useCallback(() => {
     if (isClickable) {
       onClick();
     }
   }, [isClickable, onClick]);
 
-  // Memoize delete handler to prevent re-renders
-  const handleDelete = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click
-    onDelete?.(book.id);
-  }, [book.id, onDelete]);
+  // Handle read button click
+  const handleReadClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (isClickable) {
+        onClick();
+      }
+    },
+    [isClickable, onClick]
+  );
 
-  // Grid View
-  if (viewMode === 'grid') {
-    return (
+  // Handle delete button click
+  const handleDeleteClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setShowMobileMenu(false);
+      onDelete?.(book.id);
+    },
+    [book.id, onDelete]
+  );
+
+  // Handle mobile menu toggle
+  const handleMobileMenuToggle = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowMobileMenu((prev) => !prev);
+  }, []);
+
+  // Close mobile menu
+  const handleCloseMobileMenu = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowMobileMenu(false);
+  }, []);
+
+  return (
+    <motion.div
+      className="group relative"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.3 }}
+      whileHover={{ y: -4 }}
+      onHoverStart={() => setIsHovered(true)}
+      onHoverEnd={() => setIsHovered(false)}
+    >
+      {/* Main Card Container */}
       <div
         className={cn(
-          "group cursor-pointer relative transition-all duration-300 hover:-translate-y-2",
-          !isClickable && "pointer-events-none"
+          'cursor-pointer transition-shadow duration-300',
+          isClickable ? 'hover:shadow-xl' : 'opacity-70',
+          !isClickable && 'pointer-events-none'
         )}
         onClick={handleClick}
       >
-        <div className="flex flex-col h-full">
-          {/* Book Cover */}
-          <div className="aspect-[2/3] mb-3 relative rounded-xl overflow-hidden shadow-lg group-hover:shadow-xl transition-shadow flex-shrink-0 bg-muted">
-            {book.is_processing && onParsingComplete && (
-              <ParsingOverlay
-                bookId={book.id}
-                onParsingComplete={onParsingComplete}
-                forceBlock={false}
-              />
-            )}
-            <AuthenticatedImage
-              src={coverUrl}
-              alt={`${book.title} cover`}
-              className="w-full h-full object-cover"
-              fallback={
-                <div className="w-full h-full flex items-center justify-center">
-                  <Book className="w-12 h-12 text-muted-foreground/70" />
-                </div>
-              }
-            />
-            {/* Delete Button */}
-            {onDelete && (
-              <button
-                onClick={handleDelete}
-                className="absolute top-2 right-2 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:scale-110"
-                style={{
-                  backgroundColor: 'rgba(239, 68, 68, 0.9)',
-                  color: 'white',
-                }}
-                title="Удалить книгу"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Book Info */}
-          <div className="flex flex-col flex-1 min-h-0">
-            {/* Title & Author */}
-            <div className="mb-2 flex-shrink-0">
-              <h3 className="font-semibold text-sm line-clamp-2 mb-1 transition-colors text-foreground">
-                {book.title}
-              </h3>
-              <p className="text-xs line-clamp-1 text-muted-foreground">
-                {book.author}
-              </p>
-            </div>
-
-            {/* Metadata with Icons */}
-            <div className="space-y-1.5 text-xs mb-3 flex-shrink-0 text-muted-foreground/70">
-              {/* Genre */}
-              {book.genre && (
-                <div className="flex items-center gap-1.5">
-                  <BookMarked className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span className="line-clamp-1">{book.genre}</span>
-                </div>
-              )}
-
-              {/* Chapters */}
-              <div className="flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>{book.chapters_count} {book.chapters_count === 1 ? 'глава' : book.chapters_count < 5 ? 'главы' : 'глав'}</span>
-              </div>
-
-              {/* Upload Date */}
-              <div className="flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="line-clamp-1">{formatDate(book.created_at)}</span>
-              </div>
-            </div>
-
-            {/* Progress Section */}
-            <div className="mt-auto">
-              {book.is_processing ? (
-                <div className="flex items-center gap-1.5 text-xs text-amber-600 sepia-theme:text-amber-700">
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  <span>Обработка AI...</span>
-                </div>
-              ) : book.reading_progress_percent !== undefined && book.reading_progress_percent > 0 ? (
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1.5 text-muted-foreground/70">
-                      <BarChart3 className="w-3.5 h-3.5" />
-                      <span>{getCurrentPage(book.total_pages, book.reading_progress_percent)}/{book.total_pages} стр</span>
-                    </div>
-                    <span className="font-semibold text-primary">
-                      {Math.round(book.reading_progress_percent)}%
-                    </span>
-                  </div>
-                  <div className="w-full h-1.5 rounded-full overflow-hidden bg-muted/50">
-                    <div
-                      className="h-full rounded-full transition-all bg-primary"
-                      style={{
-                        width: `${Math.min(book.reading_progress_percent, 100)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // List View
-  return (
-    <div
-      className={cn(
-        "group cursor-pointer p-3 sm:p-4 rounded-2xl border-2 hover:shadow-lg transition-all duration-300 relative bg-card border-border",
-        !isClickable && "pointer-events-none"
-      )}
-      onClick={handleClick}
-    >
-      {/* Delete Button for List View */}
-      {onDelete && (
-        <button
-          onClick={handleDelete}
-          className="absolute top-2 right-2 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:scale-110 z-10"
-          style={{
-            backgroundColor: 'rgba(239, 68, 68, 0.9)',
-            color: 'white',
-          }}
-          title="Удалить книгу"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-      )}
-      <div className="flex gap-4">
-        {/* Cover */}
-        <div className="w-20 h-28 sm:w-24 sm:h-32 flex-shrink-0 rounded-xl overflow-hidden shadow-md bg-muted">
+        {/* Book Cover Container - 2:3 aspect ratio */}
+        <div className="relative aspect-[2/3] rounded-xl overflow-hidden shadow-lg bg-muted">
+          {/* Cover Image */}
           <AuthenticatedImage
             src={coverUrl}
             alt={`${book.title} cover`}
             className="w-full h-full object-cover"
             fallback={
-              <div className="w-full h-full flex items-center justify-center">
-                <Book className="w-8 h-8 text-muted-foreground/70" />
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+                <Book className="w-12 h-12 text-muted-foreground/50" />
               </div>
             }
           />
-        </div>
 
-        {/* Book Info */}
-        <div className="flex-1 min-w-0">
-          {/* Title & Author */}
-          <h3 className="font-bold text-lg mb-1 line-clamp-1 text-foreground">
-            {book.title}
-          </h3>
-          <p className="text-sm mb-3 line-clamp-1 text-muted-foreground">
-            {book.author}
-          </p>
+          {/* Parsing Overlay */}
+          {book.is_processing && onParsingComplete && (
+            <ParsingOverlay
+              bookId={book.id}
+              onParsingComplete={onParsingComplete}
+              forceBlock={false}
+            />
+          )}
 
-          {/* Metadata with Icons */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 text-sm mb-3 text-muted-foreground/70">
-            {/* Genre */}
-            {book.genre && (
-              <div className="flex items-center gap-1.5">
-                <BookMarked className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">{book.genre}</span>
+          {/* Progress Bar Overlay - at bottom of cover */}
+          {progressPercent > 0 && !book.is_processing && (
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+              <div className="flex items-center justify-between text-white text-xs mb-1">
+                <span className="font-medium">{Math.round(progressPercent)}%</span>
               </div>
-            )}
-
-            {/* Chapters */}
-            <div className="flex items-center gap-1.5">
-              <Layers className="w-4 h-4 flex-shrink-0" />
-              <span>{book.chapters_count} {book.chapters_count === 1 ? 'глава' : book.chapters_count < 5 ? 'главы' : 'глав'}</span>
-            </div>
-
-            {/* Upload Date */}
-            <div className="flex items-center gap-1.5 col-span-2 sm:col-span-1">
-              <Calendar className="w-4 h-4 flex-shrink-0" />
-              <span className="truncate">{formatDate(book.created_at)}</span>
-            </div>
-          </div>
-
-          {/* Progress Section */}
-          {book.is_processing ? (
-            <div className="flex items-center gap-1.5 text-sm text-amber-600 sepia-theme:text-amber-700">
-              <AlertCircle className="w-4 h-4" />
-              <span>Обработка AI...</span>
-            </div>
-          ) : book.reading_progress_percent !== undefined && book.reading_progress_percent > 0 ? (
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-1.5 text-muted-foreground/70">
-                  <BarChart3 className="w-4 h-4" />
-                  <span>{getCurrentPage(book.total_pages, book.reading_progress_percent)} из {book.total_pages} стр</span>
-                </div>
-                <span className="font-semibold text-primary">
-                  {Math.round(book.reading_progress_percent)}%
-                </span>
-              </div>
-              <div className="w-full h-2 rounded-full overflow-hidden bg-muted/50">
-                <div
-                  className="h-full rounded-full transition-all bg-primary"
-                  style={{
-                    width: `${Math.min(book.reading_progress_percent, 100)}%`,
-                  }}
+              <div className="w-full h-1.5 rounded-full bg-white/30 overflow-hidden">
+                <motion.div
+                  className="h-full rounded-full bg-primary"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min(progressPercent, 100)}%` }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
                 />
               </div>
             </div>
-          ) : null}
+          )}
+
+          {/* Processing Indicator */}
+          {book.is_processing && (
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-amber-900/80 to-transparent p-3">
+              <div className="flex items-center gap-2 text-amber-100 text-xs">
+                <AlertCircle className="w-4 h-4 animate-pulse" />
+                <span>AI Processing...</span>
+              </div>
+            </div>
+          )}
+
+          {/* Hover Overlay with Actions - Desktop only */}
+          <AnimatePresence>
+            {isHovered && isClickable && !book.is_processing && (
+              <motion.div
+                className="absolute inset-0 bg-black/60 hidden md:flex flex-col items-center justify-center gap-3 p-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                {/* Read Button */}
+                <motion.button
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold shadow-lg min-h-[44px] min-w-[120px] justify-center"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleReadClick}
+                >
+                  <BookOpen className="w-5 h-5" />
+                  <span>Read</span>
+                </motion.button>
+
+                {/* Delete Button */}
+                {onDelete && (
+                  <motion.button
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-destructive/90 text-white font-medium shadow-lg min-h-[44px] min-w-[100px] justify-center"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleDeleteClick}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete</span>
+                  </motion.button>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Mobile Menu Button - Always visible on mobile */}
+          <button
+            className="absolute top-2 right-2 p-2 rounded-lg bg-black/50 text-white md:hidden min-h-[44px] min-w-[44px] flex items-center justify-center backdrop-blur-sm"
+            onClick={handleMobileMenuToggle}
+            aria-label="Book menu"
+          >
+            <MoreVertical className="w-5 h-5" />
+          </button>
+
+          {/* Mobile Menu Dropdown */}
+          <AnimatePresence>
+            {showMobileMenu && (
+              <>
+                {/* Backdrop */}
+                <motion.div
+                  className="fixed inset-0 z-40 md:hidden"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={handleCloseMobileMenu}
+                />
+                {/* Menu */}
+                <motion.div
+                  className="absolute top-12 right-2 z-50 bg-card border border-border rounded-xl shadow-xl overflow-hidden min-w-[140px] md:hidden"
+                  initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  {isClickable && (
+                    <button
+                      className="w-full flex items-center gap-3 px-4 py-3 text-foreground hover:bg-muted transition-colors min-h-[44px]"
+                      onClick={handleReadClick}
+                    >
+                      <BookOpen className="w-5 h-5 text-primary" />
+                      <span className="font-medium">Read</span>
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      className="w-full flex items-center gap-3 px-4 py-3 text-destructive hover:bg-destructive/10 transition-colors min-h-[44px]"
+                      onClick={handleDeleteClick}
+                    >
+                      <Trash2 className="w-5 h-5" />
+                      <span className="font-medium">Delete</span>
+                    </button>
+                  )}
+                  <button
+                    className="w-full flex items-center gap-3 px-4 py-3 text-muted-foreground hover:bg-muted transition-colors min-h-[44px] border-t border-border"
+                    onClick={handleCloseMobileMenu}
+                  >
+                    <X className="w-5 h-5" />
+                    <span>Close</span>
+                  </button>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Book Info */}
+        <div className="mt-3 px-1">
+          {/* Title - 2 lines max */}
+          <h3 className="font-semibold text-sm leading-tight line-clamp-2 text-foreground mb-1">
+            {book.title}
+          </h3>
+          {/* Author - 1 line max */}
+          <p className="text-xs text-muted-foreground line-clamp-1">
+            {book.author}
+          </p>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 });

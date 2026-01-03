@@ -1,90 +1,154 @@
 /**
- * ReaderToolbar - Modern floating toolbar for book navigation
+ * ReaderToolbar - Minimalist floating toolbar for immersive reading
  *
  * Features:
- * - Compact bottom-centered design
- * - Navigation arrows (prev/next page)
- * - Progress bar with percentage
- * - Page counter
- * - Theme-aware styling (Light/Dark/Sepia)
- * - Smooth animations
+ * - Auto-hide on scroll (immersive mode)
+ * - Semi-transparent with backdrop-blur
+ * - Sticky top with safe area support
+ * - Touch-friendly buttons (min 44px)
+ * - Smooth slide up/down animation
  *
  * @component
  */
 
-import React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, List, Settings, Sun, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTheme, type AppTheme } from '@/hooks/useTheme';
 
 interface ReaderToolbarProps {
-  progress: number;
-  currentPage?: number;
-  totalPages?: number;
-  onPrevPage: () => void;
-  onNextPage: () => void;
+  /** Whether toolbar is visible (for immersive mode) */
+  isVisible: boolean;
+  /** Book title to display (will be truncated) */
+  bookTitle: string;
+  /** Callback for back button */
+  onBack: () => void;
+  /** Callback for TOC toggle */
+  onToggleToc: () => void;
+  /** Callback for settings toggle */
+  onToggleSettings: () => void;
+  /** Optional additional className */
   className?: string;
 }
 
+/**
+ * Touch-friendly icon button component
+ */
+const ToolbarButton: React.FC<{
+  onClick: () => void;
+  ariaLabel: string;
+  children: React.ReactNode;
+  className?: string;
+}> = ({ onClick, ariaLabel, children, className }) => (
+  <button
+    onClick={onClick}
+    aria-label={ariaLabel}
+    className={cn(
+      // Touch-friendly size (44px minimum)
+      'h-11 w-11 min-h-[44px] min-w-[44px]',
+      // Centering and shape
+      'flex items-center justify-center rounded-full',
+      // Colors and transitions
+      'text-foreground/80 hover:text-foreground',
+      'hover:bg-foreground/10 active:bg-foreground/15',
+      'transition-colors duration-200',
+      // Focus states
+      'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+      className
+    )}
+  >
+    {children}
+  </button>
+);
+
 export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
-  progress,
-  currentPage,
-  totalPages,
-  onPrevPage,
-  onNextPage,
+  isVisible,
+  bookTitle,
+  onBack,
+  onToggleToc,
+  onToggleSettings,
   className,
 }) => {
+  const { resolvedTheme, setTheme } = useTheme();
+
+  const handleThemeToggle = useCallback(() => {
+    // Cycle through themes: light -> dark -> sepia -> light
+    const themeOrder: AppTheme[] = ['light', 'dark', 'sepia'];
+    const currentIndex = themeOrder.indexOf(resolvedTheme);
+    const nextIndex = (currentIndex + 1) % themeOrder.length;
+    setTheme(themeOrder[nextIndex]);
+  }, [resolvedTheme, setTheme]);
+
+  const ThemeIcon = resolvedTheme === 'dark' ? Moon : Sun;
+
   return (
-    <div
-      className={cn(
-        "fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50",
-        "bg-card/95 border-border",
-        "backdrop-blur-md border",
-        "rounded-full shadow-2xl px-3 sm:px-6 py-2.5 sm:py-3.5",
-        "flex items-center gap-2 sm:gap-4",
-        "transition-all duration-300",
-        className
+    <AnimatePresence>
+      {isVisible && (
+        <motion.header
+          initial={{ y: -100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -100, opacity: 0 }}
+          transition={{
+            type: 'spring',
+            stiffness: 300,
+            damping: 30,
+          }}
+          className={cn(
+            // Positioning
+            'fixed top-0 left-0 right-0 z-50',
+            // Safe area padding
+            'pt-safe',
+            // Background with blur
+            'bg-background/80 backdrop-blur-md',
+            // Border
+            'border-b border-border/50',
+            // Shadow for depth
+            'shadow-sm',
+            className
+          )}
+        >
+          <div className="flex items-center justify-between px-2 sm:px-4 py-2">
+            {/* Left section: Back button + Title */}
+            <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1">
+              <ToolbarButton onClick={onBack} ariaLabel="Back to library">
+                <ArrowLeft className="h-5 w-5" />
+              </ToolbarButton>
+
+              <h1
+                className={cn(
+                  'text-sm sm:text-base font-medium',
+                  'text-foreground/90',
+                  'truncate max-w-[150px] sm:max-w-[250px] md:max-w-[350px]'
+                )}
+                title={bookTitle}
+              >
+                {bookTitle}
+              </h1>
+            </div>
+
+            {/* Right section: Controls */}
+            <div className="flex items-center gap-0.5 sm:gap-1">
+              <ToolbarButton onClick={onToggleToc} ariaLabel="Table of contents">
+                <List className="h-5 w-5" />
+              </ToolbarButton>
+
+              <ToolbarButton onClick={onToggleSettings} ariaLabel="Reader settings">
+                <Settings className="h-5 w-5" />
+              </ToolbarButton>
+
+              <ToolbarButton
+                onClick={handleThemeToggle}
+                ariaLabel={`Switch theme (current: ${resolvedTheme})`}
+              >
+                <ThemeIcon className="h-5 w-5" />
+              </ToolbarButton>
+            </div>
+          </div>
+        </motion.header>
       )}
-    >
-      {/* Previous Button */}
-      <button
-        onClick={onPrevPage}
-        className="h-8 w-8 sm:h-10 sm:w-10 rounded-full flex items-center justify-center transition-colors text-foreground hover:bg-muted"
-        aria-label="Previous page"
-      >
-        <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-      </button>
-
-      {/* Progress Section */}
-      <div className="flex flex-col items-center gap-1.5 sm:gap-2 min-w-[160px] sm:min-w-[240px]">
-        {/* Progress Bar */}
-        <div className="w-full h-1.5 sm:h-2 rounded-full overflow-hidden bg-muted">
-          <div
-            className="h-full transition-all duration-300 rounded-full bg-primary"
-            style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
-          />
-        </div>
-
-        {/* Page Info */}
-        <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-muted-foreground">
-          {currentPage !== undefined && totalPages !== undefined ? (
-            <span className="font-medium">
-              Страница {currentPage} / {totalPages}
-            </span>
-          ) : null}
-          <span className="font-semibold tabular-nums text-foreground">
-            {progress < 10 ? progress.toFixed(1) : Math.round(progress)}%
-          </span>
-        </div>
-      </div>
-
-      {/* Next Button */}
-      <button
-        onClick={onNextPage}
-        className="h-8 w-8 sm:h-10 sm:w-10 rounded-full flex items-center justify-center transition-colors text-foreground hover:bg-muted"
-        aria-label="Next page"
-      >
-        <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
-      </button>
-    </div>
+    </AnimatePresence>
   );
 };
+
+export default ReaderToolbar;

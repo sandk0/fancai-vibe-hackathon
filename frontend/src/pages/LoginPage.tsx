@@ -1,13 +1,13 @@
 /**
- * LoginPage - Modern redesign with split-screen layout
+ * LoginPage - Mobile-first centered login form
  *
  * Features:
- * - Split layout: form left, gradient right
- * - Modern input fields with icons
- * - Form validation with react-hook-form + zod
+ * - Mobile-first centered design
+ * - Touch-friendly inputs (44px minimum)
  * - Password visibility toggle
- * - Theme-aware design
- * - Responsive mobile layout
+ * - Loading state on submit button
+ * - Error handling with toast notifications
+ * - Uses CSS custom properties from Phase 1
  */
 
 import React, { useState } from 'react';
@@ -15,11 +15,12 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, BookOpen, Mail, Lock, CheckCircle2, Sparkles } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, BookOpen } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
 import { getErrorMessage } from '@/utils/errors';
 import { notify } from '@/stores/ui';
-import { cn } from '@/lib/utils';
+import { Input } from '@/components/UI/Input';
+import { Button } from '@/components/UI/button';
 
 const loginSchema = z.object({
   email: z.string().email('Неправильный email адрес'),
@@ -34,7 +35,7 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = (location.state as any)?.from || '/library';
+  const from = (location.state as { from?: string })?.from || '/library';
 
   const {
     register,
@@ -54,176 +55,119 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  const benefits = [
-    'Умное распознавание описаний с Multi-NLP',
-    'Автоматическая генерация AI изображений',
-    'Синхронизация прогресса чтения',
-    'Персональная галерея изображений',
-  ];
+  const togglePasswordVisibility = () => {
+    setShowPassword((prev) => !prev);
+  };
 
   return (
     <div
-      className="min-h-screen grid grid-cols-1 lg:grid-cols-2"
+      className="min-h-screen flex items-center justify-center px-4 py-8"
       style={{
-        paddingTop: 'env(safe-area-inset-top)',
-        paddingBottom: 'env(safe-area-inset-bottom)',
+        backgroundColor: 'var(--color-bg-base)',
+        paddingTop: 'max(env(safe-area-inset-top), 2rem)',
+        paddingBottom: 'max(env(safe-area-inset-bottom), 2rem)',
       }}
     >
-      {/* Left Side - Login Form */}
-      <div className="flex items-center justify-center p-8 lg:p-12 bg-background">
-        <div className="max-w-md w-full">
-          {/* Logo and Title */}
-          <div className="mb-10">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 rounded-xl bg-primary">
-                <BookOpen className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-foreground">
-                  fancai
-                </h1>
-              </div>
-            </div>
-            <h2 className="text-3xl font-bold mb-2 text-foreground">
-              С возвращением!
-            </h2>
-            <p className="text-muted-foreground">
-              Войдите, чтобы продолжить читать
-            </p>
+      <div className="w-full max-w-sm">
+        {/* Logo/Brand */}
+        <div className="flex flex-col items-center mb-8">
+          <div
+            className="flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
+            style={{ backgroundColor: 'var(--color-accent-600)' }}
+          >
+            <BookOpen className="w-7 h-7 text-white" />
           </div>
+          <h1
+            className="text-2xl font-bold"
+            style={{ color: 'var(--color-text-default)' }}
+          >
+            fancai
+          </h1>
+        </div>
 
-          {/* Login Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Email Field */}
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium mb-2 text-foreground"
+        {/* Title */}
+        <h2
+          className="text-xl font-semibold text-center mb-6"
+          style={{ color: 'var(--color-text-default)' }}
+        >
+          Вход в аккаунт
+        </h2>
+
+        {/* Login Form */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {/* Email Input */}
+          <Input
+            {...register('email')}
+            type="email"
+            label="Email"
+            placeholder="your@email.com"
+            leftIcon={<Mail />}
+            error={errors.email?.message}
+            autoComplete="email"
+            inputSize="md"
+          />
+
+          {/* Password Input */}
+          <Input
+            {...register('password')}
+            type={showPassword ? 'text' : 'password'}
+            label="Пароль"
+            placeholder="********"
+            leftIcon={<Lock />}
+            error={errors.password?.message}
+            autoComplete="current-password"
+            inputSize="md"
+            rightIcon={
+              <button
+                type="button"
+                onClick={togglePasswordVisibility}
+                className="flex items-center justify-center focus:outline-none"
+                style={{ color: 'var(--color-text-subtle)' }}
+                aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
               >
-                Email
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
-                <input
-                  {...register('email')}
-                  type="email"
-                  id="email"
-                  placeholder="your@email.com"
-                  className={cn(
-                    'w-full pl-11 pr-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 bg-muted text-foreground',
-                    errors.email ? 'border-red-500' : 'border-border'
-                  )}
-                />
-              </div>
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>
-              )}
-            </div>
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            }
+          />
 
-            {/* Password Field */}
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium mb-2 text-foreground"
-              >
-                Пароль
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
-                <input
-                  {...register('password')}
-                  type={showPassword ? 'text' : 'password'}
-                  id="password"
-                  placeholder="********"
-                  className={cn(
-                    'w-full pl-11 pr-11 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 bg-muted text-foreground',
-                    errors.password ? 'border-red-500' : 'border-border'
-                  )}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground/70"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-500">{errors.password.message}</p>
-              )}
-            </div>
-
-            {/* Forgot Password Link */}
-            <div className="flex justify-end">
-              <Link
-                to="/forgot-password"
-                className="text-sm hover:underline text-primary"
-              >
-                Забыли пароль?
-              </Link>
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className={cn(
-                'w-full py-3 px-4 rounded-xl font-semibold text-white transition-all bg-primary hover:bg-primary/90',
-                isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 shadow-lg'
-              )}
+          {/* Forgot Password Link */}
+          <div className="flex justify-end">
+            <Link
+              to="/forgot-password"
+              className="text-sm font-medium transition-colors hover:underline"
+              style={{ color: 'var(--color-accent-600)' }}
             >
-              {isLoading ? (
-                <div className="flex items-center justify-center gap-2">
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Вход...</span>
-                </div>
-              ) : (
-                'Войти'
-              )}
-            </button>
-          </form>
-
-          {/* Sign Up Link */}
-          <div className="mt-8 text-center">
-            <p className="text-muted-foreground">
-              Нет аккаунта?{' '}
-              <Link
-                to="/register"
-                className="font-semibold hover:underline text-primary"
-              >
-                Зарегистрироваться
-              </Link>
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Right Side - Gradient Benefits */}
-      <div className="hidden lg:flex items-center justify-center p-12 relative overflow-hidden bg-gradient-to-br from-primary to-purple-600/90">
-        <div className="relative z-10 max-w-md text-white">
-          <div className="mb-8">
-            <Sparkles className="w-16 h-16 mb-6" />
-            <h2 className="text-4xl font-bold mb-4">
-              Читайте с AI-визуализацией
-            </h2>
-            <p className="text-lg opacity-90">
-              Каждое описание превращается в уникальное изображение благодаря искусственному интеллекту
-            </p>
+              Забыли пароль?
+            </Link>
           </div>
 
-          <div className="space-y-4">
-            {benefits.map((benefit, index) => (
-              <div key={index} className="flex items-start gap-3">
-                <CheckCircle2 className="w-6 h-6 flex-shrink-0 mt-0.5" />
-                <p className="text-lg">{benefit}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+          {/* Submit Button */}
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            className="w-full"
+            isLoading={isLoading}
+            loadingText="Вход..."
+          >
+            Войти
+          </Button>
+        </form>
 
-        {/* Decorative Elements */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-white opacity-5 rounded-full blur-3xl" />
+        {/* Register Link */}
+        <p
+          className="mt-8 text-center text-sm"
+          style={{ color: 'var(--color-text-muted)' }}
+        >
+          Нет аккаунта?{' '}
+          <Link
+            to="/register"
+            className="font-semibold transition-colors hover:underline"
+            style={{ color: 'var(--color-accent-600)' }}
+          >
+            Зарегистрироваться
+          </Link>
+        </p>
       </div>
     </div>
   );
