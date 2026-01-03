@@ -165,7 +165,7 @@ export const BookCard = memo(function BookCard({
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-amber-900/80 to-transparent p-3">
               <div className="flex items-center gap-2 text-amber-100 text-xs">
                 <AlertCircle className="w-4 h-4 animate-pulse" />
-                <span>AI Processing...</span>
+                <span>AI обработка...</span>
               </div>
             </div>
           )}
@@ -188,7 +188,7 @@ export const BookCard = memo(function BookCard({
                   onClick={handleReadClick}
                 >
                   <BookOpen className="w-5 h-5" />
-                  <span>Read</span>
+                  <span>Читать</span>
                 </motion.button>
 
                 {/* Delete Button */}
@@ -200,7 +200,7 @@ export const BookCard = memo(function BookCard({
                     onClick={handleDeleteClick}
                   >
                     <Trash2 className="w-4 h-4" />
-                    <span>Delete</span>
+                    <span>Удалить</span>
                   </motion.button>
                 )}
               </motion.div>
@@ -211,7 +211,7 @@ export const BookCard = memo(function BookCard({
           <button
             className="absolute top-2 right-2 p-2 rounded-lg bg-black/50 text-white md:hidden min-h-[44px] min-w-[44px] flex items-center justify-center backdrop-blur-sm"
             onClick={handleMobileMenuToggle}
-            aria-label="Book menu"
+            aria-label="Меню книги"
           >
             <MoreVertical className="w-5 h-5" />
           </button>
@@ -242,7 +242,7 @@ export const BookCard = memo(function BookCard({
                       onClick={handleReadClick}
                     >
                       <BookOpen className="w-5 h-5 text-primary" />
-                      <span className="font-medium">Read</span>
+                      <span className="font-medium">Читать</span>
                     </button>
                   )}
                   {onDelete && (
@@ -251,7 +251,7 @@ export const BookCard = memo(function BookCard({
                       onClick={handleDeleteClick}
                     >
                       <Trash2 className="w-5 h-5" />
-                      <span className="font-medium">Delete</span>
+                      <span className="font-medium">Удалить</span>
                     </button>
                   )}
                   <button
@@ -259,7 +259,7 @@ export const BookCard = memo(function BookCard({
                     onClick={handleCloseMobileMenu}
                   >
                     <X className="w-5 h-5" />
-                    <span>Close</span>
+                    <span>Закрыть</span>
                   </button>
                 </motion.div>
               </>

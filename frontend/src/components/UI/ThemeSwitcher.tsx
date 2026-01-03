@@ -51,7 +51,7 @@ export const ThemeSwitcher: React.FC = () => {
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-40">
+      <DropdownMenuContent align="end" side="bottom" alignOffset={0} sideOffset={8} className="w-40">
         {themes.map(({ value, label, icon }) => (
           <DropdownMenuItem
             key={value}

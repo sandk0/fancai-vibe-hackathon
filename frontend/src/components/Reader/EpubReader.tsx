@@ -140,8 +140,9 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   const [isImmersive, setIsImmersive] = useState(true);
   const immersiveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Touch/swipe navigation state
-  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  // Navigation debounce to prevent double page turns
+  const lastNavigationTime = useRef<number>(0);
+  const NAVIGATION_DEBOUNCE = 300;
 
   // Tap zone visual feedback state
   const [tapFeedback, setTapFeedback] = useState<'left' | 'right' | null>(null);
@@ -215,6 +216,23 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   // Hook 6: Page navigation
   const { nextPage, prevPage } = useEpubNavigation(rendition);
 
+  // Debounced navigation functions to prevent double page turns
+  const nextPageDebounced = useCallback(() => {
+    const now = Date.now();
+    if (now - lastNavigationTime.current > NAVIGATION_DEBOUNCE) {
+      lastNavigationTime.current = now;
+      nextPage();
+    }
+  }, [nextPage]);
+
+  const prevPageDebounced = useCallback(() => {
+    const now = Date.now();
+    if (now - lastNavigationTime.current > NAVIGATION_DEBOUNCE) {
+      lastNavigationTime.current = now;
+      prevPage();
+    }
+  }, [prevPage]);
+
   // Hook 7: Image modal management with IndexedDB caching
   const {
     selectedImage,
@@ -237,11 +255,12 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   const { theme, fontSize, setTheme, increaseFontSize, decreaseFontSize } = useEpubThemes(rendition);
 
   // Hook 10: Touch/swipe navigation
+  // DISABLED: Causes double page turns due to conflict with tap zones
   useTouchNavigation({
     rendition,
     nextPage,
     prevPage,
-    enabled: renditionReady && !isModalOpen,
+    enabled: false, // DISABLED - tap zones handle navigation
   });
 
   // Hook 11: Content hooks for style injection
@@ -636,8 +655,6 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     }
   }, [theme]);
 
-  // Ref to prevent double-firing on touch devices (touchend + click)
-  const lastTapTimeRef = useRef<number>(0);
 
   /**
    * Show toolbar temporarily (exit immersive mode with auto-hide)
@@ -699,101 +716,43 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
    * - Center 60%: Toggle UI (immersive mode)
    * - Right 20%: Next page
    */
-  const handleTapZone = useCallback((zone: 'left' | 'center' | 'right', isTouch: boolean = false) => {
+  const handleTapZone = useCallback((zone: 'left' | 'center' | 'right') => {
     if (!renditionReady || isModalOpen || isTocOpen || isSettingsOpen || isBookInfoOpen || positionConflict) return;
-
-    const now = Date.now();
-    // Debounce: ignore if less than 300ms since last tap
-    if (now - lastTapTimeRef.current < 300) {
-      console.log('[EpubReader] Tap debounced - too fast');
-      return;
-    }
-    lastTapTimeRef.current = now;
 
     if (zone === 'left') {
-      console.log(`[EpubReader] Left tap zone ${isTouch ? 'touched' : 'clicked'}, going to previous page`);
+      console.log('[EpubReader] Left tap zone clicked, going to previous page');
       showTapFeedback('left');
-      prevPage();
+      prevPageDebounced();
     } else if (zone === 'right') {
-      console.log(`[EpubReader] Right tap zone ${isTouch ? 'touched' : 'clicked'}, going to next page`);
+      console.log('[EpubReader] Right tap zone clicked, going to next page');
       showTapFeedback('right');
-      nextPage();
+      nextPageDebounced();
     } else {
-      console.log(`[EpubReader] Center tap zone ${isTouch ? 'touched' : 'clicked'}, toggling immersive mode`);
+      console.log('[EpubReader] Center tap zone clicked, toggling immersive mode');
       toggleImmersiveMode();
     }
-  }, [renditionReady, isModalOpen, isTocOpen, isSettingsOpen, isBookInfoOpen, positionConflict, prevPage, nextPage, showTapFeedback, toggleImmersiveMode]);
+  }, [renditionReady, isModalOpen, isTocOpen, isSettingsOpen, isBookInfoOpen, positionConflict, prevPageDebounced, nextPageDebounced, showTapFeedback, toggleImmersiveMode]);
 
-  /**
-   * Handle touch start for swipe gesture detection
-   */
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (!renditionReady || isModalOpen || isTocOpen || isSettingsOpen || isBookInfoOpen || positionConflict) return;
-
-    const touch = e.touches[0];
-    touchStartRef.current = {
-      x: touch.clientX,
-      y: touch.clientY,
-      time: Date.now(),
-    };
-  }, [renditionReady, isModalOpen, isTocOpen, isSettingsOpen, isBookInfoOpen, positionConflict]);
-
-  /**
-   * Handle touch end for swipe gesture navigation
-   * - Swipe left: Next page
-   * - Swipe right: Previous page
-   * - Min swipe distance: 50px
-   * - Max swipe time: 300ms (fast gesture)
-   */
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (!touchStartRef.current) return;
-    if (!renditionReady || isModalOpen || isTocOpen || isSettingsOpen || isBookInfoOpen || positionConflict) {
-      touchStartRef.current = null;
-      return;
-    }
-
-    const touch = e.changedTouches[0];
-    const deltaX = touch.clientX - touchStartRef.current.x;
-    const deltaY = touch.clientY - touchStartRef.current.y;
-    const deltaTime = Date.now() - touchStartRef.current.time;
-
-    // Reset touch start
-    touchStartRef.current = null;
-
-    // Minimum swipe distance: 50px
-    const MIN_SWIPE_DISTANCE = 50;
-    // Maximum swipe time: 500ms
-    const MAX_SWIPE_TIME = 500;
-
-    // Check if it's a valid horizontal swipe (not vertical scroll)
-    const isHorizontalSwipe = Math.abs(deltaX) > Math.abs(deltaY) * 1.5;
-
-    if (Math.abs(deltaX) >= MIN_SWIPE_DISTANCE && deltaTime <= MAX_SWIPE_TIME && isHorizontalSwipe) {
-      if (deltaX < 0) {
-        // Swipe left -> Next page
-        console.log('[EpubReader] Swipe left detected, going to next page');
-        showTapFeedback('right');
-        nextPage();
-      } else {
-        // Swipe right -> Previous page
-        console.log('[EpubReader] Swipe right detected, going to previous page');
-        showTapFeedback('left');
-        prevPage();
-      }
-    }
-  }, [renditionReady, isModalOpen, isTocOpen, isSettingsOpen, isBookInfoOpen, positionConflict, nextPage, prevPage, showTapFeedback]);
 
   // Main render - viewerRef MUST stay in same DOM location to prevent rendition destruction
   return (
     <div className={`relative h-full w-full transition-colors ${backgroundColor}`}>
       {/* EPUB Viewer - Maximum reading space, with safe-area support */}
       {/* In immersive mode on mobile, expand to full height */}
+      {/* On desktop (md+), always show header padding - handled via CSS variable */}
+      <style>{`
+        @media (min-width: 768px) {
+          .epub-viewer-container {
+            padding-top: calc(70px + env(safe-area-inset-top)) !important;
+          }
+        }
+      `}</style>
       <div
         ref={viewerRef}
-        className={`h-full w-full ${backgroundColor} transition-[padding] duration-300`}
+        className={`epub-viewer-container h-full w-full ${backgroundColor} transition-[padding] duration-300`}
         style={{
           // In immersive mode on mobile, use only safe-area padding
-          // On desktop (md+), always show header
+          // On desktop (md+), CSS media query overrides this
           paddingTop: isImmersive
             ? 'env(safe-area-inset-top)'
             : 'calc(70px + env(safe-area-inset-top))',
@@ -808,8 +767,9 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
       {renditionReady && !isLoading && !isGenerating && !isRestoringPosition && (
         <>
           {/* Left tap zone (20%) - previous page */}
+          {/* z-[2] allows description highlights (z-[3]) to be clickable */}
           <div
-            className="fixed left-0 bottom-0 w-[20%] z-[5] md:hidden"
+            className="fixed left-0 bottom-0 w-[20%] z-[2] md:hidden"
             style={{
               background: 'transparent',
               pointerEvents: 'auto',
@@ -818,28 +778,15 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
               WebkitTapHighlightColor: 'transparent',
               transition: 'top 0.3s ease',
             }}
-            onClick={() => handleTapZone('left', false)}
-            onTouchStart={handleTouchStart}
-            onTouchEnd={(e) => {
-              handleTouchEnd(e);
-              // Only trigger tap if it wasn't a swipe
-              if (!touchStartRef.current) {
-                const touch = e.changedTouches[0];
-                const rect = e.currentTarget.getBoundingClientRect();
-                const isInsideZone = touch.clientX >= rect.left && touch.clientX <= rect.right;
-                if (isInsideZone) {
-                  e.preventDefault();
-                  handleTapZone('left', true);
-                }
-              }
-            }}
+            onClick={() => handleTapZone('left')}
             aria-label="Previous page"
             role="button"
           />
 
           {/* Center tap zone (60%) - toggle immersive mode */}
+          {/* z-[2] allows description highlights (z-[3]) to be clickable */}
           <div
-            className="fixed left-[20%] bottom-0 w-[60%] z-[5] md:hidden"
+            className="fixed left-[20%] bottom-0 w-[60%] z-[2] md:hidden"
             style={{
               background: 'transparent',
               pointerEvents: 'auto',
@@ -848,23 +795,15 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
               WebkitTapHighlightColor: 'transparent',
               transition: 'top 0.3s ease',
             }}
-            onClick={() => handleTapZone('center', false)}
-            onTouchStart={handleTouchStart}
-            onTouchEnd={(e) => {
-              handleTouchEnd(e);
-              // Only trigger tap if it wasn't a swipe
-              if (!touchStartRef.current) {
-                e.preventDefault();
-                handleTapZone('center', true);
-              }
-            }}
+            onClick={() => handleTapZone('center')}
             aria-label="Toggle toolbar"
             role="button"
           />
 
           {/* Right tap zone (20%) - next page */}
+          {/* z-[2] allows description highlights (z-[3]) to be clickable */}
           <div
-            className="fixed right-0 bottom-0 w-[20%] z-[5] md:hidden"
+            className="fixed right-0 bottom-0 w-[20%] z-[2] md:hidden"
             style={{
               background: 'transparent',
               pointerEvents: 'auto',
@@ -873,21 +812,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
               WebkitTapHighlightColor: 'transparent',
               transition: 'top 0.3s ease',
             }}
-            onClick={() => handleTapZone('right', false)}
-            onTouchStart={handleTouchStart}
-            onTouchEnd={(e) => {
-              handleTouchEnd(e);
-              // Only trigger tap if it wasn't a swipe
-              if (!touchStartRef.current) {
-                const touch = e.changedTouches[0];
-                const rect = e.currentTarget.getBoundingClientRect();
-                const isInsideZone = touch.clientX >= rect.left && touch.clientX <= rect.right;
-                if (isInsideZone) {
-                  e.preventDefault();
-                  handleTapZone('right', true);
-                }
-              }
-            }}
+            onClick={() => handleTapZone('right')}
             aria-label="Next page"
             role="button"
           />
@@ -994,11 +919,13 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
       )}
 
       {/* Modern Reader Header - Theme-aware with all controls and progress */}
-      {/* Hidden in immersive mode on mobile */}
+      {/* Hidden in immersive mode on mobile, always visible on desktop */}
       {renditionReady && !isLoading && !isGenerating && !isRestoringPosition && metadata && (
         <div
-          className={`transition-all duration-300 ease-in-out ${
-            isImmersive ? 'md:opacity-100 md:translate-y-0 opacity-0 -translate-y-full pointer-events-none md:pointer-events-auto' : 'opacity-100 translate-y-0'
+          className={`transition-opacity duration-300 ease-in-out ${
+            isImmersive
+              ? 'opacity-0 pointer-events-none md:opacity-100 md:pointer-events-auto'
+              : 'opacity-100'
           }`}
         >
           <ReaderHeader

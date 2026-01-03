@@ -20,9 +20,9 @@ interface HeaderProps {
   onMenuClick?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
+const Header: React.FC<HeaderProps> = ({ onMenuClick: _onMenuClick }) => {
   const { user, logout } = useAuthStore();
-  const { setShowUploadModal } = useUIStore();
+  const { setShowUploadModal, setSidebarOpen, sidebarOpen } = useUIStore();
   const { t } = useTranslation();
   const location = useLocation();
   const [showUserMenu, setShowUserMenu] = React.useState(false);
@@ -69,7 +69,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
   const navLinks = [
     { to: '/', label: t('nav.home'), icon: Home },
-    { to: '/library', label: t('nav.library'), icon: Library },
+    { to: '/library', label: t('nav.myLibrary'), icon: Library },
   ];
 
   const isActiveLink = (path: string) => {
@@ -89,7 +89,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             <button
               type="button"
               className="md:hidden flex items-center justify-center w-10 h-10 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors touch-target"
-              onClick={onMenuClick}
+              onClick={() => setSidebarOpen(!sidebarOpen)}
               aria-label={t('nav.openMenu')}
             >
               <Menu className="w-6 h-6" />
@@ -176,7 +176,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
               {/* User dropdown */}
               {showUserMenu && (
                 <div
-                  className="absolute right-0 mt-2 w-56 origin-top-right rounded-xl shadow-lg py-1 ring-1 ring-border bg-popover/95 backdrop-blur-md animate-fade-in-up"
+                  className="absolute right-0 mt-2 w-56 origin-top-right rounded-xl shadow-lg py-1 ring-1 ring-border bg-popover border border-border animate-fade-in-up"
                   role="menu"
                   aria-orientation="vertical"
                 >

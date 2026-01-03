@@ -47,32 +47,32 @@ const BOOKS_PER_PAGE = 24;
 
 // Sort options
 const SORT_OPTIONS = [
-  { value: 'created_desc', label: 'Newest First', icon: SortDesc },
-  { value: 'created_asc', label: 'Oldest First', icon: SortAsc },
-  { value: 'title_asc', label: 'Title A-Z', icon: SortAsc },
-  { value: 'title_desc', label: 'Title Z-A', icon: SortDesc },
-  { value: 'author_asc', label: 'Author A-Z', icon: SortAsc },
-  { value: 'accessed_desc', label: 'Recently Read', icon: Clock },
+  { value: 'created_desc', label: 'Сначала новые', icon: SortDesc },
+  { value: 'created_asc', label: 'Сначала старые', icon: SortAsc },
+  { value: 'title_asc', label: 'По названию А-Я', icon: SortAsc },
+  { value: 'title_desc', label: 'По названию Я-А', icon: SortDesc },
+  { value: 'author_asc', label: 'По автору А-Я', icon: SortAsc },
+  { value: 'accessed_desc', label: 'Недавно читал', icon: Clock },
 ];
 
 // Genre filter options
 const GENRE_OPTIONS = [
-  { value: 'all', label: 'All Genres' },
-  { value: 'fiction', label: 'Fiction' },
-  { value: 'non-fiction', label: 'Non-Fiction' },
-  { value: 'fantasy', label: 'Fantasy' },
-  { value: 'sci-fi', label: 'Sci-Fi' },
-  { value: 'romance', label: 'Romance' },
-  { value: 'mystery', label: 'Mystery' },
-  { value: 'thriller', label: 'Thriller' },
+  { value: 'all', label: 'Все жанры' },
+  { value: 'fiction', label: 'Художественная' },
+  { value: 'non-fiction', label: 'Документальная' },
+  { value: 'fantasy', label: 'Фэнтези' },
+  { value: 'sci-fi', label: 'Научная фантастика' },
+  { value: 'romance', label: 'Романтика' },
+  { value: 'mystery', label: 'Детектив' },
+  { value: 'thriller', label: 'Триллер' },
 ];
 
 // Progress filter options
 const PROGRESS_OPTIONS = [
-  { value: 'all', label: 'All Books', icon: BookOpen },
-  { value: 'not_started', label: 'Not Started', icon: BookOpen },
-  { value: 'in_progress', label: 'In Progress', icon: Loader2 },
-  { value: 'completed', label: 'Completed', icon: CheckCircle },
+  { value: 'all', label: 'Все книги', icon: BookOpen },
+  { value: 'not_started', label: 'Не начаты', icon: BookOpen },
+  { value: 'in_progress', label: 'В процессе', icon: Loader2 },
+  { value: 'completed', label: 'Завершены', icon: CheckCircle },
 ];
 
 const LibraryPage: React.FC = () => {
@@ -112,13 +112,13 @@ const LibraryPage: React.FC = () => {
   // Delete mutation
   const deleteBookMutation = useDeleteBook({
     onSuccess: () => {
-      notify.success('Book deleted', 'The book has been removed from your library');
+      notify.success('Книга удалена', 'Книга удалена из вашей библиотеки');
       setSelectedBookForDelete(null);
     },
     onError: (error) => {
       notify.error(
-        'Delete failed',
-        error instanceof Error ? error.message : 'Failed to delete book'
+        'Ошибка удаления',
+        error instanceof Error ? error.message : 'Не удалось удалить книгу'
       );
     },
   });
@@ -233,13 +233,13 @@ const LibraryPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-              My Library
+              Моя библиотека
             </h1>
             <p className="text-muted-foreground mt-1">
-              {totalBooks} {totalBooks === 1 ? 'book' : 'books'}
+              {totalBooks} {totalBooks === 1 ? 'книга' : totalBooks >= 2 && totalBooks <= 4 ? 'книги' : 'книг'}
               {stats.processingBooks > 0 && (
                 <span className="ml-2 text-amber-600">
-                  ({stats.processingBooks} processing)
+                  ({stats.processingBooks} обрабатывается)
                 </span>
               )}
             </p>
@@ -253,7 +253,7 @@ const LibraryPage: React.FC = () => {
             onClick={handleUploadClick}
           >
             <Plus className="w-5 h-5" />
-            <span>Upload Book</span>
+            <span>Загрузить книгу</span>
           </motion.button>
         </div>
 
@@ -266,7 +266,7 @@ const LibraryPage: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by title or author..."
+              placeholder="Поиск по названию или автору..."
               className="w-full pl-12 pr-10 py-3 rounded-xl border-2 border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all min-h-[44px]"
             />
             {searchQuery && (
@@ -349,7 +349,7 @@ const LibraryPage: React.FC = () => {
           <button
             onClick={() => setShowFilters(!showFilters)}
             aria-expanded={showFilters}
-            aria-label={`Filters${activeFiltersCount > 0 ? ` (${activeFiltersCount} active)` : ''}`}
+            aria-label={`Фильтры${activeFiltersCount > 0 ? ` (${activeFiltersCount} активно)` : ''}`}
             className={cn(
               'flex items-center gap-2 px-4 py-3 rounded-xl border-2 transition-colors min-h-[44px]',
               'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
@@ -359,7 +359,7 @@ const LibraryPage: React.FC = () => {
             )}
           >
             <Filter className="w-5 h-5" aria-hidden="true" />
-            <span className="hidden sm:inline">Filters</span>
+            <span className="hidden sm:inline">Фильтры</span>
             {activeFiltersCount > 0 && (
               <span className="ml-1 px-2 py-0.5 rounded-full bg-primary-foreground/20 text-xs font-semibold" aria-hidden="true">
                 {activeFiltersCount}
@@ -382,7 +382,7 @@ const LibraryPage: React.FC = () => {
                 {/* Genre Filter */}
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-foreground mb-2">
-                    Genre
+                    Жанр
                   </label>
                   <select
                     value={genreFilter}
@@ -400,7 +400,7 @@ const LibraryPage: React.FC = () => {
                 {/* Progress Filter */}
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-foreground mb-2">
-                    Reading Progress
+                    Прогресс чтения
                   </label>
                   <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by reading progress">
                     {PROGRESS_OPTIONS.map((option) => (
@@ -431,7 +431,7 @@ const LibraryPage: React.FC = () => {
                     onClick={handleClearFilters}
                     className="text-sm text-primary hover:text-primary/80 font-medium"
                   >
-                    Clear all filters
+                    Сбросить фильтры
                   </button>
                 </div>
               )}
@@ -472,17 +472,17 @@ const LibraryPage: React.FC = () => {
               disabled={currentPage === 1}
               className="px-4 py-2 rounded-lg border border-border bg-card text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors min-h-[44px]"
             >
-              Previous
+              Назад
             </button>
             <span className="px-4 py-2 text-muted-foreground">
-              Page {currentPage} of {totalPages}
+              Страница {currentPage} из {totalPages}
             </span>
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
               className="px-4 py-2 rounded-lg border border-border bg-card text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors min-h-[44px]"
             >
-              Next
+              Далее
             </button>
           </div>
         )}
@@ -494,7 +494,7 @@ const LibraryPage: React.FC = () => {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={handleUploadClick}
-        aria-label="Upload book"
+        aria-label="Загрузить книгу"
       >
         <Plus className="w-7 h-7" />
       </motion.button>

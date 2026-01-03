@@ -199,7 +199,7 @@ const Sidebar: React.FC = () => {
               ) : (
                 <>
                   <ChevronLeft className="w-5 h-5 flex-shrink-0" />
-                  <span className="ml-3 text-sm font-medium">Collapse</span>
+                  <span className="ml-3 text-sm font-medium">Свернуть</span>
                 </>
               )}
             </button>
@@ -239,7 +239,7 @@ const Sidebar: React.FC = () => {
                 </p>
                 <p className="text-xs flex items-center text-[var(--color-text-subtle)]">
                   <Sparkles className="w-3 h-3 mr-1 text-[var(--color-accent-500)]" />
-                  Free Plan
+                  Бесплатный план
                 </p>
               </div>
             </div>

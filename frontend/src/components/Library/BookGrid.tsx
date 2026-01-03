@@ -135,10 +135,10 @@ export const BookGrid = memo(function BookGrid({
       >
         <SearchEmptyIllustration />
         <h3 className="text-xl font-bold mb-2 text-foreground">
-          No books found
+          Книги не найдены
         </h3>
         <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-          No results for "{searchQuery}". Try a different search term.
+          Нет результатов для "{searchQuery}". Попробуйте другой запрос.
         </p>
         {onClearSearch && (
           <motion.button
@@ -147,7 +147,7 @@ export const BookGrid = memo(function BookGrid({
             whileTap={{ scale: 0.98 }}
             onClick={onClearSearch}
           >
-            Clear Search
+            Очистить поиск
           </motion.button>
         )}
       </motion.div>
@@ -165,10 +165,10 @@ export const BookGrid = memo(function BookGrid({
       >
         <EmptyStateIllustration />
         <h3 className="text-xl font-bold mb-2 text-foreground">
-          Your library is empty
+          Ваша библиотека пуста
         </h3>
         <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-          Upload your first book to start your AI-enhanced reading journey
+          Загрузите первую книгу, чтобы начать чтение с AI-иллюстрациями
         </p>
         {onUploadClick && (
           <motion.button
@@ -178,7 +178,7 @@ export const BookGrid = memo(function BookGrid({
             onClick={onUploadClick}
           >
             <Plus className="w-5 h-5" />
-            Upload First Book
+            Загрузить первую книгу
           </motion.button>
         )}
       </motion.div>

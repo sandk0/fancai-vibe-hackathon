@@ -34,6 +34,7 @@ import { useUIStore } from '@/stores/ui';
 import { booksAPI } from '@/api/books';
 import { imagesAPI } from '@/api/images';
 import { cn } from '@/lib/utils';
+import { AuthenticatedImage } from '@/components/UI/AuthenticatedImage';
 import type { Book } from '@/types/api';
 
 // Animation variants
@@ -282,15 +283,24 @@ const ContinueReadingCard: React.FC<{ book: Book; isLoading: boolean }> = ({
         whileTap={{ scale: 0.99 }}
       >
         <div className="p-5 sm:p-6 flex gap-4 sm:gap-6">
-          {/* Book cover placeholder */}
-          <div
-            className={cn(
-              'flex-shrink-0 w-20 sm:w-24 aspect-[2/3] rounded-lg',
-              'bg-gradient-to-br from-primary/20 via-accent/20 to-secondary',
-              'flex items-center justify-center'
+          {/* Book cover */}
+          <div className="flex-shrink-0 w-20 sm:w-24 aspect-[2/3] rounded-lg overflow-hidden">
+            {book.has_cover ? (
+              <AuthenticatedImage
+                src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/books/${book.id}/cover`}
+                alt={`${book.title} cover`}
+                className="w-full h-full object-cover"
+                fallback={
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 via-accent/20 to-secondary">
+                    <BookOpen className="w-8 h-8 text-primary/60" />
+                  </div>
+                }
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 via-accent/20 to-secondary">
+                <BookOpen className="w-8 h-8 text-primary/60" />
+              </div>
             )}
-          >
-            <BookOpen className="w-8 h-8 text-primary/60" />
           </div>
 
           {/* Book info */}
@@ -411,7 +421,7 @@ const RecentBooksSection: React.FC<{ books: Book[]; isLoading: boolean }> = ({
         className={cn(
           'flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0',
           'scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent',
-          'snap-x snap-mandatory sm:snap-none'
+          'snap-x snap-proximity sm:snap-none'
         )}
         style={{ scrollbarWidth: 'thin' }}
       >
@@ -438,13 +448,26 @@ const RecentBooksSection: React.FC<{ books: Book[]; isLoading: boolean }> = ({
             <div
               className={cn(
                 'aspect-[2/3] rounded-xl mb-2 overflow-hidden',
-                'bg-gradient-to-br from-primary/20 via-accent/10 to-secondary',
-                'flex items-center justify-center',
                 'border border-border hover:border-primary/30',
                 'transition-all duration-200 shadow-sm hover:shadow-md'
               )}
             >
-              <BookOpen className="w-10 h-10 text-primary/40" />
+              {book.has_cover ? (
+                <AuthenticatedImage
+                  src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/books/${book.id}/cover`}
+                  alt={`${book.title} cover`}
+                  className="w-full h-full object-cover"
+                  fallback={
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 via-accent/10 to-secondary">
+                      <BookOpen className="w-10 h-10 text-primary/40" />
+                    </div>
+                  }
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 via-accent/10 to-secondary">
+                  <BookOpen className="w-10 h-10 text-primary/40" />
+                </div>
+              )}
             </div>
 
             {/* Book info */}
