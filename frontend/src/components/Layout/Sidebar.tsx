@@ -203,7 +203,7 @@ const Sidebar: React.FC = () => {
               {/* Avatar */}
               <div className={cn(
                 'flex-shrink-0 rounded-full flex items-center justify-center',
-                'bg-[var(--color-accent-500)] text-white',
+                'bg-[var(--color-accent-500)] text-primary-foreground',
                 isCollapsed ? 'w-8 h-8' : 'w-10 h-10'
               )}>
                 <span className={cn(
@@ -250,6 +250,7 @@ const Sidebar: React.FC = () => {
           'fixed inset-y-0 left-0 z-[500] w-64 md:hidden',
           'transition-transform duration-300 ease-in-out',
           'bg-[var(--color-bg-base)] border-r border-[var(--color-border-default)]',
+          'pt-safe pb-safe',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -308,7 +309,7 @@ const Sidebar: React.FC = () => {
           {/* User Info */}
           <div className="flex-shrink-0 px-4 py-4 border-t border-[var(--color-border-default)]">
             <div className="flex items-center">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-[var(--color-accent-500)] text-white">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-[var(--color-accent-500)] text-primary-foreground">
                 <span className="text-sm font-medium">
                   {user?.full_name ? user.full_name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || 'U'}
                 </span>

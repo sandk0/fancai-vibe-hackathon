@@ -191,7 +191,7 @@ const ProfilePage: React.FC = () => {
                 </div>
               ) : (
                 <div className="flex items-center gap-3 mb-3 justify-center md:justify-start">
-                  <h1 className="text-3xl md:text-4xl font-bold text-white">
+                  <h1 className="text-3xl md:text-4xl font-bold text-primary-foreground">
                     {user?.full_name || 'User'}
                   </h1>
                   <button
@@ -199,12 +199,12 @@ const ProfilePage: React.FC = () => {
                     className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-all min-h-[44px] min-w-[44px] flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary"
                     aria-label="Edit name"
                   >
-                    <Edit2 className="w-5 h-5 text-white" aria-hidden="true" />
+                    <Edit2 className="w-5 h-5 text-primary-foreground" aria-hidden="true" />
                   </button>
                 </div>
               )}
 
-              <div className="flex flex-col md:flex-row gap-4 text-white/90 mb-4">
+              <div className="flex flex-col md:flex-row gap-4 text-primary-foreground/90 mb-4">
                 <div className="flex items-center gap-2 justify-center md:justify-start">
                   <Mail className="w-4 h-4" />
                   <span>{user?.email}</span>
@@ -218,12 +218,12 @@ const ProfilePage: React.FC = () => {
               {/* Subscription Badge */}
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/20 backdrop-blur-sm">
                 <Sparkles className="w-4 h-4 text-yellow-300" />
-                <span className="font-semibold text-white">Free Plan</span>
+                <span className="font-semibold text-primary-foreground">Free Plan</span>
                 {user?.is_admin && (
                   <>
                     <div className="w-1 h-1 rounded-full bg-white/50" />
                     <Shield className="w-4 h-4 text-green-300" />
-                    <span className="font-semibold text-white">Admin</span>
+                    <span className="font-semibold text-primary-foreground">Admin</span>
                   </>
                 )}
               </div>

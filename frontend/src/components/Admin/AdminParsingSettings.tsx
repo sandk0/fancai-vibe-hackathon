@@ -170,7 +170,7 @@ export const AdminParsingSettings: React.FC<AdminParsingSettingsProps> = ({
           <button
             onClick={() => onSave(settings)}
             disabled={isSaving}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg flex items-center gap-2"
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-primary-foreground rounded-lg flex items-center gap-2"
           >
             {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {isSaving ? t('admin.saving') : t('admin.saveSettings')}

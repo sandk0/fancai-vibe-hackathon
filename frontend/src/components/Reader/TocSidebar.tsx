@@ -134,7 +134,7 @@ const ChapterItem: React.FC<ChapterItemProps> = ({
               animate={{ scale: 1 }}
               className="w-5 h-5 rounded-full bg-[var(--color-success)] flex items-center justify-center"
             >
-              <Check className="w-3 h-3 text-white" strokeWidth={3} />
+              <Check className="w-3 h-3 text-green-50" strokeWidth={3} />
             </m.div>
           ) : progress > 0 ? (
             <div className="relative w-5 h-5">

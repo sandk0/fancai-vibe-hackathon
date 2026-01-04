@@ -660,3 +660,19 @@ button, a, [role="button"] {
 .text-info { color: var(--color-info); }
 .bg-info { background-color: var(--color-info); }
 .bg-info-muted { background-color: var(--color-info-muted); }
+
+/* ========================================
+   EPUB Reader - Disable horizontal swipe
+   Prevents multiple page turns on touch devices
+   ======================================== */
+.epub-container iframe,
+.epub-container iframe body {
+  touch-action: pan-y !important;
+  overscroll-behavior-x: none !important;
+}
+
+#viewer iframe,
+#viewer iframe body {
+  touch-action: pan-y !important;
+  overscroll-behavior-x: none !important;
+}

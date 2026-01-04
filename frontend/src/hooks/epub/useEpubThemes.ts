@@ -15,7 +15,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Rendition } from '@/types/epub';
 
-export type ThemeName = 'light' | 'dark' | 'sepia';
+export type ThemeName = 'light' | 'dark' | 'sepia' | 'night';
 
 interface ThemeStyles {
   body: Record<string, string>;
@@ -55,8 +55,8 @@ const FONT_SIZE_STEP = 10;
 const THEMES: Record<ThemeName, ThemeStyles> = {
   light: {
     body: {
-      color: 'hsl(222.2, 84%, 4.9%)', // --foreground
-      background: 'hsl(0, 0%, 100%)', // --background
+      color: '#1A1A1A', // --foreground
+      background: '#FFFFFF', // --background
       'font-family': 'Georgia, serif',
       'line-height': '1.6',
     },
@@ -66,14 +66,14 @@ const THEMES: Record<ThemeName, ThemeStyles> = {
     a: {
       color: 'hsl(221.2, 83.2%, 53.3%)', // --primary
     },
-    h1: { color: 'hsl(222.2, 84%, 4.9%)' },
-    h2: { color: 'hsl(222.2, 84%, 4.9%)' },
-    h3: { color: 'hsl(222.2, 84%, 4.9%)' },
+    h1: { color: '#1A1A1A' },
+    h2: { color: '#1A1A1A' },
+    h3: { color: '#1A1A1A' },
   },
   dark: {
     body: {
-      color: 'hsl(210, 40%, 98%)', // --foreground (dark)
-      background: 'hsl(222.2, 84%, 4.9%)', // --background (dark)
+      color: '#E8E8E8', // --foreground (dark)
+      background: '#121212', // --background (dark) - neutral gray, not blue-tinted
       'font-family': 'Georgia, serif',
       'line-height': '1.6',
     },
@@ -83,14 +83,14 @@ const THEMES: Record<ThemeName, ThemeStyles> = {
     a: {
       color: 'hsl(217.2, 91.2%, 59.8%)', // --primary (dark)
     },
-    h1: { color: 'hsl(210, 40%, 98%)' },
-    h2: { color: 'hsl(210, 40%, 98%)' },
-    h3: { color: 'hsl(210, 40%, 98%)' },
+    h1: { color: '#E8E8E8' },
+    h2: { color: '#E8E8E8' },
+    h3: { color: '#E8E8E8' },
   },
   sepia: {
     body: {
-      color: 'hsl(18, 28%, 29%)', // --foreground (sepia)
-      background: 'hsl(39, 39%, 94%)', // --background (sepia)
+      color: '#3D2914', // --foreground (sepia)
+      background: '#FBF0D9', // --background (sepia)
       'font-family': 'Georgia, serif',
       'line-height': '1.6',
     },
@@ -100,9 +100,26 @@ const THEMES: Record<ThemeName, ThemeStyles> = {
     a: {
       color: 'hsl(28, 79%, 45%)', // --primary (sepia)
     },
-    h1: { color: 'hsl(18, 28%, 29%)' },
-    h2: { color: 'hsl(18, 28%, 29%)' },
-    h3: { color: 'hsl(18, 28%, 29%)' },
+    h1: { color: '#3D2914' },
+    h2: { color: '#3D2914' },
+    h3: { color: '#3D2914' },
+  },
+  night: {
+    body: {
+      color: '#B0B0B0', // --foreground (night)
+      background: '#000000', // --background (night) - pure black
+      'font-family': 'Georgia, serif',
+      'line-height': '1.6',
+    },
+    p: {
+      'margin-bottom': '1em',
+    },
+    a: {
+      color: 'hsl(217.2, 91.2%, 59.8%)', // --primary (night)
+    },
+    h1: { color: '#B0B0B0' },
+    h2: { color: '#B0B0B0' },
+    h3: { color: '#B0B0B0' },
   },
 };
 

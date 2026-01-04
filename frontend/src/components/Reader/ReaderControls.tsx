@@ -4,7 +4,7 @@
  * Features:
  * - Theme switcher (Light/Dark/Sepia)
  * - Font size controls (A-/A+)
- * - Fully theme-aware styling
+ * - Uses semantic Tailwind classes for consistent theming
  *
  * @component
  */
@@ -46,52 +46,6 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
   onOpenChange,
   className,
 }) => {
-
-  // Theme-aware colors
-  const getThemeColors = () => {
-    switch (theme) {
-      case 'light':
-        return {
-          fabBg: 'bg-blue-500 hover:bg-blue-600',
-          fabText: 'text-white',
-          menuBg: 'bg-white/95',
-          text: 'text-gray-900',
-          textSecondary: 'text-gray-600',
-          border: 'border-gray-200',
-          hover: 'hover:bg-gray-100',
-          buttonActive: 'bg-blue-500 text-white',
-          buttonInactive: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50',
-        };
-      case 'sepia':
-        return {
-          fabBg: 'bg-amber-600 hover:bg-amber-700',
-          fabText: 'text-white',
-          menuBg: 'bg-amber-50/95',
-          text: 'text-amber-900',
-          textSecondary: 'text-amber-700',
-          border: 'border-amber-200',
-          hover: 'hover:bg-amber-100',
-          buttonActive: 'bg-amber-600 text-white',
-          buttonInactive: 'bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100',
-        };
-      case 'dark':
-      default:
-        return {
-          fabBg: 'bg-blue-600 hover:bg-blue-700',
-          fabText: 'text-white',
-          menuBg: 'bg-gray-800/95',
-          text: 'text-gray-100',
-          textSecondary: 'text-gray-400',
-          border: 'border-gray-600',
-          hover: 'hover:bg-gray-700',
-          buttonActive: 'bg-blue-600 text-white',
-          buttonInactive: 'bg-gray-700 text-gray-300 border border-gray-600 hover:bg-gray-600',
-        };
-    }
-  };
-
-  const colors = getThemeColors();
-
   return (
     <div className={className}>
       <DropdownMenu open={isOpen} onOpenChange={onOpenChange}>
@@ -101,20 +55,16 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
 
         <DropdownMenuContent
           align="end"
-          className={cn(
-            "w-[calc(100vw-2rem)] sm:w-80 max-w-80 backdrop-blur-md border p-0",
-            colors.menuBg,
-            colors.border
-          )}
+          className="w-[calc(100vw-2rem)] sm:w-80 max-w-80 backdrop-blur-md border border-border bg-popover/95 p-0"
         >
           {/* Header */}
-          <div className={cn("px-4 py-3 border-b", colors.border)}>
-            <h3 className={cn("font-semibold", colors.text)}>Настройки читалки</h3>
+          <div className="px-4 py-3 border-b border-border">
+            <h3 className="font-semibold text-popover-foreground">Настройки читалки</h3>
           </div>
 
           {/* Theme Switcher */}
           <div className="px-4 py-3">
-            <label className={cn("text-xs font-medium mb-2 block", colors.textSecondary)}>
+            <label className="text-xs font-medium mb-2 block text-muted-foreground">
               Тема оформления
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -122,7 +72,9 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                 onClick={() => onThemeChange('light')}
                 className={cn(
                   "px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-1.5",
-                  theme === 'light' ? colors.buttonActive : colors.buttonInactive
+                  theme === 'light'
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card text-foreground border border-border hover:bg-muted"
                 )}
               >
                 <Sun className="h-4 w-4" />
@@ -132,7 +84,9 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                 onClick={() => onThemeChange('dark')}
                 className={cn(
                   "px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-1.5",
-                  theme === 'dark' ? colors.buttonActive : colors.buttonInactive
+                  theme === 'dark'
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card text-foreground border border-border hover:bg-muted"
                 )}
               >
                 <Moon className="h-4 w-4" />
@@ -142,7 +96,9 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                 onClick={() => onThemeChange('sepia')}
                 className={cn(
                   "px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-1.5",
-                  theme === 'sepia' ? colors.buttonActive : colors.buttonInactive
+                  theme === 'sepia'
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card text-foreground border border-border hover:bg-muted"
                 )}
               >
                 <FileText className="h-4 w-4" />
@@ -151,11 +107,11 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
             </div>
           </div>
 
-          <div className={cn("border-t", colors.border)} />
+          <div className="border-t border-border" />
 
           {/* Font Size Controls */}
           <div className="px-4 py-3">
-            <label className={cn("text-xs font-medium mb-2 block", colors.textSecondary)}>
+            <label className="text-xs font-medium mb-2 block text-muted-foreground">
               Размер шрифта
             </label>
             <div className="flex items-center gap-3">
@@ -163,22 +119,22 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                 onClick={onFontSizeDecrease}
                 disabled={fontSize <= 75}
                 className={cn(
-                  "h-9 w-9 rounded-md flex items-center justify-center transition-colors",
-                  colors.buttonInactive,
+                  "h-11 w-11 min-h-[44px] min-w-[44px] rounded-md flex items-center justify-center transition-colors",
+                  "bg-card text-foreground border border-border hover:bg-muted",
                   fontSize <= 75 && "opacity-40 cursor-not-allowed"
                 )}
               >
                 <Minus className="h-4 w-4" />
               </button>
               <div className="flex-1 text-center">
-                <span className={cn("text-lg font-semibold", colors.text)}>{fontSize}%</span>
+                <span className="text-lg font-semibold text-popover-foreground">{fontSize}%</span>
               </div>
               <button
                 onClick={onFontSizeIncrease}
                 disabled={fontSize >= 200}
                 className={cn(
-                  "h-9 w-9 rounded-md flex items-center justify-center transition-colors",
-                  colors.buttonInactive,
+                  "h-11 w-11 min-h-[44px] min-w-[44px] rounded-md flex items-center justify-center transition-colors",
+                  "bg-card text-foreground border border-border hover:bg-muted",
                   fontSize >= 200 && "opacity-40 cursor-not-allowed"
                 )}
               >

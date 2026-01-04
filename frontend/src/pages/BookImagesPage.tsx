@@ -78,8 +78,8 @@ const BookImagesPage: React.FC = () => {
             to="/library"
             className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-sm transition-all"
           >
-            <ArrowLeft className="w-4 h-4 text-white" />
-            <span className="text-white font-medium">{t('common.back')}</span>
+            <ArrowLeft className="w-4 h-4 text-primary-foreground" />
+            <span className="text-primary-foreground font-medium">{t('common.back')}</span>
           </Link>
 
           <div className="flex flex-col lg:flex-row items-center gap-8">
@@ -95,7 +95,7 @@ const BookImagesPage: React.FC = () => {
                 className="w-full h-full object-cover"
                 fallback={
                   <div className="w-full h-full flex items-center justify-center bg-primary">
-                    <BookOpen className="w-16 h-16 text-white" />
+                    <BookOpen className="w-16 h-16 text-primary-foreground" />
                   </div>
                 }
               />
@@ -103,17 +103,17 @@ const BookImagesPage: React.FC = () => {
 
             {/* Book Info */}
             <div className="flex-1 text-center lg:text-left">
-              <h1 className="text-3xl md:text-5xl font-bold text-white mb-4">
+              <h1 className="text-3xl md:text-5xl font-bold text-primary-foreground mb-4">
                 {book.title}
               </h1>
-              <p className="text-lg text-white/90 mb-6">
+              <p className="text-lg text-primary-foreground/90 mb-6">
                 {book.author} • {t('images.aiGeneratedImages')}
               </p>
 
               {/* Action Button */}
               <Link
                 to={`/books/${bookId}`}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white transition-all hover:scale-105 shadow-lg bg-white/20 hover:bg-white/30"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-primary-foreground transition-all hover:scale-105 shadow-lg bg-white/20 hover:bg-white/30"
               >
                 <BookOpen className="w-5 h-5" />
                 <span>{t('images.readBook')}</span>

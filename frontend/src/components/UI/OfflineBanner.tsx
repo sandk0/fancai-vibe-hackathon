@@ -130,7 +130,7 @@ export function OfflineBanner({
       className={`
         fixed top-0 left-0 right-0 z-[800]
         px-4 py-2
-        text-center text-sm text-white
+        text-center text-sm text-primary-foreground
         transition-all duration-300 ease-in-out
         ${bgColor}
         ${className}

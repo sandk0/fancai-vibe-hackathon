@@ -95,7 +95,7 @@ const StatsPage: React.FC = () => {
     }, {} as Record<string, number>);
 
     const total = booksData.books.length;
-    const colors = ['bg-blue-500', 'bg-purple-500', 'bg-amber-500', 'bg-green-500', 'bg-gray-500'];
+    const colors = ['bg-blue-500', 'bg-purple-500', 'bg-amber-500', 'bg-green-500', 'bg-muted-foreground'];
 
     return Object.entries(genreCounts)
       .map(([genre, count], idx) => ({

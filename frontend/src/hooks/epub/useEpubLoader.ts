@@ -117,6 +117,19 @@ export const useEpubLoader = ({
         renditionRef.current = newRendition;
         setRendition(newRendition);
 
+        // Disable horizontal swipe/touch navigation in iframe to prevent multiple page turns
+        newRendition.on('rendered', () => {
+          const iframe = viewerRef.current?.querySelector('iframe');
+          if (iframe?.contentDocument?.body) {
+            // Disable horizontal swipe, allow only vertical scroll
+            iframe.contentDocument.body.style.touchAction = 'pan-y';
+            iframe.contentDocument.body.style.overscrollBehaviorX = 'none';
+            // Enable text selection
+            iframe.contentDocument.body.style.userSelect = 'text';
+            iframe.contentDocument.body.style.webkitUserSelect = 'text';
+          }
+        });
+
         // Note: Theme is now applied by useEpubThemes hook
         console.log('✅ [useEpubLoader] EPUB loaded successfully');
         setIsLoading(false);

@@ -67,7 +67,7 @@ export const PositionConflictDialog: React.FC<PositionConflictDialogProps> = ({
       aria-modal="true"
       aria-labelledby="position-conflict-title"
     >
-      <div className="bg-popover rounded-lg p-6 max-w-md mx-4 shadow-xl">
+      <div className="bg-popover rounded-xl p-6 max-w-md mx-4 shadow-xl">
         <h3
           id="position-conflict-title"
           className="text-lg font-semibold text-popover-foreground mb-4"

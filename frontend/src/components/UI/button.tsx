@@ -46,7 +46,7 @@ const buttonVariants = cva(
   // Base styles
   [
     "inline-flex items-center justify-center gap-2",
-    "whitespace-nowrap rounded-md",
+    "whitespace-nowrap rounded-lg",
     "text-sm font-medium",
     "transition-all duration-200",
     // Focus styles with ring

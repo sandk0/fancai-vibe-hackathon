@@ -61,7 +61,7 @@ export const AdminStats: React.FC<AdminStatsProps> = ({ stats, isLoading, t }) =
         return (
           <div
             key={index}
-            className="bg-card rounded-lg p-6 shadow-sm border border-border"
+            className="bg-card rounded-xl p-6 shadow-sm border border-border"
           >
             <div className="flex items-center justify-between">
               <div>

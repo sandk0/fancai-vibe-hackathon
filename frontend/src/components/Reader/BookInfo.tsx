@@ -20,13 +20,11 @@ import React, { useEffect } from 'react';
 import { m } from 'framer-motion';
 import { X, Book as BookIcon, User, Calendar, Globe, Copyright } from 'lucide-react';
 import type { BookMetadata } from '@/hooks/epub/useBookMetadata';
-import type { ThemeName } from '@/hooks/epub/useEpubThemes';
 
 interface BookInfoProps {
   metadata: BookMetadata;
   isOpen: boolean;
   onClose: () => void;
-  theme: ThemeName;
 }
 
 /**
@@ -36,7 +34,6 @@ export const BookInfo: React.FC<BookInfoProps> = ({
   metadata,
   isOpen,
   onClose,
-  theme,
 }) => {
   // Close on Escape key
   useEffect(() => {
@@ -58,39 +55,6 @@ export const BookInfo: React.FC<BookInfoProps> = ({
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
-
-  // Theme-aware colors
-  const getThemeColors = () => {
-    switch (theme) {
-      case 'light':
-        return {
-          bg: 'bg-white',
-          text: 'text-gray-900',
-          textSecondary: 'text-gray-600',
-          border: 'border-gray-200',
-          hover: 'hover:bg-gray-100',
-        };
-      case 'sepia':
-        return {
-          bg: 'bg-amber-50',
-          text: 'text-amber-900',
-          textSecondary: 'text-amber-700',
-          border: 'border-amber-200',
-          hover: 'hover:bg-amber-100',
-        };
-      case 'dark':
-      default:
-        return {
-          bg: 'bg-gray-800',
-          text: 'text-gray-100',
-          textSecondary: 'text-gray-400',
-          border: 'border-gray-600',
-          hover: 'hover:bg-gray-700',
-        };
-    }
-  };
-
-  const colors = getThemeColors();
 
   // Format publication date if available
   const formatDate = (dateString?: string) => {
@@ -121,18 +85,18 @@ export const BookInfo: React.FC<BookInfoProps> = ({
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className={`relative max-w-2xl w-full max-h-[85vh] overflow-y-auto rounded-lg ${colors.bg} shadow-2xl`}
+        className="relative max-w-2xl w-full max-h-[85vh] overflow-y-auto rounded-lg bg-popover shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className={`sticky top-0 ${colors.bg} border-b ${colors.border} px-6 py-4 flex items-center justify-between z-10`}>
-          <h2 className={`text-xl font-bold ${colors.text} flex items-center gap-2`}>
+        <div className="sticky top-0 bg-popover border-b border-border px-6 py-4 flex items-center justify-between z-10">
+          <h2 className="text-xl font-bold text-popover-foreground flex items-center gap-2">
             <BookIcon className="h-5 w-5" />
             О книге
           </h2>
           <button
             onClick={onClose}
-            className={`p-2 rounded-lg ${colors.hover} transition-colors ${colors.textSecondary}`}
+            className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
             aria-label="Закрыть"
           >
             <X className="h-5 w-5" />
@@ -144,10 +108,10 @@ export const BookInfo: React.FC<BookInfoProps> = ({
           {/* Title and Author */}
           <div className="space-y-3">
             <div>
-              <h3 className={`text-2xl font-bold ${colors.text} mb-1`}>
+              <h3 className="text-2xl font-bold text-popover-foreground mb-1">
                 {metadata.title}
               </h3>
-              <div className={`flex items-center gap-2 ${colors.textSecondary}`}>
+              <div className="flex items-center gap-2 text-muted-foreground">
                 <User className="h-4 w-4" />
                 <span className="text-lg">{metadata.creator}</span>
               </div>
@@ -157,10 +121,10 @@ export const BookInfo: React.FC<BookInfoProps> = ({
           {/* Description */}
           {metadata.description && (
             <div className="space-y-2">
-              <h4 className={`text-sm font-semibold uppercase ${colors.textSecondary}`}>
+              <h4 className="text-sm font-semibold uppercase text-muted-foreground">
                 Описание
               </h4>
-              <p className={`${colors.text} text-base leading-relaxed`}>
+              <p className="text-popover-foreground text-base leading-relaxed">
                 {metadata.description}
               </p>
             </div>
@@ -171,12 +135,12 @@ export const BookInfo: React.FC<BookInfoProps> = ({
             {/* Publisher */}
             {metadata.publisher && (
               <div className="flex items-start gap-3">
-                <BookIcon className={`h-5 w-5 mt-0.5 ${colors.textSecondary}`} />
+                <BookIcon className="h-5 w-5 mt-0.5 text-muted-foreground" />
                 <div className="flex-1">
-                  <div className={`text-xs font-semibold uppercase ${colors.textSecondary} mb-1`}>
+                  <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">
                     Издательство
                   </div>
-                  <div className={colors.text}>{metadata.publisher}</div>
+                  <div className="text-popover-foreground">{metadata.publisher}</div>
                 </div>
               </div>
             )}
@@ -184,12 +148,12 @@ export const BookInfo: React.FC<BookInfoProps> = ({
             {/* Publication Date */}
             {formattedDate && (
               <div className="flex items-start gap-3">
-                <Calendar className={`h-5 w-5 mt-0.5 ${colors.textSecondary}`} />
+                <Calendar className="h-5 w-5 mt-0.5 text-muted-foreground" />
                 <div className="flex-1">
-                  <div className={`text-xs font-semibold uppercase ${colors.textSecondary} mb-1`}>
+                  <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">
                     Дата публикации
                   </div>
-                  <div className={colors.text}>{formattedDate}</div>
+                  <div className="text-popover-foreground">{formattedDate}</div>
                 </div>
               </div>
             )}
@@ -197,12 +161,12 @@ export const BookInfo: React.FC<BookInfoProps> = ({
             {/* Language */}
             {metadata.language && (
               <div className="flex items-start gap-3">
-                <Globe className={`h-5 w-5 mt-0.5 ${colors.textSecondary}`} />
+                <Globe className="h-5 w-5 mt-0.5 text-muted-foreground" />
                 <div className="flex-1">
-                  <div className={`text-xs font-semibold uppercase ${colors.textSecondary} mb-1`}>
+                  <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">
                     Язык
                   </div>
-                  <div className={colors.text}>
+                  <div className="text-popover-foreground">
                     {metadata.language.toUpperCase()}
                   </div>
                 </div>
@@ -212,12 +176,12 @@ export const BookInfo: React.FC<BookInfoProps> = ({
             {/* Copyright */}
             {metadata.rights && (
               <div className="flex items-start gap-3">
-                <Copyright className={`h-5 w-5 mt-0.5 ${colors.textSecondary}`} />
+                <Copyright className="h-5 w-5 mt-0.5 text-muted-foreground" />
                 <div className="flex-1">
-                  <div className={`text-xs font-semibold uppercase ${colors.textSecondary} mb-1`}>
+                  <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">
                     Права
                   </div>
-                  <div className={`${colors.text} text-sm`}>{metadata.rights}</div>
+                  <div className="text-popover-foreground text-sm">{metadata.rights}</div>
                 </div>
               </div>
             )}
@@ -225,10 +189,10 @@ export const BookInfo: React.FC<BookInfoProps> = ({
         </div>
 
         {/* Footer (optional - can add actions here) */}
-        <div className={`sticky bottom-0 ${colors.bg} border-t ${colors.border} px-6 py-4`}>
+        <div className="sticky bottom-0 bg-popover border-t border-border px-6 py-4">
           <button
             onClick={onClose}
-            className={`w-full px-4 py-2 rounded-lg ${colors.hover} ${colors.text} font-medium transition-colors`}
+            className="w-full px-4 py-2 rounded-lg hover:bg-muted text-popover-foreground font-medium transition-colors"
           >
             Закрыть
           </button>

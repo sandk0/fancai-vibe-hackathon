@@ -49,7 +49,6 @@ import {
   useDescriptionHighlighting,
   useImageModal,
   useEpubThemes,
-  useTouchNavigation,
   useContentHooks,
   useResizeHandler,
   useBookMetadata,
@@ -136,17 +135,6 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   // State for settings dropdown
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // Immersive mode state - hides toolbar for distraction-free reading
-  const [isImmersive, setIsImmersive] = useState(true);
-  const immersiveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Navigation debounce to prevent double page turns
-  const lastNavigationTime = useRef<number>(0);
-  const NAVIGATION_DEBOUNCE = 300;
-
-  // Tap zone visual feedback state
-  const [tapFeedback, setTapFeedback] = useState<'left' | 'right' | null>(null);
-
   // State for position conflict dialog (sync between devices)
   const [positionConflict, setPositionConflict] = useState<PositionConflict | null>(null);
 
@@ -216,23 +204,6 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   // Hook 6: Page navigation
   const { nextPage, prevPage } = useEpubNavigation(rendition);
 
-  // Debounced navigation functions to prevent double page turns
-  const nextPageDebounced = useCallback(() => {
-    const now = Date.now();
-    if (now - lastNavigationTime.current > NAVIGATION_DEBOUNCE) {
-      lastNavigationTime.current = now;
-      nextPage();
-    }
-  }, [nextPage]);
-
-  const prevPageDebounced = useCallback(() => {
-    const now = Date.now();
-    if (now - lastNavigationTime.current > NAVIGATION_DEBOUNCE) {
-      lastNavigationTime.current = now;
-      prevPage();
-    }
-  }, [prevPage]);
-
   // Hook 7: Image modal management with IndexedDB caching
   const {
     selectedImage,
@@ -254,16 +225,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   // Hook 9: Theme management
   const { theme, fontSize, setTheme, increaseFontSize, decreaseFontSize } = useEpubThemes(rendition);
 
-  // Hook 10: Touch/swipe navigation
-  // DISABLED: Causes double page turns due to conflict with tap zones
-  useTouchNavigation({
-    rendition,
-    nextPage,
-    prevPage,
-    enabled: false, // DISABLED - tap zones handle navigation
-  });
-
-  // Hook 11: Content hooks for style injection
+  // Hook 10: Content hooks for style injection
   useContentHooks(rendition, theme);
 
   // Hook 12: Description highlighting
@@ -646,200 +608,32 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   const backgroundColor = useMemo(() => {
     switch (theme) {
       case 'light':
-        return 'bg-white';
+        return 'bg-background';
       case 'sepia':
-        return 'bg-amber-50';
+        return 'bg-[#FBF0D9]';
       case 'dark':
       default:
-        return 'bg-gray-900';
+        return 'bg-background';
     }
   }, [theme]);
 
-
-  /**
-   * Show toolbar temporarily (exit immersive mode with auto-hide)
-   */
-  const showToolbarTemporarily = useCallback(() => {
-    // Clear any existing timeout
-    if (immersiveTimeoutRef.current) {
-      clearTimeout(immersiveTimeoutRef.current);
-    }
-
-    // Show toolbar
-    setIsImmersive(false);
-
-    // Auto-hide after 3 seconds
-    immersiveTimeoutRef.current = setTimeout(() => {
-      setIsImmersive(true);
-    }, 3000);
-  }, []);
-
-  /**
-   * Toggle immersive mode (center tap zone action)
-   */
-  const toggleImmersiveMode = useCallback(() => {
-    // Clear any existing timeout
-    if (immersiveTimeoutRef.current) {
-      clearTimeout(immersiveTimeoutRef.current);
-      immersiveTimeoutRef.current = null;
-    }
-
-    if (isImmersive) {
-      // Exit immersive mode with auto-hide
-      showToolbarTemporarily();
-    } else {
-      // Enter immersive mode immediately
-      setIsImmersive(true);
-    }
-  }, [isImmersive, showToolbarTemporarily]);
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (immersiveTimeoutRef.current) {
-        clearTimeout(immersiveTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  /**
-   * Show tap feedback with auto-clear
-   */
-  const showTapFeedback = useCallback((zone: 'left' | 'right') => {
-    setTapFeedback(zone);
-    setTimeout(() => setTapFeedback(null), 150);
-  }, []);
-
-  /**
-   * Handle tap zones for navigation (EasyReach Kindle-style)
-   * - Left 20%: Previous page
-   * - Center 60%: Toggle UI (immersive mode)
-   * - Right 20%: Next page
-   */
-  const handleTapZone = useCallback((zone: 'left' | 'center' | 'right') => {
-    if (!renditionReady || isModalOpen || isTocOpen || isSettingsOpen || isBookInfoOpen || positionConflict) return;
-
-    if (zone === 'left') {
-      console.log('[EpubReader] Left tap zone clicked, going to previous page');
-      showTapFeedback('left');
-      prevPageDebounced();
-    } else if (zone === 'right') {
-      console.log('[EpubReader] Right tap zone clicked, going to next page');
-      showTapFeedback('right');
-      nextPageDebounced();
-    } else {
-      console.log('[EpubReader] Center tap zone clicked, toggling immersive mode');
-      toggleImmersiveMode();
-    }
-  }, [renditionReady, isModalOpen, isTocOpen, isSettingsOpen, isBookInfoOpen, positionConflict, prevPageDebounced, nextPageDebounced, showTapFeedback, toggleImmersiveMode]);
 
 
   // Main render - viewerRef MUST stay in same DOM location to prevent rendition destruction
   return (
     <div className={`relative h-full w-full transition-colors ${backgroundColor}`}>
       {/* EPUB Viewer - Maximum reading space, with safe-area support */}
-      {/* In immersive mode on mobile, expand to full height */}
-      {/* On desktop (md+), always show header padding - handled via CSS variable */}
-      <style>{`
-        @media (min-width: 768px) {
-          .epub-viewer-container {
-            padding-top: calc(70px + env(safe-area-inset-top)) !important;
-          }
-        }
-      `}</style>
+      {/* Header always visible - padding accounts for 70px header height */}
       <div
         ref={viewerRef}
-        className={`epub-viewer-container h-full w-full ${backgroundColor} transition-[padding] duration-300`}
+        className={`h-full w-full ${backgroundColor}`}
         style={{
-          // In immersive mode on mobile, use only safe-area padding
-          // On desktop (md+), CSS media query overrides this
-          paddingTop: isImmersive
-            ? 'env(safe-area-inset-top)'
-            : 'calc(70px + env(safe-area-inset-top))',
+          paddingTop: 'calc(70px + env(safe-area-inset-top))',
           paddingLeft: 'env(safe-area-inset-left)',
           paddingRight: 'env(safe-area-inset-right)',
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}
       />
-
-      {/* EasyReach Tap Zones (Kindle-style) - invisible touch areas for page navigation */}
-      {/* Layout: Left 20% | Center 60% | Right 20% */}
-      {renditionReady && !isLoading && !isGenerating && !isRestoringPosition && (
-        <>
-          {/* Left tap zone (20%) - previous page */}
-          {/* z-[2] allows description highlights (z-[3]) to be clickable */}
-          <div
-            className="fixed left-0 bottom-0 w-[20%] z-[2] md:hidden"
-            style={{
-              background: 'transparent',
-              pointerEvents: 'auto',
-              top: isImmersive ? '0' : 'calc(70px + env(safe-area-inset-top))',
-              paddingBottom: 'env(safe-area-inset-bottom)',
-              WebkitTapHighlightColor: 'transparent',
-              transition: 'top 0.3s ease',
-            }}
-            onClick={() => handleTapZone('left')}
-            aria-label="Previous page"
-            role="button"
-          />
-
-          {/* Center tap zone (60%) - toggle immersive mode */}
-          {/* z-[2] allows description highlights (z-[3]) to be clickable */}
-          <div
-            className="fixed left-[20%] bottom-0 w-[60%] z-[2] md:hidden"
-            style={{
-              background: 'transparent',
-              pointerEvents: 'auto',
-              top: isImmersive ? '0' : 'calc(70px + env(safe-area-inset-top))',
-              paddingBottom: 'env(safe-area-inset-bottom)',
-              WebkitTapHighlightColor: 'transparent',
-              transition: 'top 0.3s ease',
-            }}
-            onClick={() => handleTapZone('center')}
-            aria-label="Toggle toolbar"
-            role="button"
-          />
-
-          {/* Right tap zone (20%) - next page */}
-          {/* z-[2] allows description highlights (z-[3]) to be clickable */}
-          <div
-            className="fixed right-0 bottom-0 w-[20%] z-[2] md:hidden"
-            style={{
-              background: 'transparent',
-              pointerEvents: 'auto',
-              top: isImmersive ? '0' : 'calc(70px + env(safe-area-inset-top))',
-              paddingBottom: 'env(safe-area-inset-bottom)',
-              WebkitTapHighlightColor: 'transparent',
-              transition: 'top 0.3s ease',
-            }}
-            onClick={() => handleTapZone('right')}
-            aria-label="Next page"
-            role="button"
-          />
-
-          {/* Visual feedback overlay for tap zones */}
-          {tapFeedback === 'left' && (
-            <div
-              className="fixed left-0 bottom-0 w-[20%] z-[4] pointer-events-none md:hidden animate-pulse"
-              style={{
-                top: isImmersive ? '0' : 'calc(70px + env(safe-area-inset-top))',
-                paddingBottom: 'env(safe-area-inset-bottom)',
-                background: theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
-              }}
-            />
-          )}
-          {tapFeedback === 'right' && (
-            <div
-              className="fixed right-0 bottom-0 w-[20%] z-[4] pointer-events-none md:hidden animate-pulse"
-              style={{
-                top: isImmersive ? '0' : 'calc(70px + env(safe-area-inset-top))',
-                paddingBottom: 'env(safe-area-inset-bottom)',
-                background: theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
-              }}
-            />
-          )}
-        </>
-      )}
 
       {/* Loading Overlay */}
       {(isLoading || isGenerating || isRestoringPosition) && (
@@ -927,27 +721,19 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
       )}
 
       {/* Modern Reader Header - Theme-aware with all controls and progress */}
-      {/* Hidden in immersive mode on mobile, always visible on desktop */}
+      {/* Always visible - tap zones removed */}
       {renditionReady && !isLoading && !isGenerating && !isRestoringPosition && metadata && (
-        <div
-          className={`transition-opacity duration-300 ease-in-out ${
-            isImmersive
-              ? 'opacity-0 pointer-events-none md:opacity-100 md:pointer-events-auto'
-              : 'opacity-100'
-          }`}
-        >
-          <ReaderHeader
-            title={metadata.title}
-            author={metadata.creator}
-            progress={progress}
-            currentPage={currentPage ?? undefined}
-            totalPages={totalPages ?? undefined}
-            onBack={() => navigate(`/book/${book.id}`)}
-            onTocToggle={() => setIsTocOpen(!isTocOpen)}
-            onInfoOpen={() => setIsBookInfoOpen(true)}
-            onSettingsOpen={() => setIsSettingsOpen(true)}
-          />
-        </div>
+        <ReaderHeader
+          title={metadata.title}
+          author={metadata.creator}
+          progress={progress}
+          currentPage={currentPage ?? undefined}
+          totalPages={totalPages ?? undefined}
+          onBack={() => navigate(`/book/${book.id}`)}
+          onTocToggle={() => setIsTocOpen(!isTocOpen)}
+          onInfoOpen={() => setIsBookInfoOpen(true)}
+          onSettingsOpen={() => setIsSettingsOpen(true)}
+        />
       )}
 
       {/* Settings Dropdown (hidden, triggered by header button) */}
@@ -976,7 +762,6 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
         status={generationStatus}
         descriptionPreview={descriptionPreview}
         error={generationError}
-        theme={theme}
         onCancel={cancelGeneration}
       />
 
@@ -1024,7 +809,6 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
           metadata={metadata}
           isOpen={isBookInfoOpen}
           onClose={() => setIsBookInfoOpen(false)}
-          theme={theme}
         />
       )}
 

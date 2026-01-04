@@ -127,19 +127,12 @@ function App() {
             position="top-right"
             toastOptions={{
               duration: 4000,
-              style: {
-                background: '#363636',
-                color: '#fff',
-              },
+              className: 'bg-popover text-popover-foreground border border-border',
               success: {
-                style: {
-                  background: '#22c55e',
-                },
+                className: 'bg-green-500 text-white border-green-600',
               },
               error: {
-                style: {
-                  background: '#ef4444',
-                },
+                className: 'bg-destructive text-destructive-foreground border-destructive',
               },
             }}
           />

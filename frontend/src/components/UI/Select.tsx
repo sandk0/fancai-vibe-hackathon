@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 const selectVariants = cva(
   [
     // Base styles
-    "w-full appearance-none rounded-md border bg-background text-foreground",
+    "w-full appearance-none rounded-lg border bg-background text-foreground",
     "transition-colors duration-200",
     // Typography
     "text-sm font-medium",
