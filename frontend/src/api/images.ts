@@ -12,6 +12,36 @@ import type {
 } from '@/types/api';
 
 /**
+ * Response from async image generation endpoint.
+ * Returns a task ID that can be polled for status.
+ */
+export interface AsyncGenerationResponse {
+  task_id: string;
+  description_id: string;
+  queued_at: string;
+  message: string;
+  status_url: string;
+}
+
+/**
+ * Task status response for polling async generation progress.
+ * Maps Celery task states to generation status.
+ */
+export interface TaskStatusResponse {
+  task_id: string;
+  status: 'PENDING' | 'STARTED' | 'SUCCESS' | 'FAILURE' | 'RETRY' | 'REVOKED';
+  result?: {
+    success: boolean;
+    image_id?: string;
+    image_url?: string;
+    local_path?: string;
+    generation_time_seconds?: number;
+    error_message?: string;
+  };
+  message: string;
+}
+
+/**
  * Normalizes image URL to absolute URL.
  * Converts relative API paths (e.g., /api/v1/images/file/xxx.png) to full URLs.
  */
@@ -236,6 +266,40 @@ export const imagesAPI = {
     // Normalize image URL
     if (response.image_url) {
       response.image_url = normalizeImageUrl(response.image_url);
+    }
+    return response;
+  },
+
+  /**
+   * Start async image generation for a description.
+   * Returns a task ID that can be polled for status.
+   * @param descriptionId - ID of the description to generate image for
+   * @param params - Optional generation parameters
+   * @param signal - Optional AbortSignal for request cancellation
+   */
+  async generateAsync(
+    descriptionId: string,
+    params: ImageGenerationParams = {},
+    signal?: AbortSignal
+  ): Promise<AsyncGenerationResponse> {
+    return apiClient.post(
+      `/images/generate/async/${descriptionId}`,
+      params,
+      { signal }
+    );
+  },
+
+  /**
+   * Get the status of an async image generation task.
+   * Poll this endpoint to track generation progress.
+   * @param taskId - Task ID returned from generateAsync
+   * @param signal - Optional AbortSignal for request cancellation
+   */
+  async getTaskStatus(taskId: string, signal?: AbortSignal): Promise<TaskStatusResponse> {
+    const response = await apiClient.get(`/images/task/${taskId}`, { signal }) as TaskStatusResponse;
+    // Normalize image URL in result if present
+    if (response.result?.image_url) {
+      response.result.image_url = normalizeImageUrl(response.result.image_url);
     }
     return response;
   },
