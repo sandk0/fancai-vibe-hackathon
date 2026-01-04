@@ -86,8 +86,24 @@ export function useFocusTrap(
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keydown', handleEscape);
-      // Restore focus on cleanup
-      previouslyFocusedRef.current?.focus();
+      // Restore focus on cleanup, but NOT to elements inside iframes
+      // (keyboard events from iframes don't bubble to main window)
+      const prevElement = previouslyFocusedRef.current;
+      if (prevElement) {
+        // Check if element is inside an iframe by checking if ownerDocument is main document
+        const isInIframe = prevElement.ownerDocument !== document;
+        if (!isInIframe) {
+          prevElement.focus();
+        } else {
+          // Focus the epub viewer container instead to enable keyboard navigation
+          const viewerContainer = document.getElementById('viewer') ||
+                                  document.querySelector('.epub-container') ||
+                                  document.body;
+          if (viewerContainer instanceof HTMLElement) {
+            viewerContainer.focus();
+          }
+        }
+      }
     };
   }, [isOpen, containerRef]);
 }
