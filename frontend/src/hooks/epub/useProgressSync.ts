@@ -204,14 +204,15 @@ export const useProgressSync = ({
         });
 
         const url = `${window.location.origin}/api/v1/books/${bookId}/progress`;
-        const token = localStorage.getItem('auth_token');
+        // Fixed: Use correct storage key (was 'auth_token', should be 'bookreader_access_token')
+        const token = localStorage.getItem('bookreader_access_token');
 
         if (token) {
           // Use fetch with keepalive - supports headers unlike sendBeacon
           // keepalive allows the request to continue after the page unloads
           try {
             fetch(url, {
-              method: 'PUT',
+              method: 'POST', // Fixed: backend expects POST, not PUT (was causing 405 errors)
               headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`,
