@@ -387,6 +387,10 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
       return;
     }
 
+    // CRITICAL FIX: Set flag BEFORE starting async operation
+    // This prevents race condition where effect re-runs before async completes
+    hasRestoredPosition.current = true;
+
     let isMounted = true;
 
     const initializePosition = async () => {
@@ -497,8 +501,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
           await rendition.display();
         }
 
-        // Mark as restored
-        hasRestoredPosition.current = true;
+        // Note: hasRestoredPosition.current was set before async started to prevent race condition
       } catch (err) {
         console.error('[EpubReader] Error initializing position:', err);
         // On any error, try to show first page
