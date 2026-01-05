@@ -743,13 +743,44 @@ export const useDescriptionHighlighting = ({
       }, DEBOUNCE_DELAY_MS);
     };
 
+    /**
+     * Handle clicks inside epub.js iframe via rendition.on('click')
+     * This is necessary because direct event listeners on spans don't work
+     * due to epub.js intercepting all click events inside the iframe
+     */
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+
+      // Check if click is on a highlight span
+      if (target?.classList?.contains('description-highlight')) {
+        const descId = target.getAttribute('data-description-id');
+        if (descId) {
+          event.preventDefault();
+          event.stopPropagation();
+
+          if (import.meta.env.DEV) {
+            console.log('[useDescriptionHighlighting] Description clicked via rendition:', descId);
+          }
+
+          // Find the description by ID
+          const desc = descriptions.find(d => d.id === descId);
+          if (desc) {
+            const image = imagesByDescId.get(descId);
+            onDescriptionClick(desc, image);
+          }
+        }
+      }
+    };
+
     rendition.on('rendered', handleRendered);
+    rendition.on('click', handleClick);
 
     // Initial highlighting (immediate)
     handleRendered();
 
     return () => {
       rendition.off('rendered', handleRendered);
+      rendition.off('click', handleClick);
       // Clear debounce timer on cleanup
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
@@ -758,7 +789,7 @@ export const useDescriptionHighlighting = ({
       cleanupFunctionsRef.current.forEach(cleanup => cleanup());
       cleanupFunctionsRef.current = [];
     };
-  }, [rendition, enabled, highlightDescriptions]);
+  }, [rendition, enabled, highlightDescriptions, descriptions, imagesByDescId, onDescriptionClick]);
 
   /**
    * FIX: Force re-highlight when descriptions load after page is already rendered
