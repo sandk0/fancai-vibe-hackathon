@@ -129,8 +129,8 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   const viewerRef = useRef<HTMLDivElement>(null);
   const [renditionReady, setRenditionReady] = useState(false);
   const [isRestoringPosition, setIsRestoringPosition] = useState(true); // Start as true - wait for restoration
-  const hasRestoredPosition = useRef(false);
-  const previousBookId = useRef<string | null>(null); // Track book changes
+  // Track restoration state per book - prevents skipping restoration when reopening same book
+  const restorationState = useRef<{ bookId: string; restored: boolean } | null>(null);
   const navigate = useNavigate();
 
   // State for settings dropdown
@@ -319,13 +319,23 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     return saved === 'true';
   });
 
+  // Helper function to check if we've restored position for current book
+  const hasRestoredForCurrentBook = useCallback(() => {
+    return restorationState.current?.bookId === book.id && restorationState.current?.restored;
+  }, [book.id]);
+
+  // Helper function to mark position as restored for current book
+  const markPositionRestored = useCallback(() => {
+    restorationState.current = { bookId: book.id, restored: true };
+  }, [book.id]);
+
   // Reset restoration state when book changes
   useEffect(() => {
-    if (previousBookId.current !== null && previousBookId.current !== book.id) {
-      hasRestoredPosition.current = false;
+    // If book.id changed, reset restoration state to force new restoration
+    if (restorationState.current && restorationState.current.bookId !== book.id) {
+      restorationState.current = null;
       setIsRestoringPosition(true);
     }
-    previousBookId.current = book.id;
   }, [book.id]);
 
   // Save TOC state to localStorage when it changes
@@ -381,15 +391,18 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   useEffect(() => {
     if (!rendition || !renditionReady) return;
 
-    // Skip if already restored position for this book
-    if (hasRestoredPosition.current) {
+    // Skip if already restored position for this specific book
+    // This is book-aware: reopening same book will trigger restoration again
+    if (hasRestoredForCurrentBook()) {
+      console.log('[EpubReader] ⏭️ Skipping restoration - already restored for book:', book.id);
       setIsRestoringPosition(false);
       return;
     }
 
-    // CRITICAL FIX: Set flag BEFORE starting async operation
+    // CRITICAL FIX: Mark as restored BEFORE starting async operation
     // This prevents race condition where effect re-runs before async completes
-    hasRestoredPosition.current = true;
+    markPositionRestored();
+    console.log('[EpubReader] 🚀 Starting position restoration for book:', book.id);
 
     let isMounted = true;
 
@@ -501,7 +514,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
           await rendition.display();
         }
 
-        // Note: hasRestoredPosition.current was set before async started to prevent race condition
+        // Note: markPositionRestored() was called before async started to prevent race condition
       } catch (err) {
         console.error('[EpubReader] Error initializing position:', err);
         // On any error, try to show first page
@@ -522,7 +535,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     return () => {
       isMounted = false;
     };
-  }, [rendition, renditionReady, book.id, locations, goToCFI, skipNextRelocated, setInitialProgress, positionConflict]);
+  }, [rendition, renditionReady, book.id, locations, goToCFI, skipNextRelocated, setInitialProgress, positionConflict, hasRestoredForCurrentBook, markPositionRestored]);
 
   /**
    * Handle image regeneration
@@ -560,7 +573,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
         savedAt: Date.now(),
       }));
 
-      hasRestoredPosition.current = true;
+      markPositionRestored();
       setPositionConflict(null);
       setIsRestoringPosition(false);
 
@@ -571,7 +584,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
       setPositionConflict(null);
       setIsRestoringPosition(false);
     }
-  }, [rendition, positionConflict, goToCFI, skipNextRelocated, setInitialProgress, locations, book.id]);
+  }, [rendition, positionConflict, goToCFI, skipNextRelocated, setInitialProgress, locations, book.id, markPositionRestored]);
 
   /**
    * Handle position conflict resolution - use local position
@@ -594,7 +607,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
         }
       }
 
-      hasRestoredPosition.current = true;
+      markPositionRestored();
       setPositionConflict(null);
       setIsRestoringPosition(false);
 
@@ -605,7 +618,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
       setPositionConflict(null);
       setIsRestoringPosition(false);
     }
-  }, [rendition, positionConflict, goToCFI, skipNextRelocated, setInitialProgress, locations]);
+  }, [rendition, positionConflict, goToCFI, skipNextRelocated, setInitialProgress, locations, markPositionRestored]);
 
   // Get background color based on theme - memoized to prevent recalculation
   // Use explicit colors instead of CSS variables to prevent flash during initial render
