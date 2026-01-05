@@ -40,7 +40,7 @@ const devLog = import.meta.env.DEV
   : () => {};
 
 const devWarn = import.meta.env.DEV
-  ? (...args: unknown[]) => devWarn('Warning:', ...args)
+  ? (...args: unknown[]) => console.warn('[useChapterManagement]', ...args)
   : () => {};
 
 interface UseChapterManagementOptions {
