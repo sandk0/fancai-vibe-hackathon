@@ -1,64 +1,26 @@
 /**
- * useTouchNavigation - Touch and swipe gestures for EPUB navigation
+ * useTouchNavigation - Edge tap navigation for EPUB reader
  *
- * Provides mobile-friendly touch navigation:
- * - Swipe left -> Next page
- * - Swipe right -> Previous page
- * - Tap left edge (25%) -> Previous page
- * - Tap right edge (25%) -> Next page
- * - Configurable swipe threshold and tap detection
+ * - Tap left 25% = previous page
+ * - Tap right 25% = next page
+ * - Tap center 50% = do nothing (allow text selection)
  *
- * Swipe threshold is relative to screen width by default (10% of screen width,
- * minimum 50px). This provides better UX across different device sizes:
- * - iPhone SE (375px): 50px threshold (minimum)
- * - iPhone 14 (390px): 50px threshold (minimum)
- * - iPad (768px): 77px threshold
- * - Desktop (1920px): 192px threshold
- *
- * @param options.rendition - epub.js Rendition instance
- * @param options.nextPage - Function to go to next page
- * @param options.prevPage - Function to go to previous page
- * @param options.enabled - Whether touch navigation is enabled (default: true)
- * @param options.swipeThreshold - Override threshold in px (default: 10% of screen width, min 50px)
- * @param options.timeThreshold - Maximum swipe duration in ms (default: 300ms)
- *
- * @example
- * useTouchNavigation({ rendition, nextPage, prevPage, enabled: true });
+ * No swipe gestures - simplified for reliability and better text selection support.
  */
 
 import { useEffect, useCallback, useRef } from 'react';
 import type { Rendition } from '@/types/epub';
 
-// Tap detection constants
-const TAP_MAX_DURATION = 350; // ms - more forgiving for slower taps on mobile
-const TAP_MAX_MOVEMENT = 10; // px - maximum movement to be considered a tap
-// Tap zone constants for edge navigation
-const LEFT_ZONE_END = 0.25; // 25% from left edge
-const RIGHT_ZONE_START = 0.75; // 75% from left (25% from right)
-
-// Swipe threshold constants
-const MIN_SWIPE_THRESHOLD = 50; // Minimum 50px threshold
-const SWIPE_THRESHOLD_RATIO = 0.1; // 10% of screen width
-
-/**
- * Calculate relative swipe threshold based on screen width.
- * Returns 10% of screen width or minimum 50px, whichever is larger.
- * Safe for SSR - returns minimum value if window is not available.
- */
-const getRelativeSwipeThreshold = (): number => {
-  if (typeof window === 'undefined') {
-    return MIN_SWIPE_THRESHOLD;
-  }
-  return Math.max(MIN_SWIPE_THRESHOLD, window.innerWidth * SWIPE_THRESHOLD_RATIO);
-};
+const TAP_MAX_DURATION = 350; // ms
+const TAP_MAX_MOVEMENT = 15; // px
+const LEFT_ZONE_END = 0.25;
+const RIGHT_ZONE_START = 0.75;
 
 interface UseTouchNavigationOptions {
   rendition: Rendition | null;
   nextPage: () => void;
   prevPage: () => void;
   enabled?: boolean;
-  swipeThreshold?: number; // Minimum distance for swipe (px)
-  timeThreshold?: number; // Maximum time for swipe (ms)
 }
 
 export const useTouchNavigation = ({
@@ -66,176 +28,135 @@ export const useTouchNavigation = ({
   nextPage,
   prevPage,
   enabled = true,
-  swipeThreshold, // If not provided, will use relative threshold (10% of screen width, min 50px)
-  timeThreshold = 300, // 300ms maximum duration
 }: UseTouchNavigationOptions): void => {
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const cleanupRef = useRef<(() => void) | null>(null);
 
-  const handleTouchStart = useCallback((e: TouchEvent) => {
-    if (!enabled) return;
+  // Determine if X coordinate is in edge zone
+  const isLeftEdge = useCallback((x: number) => {
+    return x < window.innerWidth * LEFT_ZONE_END;
+  }, []);
 
-    const touch = e.touches[0];
-    touchStartRef.current = {
-      x: touch.clientX,
-      y: touch.clientY,
-      time: Date.now(),
-    };
-  }, [enabled]);
+  const isRightEdge = useCallback((x: number) => {
+    return x > window.innerWidth * RIGHT_ZONE_START;
+  }, []);
 
-  const handleTouchEnd = useCallback((e: TouchEvent) => {
-    if (!enabled || !touchStartRef.current) return;
+  const handleTouchStart = useCallback(
+    (e: TouchEvent) => {
+      if (!enabled) return;
 
-    const touch = e.changedTouches[0];
-    const touchEnd = {
-      x: touch.clientX,
-      y: touch.clientY,
-      time: Date.now(),
-    };
+      const touch = e.touches[0];
+      const x = touch.clientX;
 
-    const deltaX = touchEnd.x - touchStartRef.current.x;
-    const deltaY = touchEnd.y - touchStartRef.current.y;
-    const deltaTime = touchEnd.time - touchStartRef.current.time;
-    const touchDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      // If touch starts in edge zone, prevent text selection immediately
+      if (isLeftEdge(x) || isRightEdge(x)) {
+        e.preventDefault();
+      }
 
-    // Reset touch start
-    touchStartRef.current = null;
+      touchStartRef.current = {
+        x,
+        y: touch.clientY,
+        time: Date.now(),
+      };
+    },
+    [enabled, isLeftEdge, isRightEdge]
+  );
 
-    // Detect tap (quick touch with minimal movement)
-    const isTap = deltaTime < TAP_MAX_DURATION && touchDistance < TAP_MAX_MOVEMENT;
+  const handleTouchEnd = useCallback(
+    (e: TouchEvent) => {
+      if (!enabled || !touchStartRef.current) return;
 
-    if (isTap) {
-      // Check if tap is on highlight span - don't navigate, let click handler open modal
+      const touch = e.changedTouches[0];
+      const endX = touch.clientX;
+      const endY = touch.clientY;
+      const endTime = Date.now();
+
+      const startX = touchStartRef.current.x;
+      const startY = touchStartRef.current.y;
+      const startTime = touchStartRef.current.time;
+
+      // Reset
+      touchStartRef.current = null;
+
+      // Calculate movement and duration
+      const deltaX = Math.abs(endX - startX);
+      const deltaY = Math.abs(endY - startY);
+      const duration = endTime - startTime;
+
+      // Check if it's a tap (quick, minimal movement)
+      const isTap =
+        duration < TAP_MAX_DURATION && deltaX < TAP_MAX_MOVEMENT && deltaY < TAP_MAX_MOVEMENT;
+
+      if (!isTap) return;
+
+      // Check if tap is on a description highlight - let it handle the click
       const target = e.target as HTMLElement;
-      if (target?.classList?.contains('description-highlight') ||
-          target?.closest('.description-highlight')) {
-        // Don't navigate - let click handler open modal
+      if (target?.classList?.contains('description-highlight') || target?.closest('.description-highlight')) {
         return;
       }
 
-      // Handle edge taps for navigation
-      const tapX = touchEnd.x;
-      const screenWidth = window.innerWidth;
-      const leftZone = screenWidth * LEFT_ZONE_END;
-      const rightZone = screenWidth * RIGHT_ZONE_START;
-
-      if (tapX < leftZone) {
-        e.preventDefault(); // Block text selection and phantom clicks
+      // Handle edge tap navigation
+      if (isLeftEdge(startX)) {
+        e.preventDefault();
         e.stopPropagation();
-        if (import.meta.env.DEV) {
-          console.log('[useTouchNavigation] Left edge tap -> prev page');
-        }
         prevPage();
-        return;
-      } else if (tapX > rightZone) {
-        e.preventDefault(); // Block text selection and phantom clicks
+      } else if (isRightEdge(startX)) {
+        e.preventDefault();
         e.stopPropagation();
-        if (import.meta.env.DEV) {
-          console.log('[useTouchNavigation] Right edge tap -> next page');
-        }
         nextPage();
-        return;
       }
-      // Center tap (25%-75%) does nothing - allows text selection and other interactions
-      return;
-    }
+      // Center tap - do nothing, allow text selection
+    },
+    [enabled, nextPage, prevPage, isLeftEdge, isRightEdge]
+  );
 
-    // Check if this was a valid swipe
-    const absX = Math.abs(deltaX);
-    const absY = Math.abs(deltaY);
-
-    // Must be horizontal swipe (more X than Y movement)
-    if (absX < absY) {
-      return;
-    }
-
-    // Get current threshold - recalculate dynamically to handle window resize
-    // Use provided threshold if available, otherwise compute relative threshold
-    const currentThreshold = swipeThreshold ?? getRelativeSwipeThreshold();
-
-    // Must exceed minimum distance (relative to screen width for better UX on different devices)
-    if (absX < currentThreshold) {
-      return;
-    }
-
-    // Must be quick enough
-    if (deltaTime > timeThreshold) {
-      return;
-    }
-
-    // Determine direction and navigate
-    if (deltaX > 0) {
-      // Swipe right → Previous page
-      prevPage();
-    } else {
-      // Swipe left → Next page
-      nextPage();
-    }
-  }, [enabled, nextPage, prevPage, swipeThreshold, timeThreshold]);
-
-  const handleTouchMove = useCallback((e: TouchEvent) => {
-    // Prevent default scrolling during horizontal swipe
-    if (!enabled || !touchStartRef.current) return;
-
-    const touch = e.touches[0];
-    const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
-    const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
-
-    // If horizontal swipe is dominant, prevent default scroll
-    if (deltaX > deltaY && deltaX > 10) {
-      e.preventDefault();
-    }
-  }, [enabled]);
-
-  /**
-   * Attach touch listeners to rendition iframe
-   */
   useEffect(() => {
     if (!rendition || !enabled) return;
 
-    // Get the iframe container
-    const getContainer = () => {
+    const setupListeners = () => {
+      // Cleanup previous listeners first
+      if (cleanupRef.current) {
+        cleanupRef.current();
+        cleanupRef.current = null;
+      }
+
       try {
         const contents = rendition.getContents();
-        if (contents && contents.length > 0) {
-          return contents[0].document;
-        }
-        return null;
+        if (!contents || contents.length === 0) return;
+
+        const doc = contents[0]?.document;
+        if (!doc) return;
+
+        doc.addEventListener('touchstart', handleTouchStart, { passive: false });
+        doc.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+        // Store cleanup function
+        cleanupRef.current = () => {
+          doc.removeEventListener('touchstart', handleTouchStart);
+          doc.removeEventListener('touchend', handleTouchEnd);
+        };
       } catch (_err) {
-        return null;
+        // Ignore errors - iframe may not be ready
       }
     };
 
-    // Wait for rendition to be ready
-    const setupListeners = () => {
-      const container = getContainer();
-      if (!container) {
-        return;
-      }
-
-      container.addEventListener('touchstart', handleTouchStart, { passive: false });
-      container.addEventListener('touchend', handleTouchEnd, { passive: false });
-      container.addEventListener('touchmove', handleTouchMove, { passive: false });
-
-      return () => {
-        container.removeEventListener('touchstart', handleTouchStart);
-        container.removeEventListener('touchend', handleTouchEnd);
-        container.removeEventListener('touchmove', handleTouchMove);
-      };
-    };
-
-    // Setup on rendered event to ensure iframe is ready
+    // Setup on rendered event (fires when chapter changes)
     const handleRendered = () => {
-      setTimeout(setupListeners, 100);
+      // Small delay to ensure iframe document is ready
+      setTimeout(setupListeners, 50);
     };
 
     rendition.on('rendered', handleRendered);
 
     // Initial setup
-    const cleanup = setupListeners();
+    setupListeners();
 
     return () => {
       rendition.off('rendered', handleRendered);
-      if (cleanup) cleanup();
+      if (cleanupRef.current) {
+        cleanupRef.current();
+        cleanupRef.current = null;
+      }
     };
-  }, [rendition, enabled, handleTouchStart, handleTouchEnd, handleTouchMove]);
+  }, [rendition, enabled, handleTouchStart, handleTouchEnd]);
 };

@@ -523,18 +523,6 @@ body {
   }
 }
 
-/* Reader touch handling */
-.reader-container {
-  touch-action: pan-y;
-  overscroll-behavior: contain;
-  -webkit-touch-callout: none;
-}
-
-.reader-tap-zone {
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-
 /* Prevent accidental text selection in reader */
 .reader-no-select {
   -webkit-user-select: none;
