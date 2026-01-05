@@ -220,7 +220,17 @@ export const useCFITracking = ({
   useEffect(() => {
     if (!rendition) return;
 
+    devLog('Setting up basic relocated listener');
+
     const handleRelocatedBasic = (location: EpubLocationEvent) => {
+      devLog('📍 RELOCATED event fired (basic):', {
+        hasCFI: !!location?.start?.cfi,
+        cfiStart: location?.start?.cfi?.substring(0, 40),
+        percentage: location?.start?.percentage,
+        displayedPage: location?.start?.displayed?.page,
+        totalPages: location?.start?.displayed?.total,
+      });
+
       const cfi = location.start.cfi;
 
       // Always update CFI
@@ -229,11 +239,10 @@ export const useCFITracking = ({
       // Use epub.js built-in percentage as fallback (works without locations)
       if (location.start.percentage !== undefined) {
         const fallbackProgress = Math.round(location.start.percentage * 100);
+        devLog('Basic progress update:', fallbackProgress + '%');
         setProgress(fallbackProgress);
-
-        if (import.meta.env.DEV) {
-          console.log('[useCFITracking] Basic progress (no locations):', fallbackProgress + '%');
-        }
+      } else {
+        devLog('⚠️ No percentage in location event');
       }
     };
 
