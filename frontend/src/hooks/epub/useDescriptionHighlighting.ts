@@ -672,6 +672,10 @@ export const useDescriptionHighlighting = ({
               const handleClick = (event: MouseEvent) => {
                 // Only prevent default, allow propagation for epub.js navigation
                 event.preventDefault();
+                event.stopPropagation(); // Stop propagation to prevent epub.js from handling it
+                if (import.meta.env.DEV) {
+                  console.log('[useDescriptionHighlighting] Description clicked:', desc.id);
+                }
                 const image = imagesByDescId.get(desc.id);
                 onDescriptionClick(desc, image);
               };
