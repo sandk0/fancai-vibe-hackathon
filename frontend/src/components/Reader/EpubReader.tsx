@@ -405,21 +405,37 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
           last_read_at: savedProgress?.last_read_at,
         });
 
-        if (!isMounted) return;
+        if (!isMounted) {
+          console.log('[EpubReader] ⚠️ Component unmounted during fetch, aborting');
+          return;
+        }
 
         // Check localStorage backup for position conflict (multi-device sync)
         const localBackupKey = `book_${book.id}_progress_backup`;
         const localBackupRaw = localStorage.getItem(localBackupKey);
+
+        console.log('[EpubReader] 📋 Conflict check:', {
+          hasLocalBackup: !!localBackupRaw,
+          localBackupKey,
+        });
 
         if (localBackupRaw && savedProgress) {
           try {
             const localBackup = JSON.parse(localBackupRaw);
             const serverPercent = savedProgress.current_position || 0;
             const localPercent = localBackup.current_position || 0;
+            const diff = Math.abs(serverPercent - localPercent);
+
+            console.log('[EpubReader] 📋 Position comparison:', {
+              serverPercent,
+              localPercent,
+              diff,
+              willShowConflict: diff > 5,
+            });
 
             // If difference > 5% - show conflict dialog
-            if (Math.abs(serverPercent - localPercent) > 5) {
-
+            if (diff > 5) {
+              console.log('[EpubReader] ⚠️ CONFLICT DETECTED - showing dialog, NOT restoring');
               setPositionConflict({
                 serverPosition: {
                   cfi: savedProgress.reading_location_cfi || '',
