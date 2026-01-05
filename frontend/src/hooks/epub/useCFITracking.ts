@@ -39,6 +39,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Rendition, Book, EpubLocationEvent, EpubLocations } from '@/types/epub';
 
+// Conditional logging - only in development mode
+const devLog = import.meta.env.DEV
+  ? (...args: unknown[]) => console.log('[useCFITracking]', ...args)
+  : () => {};
+
 /**
  * Validate CFI format
  * CFI must start with "epubcfi(" and end with ")"
@@ -51,13 +56,13 @@ const isValidCFI = (cfi: string): boolean => {
   const cfiPattern = /^epubcfi\([^)]+\)$/;
 
   if (!cfiPattern.test(cfi)) {
-    console.warn('⚠️ [CFI Validation] Invalid CFI format:', cfi.substring(0, 50));
+    devLog('CFI Validation warning: Invalid CFI format:', cfi.substring(0, 50));
     return false;
   }
 
   // Check for minimum length (shortest valid CFI is ~15 chars)
   if (cfi.length < 15) {
-    console.warn('⚠️ [CFI Validation] CFI too short:', cfi);
+    devLog('CFI Validation warning: CFI too short:', cfi);
     return false;
   }
 
@@ -98,7 +103,7 @@ export const useCFITracking = ({
    * Set initial progress manually (used during position restoration)
    */
   const setInitialProgress = useCallback((cfi: string, progressPercent: number) => {
-    console.log('🎯 [useCFITracking] Setting initial progress:', {
+    devLog('Navigation: Setting initial progress:', {
       cfi: cfi.substring(0, 50) + '...',
       progress: progressPercent + '%',
     });
@@ -111,7 +116,7 @@ export const useCFITracking = ({
    */
   const skipNextRelocated = useCallback(() => {
     restoredCfiRef.current = currentCFI;
-    console.log('🔒 [useCFITracking] Next relocated event will be skipped');
+    devLog('Skip flag: Next relocated event will be skipped');
   }, [currentCFI]);
 
   /**
@@ -127,7 +132,7 @@ export const useCFITracking = ({
     }
 
     try {
-      console.log('🎯 [useCFITracking] Navigating to CFI:', cfi.substring(0, 80) + '...');
+      devLog('Navigation: Navigating to CFI:', cfi.substring(0, 80) + '...');
 
       // Mark this CFI as restored to skip auto-save
       restoredCfiRef.current = cfi;
@@ -140,7 +145,7 @@ export const useCFITracking = ({
 
       // Apply scroll offset if provided (hybrid approach)
       if (scrollOffset !== undefined && scrollOffset > 0) {
-        console.log('🔧 [useCFITracking] Applying scroll offset:', scrollOffset.toFixed(2) + '%');
+        devLog('Scroll offset: Applying scroll offset:', scrollOffset.toFixed(2) + '%');
 
         await new Promise(resolve => setTimeout(resolve, 200));
 
@@ -161,7 +166,7 @@ export const useCFITracking = ({
                 doc.body.scrollTop = targetScrollTop;
               }
 
-              console.log('✅ [useCFITracking] Scroll offset applied:', {
+              devLog('Success: Scroll offset applied:', {
                 targetScrollTop,
                 maxScroll,
                 requestedOffset: scrollOffset.toFixed(2) + '%'
@@ -172,7 +177,7 @@ export const useCFITracking = ({
       }
 
     } catch (err) {
-      console.error('❌ [useCFITracking] Error navigating to CFI:', err);
+      console.error('[useCFITracking] Error navigating to CFI:', err);
     }
   }, [rendition]);
 
@@ -200,7 +205,7 @@ export const useCFITracking = ({
 
       return (scrollTop / maxScroll) * 100;
     } catch (err) {
-      console.warn('⚠️ [useCFITracking] Error calculating scroll offset:', err);
+      devLog('Warning: Error calculating scroll offset:', err);
       return 0;
     }
   }, [rendition]);
@@ -216,7 +221,7 @@ export const useCFITracking = ({
 
       // Skip if this is the CFI we just restored
       if (restoredCfiRef.current && cfi === restoredCfiRef.current) {
-        console.log('⏳ [useCFITracking] Skipping relocated - exact match with restored CFI');
+        devLog('Skip: Skipping relocated - exact match with restored CFI');
         return;
       }
 
@@ -226,12 +231,12 @@ export const useCFITracking = ({
         const currentPercent = Math.round((locations.percentageFromCfi(cfi) || 0) * 100);
 
         if (Math.abs(currentPercent - restoredPercent) <= 3) {
-          console.log('⏳ [useCFITracking] Skipping relocated - within 3% threshold');
+          devLog('Skip: Skipping relocated - within 3% threshold');
           restoredCfiRef.current = null; // Clear after first event
           return;
         }
 
-        console.log('✅ [useCFITracking] First real page turn detected');
+        devLog('Success: First real page turn detected');
         restoredCfiRef.current = null;
       }
 
@@ -256,7 +261,7 @@ export const useCFITracking = ({
       // Calculate scroll offset
       const scrollOffset = calculateScrollOffset();
 
-      console.log('📍 [useCFITracking] Location changed:', {
+      devLog('Location: Location changed:', {
         cfi: cfi.substring(0, 50) + '...',
         progress: progressPercent + '%',
         scrollOffset: scrollOffset.toFixed(2) + '%',
@@ -301,12 +306,12 @@ export const useCFITracking = ({
       const validPage = pageNumber !== -1 ? pageNumber : null;
 
       if (validPage !== null) {
-        console.log('📄 [useCFITracking] Current page:', validPage, '/', locations.total);
+        devLog('Page: Current page:', validPage, '/', locations.total);
       }
 
       return validPage;
     } catch (err) {
-      console.warn('⚠️ [useCFITracking] Could not get page from CFI:', err);
+      devLog('Warning: Could not get page from CFI:', err);
       return null;
     }
   }, [locations, currentCFI]);
@@ -327,7 +332,7 @@ export const useCFITracking = ({
     if (!locations || !locations.total) return null;
 
     const total = locations.total;
-    console.log('📚 [useCFITracking] Total pages available:', total);
+    devLog('Total pages: Total pages available:', total);
 
     return total;
   }, [locations]);

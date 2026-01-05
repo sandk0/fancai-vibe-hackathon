@@ -23,9 +23,9 @@ import type { Rendition } from '@/types/epub';
 // Tap detection constants
 const TAP_MAX_DURATION = 200; // ms - maximum duration to be considered a tap
 const TAP_MAX_MOVEMENT = 10; // px - maximum movement to be considered a tap
-// Reserved for future tap zone detection:
-// const LEFT_ZONE_END = 0.25; // 25% from left edge
-// const RIGHT_ZONE_START = 0.75; // 75% from left (25% from right)
+// Tap zone constants for edge navigation
+const LEFT_ZONE_END = 0.25; // 25% from left edge
+const RIGHT_ZONE_START = 0.75; // 75% from left (25% from right)
 
 interface UseTouchNavigationOptions {
   rendition: Rendition | null;
@@ -75,12 +75,22 @@ export const useTouchNavigation = ({
     // Reset touch start
     touchStartRef.current = null;
 
-    // Detect tap (quick touch with minimal movement) - ignore taps, handled by overlay zones
+    // Detect tap (quick touch with minimal movement)
     const isTap = deltaTime < TAP_MAX_DURATION && touchDistance < TAP_MAX_MOVEMENT;
 
     if (isTap) {
-      // Taps are handled by overlay tap zones in EpubReader.tsx
-      // This hook only handles swipe gestures
+      // Handle edge taps for navigation
+      const tapX = touchEnd.x;
+      const screenWidth = window.innerWidth;
+      const leftZone = screenWidth * LEFT_ZONE_END;
+      const rightZone = screenWidth * RIGHT_ZONE_START;
+
+      if (tapX < leftZone) {
+        prevPage();
+      } else if (tapX > rightZone) {
+        nextPage();
+      }
+      // Center tap (25%-75%) does nothing - allows text selection and other interactions
       return;
     }
 
@@ -90,30 +100,25 @@ export const useTouchNavigation = ({
 
     // Must be horizontal swipe (more X than Y movement)
     if (absX < absY) {
-      console.log('⏭️ [useTouchNavigation] Vertical swipe ignored');
       return;
     }
 
     // Must exceed minimum distance
     if (absX < swipeThreshold) {
-      console.log('⏭️ [useTouchNavigation] Swipe too short:', absX + 'px');
       return;
     }
 
     // Must be quick enough
     if (deltaTime > timeThreshold) {
-      console.log('⏭️ [useTouchNavigation] Swipe too slow:', deltaTime + 'ms');
       return;
     }
 
     // Determine direction and navigate
     if (deltaX > 0) {
       // Swipe right → Previous page
-      console.log('👈 [useTouchNavigation] Swipe right detected, going to previous page');
       prevPage();
     } else {
       // Swipe left → Next page
-      console.log('👉 [useTouchNavigation] Swipe left detected, going to next page');
       nextPage();
     }
   }, [enabled, nextPage, prevPage, swipeThreshold, timeThreshold]);
@@ -146,8 +151,7 @@ export const useTouchNavigation = ({
           return contents[0].document;
         }
         return null;
-      } catch (err) {
-        console.warn('⚠️ [useTouchNavigation] Could not get container:', err);
+      } catch (_err) {
         return null;
       }
     };
@@ -156,11 +160,8 @@ export const useTouchNavigation = ({
     const setupListeners = () => {
       const container = getContainer();
       if (!container) {
-        console.warn('⚠️ [useTouchNavigation] No container available');
         return;
       }
-
-      console.log('👆 [useTouchNavigation] Setting up touch listeners');
 
       container.addEventListener('touchstart', handleTouchStart, { passive: true });
       container.addEventListener('touchend', handleTouchEnd, { passive: true });

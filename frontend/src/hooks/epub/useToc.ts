@@ -46,7 +46,6 @@ export const useToc = (book: Book | null): UseTocReturn => {
 
     const loadToc = async () => {
       try {
-        console.log('📚 [useToc] Loading table of contents...');
         setIsLoading(true);
         setError(null);
 
@@ -58,15 +57,10 @@ export const useToc = (book: Book | null): UseTocReturn => {
         // Get TOC from book navigation
         const tocData = book.navigation.toc;
 
-        console.log('✅ [useToc] TOC loaded', {
-          chapters: tocData.length,
-          hasNested: tocData.some(item => item.subitems && item.subitems.length > 0),
-        });
-
         setToc(tocData);
         setIsLoading(false);
       } catch (err) {
-        console.error('❌ [useToc] Error loading TOC:', err);
+        console.error('[useToc] Error loading TOC:', err);
         if (isMounted) {
           setError(err instanceof Error ? err.message : 'Failed to load table of contents');
           setIsLoading(false);

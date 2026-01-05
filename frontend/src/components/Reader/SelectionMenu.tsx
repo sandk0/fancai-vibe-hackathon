@@ -50,7 +50,6 @@ export const SelectionMenu = memo(function SelectionMenu({
 
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        console.log('🔘 [SelectionMenu] Click/Touch outside, closing');
         onClose();
       }
     };
@@ -76,7 +75,6 @@ export const SelectionMenu = memo(function SelectionMenu({
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        console.log('⌨️ [SelectionMenu] Escape pressed, closing');
         onClose();
       }
     };
@@ -119,7 +117,7 @@ export const SelectionMenu = memo(function SelectionMenu({
       position: 'fixed',
       left: `${left}px`,
       top: `${top}px`,
-      zIndex: 100,
+      zIndex: 600,
     };
   }, [selection]);
 
@@ -128,7 +126,6 @@ export const SelectionMenu = memo(function SelectionMenu({
    * Handle copy with close - memoized to prevent button re-renders
    */
   const handleCopy = useCallback(() => {
-    console.log('[SelectionMenu] Copy clicked');
     onCopy();
     onClose();
   }, [onCopy, onClose]);
@@ -137,7 +134,6 @@ export const SelectionMenu = memo(function SelectionMenu({
    * Handle highlight with close (for Task 3.1) - memoized
    */
   const handleHighlight = useCallback(() => {
-    console.log('[SelectionMenu] Highlight clicked');
     if (onHighlight) {
       onHighlight();
       onClose();
@@ -148,7 +144,6 @@ export const SelectionMenu = memo(function SelectionMenu({
    * Handle note with close (for Task 3.1) - memoized
    */
   const handleNote = useCallback(() => {
-    console.log('[SelectionMenu] Note clicked');
     if (onNote) {
       onNote();
       onClose();

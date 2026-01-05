@@ -26,15 +26,11 @@ export const useEpubNavigation = (
 
   const nextPage = useCallback(() => {
     if (!rendition) return;
-
-    console.log('➡️ [useEpubNavigation] Next page');
     rendition.next();
   }, [rendition]);
 
   const prevPage = useCallback(() => {
     if (!rendition) return;
-
-    console.log('⬅️ [useEpubNavigation] Previous page');
     rendition.prev();
   }, [rendition]);
 
@@ -54,17 +50,22 @@ export const useEpubNavigation = (
 /**
  * useKeyboardNavigation - Keyboard shortcuts for EPUB navigation
  *
+ * Listens on both the main window and the epub.js iframe document
+ * to ensure keyboard events work when focus is inside the reader.
+ *
  * @param nextPage - Function to go to next page
  * @param prevPage - Function to go to previous page
  * @param enabled - Whether keyboard navigation is enabled
+ * @param rendition - Optional epub.js Rendition for iframe keyboard events
  *
  * @example
- * useKeyboardNavigation(nextPage, prevPage, true);
+ * useKeyboardNavigation(nextPage, prevPage, true, rendition);
  */
 export const useKeyboardNavigation = (
   nextPage: () => void,
   prevPage: () => void,
-  enabled: boolean = true
+  enabled: boolean = true,
+  rendition?: Rendition | null
 ): void => {
   useEffect(() => {
     if (!enabled) return;
@@ -90,7 +91,31 @@ export const useKeyboardNavigation = (
       }
     };
 
+    // Listen on main window
     window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [nextPage, prevPage, enabled]);
+
+    // Also listen in epub.js iframe for when focus is inside
+    const attachToIframe = () => {
+      const contents = rendition?.getContents();
+      if (contents && contents[0]?.document) {
+        contents[0].document.addEventListener('keydown', handleKeyPress);
+      }
+    };
+
+    // Attach on rendered event (iframe may reload on chapter change)
+    rendition?.on('rendered', attachToIframe);
+
+    // Attach immediately if already rendered
+    attachToIframe();
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+      rendition?.off('rendered', attachToIframe);
+      // Clean up iframe listener
+      const contents = rendition?.getContents();
+      if (contents && contents[0]?.document) {
+        contents[0].document.removeEventListener('keydown', handleKeyPress);
+      }
+    };
+  }, [nextPage, prevPage, enabled, rendition]);
 };

@@ -7,9 +7,11 @@
  * @component
  */
 
-import React from 'react';
+import React, { useRef } from 'react';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 interface PositionConflictDialogProps {
+  isOpen: boolean;
   serverPosition: {
     cfi: string;
     progress: number;
@@ -55,19 +57,26 @@ function formatDistanceToNow(date: Date): string {
 }
 
 export const PositionConflictDialog: React.FC<PositionConflictDialogProps> = ({
+  isOpen,
   serverPosition,
   localPosition,
   onUseServer,
   onUseLocal,
 }) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Enable focus trap when dialog is open
+  useFocusTrap(isOpen, dialogRef);
+
   return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-[500]"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="position-conflict-title"
-    >
-      <div className="bg-popover rounded-xl p-6 max-w-md mx-4 shadow-xl">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[500]">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="position-conflict-title"
+        className="bg-popover rounded-xl p-6 max-w-md mx-4 shadow-xl"
+      >
         <h3
           id="position-conflict-title"
           className="text-lg font-semibold text-popover-foreground mb-4"

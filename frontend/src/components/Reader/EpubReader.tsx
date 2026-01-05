@@ -54,6 +54,7 @@ import {
   useBookMetadata,
   useTextSelection,
   useToc,
+  useTouchNavigation,
 } from '@/hooks/epub';
 
 // Import reading session hook
@@ -147,9 +148,10 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     viewerRef,
     authToken,
     onReady: () => {
-      setTimeout(() => {
+      // Use requestAnimationFrame for immediate but safe state update
+      requestAnimationFrame(() => {
         setRenditionReady(true);
-      }, 500);
+      });
     },
   });
 
@@ -220,12 +222,22 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   } = useImageModal({ bookId: book.id });
 
   // Hook 8: Keyboard navigation (disabled when modal is open)
-  useKeyboardNavigation(nextPage, prevPage, renditionReady && !isModalOpen);
+  // Pass rendition to also listen on iframe document for keyboard events
+  useKeyboardNavigation(nextPage, prevPage, renditionReady && !isModalOpen, rendition);
 
-  // Hook 9: Theme management
+  // Hook 9: Touch/swipe navigation for mobile
+  // Note: Disabled when modal is open; TOC sidebar is an overlay that doesn't block iframe touch events
+  useTouchNavigation({
+    rendition,
+    nextPage,
+    prevPage,
+    enabled: renditionReady && !isModalOpen,
+  });
+
+  // Hook 10: Theme management
   const { theme, fontSize, setTheme, increaseFontSize, decreaseFontSize } = useEpubThemes(rendition);
 
-  // Hook 10: Content hooks for style injection
+  // Hook 11: Content hooks for style injection
   useContentHooks(rendition, theme);
 
   // Hook 12: Description highlighting
@@ -245,23 +257,24 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     enabled: renditionReady, // Always enabled when rendition is ready
   });
 
-  // DEBUG: Log descriptions and highlighting state
+  // DEBUG: Log descriptions and highlighting state (dev only)
   useEffect(() => {
-    console.log('📚 [EpubReader] Descriptions state updated:', {
-      descriptionsCount: descriptions.length,
-      imagesCount: images.length,
-      renditionReady,
-      highlightingEnabled: renditionReady,
-      willHighlight: renditionReady && descriptions.length > 0,
-    });
+    if (import.meta.env.DEV) {
+      console.log('[EpubReader] Descriptions state updated:', {
+        descriptionsCount: descriptions.length,
+        imagesCount: images.length,
+        renditionReady,
+        highlightingEnabled: renditionReady,
+        willHighlight: renditionReady && descriptions.length > 0,
+      });
+    }
   }, [descriptions, images, renditionReady]);
 
   // Hook 13: Resize handler for position preservation
   useResizeHandler({
     rendition,
     enabled: renditionReady,
-    onResized: (dimensions) => {
-      console.log('📐 [EpubReader] Viewport resized:', dimensions);
+    onResized: (_dimensions) => {
       // Position is automatically preserved by the hook
     },
   });
@@ -281,26 +294,17 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     bookId: book.id,
     currentPosition: progress,
     enabled: renditionReady && !isGenerating,
-    onSessionStart: (session) => {
-      console.log('📖 [EpubReader] Reading session started:', {
-        id: session.id,
-        book: book.title,
-        position: session.start_position.toFixed(2) + '%',
-      });
+    onSessionStart: (_session) => {
+      // Session started - no user notification needed
     },
     onSessionEnd: (session) => {
-      console.log('📖 [EpubReader] Reading session ended:', {
-        id: session.id,
-        duration: session.duration_minutes + ' min',
-        pages_read: session.pages_read,
-      });
       notify.success(
         'Сессия завершена',
         `Вы читали ${session.duration_minutes} мин и прочитали ${session.pages_read} стр.`
       );
     },
     onError: (error) => {
-      console.error('❌ [EpubReader] Reading session error:', error);
+      console.error('[EpubReader] Reading session error:', error);
       // Don't show error notification - sessions are non-critical
     },
   });
@@ -318,7 +322,6 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   // Reset restoration state when book changes
   useEffect(() => {
     if (previousBookId.current !== null && previousBookId.current !== book.id) {
-      console.log('📚 [EpubReader] Book changed, resetting restoration state');
       hasRestoredPosition.current = false;
       setIsRestoringPosition(true);
     }
@@ -333,7 +336,6 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   // Clear selection menu when page changes
   useEffect(() => {
     if (currentCFI && selection) {
-      console.log('📖 [EpubReader] Page changed, closing selection menu');
       clearSelection();
     }
   }, [currentCFI]); // Only depend on currentCFI, not selection/clearSelection to avoid loops // eslint-disable-line react-hooks/exhaustive-deps
@@ -343,11 +345,10 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     if (!rendition) return;
 
     try {
-      console.log('📚 [EpubReader] Navigating to chapter:', href);
       await rendition.display(href);
       setCurrentHref(href);
     } catch (err) {
-      console.error('❌ [EpubReader] Error navigating to chapter:', err);
+      console.error('[EpubReader] Error navigating to chapter:', err);
     }
   }, [rendition, setCurrentHref]);
 
@@ -359,15 +360,12 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
 
     try {
       await navigator.clipboard.writeText(selection.text);
-      console.log('📋 [EpubReader] Text copied to clipboard:',
-        selection.text.substring(0, 50) + (selection.text.length > 50 ? '...' : '')
-      );
       notify.success('Скопировано', 'Текст скопирован в буфер обмена');
 
       // Close selection menu after copy
       clearSelection();
     } catch (err) {
-      console.error('❌ [EpubReader] Failed to copy text:', err);
+      console.error('[EpubReader] Failed to copy text:', err);
       notify.error('Ошибка', 'Не удалось скопировать текст');
     }
   }, [selection, clearSelection]);
@@ -385,7 +383,6 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
 
     // Skip if already restored position for this book
     if (hasRestoredPosition.current) {
-      console.log('[EpubReader] Position already restored, skipping');
       setIsRestoringPosition(false);
       return;
     }
@@ -397,7 +394,6 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
 
       try {
         // Fetch saved progress from server
-        console.log('[EpubReader] Fetching saved progress...');
         const { progress: savedProgress } = await booksAPI.getReadingProgress(book.id);
 
         if (!isMounted) return;
@@ -412,15 +408,8 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
             const serverPercent = savedProgress.current_position || 0;
             const localPercent = localBackup.current_position || 0;
 
-            console.log('[EpubReader] Comparing positions:', {
-              server: serverPercent.toFixed(2) + '%',
-              local: localPercent.toFixed(2) + '%',
-              difference: Math.abs(serverPercent - localPercent).toFixed(2) + '%',
-            });
-
             // If difference > 5% - show conflict dialog
             if (Math.abs(serverPercent - localPercent) > 5) {
-              console.log('[EpubReader] Position conflict detected (>5% difference)');
 
               setPositionConflict({
                 serverPosition: {
@@ -440,8 +429,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
               await rendition.display();
               return; // Wait for user to choose position
             }
-          } catch (parseError) {
-            console.warn('[EpubReader] Failed to parse local backup, ignoring:', parseError);
+          } catch (_parseError) {
             // Continue with server position
           }
         }
@@ -449,24 +437,14 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
         // No conflict or no local backup - use server position
         if (savedProgress?.reading_location_cfi) {
           // Try to restore saved position
-          console.log('[EpubReader] Restoring saved position:', {
-            cfi: savedProgress.reading_location_cfi.substring(0, 80) + '...',
-            progress: savedProgress.current_position + '%',
-            scrollOffset: savedProgress.scroll_offset_percent || 0,
-          });
-
           try {
             skipNextRelocated(); // Skip auto-save on restored position
             await goToCFI(savedProgress.reading_location_cfi, savedProgress.scroll_offset_percent || 0);
 
             // Set initial progress immediately so header shows correct value
             setInitialProgress(savedProgress.reading_location_cfi, savedProgress.current_position);
-
-            console.log('[EpubReader] Position restoration complete');
-          } catch (cfiError) {
+          } catch (_cfiError) {
             // CFI is invalid - fallback to percentage or first page
-            console.warn('[EpubReader] CFI invalid, trying percentage fallback:', cfiError);
-
             if (savedProgress.current_position > 0 && locations) {
               // Try to restore by percentage
               try {
@@ -474,12 +452,10 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
                 if (fallbackCfi) {
                   await rendition.display(fallbackCfi);
                   setInitialProgress(fallbackCfi, savedProgress.current_position);
-                  console.log('[EpubReader] Restored position via percentage fallback');
                 } else {
                   throw new Error('Could not generate CFI from percentage');
                 }
-              } catch (fallbackError) {
-                console.error('[EpubReader] Percentage fallback failed, showing first page:', fallbackError);
+              } catch (_fallbackError) {
                 await rendition.display();
               }
             } else {
@@ -489,7 +465,6 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
           }
         } else {
           // No saved progress - show first page
-          console.log('[EpubReader] No saved progress, displaying first page');
           await rendition.display();
         }
 
@@ -531,8 +506,6 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     if (!rendition || !positionConflict) return;
 
     try {
-      console.log('[EpubReader] User chose server position:', positionConflict.serverPosition.progress + '%');
-
       skipNextRelocated(); // Skip auto-save on restored position
 
       if (positionConflict.serverPosition.cfi) {
@@ -575,8 +548,6 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     if (!rendition || !positionConflict) return;
 
     try {
-      console.log('[EpubReader] User chose local position:', positionConflict.localPosition.progress + '%');
-
       skipNextRelocated(); // Skip auto-save on restored position
 
       if (positionConflict.localPosition.cfi) {
@@ -605,15 +576,19 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   }, [rendition, positionConflict, goToCFI, skipNextRelocated, setInitialProgress, locations]);
 
   // Get background color based on theme - memoized to prevent recalculation
+  // Use explicit colors instead of CSS variables to prevent flash during initial render
   const backgroundColor = useMemo(() => {
     switch (theme) {
       case 'light':
-        return 'bg-background';
+        return 'bg-white';
       case 'sepia':
         return 'bg-[#FBF0D9]';
       case 'dark':
+        return 'bg-[#121212]';
+      case 'night':
+        return 'bg-black';
       default:
-        return 'bg-background';
+        return 'bg-[#121212]';
     }
   }, [theme]);
 
@@ -626,7 +601,9 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
       {/* Header always visible - padding accounts for 70px header height */}
       <div
         ref={viewerRef}
-        className={`h-full w-full ${backgroundColor}`}
+        id="epub-viewer"
+        tabIndex={-1}
+        className={`h-full w-full ${backgroundColor} outline-none`}
         style={{
           paddingTop: 'calc(70px + env(safe-area-inset-top))',
           paddingLeft: 'env(safe-area-inset-left)',
@@ -774,6 +751,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
       {/* Position Conflict Dialog - Multi-device sync */}
       {positionConflict && (
         <PositionConflictDialog
+          isOpen={!!positionConflict}
           serverPosition={positionConflict.serverPosition}
           localPosition={positionConflict.localPosition}
           onUseServer={handleUseServerPosition}

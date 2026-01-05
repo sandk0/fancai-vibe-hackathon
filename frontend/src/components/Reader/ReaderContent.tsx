@@ -43,7 +43,6 @@ export const ReaderContent: React.FC<ReaderContentProps> = React.memo(({
     }
 
     if (highlightedDescriptions.length > 0) {
-      console.log('[ReaderContent] Highlighting descriptions:', highlightedDescriptions.length);
       return highlightDescription(pageContent, highlightedDescriptions);
     }
 

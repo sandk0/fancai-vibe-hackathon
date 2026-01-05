@@ -29,8 +29,6 @@ export const useContentHooks = (
      * Perfect for injecting custom styles, manipulating images, etc.
      */
     const contentHook = (contents: Contents, _view?: unknown) => {
-      console.log('🪝 [useContentHooks] Content hook triggered');
-
       const doc = contents.document;
       if (!doc) return;
 
@@ -145,27 +143,21 @@ export const useContentHooks = (
       const images = doc.querySelectorAll('img');
       images.forEach((img: HTMLImageElement) => {
         img.addEventListener('error', () => {
-          console.warn('⚠️ [useContentHooks] Image failed to load:', img.src);
-          // Could show placeholder or remove broken image
+          // Hide broken images
           img.style.display = 'none';
         });
       });
-
-      console.log('✅ [useContentHooks] Custom styles injected');
     };
 
     // Register the hook
     rendition.hooks.content.register(contentHook);
 
-    console.log('🪝 [useContentHooks] Content hook registered');
-
     // Cleanup
     return () => {
       try {
         rendition.hooks.content.deregister(contentHook);
-        console.log('🧹 [useContentHooks] Content hook deregistered');
-      } catch (err) {
-        console.warn('⚠️ [useContentHooks] Error deregistering hook:', err);
+      } catch (_err) {
+        // Ignore deregistration errors during cleanup
       }
     };
   }, [rendition, theme]);

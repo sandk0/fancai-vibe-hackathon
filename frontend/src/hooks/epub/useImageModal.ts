@@ -119,8 +119,6 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
    * Handles 409 (image exists) by fetching the existing image
    */
   const openModal = useCallback(async (description: Description, image?: GeneratedImage) => {
-    console.log('🖼️ [useImageModal] Opening modal for description:', description.id);
-
     // Clear previous errors
     setGenerationError(null);
     setSelectedDescription(description);
@@ -129,12 +127,9 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
 
     // If image already provided, check cache for local URL
     if (image) {
-      console.log('✅ [useImageModal] Image exists:', image.image_url);
-
       // Try to use cached version for faster/offline display
       const cachedUrl = await getCachedImageUrl(description.id);
       if (cachedUrl) {
-        console.log('📦 [useImageModal] Using cached image');
         setSelectedImage({ ...image, image_url: cachedUrl });
         setIsCached(true);
       } else {
@@ -151,7 +146,6 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
     // Check cache first before generating
     const cachedUrl = await getCachedImageUrl(description.id);
     if (cachedUrl) {
-      console.log('📦 [useImageModal] Found in cache, skipping generation');
 
       const cachedImage: GeneratedImage = {
         id: description.id,
@@ -186,7 +180,6 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
     }
 
     // Generate image if not in cache - use async generation with polling
-    console.log('🎨 [useImageModal] No image found, starting async generation...');
     setIsGenerating(true);
     setGenerationStatus('generating');
     setIsOpen(true); // Open modal immediately to show loading state
@@ -198,7 +191,6 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
     try {
       // Start async generation - returns immediately with task_id
       const queueResult = await imagesAPI.generateAsync(description.id, {}, signal);
-      console.log('📤 [useImageModal] Task queued:', queueResult.task_id);
 
       currentTaskIdRef.current = queueResult.task_id;
 
@@ -214,7 +206,6 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
 
         try {
           const status = await imagesAPI.getTaskStatus(queueResult.task_id, signal);
-          console.log('📊 [useImageModal] Task status:', status.status);
 
           if (status.status === 'SUCCESS' && status.result?.success) {
             // Task completed successfully
@@ -225,8 +216,6 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
 
             const imageUrl = status.result.image_url || '';
             const generationTime = status.result.generation_time_seconds || 0;
-
-            console.log('✅ [useImageModal] Image generated:', imageUrl);
 
             const newImage: GeneratedImage = {
               id: status.result.image_id || description.id,
@@ -273,7 +262,6 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
             }
 
             const errorMessage = status.result?.error_message || status.message || 'Не удалось создать изображение';
-            console.error('❌ [useImageModal] Task failed:', errorMessage);
 
             setGenerationError(errorMessage);
             setGenerationStatus('error');
@@ -287,18 +275,17 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
           if (pollError instanceof Error && pollError.name === 'AbortError') {
             return;
           }
-          console.error('❌ [useImageModal] Polling error:', pollError);
+          console.error('[useImageModal] Polling error:', pollError);
         }
       }, POLLING_INTERVAL);
 
     } catch (error: unknown) {
       // Check if aborted
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log('🛑 [useImageModal] Generation aborted');
         return;
       }
 
-      console.error('❌ [useImageModal] Async generation failed:', error);
+      console.error('[useImageModal] Async generation failed:', error);
 
       // Check for 409 - image already exists
       const err = error as { response?: { status?: number }; message?: string; details?: { detail?: string } };
@@ -308,13 +295,9 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
         err.details?.detail?.includes?.('already exists');
 
       if (isConflict) {
-        console.log('🔄 [useImageModal] Image already exists, fetching...');
-
         try {
           // Fetch existing image
           const existingImage = await imagesAPI.getImageForDescription(description.id);
-
-          console.log('✅ [useImageModal] Fetched existing image:', existingImage.image_url);
 
           setSelectedImage(existingImage);
           setGenerationStatus('completed');
@@ -322,7 +305,7 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
           // Cache the fetched image (async, don't wait)
           cacheImage(description.id, existingImage.image_url);
         } catch (fetchError: unknown) {
-          console.error('❌ [useImageModal] Failed to fetch existing image:', fetchError);
+          console.error('[useImageModal] Failed to fetch existing image:', fetchError);
           setGenerationError('Не удалось загрузить существующее изображение');
           setGenerationStatus('error');
           notify.error('Ошибка', 'Не удалось загрузить изображение');
@@ -348,12 +331,10 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
    * ВАЖНО: Освобождает Object URL если изображение было из кеша
    */
   const closeModal = useCallback(() => {
-    console.log('❌ [useImageModal] Closing modal');
     setIsOpen(false);
 
     // Освобождаем Object URL если изображение из кеша
     if (isCached && selectedDescription) {
-      console.log('🧹 [useImageModal] Releasing cached Object URL for:', selectedDescription.id);
       imageCache.release(selectedDescription.id);
     }
 
@@ -373,8 +354,6 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
    * Clears polling interval and aborts any pending requests
    */
   const cancelGeneration = useCallback(() => {
-    console.log('🛑 [useImageModal] Cancelling generation');
-
     // Clear polling interval
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
@@ -400,8 +379,6 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
    * Update image URL (after regeneration)
    */
   const updateImage = useCallback((newImageUrl: string) => {
-    console.log('🔄 [useImageModal] Updating image URL:', newImageUrl);
-
     if (selectedImage) {
       setSelectedImage({
         ...selectedImage,

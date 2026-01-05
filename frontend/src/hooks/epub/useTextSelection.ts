@@ -44,7 +44,6 @@ export const useTextSelection = (
 
   useEffect(() => {
     if (!rendition || !enabled) {
-      console.log('⏭️ [useTextSelection] Not enabled or no rendition');
       return;
     }
 
@@ -59,7 +58,6 @@ export const useTextSelection = (
         const selectedText = windowSelection?.toString() || '';
 
         if (!selectedText.trim()) {
-          console.log('⏭️ [useTextSelection] Empty selection, clearing');
           setSelection(null);
           return;
         }
@@ -86,19 +84,13 @@ export const useTextSelection = (
           y: iframeRect.top + rect.top,
         };
 
-        console.log('✅ [useTextSelection] Text selected:', {
-          text: selectedText.substring(0, 50) + (selectedText.length > 50 ? '...' : ''),
-          cfiRange: cfiRange.substring(0, 80) + '...',
-          position: absolutePosition,
-        });
-
         setSelection({
           text: selectedText,
           cfiRange,
           position: absolutePosition,
         });
       } catch (err) {
-        console.error('❌ [useTextSelection] Error handling selection:', err);
+        console.error('[useTextSelection] Error handling selection:', err);
       }
     };
 
@@ -107,7 +99,6 @@ export const useTextSelection = (
      * This prevents conflicts with existing highlights
      */
     const handleMarkClicked = () => {
-      console.log('🔘 [useTextSelection] Mark clicked, clearing selection');
       setSelection(null);
     };
 
@@ -125,7 +116,6 @@ export const useTextSelection = (
         const hasSelection = windowSelection && windowSelection.toString().trim().length > 0;
 
         if (!hasSelection) {
-          console.log('🔘 [useTextSelection] Click detected, no selection - clearing menu');
           setSelection(null);
         }
       }, 50);
@@ -136,14 +126,11 @@ export const useTextSelection = (
     rendition.on('markClicked', handleMarkClicked);
     rendition.on('click', handleClick);
 
-    console.log('✅ [useTextSelection] Event listeners registered');
-
     return () => {
       // Cleanup event listeners
       rendition.off('selected', handleSelected as (...args: unknown[]) => void);
       rendition.off('markClicked', handleMarkClicked);
       rendition.off('click', handleClick);
-      console.log('🧹 [useTextSelection] Event listeners removed');
     };
   }, [rendition, enabled]);
 
@@ -152,7 +139,6 @@ export const useTextSelection = (
    * Call this when closing the selection menu
    */
   const clearSelection = useCallback(() => {
-    console.log('❌ [useTextSelection] Clearing selection');
     setSelection(null);
   }, []);
 

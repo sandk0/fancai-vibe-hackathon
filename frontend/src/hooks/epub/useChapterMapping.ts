@@ -125,14 +125,8 @@ export const useChapterMapping = (
     const mapping = new Map<string, number>();
 
     if (!toc || toc.length === 0 || !chapters || chapters.length === 0) {
-      console.warn('⚠️ [useChapterMapping] TOC or chapters data is empty');
       return mapping;
     }
-
-    console.log('📖 [useChapterMapping] Creating chapter mapping...', {
-      tocItems: toc.length,
-      chapters: chapters.length,
-    });
 
     // Flatten TOC to get all hrefs
     const flatToc = flattenToc(toc);
@@ -154,21 +148,15 @@ export const useChapterMapping = (
       if (matchedChapter) {
         mapping.set(normalizedHref, matchedChapter.number);
         matchedCount++;
-        console.log(`✅ [useChapterMapping] Matched: "${tocTitle}" → Chapter ${matchedChapter.number}`);
       } else {
         // Strategy 2: Sequential fallback (if no title match, assume sequential order)
         // This works if TOC items are in the same order as chapters
         if (index < sortedChapters.length) {
           const fallbackChapter = sortedChapters[index];
           mapping.set(normalizedHref, fallbackChapter.number);
-          console.log(`📝 [useChapterMapping] Fallback: "${tocTitle}" → Chapter ${fallbackChapter.number} (index ${index})`);
-        } else {
-          console.warn(`⚠️ [useChapterMapping] No match for TOC item: "${tocTitle}" (href: ${normalizedHref})`);
         }
       }
     });
-
-    console.log(`🎯 [useChapterMapping] Mapping complete: ${matchedCount}/${flatToc.length} matched by title, ${mapping.size} total`);
 
     return mapping;
   }, [toc, chapters]);
@@ -178,7 +166,6 @@ export const useChapterMapping = (
     const chapterNumber = hrefToChapterNumber.get(normalized);
 
     if (chapterNumber === undefined) {
-      console.warn(`⚠️ [useChapterMapping] No chapter number found for href: ${href}`);
       return null;
     }
 
@@ -187,7 +174,6 @@ export const useChapterMapping = (
 
   const getChapterNumberByLocation = (location: Location): number | null => {
     if (!location || !location.start || !location.start.href) {
-      console.warn('⚠️ [useChapterMapping] Invalid location object');
       return null;
     }
 

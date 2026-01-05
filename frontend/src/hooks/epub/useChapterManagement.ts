@@ -34,6 +34,15 @@ import type { Description, GeneratedImage } from '@/types/api';
 import { chapterCache } from '@/services/chapterCache';
 import { getCurrentUserId } from '@/hooks/api/queryKeys';
 
+// Conditional logging - only in development mode
+const devLog = import.meta.env.DEV
+  ? (...args: unknown[]) => console.log('[useChapterManagement]', ...args)
+  : () => {};
+
+const devWarn = import.meta.env.DEV
+  ? (...args: unknown[]) => devWarn('Warning:', ...args)
+  : () => {};
+
 interface UseChapterManagementOptions {
   book: Book | null;
   rendition: Rendition | null;
@@ -82,7 +91,6 @@ export const useChapterManagement = ({
 
       const currentHref = location?.start?.href;
       if (!currentHref) {
-        console.warn('⚠️ [useChapterManagement] No href in location');
         return 1;
       }
 
@@ -90,17 +98,13 @@ export const useChapterManagement = ({
       if (getChapterNumberByLocation) {
         const mappedChapter = getChapterNumberByLocation(location);
         if (mappedChapter !== null) {
-          console.log(`📖 [useChapterManagement] Chapter detected via mapping: ${mappedChapter} (href: ${currentHref})`);
           return mappedChapter;
-        } else {
-          console.warn(`⚠️ [useChapterManagement] No mapping found for href: ${currentHref}, falling back to spine index`);
         }
       }
 
       // Fallback: use spine index + 1 (old behavior, less reliable)
       const spine = book.spine;
       if (!spine || !spine.items) {
-        console.warn('⚠️ [useChapterManagement] No spine items');
         return 1;
       }
 
@@ -109,16 +113,13 @@ export const useChapterManagement = ({
       });
 
       if (spineIndex === -1) {
-        console.warn('⚠️ [useChapterManagement] Spine item not found for href:', currentHref);
         return 1;
       }
 
       const chapter = spineIndex + 1;
-      console.log(`📖 [useChapterManagement] Chapter detected (fallback): ${chapter} (spine index: ${spineIndex})`);
       return Math.max(1, chapter);
 
-    } catch (error) {
-      console.error('❌ [useChapterManagement] Error extracting chapter:', error);
+    } catch (_error) {
       return 1;
     }
   }, [book, getChapterNumberByLocation]);
@@ -133,7 +134,7 @@ export const useChapterManagement = ({
 
     // Cancel any previous pending request
     if (abortControllerRef.current) {
-      console.log('🚫 [useChapterManagement] Aborting previous request');
+      devLog('Aborting: Aborting previous request');
       abortControllerRef.current.abort();
     }
 
@@ -143,7 +144,7 @@ export const useChapterManagement = ({
 
     try {
       setIsLoadingChapter(true);
-      console.log('📚 [useChapterManagement] Loading data for chapter:', chapter);
+      devLog('Loading: Loading data for chapter:', chapter);
 
       // Check for abort early
       if (signal.aborted) return;
@@ -153,14 +154,14 @@ export const useChapterManagement = ({
 
       // Check for abort after async operation
       if (signal.aborted) {
-        console.log('🚫 [useChapterManagement] Request aborted after cache check');
+        devLog('Aborting: Request aborted after cache check');
         return;
       }
 
       // Проверяем кэш ТОЛЬКО если там есть описания
       if (cachedData && cachedData.descriptions.length > 0) {
         // Используем кэшированные данные
-        console.log('✅ [useChapterManagement] Using cached chapter data:', {
+        devLog('Success: Using cached chapter data:', {
           chapter,
           descriptionsCount: cachedData.descriptions.length,
           imagesCount: cachedData.images.length,
@@ -173,7 +174,7 @@ export const useChapterManagement = ({
       }
 
       // Кэша нет или он пустой - загружаем с API
-      console.log('📡 [useChapterManagement] Cache miss or empty, fetching from API...');
+      devLog('API: Cache miss or empty, fetching from API...');
 
       // Load descriptions - сначала проверяем существующие (extract_new=false)
       let descriptionsResponse = await booksAPI.getChapterDescriptions(
@@ -184,7 +185,7 @@ export const useChapterManagement = ({
 
       // Check for abort after API call
       if (signal.aborted) {
-        console.log('🚫 [useChapterManagement] Request aborted after first API call');
+        devLog('Aborting: Request aborted after first API call');
         return;
       }
 
@@ -192,7 +193,7 @@ export const useChapterManagement = ({
 
       // Если описаний нет - запускаем LLM extraction (on-demand)
       if (loadedDescriptions.length === 0) {
-        console.log('🔄 [useChapterManagement] No descriptions found, triggering LLM extraction...');
+        devLog('Extracting: No descriptions found, triggering LLM extraction...');
         setIsExtractingDescriptions(true);
 
         // Retry loop for 409 Conflict (extraction in progress)
@@ -209,19 +210,19 @@ export const useChapterManagement = ({
 
             // Check for abort after LLM extraction
             if (signal.aborted) {
-              console.log('🚫 [useChapterManagement] Request aborted after LLM extraction');
+              devLog('Aborting: Request aborted after LLM extraction');
               setIsExtractingDescriptions(false);
               return;
             }
 
             loadedDescriptions = descriptionsResponse.nlp_analysis.descriptions || [];
-            console.log(`✅ [useChapterManagement] LLM extracted ${loadedDescriptions.length} descriptions`);
+            devLog(`Success: LLM extracted ${loadedDescriptions.length} descriptions`);
             break; // Success - exit retry loop
 
           } catch (extractError: any) {
             // Don't log abort errors as warnings
             if (extractError?.name === 'AbortError') {
-              console.log('🚫 [useChapterManagement] LLM extraction aborted');
+              devLog('Aborting: LLM extraction aborted');
               return;
             }
 
@@ -229,8 +230,8 @@ export const useChapterManagement = ({
             if (extractError?.response?.status === 409 || extractError?.status === 409) {
               retryCount++;
               const retryAfter = extractError?.response?.data?.retry_after_seconds || 15;
-              console.log(
-                `⏳ [useChapterManagement] Extraction in progress, retry ${retryCount}/${maxRetries} in ${retryAfter}s`
+              devLog(
+                `Waiting: Extraction in progress, retry ${retryCount}/${maxRetries} in ${retryAfter}s`
               );
 
               if (retryCount < maxRetries) {
@@ -239,13 +240,13 @@ export const useChapterManagement = ({
 
                 // Check if aborted during wait
                 if (signal.aborted) {
-                  console.log('🚫 [useChapterManagement] Request aborted during retry wait');
+                  devLog('Aborting: Request aborted during retry wait');
                   setIsExtractingDescriptions(false);
                   return;
                 }
 
                 // After waiting, try to get existing descriptions (without extract_new)
-                console.log('🔄 [useChapterManagement] Checking if extraction completed...');
+                devLog('Extracting: Checking if extraction completed...');
                 descriptionsResponse = await booksAPI.getChapterDescriptions(
                   bookId,
                   chapter,
@@ -254,7 +255,7 @@ export const useChapterManagement = ({
 
                 loadedDescriptions = descriptionsResponse.nlp_analysis.descriptions || [];
                 if (loadedDescriptions.length > 0) {
-                  console.log(`✅ [useChapterManagement] Got ${loadedDescriptions.length} descriptions after wait`);
+                  devLog(`Success: Got ${loadedDescriptions.length} descriptions after wait`);
                   break; // Success - extraction completed while we waited
                 }
                 // Still empty - continue retry loop
@@ -262,7 +263,7 @@ export const useChapterManagement = ({
               }
             }
 
-            console.warn('⚠️ [useChapterManagement] LLM extraction failed:', extractError);
+            devWarn('Warning: LLM extraction failed:', extractError);
             // Продолжаем с пустыми описаниями
             break;
           }
@@ -275,11 +276,11 @@ export const useChapterManagement = ({
 
       // Final abort check before updating state
       if (signal.aborted) {
-        console.log('🚫 [useChapterManagement] Request aborted before state update');
+        devLog('Aborting: Request aborted before state update');
         return;
       }
 
-      console.log('✅ [useChapterManagement] Descriptions loaded:', {
+      devLog('Success: Descriptions loaded:', {
         count: loadedDescriptions.length,
         sampleDescription: loadedDescriptions[0] ? {
           id: loadedDescriptions[0].id,
@@ -294,11 +295,11 @@ export const useChapterManagement = ({
 
       // Check for abort after images API call
       if (signal.aborted) {
-        console.log('🚫 [useChapterManagement] Request aborted after images fetch');
+        devLog('Aborting: Request aborted after images fetch');
         return;
       }
 
-      console.log('✅ [useChapterManagement] Images loaded:', {
+      devLog('Success: Images loaded:', {
         count: imagesResponse.images.length,
         sampleImage: imagesResponse.images[0] ? {
           id: imagesResponse.images[0].id,
@@ -325,10 +326,10 @@ export const useChapterManagement = ({
     } catch (error: any) {
       // Don't log abort errors
       if (error?.name === 'AbortError') {
-        console.log('🚫 [useChapterManagement] Request aborted');
+        devLog('Aborting: Request aborted');
         return;
       }
-      console.error('❌ [useChapterManagement] Error loading chapter data:', error);
+      console.error('[useChapterManagement] Error loading chapter data:', error);
       setDescriptions([]);
       setImages([]);
       setIsLoadingChapter(false);
@@ -353,11 +354,11 @@ export const useChapterManagement = ({
       // Проверяем, есть ли уже в кэше
       const cachedData = await chapterCache.get(userId, bookId, chapterNumber);
       if (cachedData && cachedData.descriptions.length > 0) {
-        console.log(`📦 [useChapterManagement] Chapter ${chapterNumber} already cached`);
+        devLog(`Cache: Chapter ${chapterNumber} already cached`);
         return true;
       }
 
-      console.log(`🔮 [useChapterManagement] Prefetching chapter ${chapterNumber}...`);
+      devLog(`Prefetch: Prefetching chapter ${chapterNumber}...`);
 
       // Загружаем описания (сначала существующие)
       let descriptionsResponse = await booksAPI.getChapterDescriptions(
@@ -370,7 +371,7 @@ export const useChapterManagement = ({
 
       // Если пусто и LLM extraction разрешён - извлекаем
       if (loadedDescriptions.length === 0 && allowLLMExtraction) {
-        console.log(`🔮 [useChapterManagement] Prefetch: extracting via LLM for chapter ${chapterNumber}...`);
+        devLog(`Prefetch: Prefetch: extracting via LLM for chapter ${chapterNumber}...`);
         try {
           descriptionsResponse = await booksAPI.getChapterDescriptions(
             bookId,
@@ -381,13 +382,13 @@ export const useChapterManagement = ({
         } catch (extractError: any) {
           // Ignore 409 Conflict for prefetch - don't wait
           if (extractError?.response?.status === 409 || extractError?.status === 409) {
-            console.log(`⏳ [useChapterManagement] Prefetch: chapter ${chapterNumber} extraction in progress elsewhere`);
+            devLog(`Prefetch: chapter ${chapterNumber} extraction in progress elsewhere`);
           } else {
-            console.warn(`⚠️ [useChapterManagement] Prefetch LLM extraction failed for chapter ${chapterNumber}:`, extractError);
+            devWarn(`Warning: Prefetch LLM extraction failed for chapter ${chapterNumber}:`, extractError);
           }
         }
       } else if (loadedDescriptions.length === 0) {
-        console.log(`⏭️ [useChapterManagement] Prefetch: skipping LLM for chapter ${chapterNumber} (allowLLMExtraction=false)`);
+        devLog(`Skip: Prefetch: skipping LLM for chapter ${chapterNumber} (allowLLMExtraction=false)`);
       }
 
       // Загружаем изображения
@@ -398,11 +399,11 @@ export const useChapterManagement = ({
         await chapterCache.set(userId, bookId, chapterNumber, loadedDescriptions, imagesResponse.images);
       }
 
-      console.log(`✅ [useChapterManagement] Prefetched chapter ${chapterNumber}: ${loadedDescriptions.length} descriptions, ${imagesResponse.images.length} images`);
+      devLog(`Success: Prefetched chapter ${chapterNumber}: ${loadedDescriptions.length} descriptions, ${imagesResponse.images.length} images`);
       return true;
     } catch (error) {
       // Тихо игнорируем ошибки prefetch - это не критично
-      console.warn(`⚠️ [useChapterManagement] Prefetch failed for chapter ${chapterNumber}:`, error);
+      devWarn(`Warning: Prefetch failed for chapter ${chapterNumber}:`, error);
       return false;
     }
   }, [userId, bookId]);
@@ -431,7 +432,7 @@ export const useChapterManagement = ({
         if (!cached || cached.descriptions.length === 0) {
           chaptersToFetch.push(prevChapter);
         } else {
-          console.log(`📦 [useChapterManagement] Chapter ${prevChapter} already cached, skipping`);
+          devLog(`Cache: Chapter ${prevChapter} already cached, skipping`);
         }
       }
     }
@@ -445,34 +446,34 @@ export const useChapterManagement = ({
         if (!cached || cached.descriptions.length === 0) {
           chaptersToFetch.push(nextChapter);
         } else {
-          console.log(`📦 [useChapterManagement] Chapter ${nextChapter} already cached, skipping`);
+          devLog(`Cache: Chapter ${nextChapter} already cached, skipping`);
         }
       }
     }
 
     if (chaptersToFetch.length === 0) {
-      console.log('📦 [useChapterManagement] All chapters already cached');
+      devLog('Cache: All chapters already cached');
       return;
     }
 
     // Sort for consistent batch ordering (prev chapters first, then next)
     chaptersToFetch.sort((a, b) => a - b);
 
-    console.log(`🔮 [useChapterManagement] Batch prefetch chapters (backward+forward): ${chaptersToFetch.join(', ')}`);
+    devLog(`Prefetch: Batch prefetch chapters (backward+forward): ${chaptersToFetch.join(', ')}`);
 
     try {
       // 1. Batch fetch descriptions (1 HTTP request instead of N)
       const batchResponse = await booksAPI.getBatchDescriptions(bookId, chaptersToFetch);
 
-      console.log(
-        `✅ [useChapterManagement] Batch response: ${batchResponse.total_success}/${batchResponse.total_requested} chapters, ` +
+      devLog(
+        `Success: Batch response: ${batchResponse.total_success}/${batchResponse.total_requested} chapters, ` +
         `${batchResponse.total_descriptions} descriptions`
       );
 
       // 2. Process each chapter and fetch images
       for (const result of batchResponse.chapters) {
         if (!result.success || !result.data) {
-          console.warn(`⚠️ [useChapterManagement] Batch: chapter ${result.chapter_number} failed: ${result.error}`);
+          devWarn(`Warning: Batch: chapter ${result.chapter_number} failed: ${result.error}`);
           continue;
         }
 
@@ -491,8 +492,8 @@ export const useChapterManagement = ({
               descriptions,
               imagesResponse.images
             );
-            console.log(
-              `✅ [useChapterManagement] Cached chapter ${result.chapter_number}: ` +
+            devLog(
+              `Cached chapter ${result.chapter_number}: ` +
               `${descriptions.length} descriptions, ${imagesResponse.images.length} images`
             );
           }
@@ -500,8 +501,8 @@ export const useChapterManagement = ({
           // Cache descriptions even if images fail
           if (descriptions.length > 0) {
             await chapterCache.set(userId, bookId, result.chapter_number, descriptions, []);
-            console.log(
-              `⚠️ [useChapterManagement] Cached chapter ${result.chapter_number} without images: ${descriptions.length} descriptions`
+            devLog(
+              `Cached chapter ${result.chapter_number} without images: ${descriptions.length} descriptions`
             );
           }
         }
@@ -516,8 +517,8 @@ export const useChapterManagement = ({
       );
 
       if (emptyChapters.length > 0) {
-        console.log(
-          `⏭️ [useChapterManagement] Chapters without descriptions: ${emptyChapters.map(c => c.chapter_number).join(', ')}. ` +
+        devLog(
+          `Skip: Chapters without descriptions: ${emptyChapters.map(c => c.chapter_number).join(', ')}. ` +
           `Will extract when opened.`
         );
         // NOTE: LLM extraction disabled in prefetch to avoid confusion.
@@ -528,14 +529,14 @@ export const useChapterManagement = ({
       // This prepares descriptions asynchronously without blocking the UI
       const nextChapterNumber = currentChapter + 1;
       if (nextChapterNumber > 0) {
-        console.log(`[useChapterManagement] Triggering background extraction for chapter ${nextChapterNumber}`);
+        devLog(`Info: Triggering background extraction for chapter ${nextChapterNumber}`);
         booksAPI.triggerBackgroundExtraction(bookId, nextChapterNumber)
-          .then(res => console.log(`[useChapterManagement] Background extraction: ${res.status}`))
-          .catch(err => console.warn('[useChapterManagement] Background extraction failed:', err));
+          .then(res => devLog(`Info: Background extraction: ${res.status}`))
+          .catch(err => devWarn('Warning: Background extraction failed:', err));
       }
 
     } catch (error) {
-      console.warn('⚠️ [useChapterManagement] Batch prefetch failed, falling back to individual calls:', error);
+      devWarn('Warning: Batch prefetch failed, falling back to individual calls:', error);
 
       // Fallback: individual prefetch
       for (const chapterNum of chaptersToFetch) {
@@ -573,11 +574,11 @@ export const useChapterManagement = ({
           if (currentLocation) {
             const initialChapter = getChapterFromLocation_Internal(currentLocation);
             setCurrentChapter(initialChapter);
-            console.log('📖 [useChapterManagement] Initial chapter set:', initialChapter);
+            devLog('Chapter: Initial chapter set:', initialChapter);
           }
         }
       } catch (error) {
-        console.warn('⚠️ [useChapterManagement] Could not get initial location:', error);
+        devWarn('Warning: Could not get initial location:', error);
         // Fallback to chapter 1
         setCurrentChapter(1);
       }
@@ -597,7 +598,7 @@ export const useChapterManagement = ({
     if (currentChapter > 0) {
       if (isRestoringPosition) {
         // Store pending chapter to load after restoration completes
-        console.log('⏳ [useChapterManagement] Position restoration in progress, deferring chapter load:', currentChapter);
+        devLog('Waiting: Position restoration in progress, deferring chapter load:', currentChapter);
         pendingChapterRef.current = currentChapter;
       } else {
         loadChapterData(currentChapter);
@@ -610,7 +611,7 @@ export const useChapterManagement = ({
    */
   useEffect(() => {
     if (!isRestoringPosition && pendingChapterRef.current !== null) {
-      console.log('✅ [useChapterManagement] Position restoration complete, loading pending chapter:', pendingChapterRef.current);
+      devLog('Success: Position restoration complete, loading pending chapter:', pendingChapterRef.current);
       loadChapterData(pendingChapterRef.current);
       pendingChapterRef.current = null;
     }
@@ -622,7 +623,7 @@ export const useChapterManagement = ({
   useEffect(() => {
     return () => {
       if (abortControllerRef.current) {
-        console.log('🧹 [useChapterManagement] Cleanup: aborting pending request');
+        devLog('Cleanup: Cleanup: aborting pending request');
         abortControllerRef.current.abort();
       }
     };
@@ -635,7 +636,7 @@ export const useChapterManagement = ({
   useEffect(() => {
     // Запускаем maintenance асинхронно, не блокируя UI
     chapterCache.performMaintenance().catch((err) => {
-      console.warn('⚠️ [useChapterManagement] Cache maintenance failed:', err);
+      devWarn('Warning: Cache maintenance failed:', err);
     });
   }, []); // Только при монтировании
 
@@ -644,7 +645,7 @@ export const useChapterManagement = ({
    */
   const cancelExtraction = useCallback(() => {
     if (abortControllerRef.current) {
-      console.log('🚫 [useChapterManagement] User cancelled extraction');
+      devLog('Aborting: User cancelled extraction');
       abortControllerRef.current.abort();
       setIsExtractingDescriptions(false);
       setIsLoadingChapter(false);

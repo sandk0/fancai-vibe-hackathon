@@ -72,6 +72,29 @@ export const useProgressSync = ({
     chapter: 0,
   });
 
+  // Ref to store latest position values - fixes stale closure in beforeunload handler
+  const latestPositionRef = useRef<{
+    cfi: string;
+    progress: number;
+    scrollOffset: number;
+    chapter: number;
+  }>({
+    cfi: '',
+    progress: 0,
+    scrollOffset: 0,
+    chapter: 0,
+  });
+
+  // Keep ref updated with latest position values for beforeunload handler
+  useEffect(() => {
+    latestPositionRef.current = {
+      cfi: currentCFI || '',
+      progress: progress || 0,
+      scrollOffset: scrollOffset || 0,
+      chapter: currentChapter || 0,
+    };
+  }, [currentCFI, progress, scrollOffset, currentChapter]);
+
   /**
    * Save progress immediately (no debounce)
    */
@@ -85,18 +108,11 @@ export const useProgressSync = ({
       lastSavedRef.current.scrollOffset === scrollOffset &&
       lastSavedRef.current.chapter === currentChapter
     ) {
-      console.log('[useProgressSync] Skipping save - no changes');
       return;
     }
 
     try {
       setIsSaving(true);
-      console.log('[useProgressSync] Saving progress immediately:', {
-        cfi: currentCFI.substring(0, 50) + '...',
-        progress: progress + '%',
-        scrollOffset: scrollOffset.toFixed(2) + '%',
-        chapter: currentChapter,
-      });
 
       await onSave(currentCFI, progress, scrollOffset, currentChapter);
 
@@ -108,7 +124,6 @@ export const useProgressSync = ({
       };
 
       setLastSaved(Date.now());
-      console.log('[useProgressSync] Progress saved successfully');
     } catch (err) {
       console.error('[useProgressSync] Error saving progress:', err);
     } finally {
@@ -137,11 +152,6 @@ export const useProgressSync = ({
       return;
     }
 
-    console.log('⏱️ [useProgressSync] Debouncing progress save...', {
-      delay: debounceMs + 'ms',
-      cfi: currentCFI.substring(0, 50) + '...',
-    });
-
     // Schedule save
     timeoutRef.current = setTimeout(async () => {
       await saveImmediate();
@@ -157,30 +167,40 @@ export const useProgressSync = ({
   /**
    * Save on unmount or page close
    * Uses fetch with keepalive for authenticated requests (sendBeacon doesn't support headers)
+   * FIX: Uses latestPositionRef to avoid stale closure capturing old position values
    */
   useEffect(() => {
+    if (!bookId) return;
+
     const handleBeforeUnload = () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
 
-      // Skip if no changes since last save
-      if (
-        lastSavedRef.current.cfi === currentCFI &&
-        lastSavedRef.current.progress === progress &&
-        lastSavedRef.current.scrollOffset === scrollOffset &&
-        lastSavedRef.current.chapter === currentChapter
-      ) {
-        console.log('⏭️ [useProgressSync] Skipping beacon - no changes since last save');
+      // Read latest position from ref to avoid stale closure
+      const { cfi, progress: currentProgress, scrollOffset: currentScrollOffset, chapter } = latestPositionRef.current;
+
+      // Skip if no CFI position
+      if (!cfi) {
         return;
       }
 
-      if (enabled && currentCFI && bookId) {
+      // Skip if no changes since last save
+      if (
+        lastSavedRef.current.cfi === cfi &&
+        lastSavedRef.current.progress === currentProgress &&
+        lastSavedRef.current.scrollOffset === currentScrollOffset &&
+        lastSavedRef.current.chapter === chapter
+      ) {
+        return;
+      }
+
+      if (enabled) {
         const data = JSON.stringify({
-          current_chapter: currentChapter,
-          current_position_percent: progress,
-          reading_location_cfi: currentCFI,
-          scroll_offset_percent: scrollOffset,
+          current_chapter: chapter,
+          current_position_percent: currentProgress,
+          reading_location_cfi: cfi,
+          scroll_offset_percent: currentScrollOffset,
         });
 
         const url = `${window.location.origin}/api/v1/books/${bookId}/progress`;
@@ -201,13 +221,11 @@ export const useProgressSync = ({
             }).catch(() => {
               // Ignore errors on page close - request may have been sent
             });
-            console.log('📡 [useProgressSync] Progress sent via fetch keepalive on page close');
           } catch {
             // Fallback to sendBeacon (won't have auth, but better than nothing)
             if ('sendBeacon' in navigator) {
               const blob = new Blob([data], { type: 'application/json' });
               navigator.sendBeacon(url, blob);
-              console.log('📡 [useProgressSync] Fallback: Progress sent via beacon (no auth)');
             }
           }
         }
@@ -229,18 +247,17 @@ export const useProgressSync = ({
       saveImmediate().then(() => {
         // Small delay to ensure backend has processed the save
         setTimeout(() => {
-          console.log('🔄 [useProgressSync] Invalidating book query for fresh progress data');
           queryClient.invalidateQueries({ queryKey: ['book', bookId] });
         }, 200);
-      }).catch(err => {
-        console.error('❌ [useProgressSync] Error saving progress on unmount:', err);
+      }).catch(_err => {
         // Still invalidate to prevent stale data
         setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: ['book', bookId] });
         }, 200);
       });
     };
-  }, [enabled, currentCFI, progress, scrollOffset, currentChapter, bookId, saveImmediate, queryClient]);
+  // Position values come from latestPositionRef, not closure - prevents stale closure bug
+  }, [enabled, bookId, saveImmediate, queryClient]);
 
   return { isSaving, lastSaved };
 };

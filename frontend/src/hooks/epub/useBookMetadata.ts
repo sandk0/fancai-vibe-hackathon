@@ -76,12 +76,6 @@ export const useBookMetadata = (book: Book | null): UseBookMetadataReturn => {
         // Extract metadata from packaging
         const meta = book.packaging.metadata;
 
-        console.log('📚 [useBookMetadata] Loaded metadata:', {
-          title: meta.title,
-          creator: meta.creator,
-          language: meta.language,
-        });
-
         setMetadata({
           title: meta.title || 'Untitled',
           creator: meta.creator || 'Unknown Author',
@@ -94,7 +88,7 @@ export const useBookMetadata = (book: Book | null): UseBookMetadataReturn => {
 
         setIsLoading(false);
       } catch (err) {
-        console.error('❌ [useBookMetadata] Error loading metadata:', err);
+        console.error('[useBookMetadata] Error loading metadata:', err);
 
         if (!isMounted) return;
 

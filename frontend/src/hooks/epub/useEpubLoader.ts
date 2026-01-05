@@ -56,14 +56,12 @@ export const useEpubLoader = ({
 
   // Reload function to retry loading the book
   const reload = useCallback(() => {
-    console.log('🔄 [useEpubLoader] Reloading book...');
     setError('');
     setReloadKey(prev => prev + 1);
   }, []);
 
   useEffect(() => {
     if (!viewerRef.current) {
-      console.error('❌ [useEpubLoader] Viewer ref is null');
       setError('Viewer container not found');
       return;
     }
@@ -73,7 +71,6 @@ export const useEpubLoader = ({
 
     const loadEpub = async () => {
       try {
-        console.log('📥 [useEpubLoader] Downloading EPUB file...');
         setIsLoading(true);
         setError('');
 
@@ -90,9 +87,6 @@ export const useEpubLoader = ({
         }
 
         const arrayBuffer = await response.arrayBuffer();
-        console.log('✅ [useEpubLoader] EPUB file downloaded', {
-          size: arrayBuffer.byteLength
-        });
 
         if (!isMounted) return;
 
@@ -102,9 +96,7 @@ export const useEpubLoader = ({
         setBook(epubBook);
 
         // Wait for book to be ready
-        console.log('⏳ [useEpubLoader] Waiting for book to load...');
         await epubBook.ready;
-        console.log('✅ [useEpubLoader] Book ready');
 
         if (!isMounted || !viewerRef.current) return;
 
@@ -114,6 +106,19 @@ export const useEpubLoader = ({
           height: '100%',
           spread: 'none',
         });
+
+        // Apply initial theme immediately BEFORE rendering content
+        // This prevents flash of light-themed content
+        const savedTheme = localStorage.getItem('app-theme') || 'dark';
+        const INITIAL_THEMES: Record<string, Record<string, Record<string, string>>> = {
+          light: { body: { color: '#1A1A1A', background: '#FFFFFF' } },
+          dark: { body: { color: '#E8E8E8', background: '#121212' } },
+          sepia: { body: { color: '#3D2914', background: '#FBF0D9' } },
+          night: { body: { color: '#B0B0B0', background: '#000000' } },
+        };
+        const themeStyles = INITIAL_THEMES[savedTheme] || INITIAL_THEMES.dark;
+        newRendition.themes.default(themeStyles);
+
         renditionRef.current = newRendition;
         setRendition(newRendition);
 
@@ -130,8 +135,7 @@ export const useEpubLoader = ({
           }
         });
 
-        // Note: Theme is now applied by useEpubThemes hook
-        console.log('✅ [useEpubLoader] EPUB loaded successfully');
+        // Note: Initial theme applied above, useEpubThemes hook handles theme changes
         setIsLoading(false);
 
         if (onReady) {
@@ -141,11 +145,10 @@ export const useEpubLoader = ({
       } catch (err) {
         // Don't show error if request was aborted (component unmounted)
         if (err instanceof Error && err.name === 'AbortError') {
-          console.log('ℹ️ [useEpubLoader] Request aborted (component unmounted)');
           return;
         }
 
-        console.error('❌ [useEpubLoader] Error loading EPUB:', err);
+        console.error('[useEpubLoader] Error loading EPUB:', err);
         if (isMounted) {
           setError(err instanceof Error ? err.message : 'Error loading book');
           setIsLoading(false);
@@ -160,7 +163,6 @@ export const useEpubLoader = ({
       isMounted = false;
       // Abort any pending fetch requests
       abortController.abort();
-      console.log('🧹 [useEpubLoader] Cleaning up...');
 
       // Cleanup rendition first
       if (renditionRef.current) {
@@ -171,20 +173,18 @@ export const useEpubLoader = ({
           // Note: rendition.off() without arguments clears all listeners
           try {
             currentRendition.off();
-          } catch (err) {
+          } catch (_err) {
             // Ignore event listener errors
-            console.debug('⚠️ [useEpubLoader] Could not remove event listeners:', err);
           }
 
           // Safely destroy rendition
           if (typeof currentRendition.destroy === 'function') {
             currentRendition.destroy();
-            console.log('✅ [useEpubLoader] Rendition destroyed');
           }
 
           renditionRef.current = null;
-        } catch (err) {
-          console.warn('⚠️ [useEpubLoader] Error destroying rendition:', err);
+        } catch (_err) {
+          // Ignore destruction errors during cleanup
         }
       }
 
@@ -196,12 +196,11 @@ export const useEpubLoader = ({
           // Safely destroy book
           if (typeof currentBook.destroy === 'function') {
             currentBook.destroy();
-            console.log('✅ [useEpubLoader] Book destroyed');
           }
 
           bookRef.current = null;
-        } catch (err) {
-          console.warn('⚠️ [useEpubLoader] Error destroying book:', err);
+        } catch (_err) {
+          // Ignore destruction errors during cleanup
         }
       }
 

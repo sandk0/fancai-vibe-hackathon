@@ -73,7 +73,6 @@ export const useResizeHandler = ({
 
   useEffect(() => {
     if (!rendition || !enabled) {
-      console.log('📐 [useResizeHandler] Disabled or rendition not ready');
       return;
     }
 
@@ -81,11 +80,8 @@ export const useResizeHandler = ({
      * Handle resize event with position preservation
      */
     const handleResized = (dimensions: { width: number; height: number }) => {
-      console.log('📐 [useResizeHandler] Rendition resized:', dimensions);
-
       // Prevent concurrent restoration
       if (isRestoringRef.current) {
-        console.log('⏭️ [useResizeHandler] Already restoring, skipping');
         return;
       }
 
@@ -93,7 +89,6 @@ export const useResizeHandler = ({
       const currentLocation = rendition.currentLocation();
       if (currentLocation?.start?.cfi) {
         lastCFI.current = currentLocation.start.cfi;
-        console.log('💾 [useResizeHandler] Saved CFI:', (lastCFI.current || '').substring(0, 80) + '...');
       }
 
       // Call optional callback (e.g., update UI state)
@@ -109,15 +104,10 @@ export const useResizeHandler = ({
         // Give epub.js time to re-render
         setTimeout(() => {
           if (lastCFI.current) {
-            console.log('↩️ [useResizeHandler] Restoring position after resize');
-
             rendition
               .display(lastCFI.current)
-              .then(() => {
-                console.log('✅ [useResizeHandler] Position restored successfully');
-              })
-              .catch((err) => {
-                console.warn('⚠️ [useResizeHandler] Could not restore position:', err);
+              .catch((_err) => {
+                // Position restoration failed - continue without it
               })
               .finally(() => {
                 isRestoringRef.current = false;
@@ -134,11 +124,8 @@ export const useResizeHandler = ({
 
     rendition.on('resized', debouncedHandleResized as (...args: unknown[]) => void);
 
-    console.log('✅ [useResizeHandler] Resize handler registered');
-
     return () => {
       rendition.off('resized', debouncedHandleResized as (...args: unknown[]) => void);
-      console.log('🧹 [useResizeHandler] Resize handler deregistered');
     };
   }, [rendition, enabled, onResized]);
 };

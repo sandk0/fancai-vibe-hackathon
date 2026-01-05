@@ -21,6 +21,11 @@
 import { useState, useEffect } from 'react';
 import type { Book, EpubLocations } from '@/types/epub';
 
+// Conditional logging - only in development mode
+const devLog = import.meta.env.DEV
+  ? (...args: unknown[]) => console.log('[useLocationGeneration]', ...args)
+  : () => {};
+
 interface UseLocationGenerationReturn {
   locations: EpubLocations | null;
   isGenerating: boolean;
@@ -63,7 +68,7 @@ const getCachedLocations = async (bookId: string): Promise<any | null> => {
       request.onerror = () => reject(request.error);
     });
   } catch (err) {
-    console.warn('⚠️ [useLocationGeneration] IndexedDB not available:', err);
+    devLog('Warning: IndexedDB not available:', err);
     return null;
   }
 };
@@ -84,7 +89,7 @@ const cacheLocations = async (bookId: string, locations: string): Promise<void> 
       request.onerror = () => reject(request.error);
     });
   } catch (err) {
-    console.warn('⚠️ [useLocationGeneration] Could not cache locations:', err);
+    devLog('Warning: Could not cache locations:', err);
   }
 };
 
@@ -112,7 +117,7 @@ export const useLocationGeneration = (
         // Check if spine exists and is ready
         const spine = book.spine;
         if (!spine || !spine.items || spine.items.length === 0) {
-          console.warn('⚠️ [useLocationGeneration] Spine not ready yet, waiting...');
+          devLog('Warning: Spine not ready yet, waiting...');
           // Wait a bit more for spine to load
           await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -122,14 +127,14 @@ export const useLocationGeneration = (
           }
         }
 
-        console.log('✅ [useLocationGeneration] Book spine ready with', spine.items.length, 'items');
+        devLog('Success: Book spine ready with', spine.items.length, 'items');
 
         // Try to load from cache first
-        console.log('📊 [useLocationGeneration] Checking cache for book:', bookId);
+        devLog('Progress: Checking cache for book:', bookId);
         const cachedLocations = await getCachedLocations(bookId);
 
         if (cachedLocations && isMounted) {
-          console.log('✅ [useLocationGeneration] Loaded locations from cache');
+          devLog('Success: Loaded locations from cache');
 
           // Load cached locations into book.locations
           book.locations.load(cachedLocations);
@@ -139,24 +144,24 @@ export const useLocationGeneration = (
         }
 
         // Generate locations if not cached
-        console.log('📊 [useLocationGeneration] Generating locations (this may take a few seconds)...');
+        devLog('Progress: Generating locations (this may take a few seconds)...');
         await book.locations.generate(1600); // 1600 characters per "page"
 
         if (!isMounted) return;
 
         const total = book.locations.total || 0;
-        console.log('✅ [useLocationGeneration] Locations generated:', total);
+        devLog('Success: Locations generated:', total);
 
         // Cache the generated locations
         const locationsData = book.locations.save();
         await cacheLocations(bookId, locationsData);
-        console.log('💾 [useLocationGeneration] Locations cached');
+        devLog('Cache: Locations cached');
 
         setLocations(book.locations);
         setIsGenerating(false);
 
       } catch (err) {
-        console.error('❌ [useLocationGeneration] Error generating locations:', err);
+        console.error('[useLocationGeneration] Error generating locations:', err);
         if (isMounted) {
           setError(err instanceof Error ? err.message : 'Failed to generate locations');
           setIsGenerating(false);
@@ -191,12 +196,12 @@ export const clearCachedLocations = async (bookId: string): Promise<void> => {
       const request = store.delete(bookId);
 
       request.onsuccess = () => {
-        console.log('✅ [clearCachedLocations] Cache cleared for book:', bookId);
+        devLog('Cache cleared: Cache cleared for book:', bookId);
         resolve();
       };
       request.onerror = () => reject(request.error);
     });
   } catch (err) {
-    console.warn('⚠️ [clearCachedLocations] Could not clear cache:', err);
+    devLog('Clear cache warning: Could not clear cache:', err);
   }
 };

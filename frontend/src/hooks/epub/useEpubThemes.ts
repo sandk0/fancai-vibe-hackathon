@@ -158,32 +158,48 @@ export const useEpubThemes = (
       };
 
       rendition.themes.default(styledTheme);
-
-      console.log('🎨 [useEpubThemes] Theme applied:', {
-        theme: themeName,
-        fontSize: size + '%',
-      });
     } catch (err) {
-      console.error('❌ [useEpubThemes] Error applying theme:', err);
+      console.error('[useEpubThemes] Error applying theme:', err);
     }
   }, [rendition]);
+
+  /**
+   * Sync theme with HTML root element for Tailwind and global styles
+   */
+  const syncHtmlRoot = useCallback((themeName: ThemeName) => {
+    const root = document.documentElement;
+    root.classList.remove('light', 'dark', 'sepia');
+    root.setAttribute('data-theme', themeName);
+
+    if (themeName === 'dark' || themeName === 'night') {
+      root.classList.add('dark');
+      root.style.colorScheme = 'dark';
+    } else if (themeName === 'sepia') {
+      root.classList.add('sepia');
+      root.style.colorScheme = 'light';
+    } else {
+      root.style.colorScheme = 'light';
+    }
+  }, []);
 
   /**
    * Change theme
    */
   const setTheme = useCallback((newTheme: ThemeName) => {
-    console.log('🎨 [useEpubThemes] Changing theme to:', newTheme);
     setThemeState(newTheme);
     localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+
+    // Sync with HTML root for Tailwind and global styles
+    syncHtmlRoot(newTheme);
+
     applyTheme(newTheme, fontSize);
-  }, [fontSize, applyTheme]);
+  }, [fontSize, applyTheme, syncHtmlRoot]);
 
   /**
    * Change font size
    */
   const setFontSize = useCallback((newSize: number) => {
     const clampedSize = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, newSize));
-    console.log('📝 [useEpubThemes] Changing font size to:', clampedSize + '%');
     setFontSizeState(clampedSize);
     localStorage.setItem(FONT_SIZE_STORAGE_KEY, clampedSize.toString());
     applyTheme(theme, clampedSize);
@@ -211,6 +227,14 @@ export const useEpubThemes = (
       applyTheme(theme, fontSize);
     }
   }, [rendition, theme, fontSize, applyTheme]);
+
+  /**
+   * Sync HTML root on initial mount and when theme changes
+   * This ensures Tailwind dark mode and global CSS variables stay in sync
+   */
+  useEffect(() => {
+    syncHtmlRoot(theme);
+  }, [theme, syncHtmlRoot]);
 
   return {
     theme,

@@ -161,7 +161,6 @@ export const BookReader: React.FC<BookReaderProps> = ({
       descriptions = chapter.chapter.descriptions;
     }
 
-    console.log('📖 [BookReader] Descriptions loaded:', descriptions.length);
     setHighlightedDescriptions(descriptions);
   }, [chapter, setHighlightedDescriptions]);
 
@@ -174,7 +173,6 @@ export const BookReader: React.FC<BookReaderProps> = ({
       return;
     }
 
-    console.log(`[BookReader] Chapter changed to: ${currentChapter}`);
     setCurrentPage(1);
 
     // Save progress for chapter change

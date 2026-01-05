@@ -424,6 +424,9 @@ export const useDescriptionHighlighting = ({
   // Debounce timer reference
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Cleanup functions for event listeners (prevents memory leaks)
+  const cleanupFunctionsRef = useRef<(() => void)[]>([]);
+
   // Memoize images lookup map for O(1) access
   const imagesByDescId = useMemo(() => {
     const map = new Map<string, GeneratedImage>();
@@ -446,29 +449,14 @@ export const useDescriptionHighlighting = ({
    * 5. LCS only via requestIdleCallback
    */
   const highlightDescriptions = useCallback(() => {
-    const startTime = performance.now();
-    console.log('🎨 [useDescriptionHighlighting v2.2] Hook called:', {
-      hasRendition: !!rendition,
-      enabled,
-      descriptionsCount: descriptions.length,
-      imagesCount: images.length,
-      timestamp: new Date().toISOString(),
-    });
+    const startTime = import.meta.env.DEV ? performance.now() : 0;
 
     if (!rendition || !enabled || descriptions.length === 0) {
-      console.log('⏸️ [useDescriptionHighlighting] Skipping highlights:', {
-        hasRendition: !!rendition,
-        enabled,
-        descriptionsCount: descriptions.length,
-      });
       return;
     }
 
-    console.log('✅ [useDescriptionHighlighting] Starting highlighting for', descriptions.length, 'descriptions');
-
     const contents = rendition.getContents();
     if (!contents || contents.length === 0) {
-      console.warn('⚠️ [useDescriptionHighlighting] No iframe content available');
       return;
     }
 
@@ -476,7 +464,6 @@ export const useDescriptionHighlighting = ({
     const doc = iframe.document;
 
     if (!doc || !doc.body) {
-      console.warn('⚠️ [useDescriptionHighlighting] No document body available');
       return;
     }
 
@@ -487,10 +474,13 @@ export const useDescriptionHighlighting = ({
       const currentDescriptionIds = descriptions.map(d => d.id);
 
       if (firstHighlightId && currentDescriptionIds.includes(firstHighlightId)) {
-        console.log(`⏭️ [useDescriptionHighlighting] Already highlighted for current page (${existingHighlights.length} highlights), skipping`);
-        return;
+        return; // Already highlighted for current page
       } else {
-        console.log(`🧹 [useDescriptionHighlighting] Removing old highlights from previous page (${existingHighlights.length})`);
+
+        // Run all cleanup functions to remove event listeners (prevents memory leaks)
+        cleanupFunctionsRef.current.forEach(cleanup => cleanup());
+        cleanupFunctionsRef.current = [];
+
         existingHighlights.forEach((el: Element) => {
           const parent = el.parentNode;
           if (parent) {
@@ -503,41 +493,29 @@ export const useDescriptionHighlighting = ({
     }
 
     // OPTIMIZATION 1: Preprocess all descriptions ONCE (cached)
-    const preprocessStartTime = performance.now();
     const preprocessedDescriptions = descriptions.map(desc => ({
       desc,
       patterns: preprocessDescription(desc),
     }));
-    console.log(`📦 [PREPROCESS] Completed in ${(performance.now() - preprocessStartTime).toFixed(2)}ms`);
 
     // OPTIMIZATION 2: Build DOM text node map ONCE (single traversal)
-    const domBuildStartTime = performance.now();
     const textNodes = buildTextNodeMap(doc);
-    console.log(`🗺️ [DOM MAP] Built ${textNodes.length} text nodes in ${(performance.now() - domBuildStartTime).toFixed(2)}ms`);
 
     // Add new highlights with optimized search
     let highlightedCount = 0;
-    const failedDescriptions: { index: number; reason: string; preview: string }[] = [];
 
     // OPTIMIZATION 3: Main search loop - iterate through descriptions
-    const searchStartTime = performance.now();
 
-    preprocessedDescriptions.forEach(({ desc, patterns }, descIndex) => {
+    preprocessedDescriptions.forEach(({ desc, patterns }) => {
       try {
         // Skip empty descriptions
         if (!patterns.normalized || patterns.normalized.length < 10) {
-          failedDescriptions.push({
-            index: descIndex,
-            reason: 'too_short',
-            preview: desc.content?.substring(0, 50) || 'empty',
-          });
           return;
         }
 
-        let found = false;
-        let strategyUsed = '';
         let matchedNode: TextNodeInfo | null = null;
         let searchString = '';
+        let strategyUsed = 'none';
 
         // OPTIMIZATION 4: Try fast strategies first (early exit on match)
         // Strategies ordered by speed: S1 → S2 → S5 → S4 → S3 → S7 → S9 → S8
@@ -550,7 +528,7 @@ export const useDescriptionHighlighting = ({
             if (index !== -1) {
               matchedNode = nodeInfo;
               searchString = patterns.first40;
-              strategyUsed = 'S1_First_40';
+              strategyUsed = 'S1-first40';
               break searchLoop; // EARLY EXIT
             }
           }
@@ -561,7 +539,7 @@ export const useDescriptionHighlighting = ({
             if (index !== -1) {
               matchedNode = nodeInfo;
               searchString = patterns.skip10;
-              strategyUsed = 'S2_Skip_10';
+              strategyUsed = 'S2-skip10';
               break searchLoop; // EARLY EXIT
             }
           }
@@ -572,7 +550,7 @@ export const useDescriptionHighlighting = ({
             if (index !== -1) {
               matchedNode = nodeInfo;
               searchString = patterns.firstWords;
-              strategyUsed = 'S5_Fuzzy_5_Words';
+              strategyUsed = 'S5-firstWords';
               break searchLoop; // EARLY EXIT
             }
           }
@@ -583,7 +561,7 @@ export const useDescriptionHighlighting = ({
             if (index !== -1) {
               matchedNode = nodeInfo;
               searchString = patterns.normalized;
-              strategyUsed = 'S4_Full_Match';
+              strategyUsed = 'S4-fullMatch';
               break searchLoop; // EARLY EXIT
             }
           }
@@ -594,7 +572,7 @@ export const useDescriptionHighlighting = ({
             if (index !== -1) {
               matchedNode = nodeInfo;
               searchString = patterns.skip20;
-              strategyUsed = 'S3_Skip_20';
+              strategyUsed = 'S3-skip20';
               break searchLoop; // EARLY EXIT
             }
           }
@@ -605,7 +583,7 @@ export const useDescriptionHighlighting = ({
             if (index !== -1) {
               matchedNode = nodeInfo;
               searchString = patterns.middleSection;
-              strategyUsed = 'S7_Middle_Section';
+              strategyUsed = 'S7-middle';
               break searchLoop; // EARLY EXIT
             }
           }
@@ -618,7 +596,7 @@ export const useDescriptionHighlighting = ({
             if (index !== -1) {
               matchedNode = nodeInfo;
               searchString = patterns.firstSentence;
-              strategyUsed = 'S9_First_Sentence';
+              strategyUsed = 'S9-firstSentence';
               break searchLoop; // EARLY EXIT
             }
           }
@@ -630,8 +608,6 @@ export const useDescriptionHighlighting = ({
 
         // Apply highlight if match found
         if (matchedNode && searchString) {
-          found = true;
-
           const { node, originalText } = matchedNode;
           const parent = node.parentNode;
 
@@ -689,23 +665,26 @@ export const useDescriptionHighlighting = ({
                 const hoverColors = getHighlightColors();
                 span.style.backgroundColor = hoverColors.bg;
               };
-              span.addEventListener('mouseenter', handleMouseEnter);
-              span.addEventListener('mouseleave', handleMouseLeave);
 
               // Click handler (use memoized image lookup)
               // NOTE: We don't call stopPropagation/preventDefault to allow
               // epub.js navigation to continue working
-              span.addEventListener('click', (event: MouseEvent) => {
+              const handleClick = (event: MouseEvent) => {
                 // Only prevent default, allow propagation for epub.js navigation
                 event.preventDefault();
-
-                console.log('🖱️ [useDescriptionHighlighting] Description clicked:', {
-                  id: desc.id,
-                  type: desc.type,
-                  strategy: strategyUsed,
-                });
                 const image = imagesByDescId.get(desc.id);
                 onDescriptionClick(desc, image);
+              };
+
+              span.addEventListener('mouseenter', handleMouseEnter);
+              span.addEventListener('mouseleave', handleMouseLeave);
+              span.addEventListener('click', handleClick);
+
+              // Store cleanup function for this span (prevents memory leaks)
+              cleanupFunctionsRef.current.push(() => {
+                span.removeEventListener('mouseenter', handleMouseEnter);
+                span.removeEventListener('mouseleave', handleMouseLeave);
+                span.removeEventListener('click', handleClick);
               });
 
               // Replace text with highlighted span
@@ -724,81 +703,21 @@ export const useDescriptionHighlighting = ({
               parent.removeChild(node);
 
               highlightedCount++;
-              console.log(`✅ [${strategyUsed}] Highlighted #${descIndex}: "${highlighted.substring(0, 30)}..."`);
             }
           }
         }
-
-        if (!found) {
-          const preview = patterns.normalized.substring(0, 50);
-          failedDescriptions.push({
-            index: descIndex,
-            reason: 'no_match_in_dom',
-            preview,
-          });
-        }
       } catch (error) {
-        console.error('❌ [useDescriptionHighlighting] Error highlighting description:', error);
-        failedDescriptions.push({
-          index: descIndex,
-          reason: 'exception',
-          preview: error instanceof Error ? error.message : 'unknown_error',
-        });
+        console.error('[useDescriptionHighlighting] Error highlighting description:', error);
       }
     });
 
-    console.log(`🔍 [SEARCH] Completed in ${(performance.now() - searchStartTime).toFixed(2)}ms`);
-
-    // Performance tracking and summary
-    const duration = performance.now() - startTime;
-    const coverage = descriptions.length > 0
-      ? Math.round((highlightedCount / descriptions.length) * 100)
-      : 0;
-
-    // Calculate performance score
-    let performanceScore = '🟢 EXCELLENT';
-    const targetMs = descriptions.length <= 20 ? PERFORMANCE_TARGET_MS : PERFORMANCE_WARNING_MS;
-
-    if (duration > PERFORMANCE_WARNING_MS * 2) {
-      performanceScore = '🔴 SLOW';
-    } else if (duration > PERFORMANCE_WARNING_MS) {
-      performanceScore = '🟡 ACCEPTABLE';
-    } else if (duration > targetMs) {
-      performanceScore = '🟢 GOOD';
-    }
-
-    console.log(`🎨 [SUMMARY v2.2] Highlighting complete:`, {
-      highlighted: highlightedCount,
-      total: descriptions.length,
-      coverage: `${coverage}%`,
-      failed: failedDescriptions.length,
-      duration: `${duration.toFixed(2)}ms`,
-      performance: performanceScore,
-      target: `<${targetMs}ms`,
-      cacheSize: searchPatternsCache.size,
-    });
-
-    // Log failed descriptions for debugging
-    if (failedDescriptions.length > 0) {
-      console.warn(`⚠️ [FAILED DESCRIPTIONS] ${failedDescriptions.length} not highlighted:`);
-      failedDescriptions.slice(0, 5).forEach(({ index, reason, preview }) => {
-        console.warn(`  - #${index}: ${reason} - "${preview.substring(0, 40)}..."`);
-      });
-      if (failedDescriptions.length > 5) {
-        console.warn(`  ... and ${failedDescriptions.length - 5} more`);
-      }
-    }
-
-    // Performance warning
-    if (duration > PERFORMANCE_WARNING_MS) {
-      console.warn(`⚠️ [PERFORMANCE] Highlighting took ${duration.toFixed(2)}ms (target: <${targetMs}ms)`);
-      console.warn(`💡 [TIP] Consider reducing description count or enabling lazy loading`);
-    }
-
-    // Coverage warning
-    if (coverage < 80) {
-      console.warn(`⚠️ [COVERAGE] Only ${coverage}% descriptions highlighted (target: 100%)`);
-      console.warn(`💡 [TIP] Check if descriptions are from current chapter`);
+    // Performance tracking (dev only)
+    if (import.meta.env.DEV) {
+      const duration = performance.now() - startTime;
+      const coverage = descriptions.length > 0
+        ? Math.round((highlightedCount / descriptions.length) * 100)
+        : 0;
+      console.log(`[useDescriptionHighlighting] Highlighting complete: ${highlightedCount}/${descriptions.length} (${coverage}%) in ${duration.toFixed(2)}ms`);
     }
   }, [rendition, descriptions, imagesByDescId, onDescriptionClick, enabled, images.length]);
 
@@ -809,8 +728,6 @@ export const useDescriptionHighlighting = ({
     if (!rendition || !enabled) return;
 
     const handleRendered = () => {
-      console.log('📄 [useDescriptionHighlighting] Page rendered, scheduling highlights...');
-
       // Clear previous debounce timer
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
@@ -818,7 +735,6 @@ export const useDescriptionHighlighting = ({
 
       // Debounce highlighting to avoid multiple rapid calls
       debounceTimerRef.current = setTimeout(() => {
-        console.log('📄 [useDescriptionHighlighting] Debounce complete, applying highlights...');
         highlightDescriptions();
       }, DEBOUNCE_DELAY_MS);
     };
@@ -834,6 +750,9 @@ export const useDescriptionHighlighting = ({
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
+      // Clean up all event listeners to prevent memory leaks on unmount
+      cleanupFunctionsRef.current.forEach(cleanup => cleanup());
+      cleanupFunctionsRef.current = [];
     };
   }, [rendition, enabled, highlightDescriptions]);
 
@@ -862,8 +781,6 @@ export const useDescriptionHighlighting = ({
     if (!rendition || !enabled) return;
 
     // Descriptions just loaded - force re-highlight with small delay for DOM stability
-    console.log(`🔄 [useDescriptionHighlighting] Descriptions loaded (${prevCount} → ${currentCount}), triggering re-highlight`);
-
     const timer = setTimeout(() => {
       highlightDescriptions();
     }, 150); // Slightly longer than debounce to ensure stability

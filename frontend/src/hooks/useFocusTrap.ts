@@ -96,8 +96,8 @@ export function useFocusTrap(
           prevElement.focus();
         } else {
           // Focus the epub viewer container instead to enable keyboard navigation
-          const viewerContainer = document.getElementById('viewer') ||
-                                  document.querySelector('.epub-container') ||
+          const viewerContainer = document.getElementById('epub-viewer') ||
+                                  document.querySelector('[data-epub-viewer]') ||
                                   document.body;
           if (viewerContainer instanceof HTMLElement) {
             viewerContainer.focus();
