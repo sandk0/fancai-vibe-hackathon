@@ -396,6 +396,15 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
         // Fetch saved progress from server
         const { progress: savedProgress } = await booksAPI.getReadingProgress(book.id);
 
+        // DEBUG: Log what we received from server
+        console.log('[EpubReader] 📖 Position restoration - API response:', {
+          hasProgress: !!savedProgress,
+          reading_location_cfi: savedProgress?.reading_location_cfi?.substring(0, 60) || 'NONE',
+          current_position: savedProgress?.current_position,
+          scroll_offset_percent: savedProgress?.scroll_offset_percent,
+          last_read_at: savedProgress?.last_read_at,
+        });
+
         if (!isMounted) return;
 
         // Check localStorage backup for position conflict (multi-device sync)
@@ -437,14 +446,17 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
         // No conflict or no local backup - use server position
         if (savedProgress?.reading_location_cfi) {
           // Try to restore saved position
+          console.log('[EpubReader] 📖 Attempting CFI restoration:', savedProgress.reading_location_cfi.substring(0, 80));
           try {
             skipNextRelocated(); // Skip auto-save on restored position
             await goToCFI(savedProgress.reading_location_cfi, savedProgress.scroll_offset_percent || 0);
 
             // Set initial progress immediately so header shows correct value
             setInitialProgress(savedProgress.reading_location_cfi, savedProgress.current_position);
-          } catch (_cfiError) {
+            console.log('[EpubReader] ✅ CFI restoration SUCCESS');
+          } catch (cfiError) {
             // CFI is invalid - fallback to percentage or first page
+            console.log('[EpubReader] ❌ CFI restoration FAILED:', cfiError);
             if (savedProgress.current_position > 0 && locations) {
               // Try to restore by percentage
               try {
@@ -464,7 +476,8 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
             }
           }
         } else {
-          // No saved progress - show first page
+          // No saved progress or no CFI - show first page
+          console.log('[EpubReader] ⚠️ No CFI found, showing first page. savedProgress:', savedProgress ? 'exists but no CFI' : 'null');
           await rendition.display();
         }
 
