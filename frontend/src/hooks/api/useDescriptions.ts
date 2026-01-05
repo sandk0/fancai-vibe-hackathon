@@ -20,6 +20,7 @@ import {
 import { booksAPI } from '@/api/books';
 import { chapterCache } from '@/services/chapterCache';
 import { descriptionKeys, getCurrentUserId } from './queryKeys';
+import { TANSTACK_RETRY_OPTIONS } from '@/utils/retryWithBackoff';
 import type {
   Description,
   NLPAnalysis,
@@ -149,6 +150,8 @@ export function useChapterDescriptions(
     },
     staleTime: 15 * 60 * 1000, // 15 минут - descriptions редко меняются
     enabled: !!bookId && chapterNumber > 0,
+    // Retry on 409 Conflict (LLM extraction in progress) and other transient errors
+    ...TANSTACK_RETRY_OPTIONS.descriptionExtraction,
     ...options,
   });
 }
@@ -211,6 +214,8 @@ export function useDescriptionsList(
     },
     staleTime: 15 * 60 * 1000,
     enabled: !!bookId && chapterNumber > 0,
+    // Retry on 409 Conflict (LLM extraction in progress) and other transient errors
+    ...TANSTACK_RETRY_OPTIONS.descriptionExtraction,
     ...options,
   });
 }
@@ -422,6 +427,8 @@ export function useReextractDescriptions(
     },
     staleTime: 0, // Всегда fresh, так как это ручная операция
     enabled: false, // Запускается только через refetch()
+    // Retry on 409 Conflict (LLM extraction in progress) and other transient errors
+    ...TANSTACK_RETRY_OPTIONS.descriptionExtraction,
     ...options,
   });
 }

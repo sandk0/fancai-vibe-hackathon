@@ -99,6 +99,7 @@ export const RETRY_PRESETS = {
  */
 const RETRYABLE_STATUS_CODES = new Set([
   408, // Request Timeout
+  409, // Conflict (LLM extraction in progress - retry after delay)
   429, // Too Many Requests (Rate Limited)
   500, // Internal Server Error
   502, // Bad Gateway
@@ -132,7 +133,15 @@ export function isRetryableError(error: unknown): boolean {
     return RETRYABLE_STATUS_CODES.has(error.status);
   }
 
-  // Handle errors with status code
+  // Handle axios errors (error.response.status)
+  if (error && typeof error === 'object' && 'response' in error) {
+    const axiosError = error as { response?: { status?: number } };
+    if (axiosError.response?.status) {
+      return RETRYABLE_STATUS_CODES.has(axiosError.response.status);
+    }
+  }
+
+  // Handle errors with direct status code
   if (error && typeof error === 'object' && 'status' in error) {
     const status = (error as { status: number }).status;
     return RETRYABLE_STATUS_CODES.has(status);
