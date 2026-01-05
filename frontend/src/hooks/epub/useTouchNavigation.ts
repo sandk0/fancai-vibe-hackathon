@@ -40,6 +40,17 @@ export const useTouchNavigation = ({
   const cleanupRef = useRef<(() => void) | null>(null);
   // Track if navigation happened to prevent epub.js default click behavior
   const navigationOccurredRef = useRef(false);
+  // Store navigation functions in refs to avoid closure issues
+  const nextPageRef = useRef(nextPage);
+  const prevPageRef = useRef(prevPage);
+  const enabledRef = useRef(enabled);
+
+  // Keep refs updated
+  useEffect(() => {
+    nextPageRef.current = nextPage;
+    prevPageRef.current = prevPage;
+    enabledRef.current = enabled;
+  }, [nextPage, prevPage, enabled]);
 
   // Determine if X coordinate is in edge zone (using provided screenWidth, not window.innerWidth)
   const isLeftEdge = useCallback((x: number, screenWidth: number) => {
@@ -56,9 +67,10 @@ export const useTouchNavigation = ({
     return result;
   }, []);
 
+  // Use stable handlers that read from refs - prevents closure issues and duplicate handlers
   const handleTouchStart = useCallback(
     (e: TouchEvent) => {
-      if (!enabled) return;
+      if (!enabledRef.current) return;
 
       const touch = e.touches[0];
       const x = touch.clientX;
@@ -84,12 +96,12 @@ export const useTouchNavigation = ({
         screenWidth, // Store for use in touchend
       };
     },
-    [enabled, isLeftEdge, isRightEdge]
+    [isLeftEdge, isRightEdge] // Removed 'enabled' - using ref instead
   );
 
   const handleTouchEnd = useCallback(
     (e: TouchEvent) => {
-      if (!enabled || !touchStartRef.current) return;
+      if (!enabledRef.current || !touchStartRef.current) return;
 
       const touch = e.changedTouches[0];
       const endX = touch.clientX;
@@ -127,24 +139,24 @@ export const useTouchNavigation = ({
         return;
       }
 
-      // Handle edge tap navigation
+      // Handle edge tap navigation - use refs to get current functions
       if (isLeftEdge(startX, screenWidth)) {
         log('LEFT EDGE TAP - navigating to previous page');
         e.preventDefault();
         e.stopPropagation();
         navigationOccurredRef.current = true;
-        prevPage();
+        prevPageRef.current();
       } else if (isRightEdge(startX, screenWidth)) {
         log('RIGHT EDGE TAP - navigating to next page');
         e.preventDefault();
         e.stopPropagation();
         navigationOccurredRef.current = true;
-        nextPage();
+        nextPageRef.current();
       } else {
         log('CENTER TAP - no navigation');
       }
     },
-    [enabled, nextPage, prevPage, isLeftEdge, isRightEdge]
+    [isLeftEdge, isRightEdge] // Removed nextPage, prevPage, enabled - using refs
   );
 
   /**
@@ -154,6 +166,8 @@ export const useTouchNavigation = ({
    */
   const handleClick = useCallback(
     (e: MouseEvent) => {
+      if (!enabledRef.current) return;
+
       // If our touch handler already navigated, prevent duplicate navigation
       if (navigationOccurredRef.current) {
         log('Click blocked - navigation already occurred via touch');
@@ -177,22 +191,20 @@ export const useTouchNavigation = ({
         return;
       }
 
-      // For center taps, prevent any default epub.js navigation
-      const leftThreshold = screenWidth * LEFT_ZONE_END;
-      const rightThreshold = screenWidth * RIGHT_ZONE_START;
-
-      if (x >= leftThreshold && x <= rightThreshold) {
-        // Center zone - prevent default navigation, allow text selection
-        log('Click in center zone - preventing default navigation');
-        // Don't preventDefault here as it might break text selection
-        e.stopPropagation();
-      }
+      // For ALL clicks in the iframe, prevent default and stop propagation
+      // This prevents epub.js from doing any unwanted navigation
+      // Our touch handlers already handle navigation
+      e.preventDefault();
+      e.stopPropagation();
+      log('Click blocked - all iframe clicks prevented to avoid unwanted navigation');
     },
-    []
+    [] // No dependencies - uses refs
   );
 
   useEffect(() => {
-    if (!rendition || !enabled) return;
+    if (!rendition) return;
+
+    log('Setting up touch navigation effect');
 
     const setupListeners = () => {
       // Cleanup previous listeners first
@@ -203,33 +215,42 @@ export const useTouchNavigation = ({
 
       try {
         const contents = rendition.getContents();
-        if (!contents || contents.length === 0) return;
+        if (!contents || contents.length === 0) {
+          log('No contents available, skipping listener setup');
+          return;
+        }
 
         const doc = contents[0]?.document;
-        if (!doc) return;
+        if (!doc) {
+          log('No document available, skipping listener setup');
+          return;
+        }
 
-        log('Setting up touch and click listeners on iframe document');
+        log('Adding touch and click listeners to iframe document');
 
+        // These handlers are stable (use refs internally), so same reference is used for add/remove
         doc.addEventListener('touchstart', handleTouchStart, { passive: false });
         doc.addEventListener('touchend', handleTouchEnd, { passive: false });
-        // Add click handler to prevent epub.js default navigation
+        // Click handler in capture phase to intercept before other handlers
         doc.addEventListener('click', handleClick, { capture: true });
 
-        // Store cleanup function
+        // Store cleanup function - handlers are stable so same refs work
         cleanupRef.current = () => {
+          log('Removing touch and click listeners from iframe document');
           doc.removeEventListener('touchstart', handleTouchStart);
           doc.removeEventListener('touchend', handleTouchEnd);
           doc.removeEventListener('click', handleClick, { capture: true });
         };
-      } catch (_err) {
-        // Ignore errors - iframe may not be ready
+      } catch (err) {
+        log('Error setting up listeners:', err);
       }
     };
 
     // Setup on rendered event (fires when chapter changes)
     const handleRendered = () => {
+      log('Rendered event fired, setting up listeners after delay');
       // Small delay to ensure iframe document is ready
-      setTimeout(setupListeners, 50);
+      setTimeout(setupListeners, 100);
     };
 
     rendition.on('rendered', handleRendered);
@@ -238,11 +259,12 @@ export const useTouchNavigation = ({
     setupListeners();
 
     return () => {
+      log('Cleaning up touch navigation effect');
       rendition.off('rendered', handleRendered);
       if (cleanupRef.current) {
         cleanupRef.current();
         cleanupRef.current = null;
       }
     };
-  }, [rendition, enabled, handleTouchStart, handleTouchEnd, handleClick]);
+  }, [rendition, handleTouchStart, handleTouchEnd, handleClick]); // enabled is checked via ref
 };
