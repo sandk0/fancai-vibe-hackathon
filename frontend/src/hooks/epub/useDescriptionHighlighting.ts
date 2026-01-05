@@ -684,11 +684,33 @@ export const useDescriptionHighlighting = ({
               span.addEventListener('mouseleave', handleMouseLeave);
               span.addEventListener('click', handleClick);
 
+              // Touch handler for mobile - ensures tap on description works
+              const handleTouchEnd = (event: TouchEvent) => {
+                // Prevent navigation from useTouchNavigation
+                event.preventDefault();
+                event.stopPropagation();
+
+                const descId = span.getAttribute('data-description-id');
+                if (descId) {
+                  if (import.meta.env.DEV) {
+                    console.log('[useDescriptionHighlighting] Description touched:', descId);
+                  }
+                  const desc = descriptions.find(d => d.id === descId);
+                  if (desc) {
+                    const image = imagesByDescId.get(descId);
+                    onDescriptionClick(desc, image);
+                  }
+                }
+              };
+
+              span.addEventListener('touchend', handleTouchEnd, { passive: false });
+
               // Store cleanup function for this span (prevents memory leaks)
               cleanupFunctionsRef.current.push(() => {
                 span.removeEventListener('mouseenter', handleMouseEnter);
                 span.removeEventListener('mouseleave', handleMouseLeave);
                 span.removeEventListener('click', handleClick);
+                span.removeEventListener('touchend', handleTouchEnd);
               });
 
               // Replace text with highlighted span

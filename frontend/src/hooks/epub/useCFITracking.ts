@@ -90,7 +90,7 @@ interface UseCFITrackingReturn {
 export const useCFITracking = ({
   rendition,
   locations,
-  book,
+  book: _book, // Kept for backward compatibility, not used after effect split
   onLocationChange,
 }: UseCFITrackingOptions): UseCFITrackingReturn => {
   const [currentCFI, setCurrentCFI] = useState<string>('');
@@ -211,57 +211,71 @@ export const useCFITracking = ({
   }, [rendition]);
 
   /**
-   * Listen to relocated events from epub.js
+   * Effect 1: Basic relocated listener - works immediately without locations
+   * Uses epub.js built-in percentage as fallback
+   *
+   * This effect sets up immediately when rendition is ready, before locations are generated.
+   * It provides basic progress tracking during the 5-10 seconds while locations are being built.
    */
   useEffect(() => {
-    if (!rendition || !locations || !book) return;
+    if (!rendition) return;
 
-    const handleRelocated = (location: EpubLocationEvent) => {
+    const handleRelocatedBasic = (location: EpubLocationEvent) => {
       const cfi = location.start.cfi;
 
-      // Skip if this is the CFI we just restored
-      if (restoredCfiRef.current && cfi === restoredCfiRef.current) {
-        devLog('Skip: Skipping relocated - exact match with restored CFI');
-        return;
+      // Always update CFI
+      setCurrentCFI(cfi);
+
+      // Use epub.js built-in percentage as fallback (works without locations)
+      if (location.start.percentage !== undefined) {
+        const fallbackProgress = Math.round(location.start.percentage * 100);
+        setProgress(fallbackProgress);
+
+        if (import.meta.env.DEV) {
+          console.log('[useCFITracking] Basic progress (no locations):', fallbackProgress + '%');
+        }
       }
+    };
 
-      // Check if within 3% threshold (epub.js rounding)
-      if (restoredCfiRef.current && locations.total > 0) {
-        const restoredPercent = Math.round((locations.percentageFromCfi(restoredCfiRef.current) || 0) * 100);
-        const currentPercent = Math.round((locations.percentageFromCfi(cfi) || 0) * 100);
+    rendition.on('relocated', handleRelocatedBasic as (...args: unknown[]) => void);
 
-        if (Math.abs(currentPercent - restoredPercent) <= 3) {
-          devLog('Skip: Skipping relocated - within 3% threshold');
-          restoredCfiRef.current = null; // Clear after first event
+    return () => {
+      rendition.off('relocated', handleRelocatedBasic as (...args: unknown[]) => void);
+    };
+  }, [rendition]); // Minimal dependencies - works immediately!
+
+  /**
+   * Effect 2: Enhanced progress with locations - more precise calculation
+   * This replaces the basic progress once locations are ready
+   *
+   * Provides accurate page-based progress tracking using epub.js locations.
+   * Also handles skip logic for position restoration to prevent auto-save loops.
+   */
+  useEffect(() => {
+    if (!rendition || !locations || !locations.total) return;
+
+    const handleRelocatedWithLocations = (location: EpubLocationEvent) => {
+      const cfi = location.start.cfi;
+
+      // Skip ONLY the first relocated after restore (exact match)
+      if (restoredCfiRef.current) {
+        if (cfi === restoredCfiRef.current) {
+          devLog('Skip: First relocated after restore (exact match)');
+          restoredCfiRef.current = null; // Clear immediately after first skip
           return;
         }
-
-        devLog('Success: First real page turn detected');
+        // Any other CFI - clear the ref and continue processing
         restoredCfiRef.current = null;
       }
 
-      // Calculate progress with higher precision for smoother updates
-      let progressPercent = 0;
-      const locationsTotal = locations?.total || 0;
-
-      if (locationsTotal > 0) {
-        const currentLocation = locations.percentageFromCfi(cfi);
-        // Use 1 decimal place for more granular progress tracking
-        // Clamp to 0-100% to handle edge cases (e.g., last page, CFI beyond end)
-        progressPercent = Math.min(100, Math.max(0, Math.round((currentLocation || 0) * 1000) / 10));
-      } else {
-        // Fallback to currentLocation()
-        const current = rendition.currentLocation();
-        if (current && current.start && current.start.percentage !== undefined) {
-          // Clamp to 0-100% for safety
-          progressPercent = Math.min(100, Math.max(0, Math.round(current.start.percentage * 1000) / 10));
-        }
-      }
+      // Calculate precise progress with locations
+      const currentLocation = locations.percentageFromCfi(cfi);
+      const progressPercent = Math.min(100, Math.max(0, Math.round((currentLocation || 0) * 1000) / 10));
 
       // Calculate scroll offset
       const scrollOffset = calculateScrollOffset();
 
-      devLog('Location: Location changed:', {
+      devLog('Location: Enhanced progress:', {
         cfi: cfi.substring(0, 50) + '...',
         progress: progressPercent + '%',
         scrollOffset: scrollOffset.toFixed(2) + '%',
@@ -278,12 +292,12 @@ export const useCFITracking = ({
       }
     };
 
-    rendition.on('relocated', handleRelocated as (...args: unknown[]) => void);
+    rendition.on('relocated', handleRelocatedWithLocations as (...args: unknown[]) => void);
 
     return () => {
-      rendition.off('relocated', handleRelocated as (...args: unknown[]) => void);
+      rendition.off('relocated', handleRelocatedWithLocations as (...args: unknown[]) => void);
     };
-  }, [rendition, locations, book, onLocationChange, calculateScrollOffset]);
+  }, [rendition, locations, onLocationChange, calculateScrollOffset]);
 
   /**
    * Calculate current page number from CFI

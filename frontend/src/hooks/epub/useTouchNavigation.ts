@@ -2,30 +2,55 @@
  * useTouchNavigation - Touch and swipe gestures for EPUB navigation
  *
  * Provides mobile-friendly touch navigation:
- * - Swipe left → Next page
- * - Swipe right → Previous page
- * - Tap left edge (25%) → Previous page
- * - Tap right edge (25%) → Next page
+ * - Swipe left -> Next page
+ * - Swipe right -> Previous page
+ * - Tap left edge (25%) -> Previous page
+ * - Tap right edge (25%) -> Next page
  * - Configurable swipe threshold and tap detection
  *
- * @param rendition - epub.js Rendition instance
- * @param nextPage - Function to go to next page
- * @param prevPage - Function to go to previous page
- * @param enabled - Whether touch navigation is enabled
+ * Swipe threshold is relative to screen width by default (10% of screen width,
+ * minimum 50px). This provides better UX across different device sizes:
+ * - iPhone SE (375px): 50px threshold (minimum)
+ * - iPhone 14 (390px): 50px threshold (minimum)
+ * - iPad (768px): 77px threshold
+ * - Desktop (1920px): 192px threshold
+ *
+ * @param options.rendition - epub.js Rendition instance
+ * @param options.nextPage - Function to go to next page
+ * @param options.prevPage - Function to go to previous page
+ * @param options.enabled - Whether touch navigation is enabled (default: true)
+ * @param options.swipeThreshold - Override threshold in px (default: 10% of screen width, min 50px)
+ * @param options.timeThreshold - Maximum swipe duration in ms (default: 300ms)
  *
  * @example
- * useTouchNavigation(rendition, nextPage, prevPage, true);
+ * useTouchNavigation({ rendition, nextPage, prevPage, enabled: true });
  */
 
 import { useEffect, useCallback, useRef } from 'react';
 import type { Rendition } from '@/types/epub';
 
 // Tap detection constants
-const TAP_MAX_DURATION = 200; // ms - maximum duration to be considered a tap
+const TAP_MAX_DURATION = 350; // ms - more forgiving for slower taps on mobile
 const TAP_MAX_MOVEMENT = 10; // px - maximum movement to be considered a tap
 // Tap zone constants for edge navigation
 const LEFT_ZONE_END = 0.25; // 25% from left edge
 const RIGHT_ZONE_START = 0.75; // 75% from left (25% from right)
+
+// Swipe threshold constants
+const MIN_SWIPE_THRESHOLD = 50; // Minimum 50px threshold
+const SWIPE_THRESHOLD_RATIO = 0.1; // 10% of screen width
+
+/**
+ * Calculate relative swipe threshold based on screen width.
+ * Returns 10% of screen width or minimum 50px, whichever is larger.
+ * Safe for SSR - returns minimum value if window is not available.
+ */
+const getRelativeSwipeThreshold = (): number => {
+  if (typeof window === 'undefined') {
+    return MIN_SWIPE_THRESHOLD;
+  }
+  return Math.max(MIN_SWIPE_THRESHOLD, window.innerWidth * SWIPE_THRESHOLD_RATIO);
+};
 
 interface UseTouchNavigationOptions {
   rendition: Rendition | null;
@@ -41,7 +66,7 @@ export const useTouchNavigation = ({
   nextPage,
   prevPage,
   enabled = true,
-  swipeThreshold = 50, // 50px minimum swipe
+  swipeThreshold, // If not provided, will use relative threshold (10% of screen width, min 50px)
   timeThreshold = 300, // 300ms maximum duration
 }: UseTouchNavigationOptions): void => {
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
@@ -79,6 +104,14 @@ export const useTouchNavigation = ({
     const isTap = deltaTime < TAP_MAX_DURATION && touchDistance < TAP_MAX_MOVEMENT;
 
     if (isTap) {
+      // Check if tap is on highlight span - don't navigate, let click handler open modal
+      const target = e.target as HTMLElement;
+      if (target?.classList?.contains('description-highlight') ||
+          target?.closest('.description-highlight')) {
+        // Don't navigate - let click handler open modal
+        return;
+      }
+
       // Handle edge taps for navigation
       const tapX = touchEnd.x;
       const screenWidth = window.innerWidth;
@@ -86,9 +119,21 @@ export const useTouchNavigation = ({
       const rightZone = screenWidth * RIGHT_ZONE_START;
 
       if (tapX < leftZone) {
+        e.preventDefault(); // Block text selection and phantom clicks
+        e.stopPropagation();
+        if (import.meta.env.DEV) {
+          console.log('[useTouchNavigation] Left edge tap -> prev page');
+        }
         prevPage();
+        return;
       } else if (tapX > rightZone) {
+        e.preventDefault(); // Block text selection and phantom clicks
+        e.stopPropagation();
+        if (import.meta.env.DEV) {
+          console.log('[useTouchNavigation] Right edge tap -> next page');
+        }
         nextPage();
+        return;
       }
       // Center tap (25%-75%) does nothing - allows text selection and other interactions
       return;
@@ -103,8 +148,12 @@ export const useTouchNavigation = ({
       return;
     }
 
-    // Must exceed minimum distance
-    if (absX < swipeThreshold) {
+    // Get current threshold - recalculate dynamically to handle window resize
+    // Use provided threshold if available, otherwise compute relative threshold
+    const currentThreshold = swipeThreshold ?? getRelativeSwipeThreshold();
+
+    // Must exceed minimum distance (relative to screen width for better UX on different devices)
+    if (absX < currentThreshold) {
       return;
     }
 
@@ -163,8 +212,8 @@ export const useTouchNavigation = ({
         return;
       }
 
-      container.addEventListener('touchstart', handleTouchStart, { passive: true });
-      container.addEventListener('touchend', handleTouchEnd, { passive: true });
+      container.addEventListener('touchstart', handleTouchStart, { passive: false });
+      container.addEventListener('touchend', handleTouchEnd, { passive: false });
       container.addEventListener('touchmove', handleTouchMove, { passive: false });
 
       return () => {

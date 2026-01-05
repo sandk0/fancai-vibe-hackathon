@@ -121,7 +121,7 @@ export const ImageGenerationStatus: React.FC<ImageGenerationStatusProps> = ({
         {showCancel && onCancel && (
           <button
             onClick={onCancel}
-            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            className="min-h-[44px] min-w-[44px] p-2 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
             title="Отменить"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

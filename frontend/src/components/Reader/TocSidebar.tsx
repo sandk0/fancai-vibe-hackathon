@@ -39,6 +39,10 @@ interface ChapterItemProps {
   index: number;
   progress?: number;
   isCompleted?: boolean;
+  /** Animation variants for the item */
+  itemVariants: ReturnType<typeof getItemVariants>;
+  /** Whether reduced motion is preferred */
+  reducedMotion?: boolean;
 }
 
 /**
@@ -49,27 +53,48 @@ const normalizeHref = (href: string): string => {
 };
 
 /**
- * Animation variants for staggered children
+ * Check if user prefers reduced motion or is on mobile
  */
-const containerVariants = {
-  hidden: { opacity: 0 },
+const getReducedMotion = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+};
+
+const getIsMobile = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return window.innerWidth < 768;
+};
+
+/**
+ * Animation variants for staggered children
+ * Optimized for mobile and reduced motion preferences
+ */
+const getContainerVariants = (isMobile: boolean, reducedMotion: boolean) => ({
+  hidden: { opacity: reducedMotion ? 1 : 0 },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.03,
-      delayChildren: 0.1,
+      // Reduce stagger on mobile (0.02 vs 0.03), disable completely for reduced motion
+      staggerChildren: reducedMotion ? 0 : (isMobile ? 0.02 : 0.03),
+      delayChildren: reducedMotion ? 0 : (isMobile ? 0.05 : 0.1),
     },
   },
-};
+});
 
-const itemVariants = {
-  hidden: { opacity: 0, x: 20 },
+const getItemVariants = (isMobile: boolean, reducedMotion: boolean) => ({
+  hidden: {
+    opacity: reducedMotion ? 1 : 0,
+    x: reducedMotion ? 0 : (isMobile ? 10 : 20)
+  },
   visible: {
     opacity: 1,
     x: 0,
-    transition: { duration: 0.2, ease: 'easeOut' },
+    transition: {
+      duration: reducedMotion ? 0 : (isMobile ? 0.15 : 0.2),
+      ease: 'easeOut'
+    },
   },
-};
+});
 
 /**
  * Individual chapter item with expand/collapse for nested chapters
@@ -82,6 +107,8 @@ const ChapterItem: React.FC<ChapterItemProps> = ({
   index,
   progress = 0,
   isCompleted = false,
+  itemVariants,
+  reducedMotion = false,
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const hasSubitems = item.subitems && item.subitems.length > 0;
@@ -130,7 +157,7 @@ const ChapterItem: React.FC<ChapterItemProps> = ({
         <div className="relative flex-shrink-0 w-6 h-6 flex items-center justify-center">
           {isCompleted ? (
             <m.div
-              initial={{ scale: 0 }}
+              initial={reducedMotion ? { scale: 1 } : { scale: 0 }}
               animate={{ scale: 1 }}
               className="w-5 h-5 rounded-full bg-[var(--color-success)] flex items-center justify-center"
             >
@@ -184,7 +211,7 @@ const ChapterItem: React.FC<ChapterItemProps> = ({
             className="p-1 rounded-md text-[var(--color-text-subtle)] hover:text-[var(--color-text-default)] hover:bg-[var(--color-bg-muted)] transition-colors"
             aria-label={isExpanded ? 'Collapse' : 'Expand'}
             animate={{ rotate: isExpanded ? 90 : 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: reducedMotion ? 0 : 0.2 }}
           >
             <ChevronRight className="w-4 h-4" />
           </m.button>
@@ -193,11 +220,11 @@ const ChapterItem: React.FC<ChapterItemProps> = ({
         {/* Active indicator line */}
         {isActive && (
           <m.div
-            layoutId="activeChapter"
+            layoutId={reducedMotion ? undefined : 'activeChapter'}
             className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full bg-[hsl(var(--primary))]"
-            initial={{ opacity: 0, scaleY: 0 }}
+            initial={reducedMotion ? { opacity: 1, scaleY: 1 } : { opacity: 0, scaleY: 0 }}
             animate={{ opacity: 1, scaleY: 1 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: reducedMotion ? 0 : 0.2 }}
           />
         )}
       </div>
@@ -206,10 +233,10 @@ const ChapterItem: React.FC<ChapterItemProps> = ({
       <AnimatePresence>
         {hasSubitems && isExpanded && (
           <m.div
-            initial={{ height: 0, opacity: 0 }}
+            initial={reducedMotion ? { height: 'auto', opacity: 1 } : { height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            exit={reducedMotion ? { height: 'auto', opacity: 1 } : { height: 0, opacity: 0 }}
+            transition={{ duration: reducedMotion ? 0 : 0.2, ease: 'easeInOut' }}
             className="overflow-hidden mt-1"
           >
             {item.subitems!.map((subitem, subIndex) => (
@@ -222,6 +249,8 @@ const ChapterItem: React.FC<ChapterItemProps> = ({
                 index={subIndex}
                 progress={0}
                 isCompleted={false}
+                itemVariants={itemVariants}
+                reducedMotion={reducedMotion}
               />
             ))}
           </m.div>
@@ -243,15 +272,24 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
   chapterProgress,
   totalChapters,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
-  // Filter TOC by search query
-  const filteredToc = useMemo(() => {
-    if (!searchQuery.trim()) return toc;
+  // Debounce search input for better performance on mobile
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchInput);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
-    const query = searchQuery.toLowerCase();
+  // Filter TOC by debounced search query
+  const filteredToc = useMemo(() => {
+    if (!debouncedSearch.trim()) return toc;
+
+    const query = debouncedSearch.toLowerCase();
 
     const filterItems = (items: NavItem[]): NavItem[] => {
       const results: NavItem[] = [];
@@ -274,7 +312,7 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
     };
 
     return filterItems(toc);
-  }, [toc, searchQuery]);
+  }, [toc, debouncedSearch]);
 
   // Close sidebar on Escape key
   useEffect(() => {
@@ -318,6 +356,18 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
     return Math.round(total / chapterProgress.size);
   }, [chapterProgress]);
 
+  // Compute animation variants based on device and motion preferences
+  const isMobile = getIsMobile();
+  const reducedMotion = getReducedMotion();
+  const containerVariants = useMemo(
+    () => getContainerVariants(isMobile, reducedMotion),
+    [isMobile, reducedMotion]
+  );
+  const itemVariants = useMemo(
+    () => getItemVariants(isMobile, reducedMotion),
+    [isMobile, reducedMotion]
+  );
+
   const handleChapterClick = useCallback((href: string) => {
     onChapterClick(href);
     // Close sidebar on mobile after navigation
@@ -334,10 +384,10 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
         <>
           {/* Backdrop with blur */}
           <m.div
-            initial={{ opacity: 0 }}
+            initial={reducedMotion ? { opacity: 1 } : { opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            exit={reducedMotion ? { opacity: 1 } : { opacity: 0 }}
+            transition={{ duration: reducedMotion ? 0 : 0.2 }}
             className="fixed inset-0 z-[400] bg-black/50 backdrop-blur-sm"
             onClick={onClose}
             aria-hidden="true"
@@ -346,10 +396,10 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
           {/* Sidebar panel */}
           <m.div
             ref={sidebarRef}
-            initial={{ x: '100%' }}
+            initial={reducedMotion ? { x: 0 } : { x: '100%' }}
             animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{
+            exit={reducedMotion ? { x: 0 } : { x: '100%' }}
+            transition={reducedMotion ? { duration: 0 } : {
               type: 'spring',
               damping: 30,
               stiffness: 300,
@@ -378,8 +428,8 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
                 onClick={onClose}
                 className="w-10 h-10 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-default)] hover:bg-[var(--color-bg-emphasis)] transition-colors"
                 aria-label="Close table of contents"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={reducedMotion ? undefined : { scale: 1.05 }}
+                whileTap={reducedMotion ? undefined : { scale: 0.95 }}
               >
                 <X className="w-5 h-5" />
               </m.button>
@@ -393,8 +443,8 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
                   ref={searchInputRef}
                   type="text"
                   placeholder="Поиск глав..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   className="
                     w-full pl-10 pr-4 py-2.5 min-h-[44px] rounded-xl
                     bg-[var(--color-bg-subtle)] text-[var(--color-text-default)]
@@ -406,11 +456,11 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
                   "
                   aria-label="Search chapters"
                 />
-                {searchQuery && (
+                {searchInput && (
                   <m.button
-                    initial={{ opacity: 0, scale: 0.8 }}
+                    initial={reducedMotion ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    onClick={() => setSearchQuery('')}
+                    onClick={() => setSearchInput('')}
                     className="absolute right-2 top-1/2 -translate-y-1/2 p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-full text-[var(--color-text-subtle)] hover:text-[var(--color-text-default)] hover:bg-[var(--color-bg-muted)] transition-colors"
                     aria-label="Clear search"
                   >
@@ -426,9 +476,9 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
                 <div className="h-1 rounded-full bg-[var(--color-bg-emphasis)] overflow-hidden">
                   <m.div
                     className="h-full rounded-full bg-[var(--color-accent-500)]"
-                    initial={{ width: 0 }}
+                    initial={reducedMotion ? { width: `${overallProgress}%` } : { width: 0 }}
                     animate={{ width: `${overallProgress}%` }}
-                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                    transition={{ duration: reducedMotion ? 0 : 0.5, ease: 'easeOut' }}
                   />
                 </div>
               </div>
@@ -447,7 +497,7 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
               >
               {filteredToc.length === 0 ? (
                 <m.div
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={reducedMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="flex flex-col items-center justify-center py-16 text-center"
                 >
@@ -455,9 +505,9 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
                     <Search className="w-7 h-7 text-[var(--color-text-subtle)]" />
                   </div>
                   <p className="text-[var(--color-text-muted)] font-medium">
-                    {searchQuery ? 'Главы не найдены' : 'Содержание отсутствует'}
+                    {debouncedSearch ? 'Главы не найдены' : 'Содержание отсутствует'}
                   </p>
-                  {searchQuery && (
+                  {debouncedSearch && (
                     <p className="text-[var(--color-text-subtle)] text-sm mt-1">
                       Попробуйте другой запрос
                     </p>
@@ -475,6 +525,8 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
                       index={index}
                       progress={chapterProgress?.get(normalizeHref(item.href)) ?? 0}
                       isCompleted={(chapterProgress?.get(normalizeHref(item.href)) ?? 0) >= 100}
+                      itemVariants={itemVariants}
+                      reducedMotion={reducedMotion}
                     />
                   ))}
                 </div>
@@ -487,7 +539,7 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
               <div className="flex items-center justify-between text-xs text-[var(--color-text-subtle)]">
                 <span>
                   {filteredToc.length} из {displayedChapterCount} глав
-                  {searchQuery && ' (фильтр)'}
+                  {debouncedSearch && ' (фильтр)'}
                 </span>
                 <div className="hidden md:flex items-center gap-1">
                   <kbd className="px-1.5 py-0.5 rounded bg-[var(--color-bg-emphasis)] text-[10px] font-mono">

@@ -662,17 +662,22 @@ button, a, [role="button"] {
 .bg-info-muted { background-color: var(--color-info-muted); }
 
 /* ========================================
-   EPUB Reader - Disable horizontal swipe
-   Prevents multiple page turns on touch devices
+   EPUB Reader - Touch gesture handling
+   manipulation allows tap, pan, pinch-zoom but disables double-tap-to-zoom
+   This allows our JS to handle horizontal swipe gestures for page navigation
    ======================================== */
 .epub-container iframe,
 .epub-container iframe body {
-  touch-action: pan-y !important;
-  overscroll-behavior-x: none !important;
+  /* manipulation allows horizontal swipes to be handled by JavaScript instead of being blocked by browser */
+  touch-action: manipulation !important;
+  /* contain prevents rubber-band scrolling on both axes */
+  overscroll-behavior: contain !important;
 }
 
 #viewer iframe,
 #viewer iframe body {
-  touch-action: pan-y !important;
-  overscroll-behavior-x: none !important;
+  /* manipulation allows horizontal swipes to be handled by JavaScript instead of being blocked by browser */
+  touch-action: manipulation !important;
+  /* contain prevents rubber-band scrolling on both axes */
+  overscroll-behavior: contain !important;
 }

@@ -14,8 +14,8 @@ import { useCallback, useEffect } from 'react';
 import type { Rendition } from '@/types/epub';
 
 interface UseEpubNavigationReturn {
-  nextPage: () => void;
-  prevPage: () => void;
+  nextPage: () => Promise<void>;
+  prevPage: () => Promise<void>;
   canGoNext: boolean;
   canGoPrev: boolean;
 }
@@ -24,14 +24,28 @@ export const useEpubNavigation = (
   rendition: Rendition | null
 ): UseEpubNavigationReturn => {
 
-  const nextPage = useCallback(() => {
+  const nextPage = useCallback(async () => {
     if (!rendition) return;
-    rendition.next();
+    try {
+      await rendition.next();
+    } catch (err) {
+      // Silent fail is OK - usually means end of book
+      if (import.meta.env.DEV) {
+        console.warn('[useEpubNavigation] Could not go to next page:', err);
+      }
+    }
   }, [rendition]);
 
-  const prevPage = useCallback(() => {
+  const prevPage = useCallback(async () => {
     if (!rendition) return;
-    rendition.prev();
+    try {
+      await rendition.prev();
+    } catch (err) {
+      // Silent fail is OK - usually means beginning of book
+      if (import.meta.env.DEV) {
+        console.warn('[useEpubNavigation] Could not go to prev page:', err);
+      }
+    }
   }, [rendition]);
 
   // Note: epub.js doesn't provide easy way to check if we can go next/prev

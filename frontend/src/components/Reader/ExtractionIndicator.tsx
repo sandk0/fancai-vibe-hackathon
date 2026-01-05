@@ -28,6 +28,8 @@ export const ExtractionIndicator: React.FC<ExtractionIndicatorProps> = ({
 
   return (
     <div
+      aria-live="polite"
+      aria-atomic="true"
       className={cn(
         'fixed left-1/2 -translate-x-1/2 z-[800]',
         'top-20 mt-safe',

@@ -119,14 +119,26 @@ export const useContentHooks = (
         }
 
         /* Minimal padding on body for compact layout */
+        /* Mobile touch optimizations */
         body {
           margin: 0 !important;
           padding: 0.75em !important;
+          -webkit-overflow-scrolling: touch;
+          touch-action: manipulation;
+          overscroll-behavior: contain;
         }
 
-        /* Smooth scrolling */
+        /* Smooth scrolling and mobile tap highlight removal */
         * {
           scroll-behavior: smooth !important;
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Ensure description highlights are tappable on mobile */
+        .description-highlight {
+          touch-action: manipulation;
+          -webkit-touch-callout: none;
+          cursor: pointer;
         }
 
         /* Selection color based on theme */

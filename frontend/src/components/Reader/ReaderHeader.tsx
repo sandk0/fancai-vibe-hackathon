@@ -53,7 +53,7 @@ export const ReaderHeader = memo(function ReaderHeader({
         <div className="flex items-center gap-2">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-muted hover:bg-muted/80 text-foreground"
+            className="min-h-[44px] min-w-[44px] flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-muted hover:bg-muted/80 text-foreground"
             title="Назад к книге"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -94,7 +94,7 @@ export const ReaderHeader = memo(function ReaderHeader({
             {/* Progress Info - Above the bar */}
             <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-muted-foreground">
               {currentPage !== undefined && totalPages !== undefined && (
-                <span className="font-medium text-[10px] sm:text-xs">
+                <span className="font-medium text-xs sm:text-sm">
                   {currentPage}/{totalPages}
                 </span>
               )}
@@ -104,7 +104,14 @@ export const ReaderHeader = memo(function ReaderHeader({
             </div>
 
             {/* Progress Bar */}
-            <div className="w-full h-2 sm:h-1.5 rounded-full overflow-hidden bg-muted">
+            <div
+              role="progressbar"
+              aria-valuenow={progress}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`Reading progress: ${progress}%`}
+              className="w-full h-2 sm:h-1.5 rounded-full overflow-hidden bg-muted"
+            >
               <div
                 className="h-full rounded-full bg-primary transition-[width] duration-150 ease-out"
                 style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
