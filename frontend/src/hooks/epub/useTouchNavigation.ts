@@ -13,6 +13,10 @@
  * epub.js passEvents() in rendition.js automatically forwards DOM events
  * from the iframe content to the rendition. We just need to listen on
  * the rendition using rendition.on('click', ...), rendition.on('touchstart', ...), etc.
+ *
+ * FIXES:
+ * 1. Prevent double navigation by ignoring click after touch
+ * 2. Use window.innerWidth for zone calculation (iframe coords are relative)
  */
 
 import { useEffect, useRef } from 'react';
@@ -22,6 +26,9 @@ const TAP_MAX_DURATION = 350; // ms - max duration to be considered a tap
 const TAP_MAX_MOVEMENT = 20; // px - increased for mobile tolerance
 const LEFT_ZONE_END = 0.25;
 const RIGHT_ZONE_START = 0.75;
+
+// Debounce time to prevent click after touch
+const TOUCH_CLICK_DEBOUNCE = 500; // ms
 
 // Debug logging - enabled to diagnose issues
 const log = (...args: unknown[]) => console.log('[TouchNav]', ...args);
@@ -49,6 +56,9 @@ export const useTouchNavigation = ({
   // Track touch start for tap detection
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
 
+  // Track last touch navigation time to prevent click after touch
+  const lastTouchNavTimeRef = useRef<number>(0);
+
   // Keep refs updated
   useEffect(() => {
     nextPageRef.current = nextPage;
@@ -69,17 +79,44 @@ export const useTouchNavigation = ({
     log('Setting up touch navigation via rendition events');
 
     /**
+     * Get the actual screen X coordinate
+     * epub.js events come from iframe, so we need to account for iframe position
+     */
+    const getScreenX = (clientX: number): number => {
+      // The iframe is typically full-width, but let's get the actual position
+      // For safety, we'll use the clientX directly since epub.js iframe is usually full-width
+      // But we need to get the iframe's position to adjust
+      try {
+        const contents = rendition.getContents();
+        if (contents && contents.length > 0) {
+          const iframe = contents[0];
+          // Get iframe's bounding rect via the window
+          const iframeWindow = iframe.window;
+          if (iframeWindow && iframeWindow.frameElement) {
+            const rect = (iframeWindow.frameElement as HTMLElement).getBoundingClientRect();
+            // Add iframe's left offset to get screen X
+            return clientX + rect.left;
+          }
+        }
+      } catch (e) {
+        log('Error getting iframe position:', e);
+      }
+      // Fallback - assume iframe starts at x=0
+      return clientX;
+    };
+
+    /**
      * Determine navigation action based on X coordinate relative to window width
      */
-    const getNavigationAction = (x: number): 'prev' | 'next' | 'none' => {
+    const getNavigationAction = (screenX: number): 'prev' | 'next' | 'none' => {
       const screenWidth = window.innerWidth;
       const leftThreshold = screenWidth * LEFT_ZONE_END;
       const rightThreshold = screenWidth * RIGHT_ZONE_START;
 
-      log('Zone check:', { x, screenWidth, leftThreshold, rightThreshold });
+      log('Zone check:', { screenX, screenWidth, leftThreshold, rightThreshold });
 
-      if (x < leftThreshold) return 'prev';
-      if (x > rightThreshold) return 'next';
+      if (screenX < leftThreshold) return 'prev';
+      if (screenX > rightThreshold) return 'next';
       return 'none';
     };
 
@@ -101,24 +138,17 @@ export const useTouchNavigation = ({
       const touch = e.touches[0];
       if (!touch) return;
 
-      const x = touch.clientX;
+      // Get screen X coordinate (accounting for iframe position)
+      const screenX = getScreenX(touch.clientX);
       const y = touch.clientY;
 
-      log('TouchStart:', { x, y });
+      log('TouchStart:', { clientX: touch.clientX, screenX, y });
 
       touchStartRef.current = {
-        x,
+        x: screenX,
         y,
         time: Date.now(),
       };
-
-      // Check zone - if edge zone, we'll handle navigation
-      const action = getNavigationAction(x);
-      if (action !== 'none') {
-        log('Edge zone touch detected');
-        // Note: We can't preventDefault here as the event has already been processed
-        // But we can handle the tap in touchend
-      }
     };
 
     /**
@@ -138,7 +168,7 @@ export const useTouchNavigation = ({
         return;
       }
 
-      const endX = touch.clientX;
+      const endScreenX = getScreenX(touch.clientX);
       const endY = touch.clientY;
       const endTime = Date.now();
 
@@ -150,13 +180,13 @@ export const useTouchNavigation = ({
       touchStartRef.current = null;
 
       // Calculate movement and duration
-      const deltaX = Math.abs(endX - startX);
+      const deltaX = Math.abs(endScreenX - startX);
       const deltaY = Math.abs(endY - startY);
       const duration = endTime - startTime;
 
       const isTap = duration < TAP_MAX_DURATION && deltaX < TAP_MAX_MOVEMENT && deltaY < TAP_MAX_MOVEMENT;
 
-      log('TouchEnd:', { startX, endX, deltaX, deltaY, duration, isTap });
+      log('TouchEnd:', { startX, endScreenX, deltaX, deltaY, duration, isTap });
 
       if (!isTap) {
         log('Not a tap - ignoring (swipe or long press)');
@@ -171,13 +201,15 @@ export const useTouchNavigation = ({
 
       // Handle navigation based on zone (use start position for tap)
       const action = getNavigationAction(startX);
-      log('Navigation action:', action);
+      log('Touch navigation action:', action);
 
       if (action === 'prev') {
         log('LEFT ZONE TAP - calling prevPage()');
+        lastTouchNavTimeRef.current = Date.now();
         prevPageRef.current();
       } else if (action === 'next') {
         log('RIGHT ZONE TAP - calling nextPage()');
+        lastTouchNavTimeRef.current = Date.now();
         nextPageRef.current();
       } else {
         log('CENTER ZONE TAP - no navigation');
@@ -186,12 +218,22 @@ export const useTouchNavigation = ({
 
     /**
      * Handle click - for desktop navigation
+     * On mobile, click fires AFTER touchend - we need to ignore it
      */
     const handleClick = (e: MouseEvent) => {
       if (!enabledRef.current) return;
 
-      const x = e.clientX;
-      log('Click:', { x, target: (e.target as HTMLElement)?.tagName });
+      // CRITICAL: Ignore click if it came shortly after a touch navigation
+      // This prevents double page turns on mobile
+      const timeSinceTouch = Date.now() - lastTouchNavTimeRef.current;
+      if (timeSinceTouch < TOUCH_CLICK_DEBOUNCE) {
+        log('Click ignored - too soon after touch navigation:', timeSinceTouch, 'ms');
+        return;
+      }
+
+      // Get screen X coordinate
+      const screenX = getScreenX(e.clientX);
+      log('Click:', { clientX: e.clientX, screenX, target: (e.target as HTMLElement)?.tagName });
 
       // Check if click is on description highlight - allow through
       if (isDescriptionHighlight(e.target)) {
@@ -200,7 +242,7 @@ export const useTouchNavigation = ({
       }
 
       // Handle navigation based on zone
-      const action = getNavigationAction(x);
+      const action = getNavigationAction(screenX);
       log('Click action:', action);
 
       if (action === 'prev') {
