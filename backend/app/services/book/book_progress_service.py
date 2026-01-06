@@ -231,28 +231,33 @@ class BookProgressService:
             )
             db.add(progress)
         else:
-            # CRITICAL FIX (2026-01-06): Regression Protection
-            # Prevent accidental progress reset to 0% due to frontend race conditions.
-            # This can happen when:
-            # 1. Book is opened/closed multiple times without navigation
-            # 2. Frontend cleanup saves stale/initial state values
-            # 3. Race condition between position restoration and auto-save
+            # CRITICAL FIX (2026-01-06): Aggressive Regression Protection
+            # NEVER allow progress to decrease. This prevents all race conditions.
             #
-            # Protection rules:
-            # - If existing progress > 5% and new progress < 2%, reject the update
-            # - Allow legitimate "go back to start" by requiring explicit low progress
-            # - Users can still legitimately go back, just not accidentally to 0%
+            # Root cause of bug:
+            # 1. Component unmounts during position restoration fetch
+            # 2. restorationState.current.restored = true (already marked)
+            # 3. Next mount skips restoration → shows first page
+            # 4. Progress ~0% gets saved, overwriting real progress
+            #
+            # Solution: Backend ALWAYS keeps the maximum progress.
+            # If user genuinely wants to restart book, they can use explicit "restart" action.
             existing_position = float(progress.current_position or 0.0)
 
-            # Check for suspicious regression (likely a bug, not intentional)
-            if existing_position > 5.0 and valid_position < 2.0:
+            # Never decrease progress - always keep the maximum
+            if valid_position < existing_position:
                 print(
-                    f"⚠️ [REGRESSION PROTECTION] Blocking suspicious progress update: "
+                    f"📌 [PROGRESS PROTECTION] Keeping higher progress: "
                     f"book_id={book_id}, user_id={user_id}, "
-                    f"existing={existing_position:.1f}% → new={valid_position:.1f}%"
+                    f"keeping={existing_position:.1f}% (rejected={valid_position:.1f}%)"
                 )
-                # Return existing progress without updating
-                # This silently ignores the bad update - frontend won't notice
+                # Still update CFI and timestamp if provided (for position tracking)
+                # but keep the higher progress percentage
+                if reading_location_cfi:
+                    progress.reading_location_cfi = reading_location_cfi
+                progress.scroll_offset_percent = scroll_offset_percent
+                progress.last_read_at = datetime.now(timezone.utc)
+                await db.commit()
                 return progress
 
             # Обновляем существующий
