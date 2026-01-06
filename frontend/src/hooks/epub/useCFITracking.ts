@@ -397,23 +397,36 @@ export const useCFITracking = ({
    * // currentPage might be 42 (out of 500 total pages)
    */
   const currentPage = useMemo(() => {
-    if (!locations || !currentCFI || !locations.total) return null;
+    if (!locations || !locations.total) return null;
 
-    try {
-      // locationFromCfi returns the page number (1-based index)
-      const pageNumber = locations.locationFromCfi(currentCFI);
-      const validPage = pageNumber !== -1 ? pageNumber : null;
-
-      if (validPage !== null) {
-        devLog('Page: Current page:', validPage, '/', locations.total);
+    // Method 1: Use locationFromCfi (most accurate)
+    if (currentCFI) {
+      try {
+        const pageNumber = locations.locationFromCfi(currentCFI);
+        if (pageNumber !== -1 && pageNumber > 0) {
+          devLog('Page: Current page from CFI:', pageNumber, '/', locations.total);
+          return pageNumber;
+        }
+      } catch (err) {
+        devLog('Warning: Could not get page from CFI:', err);
       }
-
-      return validPage;
-    } catch (err) {
-      devLog('Warning: Could not get page from CFI:', err);
-      return null;
     }
-  }, [locations, currentCFI]);
+
+    // Method 2: Fallback - calculate from progress percentage
+    // This handles mobile browsers where locationFromCfi returns -1 (epub.js bug)
+    if (progress > 0) {
+      const approximatePage = Math.max(1, Math.round((progress / 100) * locations.total));
+      devLog('Page: Approximate page from progress:', approximatePage, '/', locations.total);
+      return approximatePage;
+    }
+
+    // At the beginning of the book
+    if (progress === 0) {
+      return 1;
+    }
+
+    return null;
+  }, [locations, currentCFI, progress]);
 
   /**
    * Get total pages from locations

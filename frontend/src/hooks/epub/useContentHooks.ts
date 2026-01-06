@@ -128,6 +128,18 @@ export const useContentHooks = (
           overscroll-behavior: contain;
         }
 
+        /* Disable text selection on touch devices (mobile) */
+        /* Prevents accidental text selection when tapping to navigate */
+        @media (pointer: coarse), (hover: none) {
+          body, p, span, div, h1, h2, h3, h4, h5, h6, li, td, th, blockquote {
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+            -webkit-touch-callout: none !important;
+          }
+        }
+
         /* Smooth scrolling and mobile tap highlight removal */
         * {
           scroll-behavior: smooth !important;
