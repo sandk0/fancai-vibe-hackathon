@@ -236,8 +236,5 @@ export function isLocation(obj: unknown): obj is Location {
   );
 }
 
-// Export all types and functions
-export * from './epub';
-
 // Note: TypeScript types cannot be exported as default object values
 // Import named exports instead: import { Book, Rendition, etc } from '@/types/epub'

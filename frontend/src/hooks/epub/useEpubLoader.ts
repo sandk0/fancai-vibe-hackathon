@@ -26,7 +26,7 @@ import type { Book, Rendition } from '@/types/epub';
 
 interface UseEpubLoaderOptions {
   bookUrl: string;
-  viewerRef: React.RefObject<HTMLDivElement>;
+  viewerRef: React.RefObject<HTMLDivElement | null>;
   authToken: string | null;
   onReady?: () => void;
 }
