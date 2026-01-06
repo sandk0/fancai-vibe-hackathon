@@ -750,19 +750,32 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
 
       {/* Modern Reader Header - Theme-aware with all controls and progress */}
       {/* Always visible - tap zones removed */}
-      {renditionReady && !isLoading && !isGenerating && !isRestoringPosition && metadata && (
+      {renditionReady && !isLoading && !isGenerating && !isRestoringPosition && metadata && (() => {
+        // Fallback page calculation when epub.js locations aren't available (common on mobile)
+        // Uses chapter count from API as base: ~10 pages per chapter
+        const chaptersCount = book.total_chapters || book.chapters?.length || 0;
+        const fallbackTotalPages = chaptersCount > 0 ? chaptersCount * 10 : undefined;
+        const displayTotalPages = totalPages ?? fallbackTotalPages;
+        const displayCurrentPage = currentPage ?? (
+          displayTotalPages && progress > 0
+            ? Math.max(1, Math.round((progress / 100) * displayTotalPages))
+            : displayTotalPages ? 1 : undefined
+        );
+
+        return (
         <ReaderHeader
           title={metadata.title}
           author={metadata.creator}
           progress={progress}
-          currentPage={currentPage ?? undefined}
-          totalPages={totalPages ?? undefined}
+          currentPage={displayCurrentPage}
+          totalPages={displayTotalPages}
           onBack={() => navigate(`/book/${book.id}`)}
           onTocToggle={() => setIsTocOpen(!isTocOpen)}
           onInfoOpen={() => setIsBookInfoOpen(true)}
           onSettingsOpen={() => setIsSettingsOpen(true)}
         />
-      )}
+        );
+      })()}
 
       {/* Settings Dropdown (hidden, triggered by header button) */}
       {renditionReady && !isLoading && !isGenerating && !isRestoringPosition && (
