@@ -30,6 +30,17 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
+/**
+ * Validate CFI format - must be a proper EPUB CFI
+ * CFI must start with "epubcfi(" and end with ")"
+ */
+const isValidCFI = (cfi: string): boolean => {
+  if (!cfi || typeof cfi !== 'string') return false;
+  // Basic CFI format: epubcfi(/6/4!/4/2/...)
+  const cfiPattern = /^epubcfi\([^)]+\)$/;
+  return cfiPattern.test(cfi) && cfi.length >= 15;
+};
+
 interface UseProgressSyncOptions {
   bookId: string;
   currentCFI: string;
@@ -97,9 +108,20 @@ export const useProgressSync = ({
 
   /**
    * Save progress immediately (no debounce)
+   *
+   * CRITICAL VALIDATIONS (2026-01-06):
+   * 1. CFI must be valid EPUB CFI format (prevents saving corrupted data)
+   * 2. Progress must be valid number (prevents NaN being saved)
    */
   const saveImmediate = useCallback(async () => {
     if (!enabled || !currentCFI || !bookId) return;
+
+    // CRITICAL: Validate CFI format before saving
+    // This prevents saving invalid/empty CFI which would corrupt the reading position
+    if (!isValidCFI(currentCFI)) {
+      console.warn('[useProgressSync] Skipping save - invalid CFI format:', currentCFI?.substring(0, 50));
+      return;
+    }
 
     // Skip if no changes
     if (
@@ -124,6 +146,17 @@ export const useProgressSync = ({
       };
 
       setLastSaved(Date.now());
+
+      // Also update localStorage backup for conflict detection on next open
+      try {
+        localStorage.setItem(`book_${bookId}_progress_backup`, JSON.stringify({
+          reading_location_cfi: currentCFI,
+          current_position: progress,
+          savedAt: Date.now(),
+        }));
+      } catch {
+        // localStorage might be full or unavailable - ignore
+      }
     } catch (err) {
       console.error('[useProgressSync] Error saving progress:', err);
     } finally {
@@ -133,9 +166,16 @@ export const useProgressSync = ({
 
   /**
    * Debounced progress update
+   *
+   * CRITICAL (2026-01-06): Validates CFI before scheduling save
    */
   useEffect(() => {
     if (!enabled || !currentCFI || !bookId) return;
+
+    // CRITICAL: Don't schedule save with invalid CFI
+    if (!isValidCFI(currentCFI)) {
+      return;
+    }
 
     // Clear existing timeout
     if (timeoutRef.current) {
@@ -168,6 +208,7 @@ export const useProgressSync = ({
    * Save on unmount or page close
    * Uses fetch with keepalive for authenticated requests (sendBeacon doesn't support headers)
    * FIX: Uses latestPositionRef to avoid stale closure capturing old position values
+   * CRITICAL (2026-01-06): Validates CFI format before sending
    */
   useEffect(() => {
     if (!bookId) return;
@@ -180,8 +221,8 @@ export const useProgressSync = ({
       // Read latest position from ref to avoid stale closure
       const { cfi, progress: currentProgress, scrollOffset: currentScrollOffset, chapter } = latestPositionRef.current;
 
-      // Skip if no CFI position
-      if (!cfi) {
+      // Skip if no CFI position or invalid CFI format
+      if (!cfi || !isValidCFI(cfi)) {
         return;
       }
 

@@ -200,12 +200,12 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
         scroll_offset_percent: scroll,
       });
     },
-    // CRITICAL FIX: Allow saving even during location generation
-    // Previously: renditionReady && !isGenerating
-    // Problem: If user exits before locations finish (5-10s), progress was lost
-    // Solution: Save always when rendition is ready. CFI is always precise,
-    // progress uses spine-based fallback (less accurate but still useful)
-    enabled: renditionReady,
+    // CRITICAL FIX (2026-01-06): Prevent saving during position restoration
+    // BUG: When book opens, renditionReady becomes true BEFORE position is restored
+    // This caused race condition where progress=0 was saved before server position loaded
+    // Solution: Only enable saving AFTER position restoration completes
+    // This fixes the "progress reset to 0%" bug on repeated open/close without navigation
+    enabled: renditionReady && !isRestoringPosition,
   });
 
   // Hook 6: Page navigation
