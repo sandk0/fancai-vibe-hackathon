@@ -101,15 +101,27 @@ export const useCFITracking = ({
 
   /**
    * Set initial progress manually (used during position restoration)
+   *
+   * CRITICAL FIX (2026-01-06): Don't trust 0% from server as "valid"
+   * If server has 0% stored (from previous broken mobile sessions),
+   * we should NOT mark it as valid - let relocated handler recalculate.
+   * Only mark as valid if progress > 0.
    */
   const setInitialProgress = useCallback((cfi: string, progressPercent: number) => {
     devLog('Navigation: Setting initial progress:', {
       cfi: cfi.substring(0, 50) + '...',
       progress: progressPercent + '%',
+      willMarkValid: progressPercent > 0,
     });
     setCurrentCFI(cfi);
     setProgress(progressPercent);
-    setProgressValid(true); // Initial progress from server is always valid
+    // CRITICAL: Only mark as valid if progress > 0
+    // If server has 0% (from old broken saves), let relocated handler recalculate
+    if (progressPercent > 0) {
+      setProgressValid(true);
+    }
+    // If progressPercent is 0, progressValid stays false (from initial state)
+    // This allows relocated handler to calculate and set the real progress
   }, []);
 
   /**
@@ -362,6 +374,61 @@ export const useCFITracking = ({
       rendition.off('relocated', handleRelocated as (...args: unknown[]) => void);
     };
   }, [rendition, locations, book, onLocationChange, calculateScrollOffset]);
+
+  /**
+   * CRITICAL FIX (2026-01-06): Recalculate progress when locations become available
+   *
+   * On mobile, initial progress calculation often fails because:
+   * 1. locations.percentageFromCfi() needs locations to be generated
+   * 2. location.start.percentage is only available after locations
+   * 3. Spine fallback may fail if book.spine isn't fully loaded yet
+   *
+   * This effect actively recalculates progress when:
+   * - We have a valid CFI
+   * - locations become available (or change)
+   * - Current progress is 0 (likely failed initial calculation)
+   *
+   * This fixes the "always 0% on mobile" bug where progress never gets calculated
+   * because the initial relocated event fires before locations are ready.
+   */
+  useEffect(() => {
+    if (!locations || !locations.total || !currentCFI || !rendition) return;
+
+    // Only recalculate if progress is still 0 (likely failed initial calculation)
+    // Don't override valid non-zero progress
+    if (progress !== 0) {
+      devLog('📊 Locations ready, but progress already calculated:', progress + '%');
+      return;
+    }
+
+    devLog('📊 Locations ready, recalculating progress from CFI...', {
+      locationsTotal: locations.total,
+      currentCFI: currentCFI.substring(0, 50),
+      currentProgress: progress,
+      progressValid,
+    });
+
+    try {
+      const locationPercentage = locations.percentageFromCfi(currentCFI);
+      devLog('📊 percentageFromCfi result:', locationPercentage);
+
+      if (
+        typeof locationPercentage === 'number' &&
+        !Number.isNaN(locationPercentage) &&
+        locationPercentage >= 0 &&
+        locationPercentage <= 1
+      ) {
+        const calculatedProgress = Math.round(locationPercentage * 1000) / 10;
+        devLog('✅ Progress recalculated from locations:', calculatedProgress + '%');
+        setProgress(calculatedProgress);
+        setProgressValid(true);
+      } else {
+        devLog('⚠️ percentageFromCfi returned invalid value:', locationPercentage);
+      }
+    } catch (err) {
+      devLog('⚠️ Error recalculating progress from locations:', err);
+    }
+  }, [locations, currentCFI, progress, progressValid, rendition]);
 
   /**
    * Calculate current page number from CFI
