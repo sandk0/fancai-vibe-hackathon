@@ -41,6 +41,49 @@ const isValidCFI = (cfi: string): boolean => {
   return cfiPattern.test(cfi) && cfi.length >= 15;
 };
 
+/**
+ * Get max known progress from localStorage for regression protection
+ * CRITICAL (2026-01-06): Prevents accidental progress reset to 0%
+ */
+const getMaxKnownProgress = (bookId: string): number => {
+  try {
+    const backup = localStorage.getItem(`book_${bookId}_progress_backup`);
+    if (backup) {
+      const parsed = JSON.parse(backup);
+      return parsed.current_position || 0;
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return 0;
+};
+
+/**
+ * Check if progress update looks like a regression bug
+ * Returns true if we should SKIP this save (suspicious regression)
+ */
+const isSuspiciousRegression = (
+  bookId: string,
+  newProgress: number,
+  lastSavedProgress: number
+): boolean => {
+  // Get max known progress from localStorage
+  const maxKnown = getMaxKnownProgress(bookId);
+  const referenceProgress = Math.max(maxKnown, lastSavedProgress);
+
+  // If reference is > 5% and new is < 2%, this is suspicious
+  // User could legitimately go back, but not to 0-1% from 50%+
+  if (referenceProgress > 5 && newProgress < 2) {
+    console.warn(
+      '[useProgressSync] REGRESSION PROTECTION: Blocking suspicious save',
+      { referenceProgress, newProgress, maxKnown, lastSavedProgress }
+    );
+    return true;
+  }
+
+  return false;
+};
+
 interface UseProgressSyncOptions {
   bookId: string;
   currentCFI: string;
@@ -112,6 +155,7 @@ export const useProgressSync = ({
    * CRITICAL VALIDATIONS (2026-01-06):
    * 1. CFI must be valid EPUB CFI format (prevents saving corrupted data)
    * 2. Progress must be valid number (prevents NaN being saved)
+   * 3. Regression protection - don't save if progress dropped suspiciously to 0%
    */
   const saveImmediate = useCallback(async () => {
     if (!enabled || !currentCFI || !bookId) return;
@@ -120,6 +164,12 @@ export const useProgressSync = ({
     // This prevents saving invalid/empty CFI which would corrupt the reading position
     if (!isValidCFI(currentCFI)) {
       console.warn('[useProgressSync] Skipping save - invalid CFI format:', currentCFI?.substring(0, 50));
+      return;
+    }
+
+    // CRITICAL (2026-01-06): Regression Protection
+    // Skip save if progress looks like it regressed to 0% due to race condition
+    if (isSuspiciousRegression(bookId, progress, lastSavedRef.current.progress)) {
       return;
     }
 
@@ -167,13 +217,18 @@ export const useProgressSync = ({
   /**
    * Debounced progress update
    *
-   * CRITICAL (2026-01-06): Validates CFI before scheduling save
+   * CRITICAL (2026-01-06): Validates CFI and checks for regression before scheduling save
    */
   useEffect(() => {
     if (!enabled || !currentCFI || !bookId) return;
 
     // CRITICAL: Don't schedule save with invalid CFI
     if (!isValidCFI(currentCFI)) {
+      return;
+    }
+
+    // CRITICAL (2026-01-06): Regression Protection - don't even schedule if suspicious
+    if (isSuspiciousRegression(bookId, progress, lastSavedRef.current.progress)) {
       return;
     }
 
@@ -223,6 +278,17 @@ export const useProgressSync = ({
 
       // Skip if no CFI position or invalid CFI format
       if (!cfi || !isValidCFI(cfi)) {
+        return;
+      }
+
+      // CRITICAL (2026-01-06): Regression Protection in beforeunload
+      // This is the last line of defense - check localStorage for max known progress
+      const maxKnown = getMaxKnownProgress(bookId);
+      if (maxKnown > 5 && currentProgress < 2) {
+        console.warn(
+          '[useProgressSync] REGRESSION PROTECTION (beforeunload): Blocking suspicious save',
+          { maxKnown, currentProgress }
+        );
         return;
       }
 

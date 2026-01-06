@@ -164,6 +164,9 @@ class BookProgressService:
         """
         Обновляет прогресс чтения книги пользователем.
 
+        CRITICAL FIX (2026-01-06): Added regression protection to prevent
+        accidental progress reset to 0% due to frontend race conditions.
+
         Args:
             db: Сессия базы данных
             user_id: ID пользователя
@@ -228,6 +231,30 @@ class BookProgressService:
             )
             db.add(progress)
         else:
+            # CRITICAL FIX (2026-01-06): Regression Protection
+            # Prevent accidental progress reset to 0% due to frontend race conditions.
+            # This can happen when:
+            # 1. Book is opened/closed multiple times without navigation
+            # 2. Frontend cleanup saves stale/initial state values
+            # 3. Race condition between position restoration and auto-save
+            #
+            # Protection rules:
+            # - If existing progress > 5% and new progress < 2%, reject the update
+            # - Allow legitimate "go back to start" by requiring explicit low progress
+            # - Users can still legitimately go back, just not accidentally to 0%
+            existing_position = float(progress.current_position or 0.0)
+
+            # Check for suspicious regression (likely a bug, not intentional)
+            if existing_position > 5.0 and valid_position < 2.0:
+                print(
+                    f"⚠️ [REGRESSION PROTECTION] Blocking suspicious progress update: "
+                    f"book_id={book_id}, user_id={user_id}, "
+                    f"existing={existing_position:.1f}% → new={valid_position:.1f}%"
+                )
+                # Return existing progress without updating
+                # This silently ignores the bad update - frontend won't notice
+                return progress
+
             # Обновляем существующий
             progress.current_chapter = valid_chapter
             progress.current_page = valid_page
