@@ -39,27 +39,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Rendition, Book, EpubLocationEvent, EpubLocations } from '@/types/epub';
 
-// Debug logging - ALWAYS ON to diagnose mobile progress issues
-// TODO: Revert to DEV-only after mobile bug is fixed
+// Debug logging - ALWAYS ON for now to diagnose mobile issues
 const devLog = (...args: unknown[]) => console.log('[useCFITracking]', ...args);
-
-/**
- * Calculate spine-based progress estimate
- * Used for cross-validation when locations.percentageFromCfi returns suspicious values
- */
-const calculateSpineProgress = (
-  spineIndex: number | undefined,
-  displayedPage: number,
-  displayedTotal: number,
-  totalSpineItems: number
-): number | null => {
-  if (totalSpineItems > 0 && spineIndex !== undefined && spineIndex >= 0) {
-    const withinSectionProgress = displayedPage / displayedTotal;
-    const spineProgress = ((spineIndex + withinSectionProgress) / totalSpineItems) * 100;
-    return Math.min(100, Math.max(0, Math.round(spineProgress * 10) / 10));
-  }
-  return null;
-};
 
 /**
  * Validate CFI format
@@ -96,7 +77,6 @@ interface UseCFITrackingOptions {
 interface UseCFITrackingReturn {
   currentCFI: string;
   progress: number;
-  progressValid: boolean; // NEW: Indicates if progress was successfully calculated
   scrollOffsetPercent: number;
   currentPage: number | null;
   totalPages: number | null;
@@ -113,34 +93,20 @@ export const useCFITracking = ({
 }: UseCFITrackingOptions): UseCFITrackingReturn => {
   const [currentCFI, setCurrentCFI] = useState<string>('');
   const [progress, setProgress] = useState<number>(0);
-  const [progressValid, setProgressValid] = useState<boolean>(false); // NEW: Track if progress was calculated
   const [scrollOffsetPercent, setScrollOffsetPercent] = useState<number>(0);
 
   const restoredCfiRef = useRef<string | null>(null);
 
   /**
    * Set initial progress manually (used during position restoration)
-   *
-   * CRITICAL FIX (2026-01-06): Don't trust 0% from server as "valid"
-   * If server has 0% stored (from previous broken mobile sessions),
-   * we should NOT mark it as valid - let relocated handler recalculate.
-   * Only mark as valid if progress > 0.
    */
   const setInitialProgress = useCallback((cfi: string, progressPercent: number) => {
     devLog('Navigation: Setting initial progress:', {
       cfi: cfi.substring(0, 50) + '...',
       progress: progressPercent + '%',
-      willMarkValid: progressPercent > 0,
     });
     setCurrentCFI(cfi);
     setProgress(progressPercent);
-    // CRITICAL: Only mark as valid if progress > 0
-    // If server has 0% (from old broken saves), let relocated handler recalculate
-    if (progressPercent > 0) {
-      setProgressValid(true);
-    }
-    // If progressPercent is 0, progressValid stays false (from initial state)
-    // This allows relocated handler to calculate and set the real progress
   }, []);
 
   /**
@@ -293,38 +259,14 @@ export const useCFITracking = ({
       // Always update CFI
       setCurrentCFI(cfi);
 
-      // Calculate progress - try multiple methods with cross-validation
+      // Calculate progress - try multiple methods in order of precision
       let progressPercent: number | null = null;
-
-      // First, calculate spine-based progress for cross-validation
-      const spineIndex = location.start.index;
-      const displayedPage = location.start.displayed?.page || 1;
-      const displayedTotal = location.start.displayed?.total || 1;
-      const totalSpineItems = book?.spine?.items?.length || book?.spine?.length || 0;
-
-      const spineBasedProgress = calculateSpineProgress(
-        spineIndex,
-        displayedPage,
-        displayedTotal,
-        totalSpineItems
-      );
-
-      devLog('📊 Progress calculation starting:', {
-        cfi: cfi.substring(0, 60),
-        spineIndex,
-        totalSpineItems,
-        displayedPage,
-        displayedTotal,
-        spineBasedProgress,
-        hasLocations: !!locations,
-        locationsTotal: locations?.total,
-      });
 
       // Method 1: Use locations.percentageFromCfi (most precise, only after locations ready)
       if (locations && locations.total > 0) {
         try {
           const locationPercentage = locations.percentageFromCfi(cfi);
-          devLog('📊 locations.percentageFromCfi result:', locationPercentage);
+          devLog('Locations percentageFromCfi result:', locationPercentage);
 
           // Validate the result - must be a valid number between 0 and 1
           if (
@@ -333,19 +275,8 @@ export const useCFITracking = ({
             locationPercentage >= 0 &&
             locationPercentage <= 1
           ) {
-            const locationBasedProgress = Math.round(locationPercentage * 1000) / 10;
-
-            // CRITICAL FIX (2026-01-06): Cross-validate with spine-based progress
-            // On mobile, percentageFromCfi sometimes returns 0 incorrectly
-            // If locations says 0% but spine says > 5%, prefer spine estimate
-            if (locationBasedProgress === 0 && spineBasedProgress !== null && spineBasedProgress > 5) {
-              devLog('⚠️ CROSS-VALIDATION MISMATCH: locations=0% but spine=' + spineBasedProgress + '%');
-              devLog('⚠️ Using spine-based progress instead (mobile percentageFromCfi bug)');
-              progressPercent = spineBasedProgress;
-            } else {
-              progressPercent = locationBasedProgress;
-              devLog('✅ Progress from locations:', progressPercent + '%');
-            }
+            progressPercent = Math.round(locationPercentage * 1000) / 10;
+            devLog('Progress from locations:', progressPercent + '%');
           } else {
             devLog('⚠️ Invalid locationPercentage:', locationPercentage);
           }
@@ -357,43 +288,45 @@ export const useCFITracking = ({
       // Method 2: Use epub.js built-in percentage (available after locations)
       if (progressPercent === null && location.start.percentage !== undefined) {
         const builtInPercentage = location.start.percentage;
-        devLog('📊 location.start.percentage:', builtInPercentage);
-
         if (
           typeof builtInPercentage === 'number' &&
           !Number.isNaN(builtInPercentage) &&
           builtInPercentage >= 0 &&
           builtInPercentage <= 1
         ) {
-          const builtInProgress = Math.round(builtInPercentage * 100);
-
-          // Same cross-validation for built-in percentage
-          if (builtInProgress === 0 && spineBasedProgress !== null && spineBasedProgress > 5) {
-            devLog('⚠️ CROSS-VALIDATION MISMATCH: built-in=0% but spine=' + spineBasedProgress + '%');
-            progressPercent = spineBasedProgress;
-          } else {
-            progressPercent = builtInProgress;
-            devLog('✅ Progress from built-in percentage:', progressPercent + '%');
-          }
+          progressPercent = Math.round(builtInPercentage * 100);
+          devLog('Progress from built-in percentage:', progressPercent + '%');
         }
       }
 
-      // Method 3: Use spine-based calculation (fallback or when other methods unavailable)
-      if (progressPercent === null && spineBasedProgress !== null) {
-        progressPercent = spineBasedProgress;
-        devLog('✅ Progress from spine fallback:', progressPercent + '%');
+      // Method 3: Calculate from spine index (fallback before locations ready)
+      if (progressPercent === null) {
+        const spineIndex = location.start.index;
+        const displayedPage = location.start.displayed?.page || 1;
+        const displayedTotal = location.start.displayed?.total || 1;
+        const totalSpineItems = book?.spine?.items?.length || book?.spine?.length || 0;
+
+        devLog('Spine fallback calculation:', {
+          spineIndex,
+          totalSpineItems,
+          displayedPage,
+          displayedTotal,
+        });
+
+        if (totalSpineItems > 0 && spineIndex !== undefined && spineIndex >= 0) {
+          const withinSectionProgress = displayedPage / displayedTotal;
+          const spineProgress = ((spineIndex + withinSectionProgress) / totalSpineItems) * 100;
+          progressPercent = Math.min(100, Math.max(0, Math.round(spineProgress * 10) / 10));
+          devLog('Progress from spine:', progressPercent + '%');
+        }
       }
 
       // Final validation and state update
       if (progressPercent !== null && !Number.isNaN(progressPercent)) {
         progressPercent = Math.min(100, Math.max(0, progressPercent));
         setProgress(progressPercent);
-        setProgressValid(true); // Mark progress as valid
-        devLog('✅ Progress calculated successfully:', progressPercent + '%');
       } else {
-        devLog('⚠️ Could not calculate progress - keeping previous value, marking as invalid');
-        // DON'T mark progressValid=false here - keep previous valid state
-        // This allows saves with previously calculated progress to continue
+        devLog('⚠️ Could not calculate progress - keeping previous value');
       }
 
       // Calculate scroll offset
@@ -422,11 +355,6 @@ export const useCFITracking = ({
       rendition.off('relocated', handleRelocated as (...args: unknown[]) => void);
     };
   }, [rendition, locations, book, onLocationChange, calculateScrollOffset]);
-
-  // NOTE (2026-01-06): Removed the recalculation useEffect that was causing
-  // infinite loading on mobile. The effect called rendition.currentLocation()
-  // which conflicted with ongoing rendition.display() during position restoration.
-  // Cross-validation in handleRelocated is sufficient for progress calculation.
 
   /**
    * Calculate current page number from CFI
@@ -483,7 +411,6 @@ export const useCFITracking = ({
   return {
     currentCFI,
     progress,
-    progressValid,
     scrollOffsetPercent,
     currentPage,
     totalPages,
