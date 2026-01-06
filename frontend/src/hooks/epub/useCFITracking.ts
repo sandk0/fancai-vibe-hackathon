@@ -423,93 +423,10 @@ export const useCFITracking = ({
     };
   }, [rendition, locations, book, onLocationChange, calculateScrollOffset]);
 
-  /**
-   * CRITICAL FIX (2026-01-06): Recalculate progress when locations become available
-   *
-   * On mobile, initial progress calculation often fails because:
-   * 1. locations.percentageFromCfi() needs locations to be generated
-   * 2. location.start.percentage is only available after locations
-   * 3. Spine fallback may fail if book.spine isn't fully loaded yet
-   *
-   * This effect actively recalculates progress when:
-   * - We have a valid CFI
-   * - locations become available (or change)
-   * - Current progress is 0 (likely failed initial calculation)
-   *
-   * ALSO applies cross-validation against spine-based progress to detect
-   * the epub.js mobile bug where percentageFromCfi returns 0 incorrectly.
-   */
-  useEffect(() => {
-    if (!locations || !locations.total || !currentCFI || !rendition) return;
-
-    // Only recalculate if progress is still 0 (likely failed initial calculation)
-    // Don't override valid non-zero progress
-    if (progress !== 0) {
-      devLog('📊 Locations ready, but progress already calculated:', progress + '%');
-      return;
-    }
-
-    devLog('📊 Locations ready, recalculating progress from CFI...', {
-      locationsTotal: locations.total,
-      currentCFI: currentCFI.substring(0, 50),
-      currentProgress: progress,
-      progressValid,
-    });
-
-    try {
-      // First, get current location for spine-based cross-validation
-      const currentLocation = rendition.currentLocation();
-      let spineBasedProgress: number | null = null;
-
-      if (currentLocation && book) {
-        const totalSpineItems = book.spine?.items?.length || book.spine?.length || 0;
-        spineBasedProgress = calculateSpineProgress(
-          currentLocation.start.index,
-          currentLocation.start.displayed?.page || 1,
-          currentLocation.start.displayed?.total || 1,
-          totalSpineItems
-        );
-        devLog('📊 Spine-based progress for cross-validation:', spineBasedProgress);
-      }
-
-      const locationPercentage = locations.percentageFromCfi(currentCFI);
-      devLog('📊 percentageFromCfi result:', locationPercentage);
-
-      if (
-        typeof locationPercentage === 'number' &&
-        !Number.isNaN(locationPercentage) &&
-        locationPercentage >= 0 &&
-        locationPercentage <= 1
-      ) {
-        const calculatedProgress = Math.round(locationPercentage * 1000) / 10;
-
-        // Cross-validate: if locations says 0% but spine says > 5%, use spine
-        if (calculatedProgress === 0 && spineBasedProgress !== null && spineBasedProgress > 5) {
-          devLog('⚠️ CROSS-VALIDATION MISMATCH in recalc: locations=0% but spine=' + spineBasedProgress + '%');
-          setProgress(spineBasedProgress);
-          setProgressValid(true);
-        } else if (calculatedProgress > 0) {
-          devLog('✅ Progress recalculated from locations:', calculatedProgress + '%');
-          setProgress(calculatedProgress);
-          setProgressValid(true);
-        } else if (spineBasedProgress !== null && spineBasedProgress > 0) {
-          // locations says 0%, spine also near 0% - use spine for consistency
-          devLog('✅ Progress from spine (both methods show ~0%):', spineBasedProgress + '%');
-          setProgress(spineBasedProgress);
-          setProgressValid(true);
-        }
-      } else if (spineBasedProgress !== null) {
-        // percentageFromCfi failed, fallback to spine
-        devLog('✅ Progress from spine fallback:', spineBasedProgress + '%');
-        setProgress(spineBasedProgress);
-        setProgressValid(true);
-      } else {
-        devLog('⚠️ Could not calculate progress - no valid method available');
-      }
-    } catch (err) {
-      devLog('⚠️ Error recalculating progress from locations:', err);
-    }
-  }, [locations, currentCFI, progress, progressValid, rendition, book]);
+  // NOTE (2026-01-06): Removed the recalculation useEffect that was causing
+  // infinite loading on mobile. The effect called rendition.currentLocation()
+  // which conflicted with ongoing rendition.display() during position restoration.
+  // Cross-validation in handleRelocated is sufficient for progress calculation.
 
   /**
    * Calculate current page number from CFI
