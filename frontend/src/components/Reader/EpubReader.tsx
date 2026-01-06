@@ -130,7 +130,14 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   const [renditionReady, setRenditionReady] = useState(false);
   const [isRestoringPosition, setIsRestoringPosition] = useState(true); // Start as true - wait for restoration
   // Track restoration state per book - prevents skipping restoration when reopening same book
-  const restorationState = useRef<{ bookId: string; restored: boolean } | null>(null);
+  // CRITICAL FIX (2026-01-06): Track both "restored" and "inProgress" separately
+  // Previous bug: marked restored=true BEFORE async fetch, so unmount during fetch
+  // left it marked as "restored" even though restoration never completed
+  const restorationState = useRef<{
+    bookId: string;
+    restored: boolean;
+    inProgress: boolean;
+  } | null>(null);
   const navigate = useNavigate();
 
   // State for settings dropdown
@@ -330,9 +337,27 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     return restorationState.current?.bookId === book.id && restorationState.current?.restored;
   }, [book.id]);
 
+  // Helper function to check if restoration is in progress
+  const isRestorationInProgress = useCallback(() => {
+    return restorationState.current?.bookId === book.id && restorationState.current?.inProgress;
+  }, [book.id]);
+
+  // Helper function to mark restoration as started (NOT completed)
+  const markRestorationStarted = useCallback(() => {
+    restorationState.current = { bookId: book.id, restored: false, inProgress: true };
+  }, [book.id]);
+
   // Helper function to mark position as restored for current book
   const markPositionRestored = useCallback(() => {
-    restorationState.current = { bookId: book.id, restored: true };
+    restorationState.current = { bookId: book.id, restored: true, inProgress: false };
+  }, [book.id]);
+
+  // Helper function to reset restoration state (called on unmount if incomplete)
+  const resetRestorationState = useCallback(() => {
+    if (restorationState.current?.bookId === book.id && restorationState.current?.inProgress) {
+      console.log('[EpubReader] 🔄 Resetting incomplete restoration state for book:', book.id);
+      restorationState.current = null;
+    }
   }, [book.id]);
 
   // Reset restoration state when book changes
@@ -405,9 +430,16 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
       return;
     }
 
-    // CRITICAL FIX: Mark as restored BEFORE starting async operation
-    // This prevents race condition where effect re-runs before async completes
-    markPositionRestored();
+    // Skip if restoration is already in progress (prevents duplicate runs)
+    if (isRestorationInProgress()) {
+      console.log('[EpubReader] ⏭️ Skipping - restoration already in progress for book:', book.id);
+      return;
+    }
+
+    // CRITICAL FIX (2026-01-06): Mark as IN PROGRESS, not restored
+    // Previous bug: marking restored=true before async allowed unmount to leave
+    // stale "restored" state, causing next mount to skip restoration
+    markRestorationStarted();
     console.log('[EpubReader] 🚀 Starting position restoration for book:', book.id);
 
     let isMounted = true;
@@ -520,12 +552,21 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
           await rendition.display();
         }
 
-        // Note: markPositionRestored() was called before async started to prevent race condition
+        // CRITICAL FIX (2026-01-06): Mark as restored AFTER successful restoration
+        // Previous bug: marked before async, so unmount left stale "restored" flag
+        if (isMounted) {
+          markPositionRestored();
+          console.log('[EpubReader] ✅ Position marked as restored');
+        }
       } catch (err) {
         console.error('[EpubReader] Error initializing position:', err);
         // On any error, try to show first page
         try {
           await rendition.display();
+          // Even on error, mark as restored to avoid infinite retries
+          if (isMounted) {
+            markPositionRestored();
+          }
         } catch (displayErr) {
           console.error('[EpubReader] Could not even display first page:', displayErr);
         }
@@ -540,8 +581,11 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
 
     return () => {
       isMounted = false;
+      // CRITICAL FIX (2026-01-06): Reset restoration state if unmounted during async
+      // This allows next mount to properly restore position
+      resetRestorationState();
     };
-  }, [rendition, renditionReady, book.id, locations, goToCFI, skipNextRelocated, setInitialProgress, positionConflict, hasRestoredForCurrentBook, markPositionRestored]);
+  }, [rendition, renditionReady, book.id, locations, goToCFI, skipNextRelocated, setInitialProgress, positionConflict, hasRestoredForCurrentBook, markPositionRestored, isRestorationInProgress, markRestorationStarted, resetRestorationState]);
 
   /**
    * Handle image regeneration
