@@ -234,55 +234,35 @@ class BookProgressService:
             # SMART REGRESSION PROTECTION (2026-01-06)
             #
             # Problem: Race condition bug could save ~0% progress, overwriting real progress.
-            # But users legitimately navigate backward (re-read chapters, check references).
+            # But users legitimately navigate backward (re-read chapters, TOC jumps).
             #
-            # Solution: Block only SUSPICIOUS updates, allow legitimate backward navigation.
+            # Solution: Block ONLY the classic bug pattern - dropping to near-zero.
             #
-            # SUSPICIOUS patterns (likely bug):
-            # 1. Dropping to near-zero (<2%) from significant progress (>5%)
-            # 2. Large drop (>50%) within "grace period" (30s after book open)
+            # BLOCKED (suspicious - race condition bug):
+            # - existing > 5% AND new < 2% (dropping to first page from real progress)
             #
-            # ALLOWED patterns (legitimate navigation):
-            # - 50% → 40% (re-reading previous chapter)
+            # ALLOWED (all legitimate navigation):
+            # - 50% → 5% (TOC jump to earlier chapter)
+            # - 50% → 40% (re-reading previous section)
             # - 20% → 10% (going back several pages)
-            # - 10% → 0% (intentionally restarting after reading a bit)
-            # - Any backward navigation after 30s of reading
+            # - 10% → 3% (backward navigation with some progress)
+            #
+            # Why this works: The race condition bug specifically shows the FIRST PAGE
+            # (position ~0-1%), not a random earlier position. TOC jumps and backward
+            # navigation will have position > 2% because chapters start after the cover.
             existing_position = float(progress.current_position or 0.0)
 
             # Check if this is a suspicious regression
             if valid_position < existing_position:
-                # Calculate metrics
-                drop_amount = existing_position - valid_position
-                time_since_last_read = (
-                    datetime.now(timezone.utc) - progress.last_read_at
-                ).total_seconds() if progress.last_read_at else 9999
-
-                # Pattern 1: Dropping to near-zero from significant progress
-                # This is the classic race condition bug pattern
-                is_suspicious_zero_drop = (
-                    existing_position > 5.0 and valid_position < 2.0
-                )
-
-                # Pattern 2: Large drop (>50% of progress) within grace period
-                # Grace period = 30 seconds after book was last read
-                # After grace period, trust user navigation
-                drop_percentage = (
-                    (drop_amount / existing_position * 100)
-                    if existing_position > 0 else 0
-                )
-                is_suspicious_large_drop = (
-                    time_since_last_read < 30 and drop_percentage > 50
-                )
-
-                is_suspicious = is_suspicious_zero_drop or is_suspicious_large_drop
+                # Only block: dropping to near-zero from significant progress
+                # This is the specific pattern of the race condition bug
+                is_suspicious = existing_position > 5.0 and valid_position < 2.0
 
                 if is_suspicious:
                     print(
-                        f"📌 [PROGRESS PROTECTION] Blocking suspicious regression: "
+                        f"📌 [PROGRESS PROTECTION] Blocking suspicious near-zero drop: "
                         f"book_id={book_id}, user_id={user_id}, "
-                        f"existing={existing_position:.1f}% → new={valid_position:.1f}% "
-                        f"(drop={drop_amount:.1f}%, time_since_read={time_since_last_read:.0f}s, "
-                        f"reason={'near-zero' if is_suspicious_zero_drop else 'large-drop-in-grace'})"
+                        f"existing={existing_position:.1f}% → new={valid_position:.1f}%"
                     )
                     # Still update CFI and timestamp for position tracking
                     if reading_location_cfi:
@@ -291,14 +271,6 @@ class BookProgressService:
                     progress.last_read_at = datetime.now(timezone.utc)
                     await db.commit()
                     return progress
-                else:
-                    # Legitimate backward navigation - allow it
-                    print(
-                        f"✅ [PROGRESS] Allowing backward navigation: "
-                        f"book_id={book_id}, user_id={user_id}, "
-                        f"existing={existing_position:.1f}% → new={valid_position:.1f}% "
-                        f"(time_since_read={time_since_last_read:.0f}s)"
-                    )
 
             # Обновляем существующий
             progress.current_chapter = valid_chapter
