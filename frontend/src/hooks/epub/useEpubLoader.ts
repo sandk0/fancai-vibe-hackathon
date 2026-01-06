@@ -101,6 +101,8 @@ export const useEpubLoader = ({
         if (!isMounted || !viewerRef.current) return;
 
         // Create rendition using renderTo (this is the epubjs API method)
+        // Note: We use capture phase handlers in useTouchNavigation to intercept
+        // touch/click events before epub.js processes them
         const newRendition = epubBook.renderTo(viewerRef.current, {
           width: '100%',
           height: '100%',
