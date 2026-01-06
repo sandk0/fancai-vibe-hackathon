@@ -231,34 +231,74 @@ class BookProgressService:
             )
             db.add(progress)
         else:
-            # CRITICAL FIX (2026-01-06): Aggressive Regression Protection
-            # NEVER allow progress to decrease. This prevents all race conditions.
+            # SMART REGRESSION PROTECTION (2026-01-06)
             #
-            # Root cause of bug:
-            # 1. Component unmounts during position restoration fetch
-            # 2. restorationState.current.restored = true (already marked)
-            # 3. Next mount skips restoration → shows first page
-            # 4. Progress ~0% gets saved, overwriting real progress
+            # Problem: Race condition bug could save ~0% progress, overwriting real progress.
+            # But users legitimately navigate backward (re-read chapters, check references).
             #
-            # Solution: Backend ALWAYS keeps the maximum progress.
-            # If user genuinely wants to restart book, they can use explicit "restart" action.
+            # Solution: Block only SUSPICIOUS updates, allow legitimate backward navigation.
+            #
+            # SUSPICIOUS patterns (likely bug):
+            # 1. Dropping to near-zero (<2%) from significant progress (>5%)
+            # 2. Large drop (>50%) within "grace period" (30s after book open)
+            #
+            # ALLOWED patterns (legitimate navigation):
+            # - 50% → 40% (re-reading previous chapter)
+            # - 20% → 10% (going back several pages)
+            # - 10% → 0% (intentionally restarting after reading a bit)
+            # - Any backward navigation after 30s of reading
             existing_position = float(progress.current_position or 0.0)
 
-            # Never decrease progress - always keep the maximum
+            # Check if this is a suspicious regression
             if valid_position < existing_position:
-                print(
-                    f"📌 [PROGRESS PROTECTION] Keeping higher progress: "
-                    f"book_id={book_id}, user_id={user_id}, "
-                    f"keeping={existing_position:.1f}% (rejected={valid_position:.1f}%)"
+                # Calculate metrics
+                drop_amount = existing_position - valid_position
+                time_since_last_read = (
+                    datetime.now(timezone.utc) - progress.last_read_at
+                ).total_seconds() if progress.last_read_at else 9999
+
+                # Pattern 1: Dropping to near-zero from significant progress
+                # This is the classic race condition bug pattern
+                is_suspicious_zero_drop = (
+                    existing_position > 5.0 and valid_position < 2.0
                 )
-                # Still update CFI and timestamp if provided (for position tracking)
-                # but keep the higher progress percentage
-                if reading_location_cfi:
-                    progress.reading_location_cfi = reading_location_cfi
-                progress.scroll_offset_percent = scroll_offset_percent
-                progress.last_read_at = datetime.now(timezone.utc)
-                await db.commit()
-                return progress
+
+                # Pattern 2: Large drop (>50% of progress) within grace period
+                # Grace period = 30 seconds after book was last read
+                # After grace period, trust user navigation
+                drop_percentage = (
+                    (drop_amount / existing_position * 100)
+                    if existing_position > 0 else 0
+                )
+                is_suspicious_large_drop = (
+                    time_since_last_read < 30 and drop_percentage > 50
+                )
+
+                is_suspicious = is_suspicious_zero_drop or is_suspicious_large_drop
+
+                if is_suspicious:
+                    print(
+                        f"📌 [PROGRESS PROTECTION] Blocking suspicious regression: "
+                        f"book_id={book_id}, user_id={user_id}, "
+                        f"existing={existing_position:.1f}% → new={valid_position:.1f}% "
+                        f"(drop={drop_amount:.1f}%, time_since_read={time_since_last_read:.0f}s, "
+                        f"reason={'near-zero' if is_suspicious_zero_drop else 'large-drop-in-grace'})"
+                    )
+                    # Still update CFI and timestamp for position tracking
+                    if reading_location_cfi:
+                        progress.reading_location_cfi = reading_location_cfi
+                    progress.scroll_offset_percent = scroll_offset_percent
+                    progress.last_read_at = datetime.now(timezone.utc)
+                    await db.commit()
+                    return progress
+                else:
+                    # Legitimate backward navigation - allow it
+                    print(
+                        f"✅ [PROGRESS] Allowing backward navigation: "
+                        f"book_id={book_id}, user_id={user_id}, "
+                        f"existing={existing_position:.1f}% → new={valid_position:.1f}% "
+                        f"(time_since_read={time_since_last_read:.0f}s)"
+                    )
 
             # Обновляем существующий
             progress.current_chapter = valid_chapter
