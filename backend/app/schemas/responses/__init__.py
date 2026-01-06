@@ -397,21 +397,26 @@ class ReadingProgressResponse(BaseResponse):
     Response schema для прогресса чтения.
 
     Используется в /api/v1/books/{book_id}/progress.
+
+    CRITICAL FIX: Schema must match ReadingProgress model exactly.
+    Previously had current_chapter_id: UUID but model has current_chapter: int.
     """
 
     id: UUID
     user_id: UUID
     book_id: UUID
-    current_chapter_id: Optional[UUID] = None
-    current_position: float = Field(ge=0.0, le=100.0, description="Процент прогресса")
+    current_chapter: int = Field(ge=1, description="Номер текущей главы")
+    current_page: int = Field(ge=1, description="Номер текущей страницы")
+    current_position: int = Field(ge=0, le=100, description="Процент прогресса 0-100")
     reading_location_cfi: Optional[str] = Field(
         None, max_length=500, description="CFI для epub.js"
     )
-    scroll_offset_percent: Optional[float] = Field(
-        None, ge=0.0, le=100.0, description="Scroll offset 0-100%"
+    scroll_offset_percent: float = Field(
+        default=0.0, ge=0.0, le=100.0, description="Scroll offset 0-100%"
     )
+    reading_time_minutes: int = Field(ge=0, description="Время чтения в минутах")
+    reading_speed_wpm: float = Field(default=0.0, ge=0, description="Скорость чтения")
     last_read_at: datetime
-    reading_speed_wpm: Optional[int] = Field(None, ge=0)
     created_at: datetime
     updated_at: datetime
 
