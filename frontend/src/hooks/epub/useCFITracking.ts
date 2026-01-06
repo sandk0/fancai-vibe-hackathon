@@ -262,6 +262,21 @@ export const useCFITracking = ({
       // Calculate progress - try multiple methods in order of precision
       let progressPercent: number | null = null;
 
+      // ALWAYS calculate spine-based progress first (for cross-validation)
+      // This is more reliable on mobile where percentageFromCfi() can return 0 incorrectly
+      const spineIndex = location.start.index;
+      const displayedPage = location.start.displayed?.page || 1;
+      const displayedTotal = location.start.displayed?.total || 1;
+      const totalSpineItems = book?.spine?.items?.length || book?.spine?.length || 0;
+      let spineBasedProgress: number | null = null;
+
+      if (totalSpineItems > 0 && spineIndex !== undefined && spineIndex >= 0) {
+        const withinSectionProgress = displayedPage / displayedTotal;
+        const spineProgress = ((spineIndex + withinSectionProgress) / totalSpineItems) * 100;
+        spineBasedProgress = Math.min(100, Math.max(0, Math.round(spineProgress * 10) / 10));
+        devLog('Spine-based progress (for validation):', spineBasedProgress + '%');
+      }
+
       // Method 1: Use locations.percentageFromCfi (most precise, only after locations ready)
       if (locations && locations.total > 0) {
         try {
@@ -275,8 +290,18 @@ export const useCFITracking = ({
             locationPercentage >= 0 &&
             locationPercentage <= 1
           ) {
-            progressPercent = Math.round(locationPercentage * 1000) / 10;
-            devLog('Progress from locations:', progressPercent + '%');
+            const locationsProgress = Math.round(locationPercentage * 1000) / 10;
+
+            // CROSS-VALIDATION FIX (2026-01-06): epub.js Issue #278
+            // On mobile, percentageFromCfi() often returns 0 incorrectly
+            // If locations says 0% but spine says we're NOT at start (>3%), trust spine
+            if (locationsProgress === 0 && spineBasedProgress !== null && spineBasedProgress > 3) {
+              devLog('⚠️ Cross-validation: locations=0% but spine=' + spineBasedProgress + '%, using spine');
+              progressPercent = spineBasedProgress;
+            } else {
+              progressPercent = locationsProgress;
+              devLog('Progress from locations:', progressPercent + '%');
+            }
           } else {
             devLog('⚠️ Invalid locationPercentage:', locationPercentage);
           }
@@ -294,37 +319,40 @@ export const useCFITracking = ({
           builtInPercentage >= 0 &&
           builtInPercentage <= 1
         ) {
-          progressPercent = Math.round(builtInPercentage * 100);
-          devLog('Progress from built-in percentage:', progressPercent + '%');
+          const builtInProgress = Math.round(builtInPercentage * 100);
+
+          // CROSS-VALIDATION: Same check for built-in percentage
+          if (builtInProgress === 0 && spineBasedProgress !== null && spineBasedProgress > 3) {
+            devLog('⚠️ Cross-validation: built-in=0% but spine=' + spineBasedProgress + '%, using spine');
+            progressPercent = spineBasedProgress;
+          } else {
+            progressPercent = builtInProgress;
+            devLog('Progress from built-in percentage:', progressPercent + '%');
+          }
         }
       }
 
-      // Method 3: Calculate from spine index (fallback before locations ready)
-      if (progressPercent === null) {
-        const spineIndex = location.start.index;
-        const displayedPage = location.start.displayed?.page || 1;
-        const displayedTotal = location.start.displayed?.total || 1;
-        const totalSpineItems = book?.spine?.items?.length || book?.spine?.length || 0;
-
-        devLog('Spine fallback calculation:', {
-          spineIndex,
-          totalSpineItems,
-          displayedPage,
-          displayedTotal,
-        });
-
-        if (totalSpineItems > 0 && spineIndex !== undefined && spineIndex >= 0) {
-          const withinSectionProgress = displayedPage / displayedTotal;
-          const spineProgress = ((spineIndex + withinSectionProgress) / totalSpineItems) * 100;
-          progressPercent = Math.min(100, Math.max(0, Math.round(spineProgress * 10) / 10));
-          devLog('Progress from spine:', progressPercent + '%');
-        }
+      // Method 3: Use spine-based progress as final fallback
+      if (progressPercent === null && spineBasedProgress !== null) {
+        progressPercent = spineBasedProgress;
+        devLog('Progress from spine (fallback):', progressPercent + '%');
       }
 
       // Final validation and state update
+      // CRITICAL FIX (2026-01-06): Skip setProgress during restoration events on mobile
+      // On mobile, epub.js percentageFromCfi() returns 0 incorrectly (GitHub Issue #278)
+      // During restoration, setInitialProgress() already set the correct server value
+      // If we overwrite with calculated 0%, the progress display breaks
       if (progressPercent !== null && !Number.isNaN(progressPercent)) {
         progressPercent = Math.min(100, Math.max(0, progressPercent));
-        setProgress(progressPercent);
+
+        // Only update progress if NOT a restoration event
+        // Restoration events should keep the value from setInitialProgress()
+        if (!isRestorationEvent) {
+          setProgress(progressPercent);
+        } else {
+          devLog('📌 Skipped setProgress during restoration - keeping server value');
+        }
       } else {
         devLog('⚠️ Could not calculate progress - keeping previous value');
       }

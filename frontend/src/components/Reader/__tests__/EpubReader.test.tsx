@@ -579,7 +579,6 @@ describe('EpubReader Component', () => {
       vi.mocked(useCFITracking).mockReturnValue({
         currentCFI: 'epubcfi(/6/4[chap01ref]!/4/2/2[page1]/1:0)',
         progress: 25,
-        progressValid: true,
         scrollOffsetPercent: 0,
         currentPage: 25,
         totalPages: 100,
@@ -602,7 +601,6 @@ describe('EpubReader Component', () => {
       vi.mocked(useCFITracking).mockReturnValue({
         currentCFI: 'epubcfi(/6/4[chap01ref]!/4/2/2[page1]/1:0)',
         progress: 25,
-        progressValid: true,
         scrollOffsetPercent: 50, // Scroll offset included
         currentPage: 25,
         totalPages: 100,
@@ -644,7 +642,6 @@ describe('EpubReader Component', () => {
       vi.mocked(useCFITracking).mockReturnValue({
         currentCFI: '',
         progress: 0,
-        progressValid: true,
         scrollOffsetPercent: 0,
         currentPage: 1,
         totalPages: 100,
@@ -704,7 +701,6 @@ describe('EpubReader Component', () => {
       vi.mocked(useCFITracking).mockReturnValue({
         currentCFI: '',
         progress: 0,
-        progressValid: true,
         scrollOffsetPercent: 0,
         currentPage: 1,
         totalPages: 100,
@@ -728,7 +724,6 @@ describe('EpubReader Component', () => {
       vi.mocked(useCFITracking).mockReturnValue({
         currentCFI: '',
         progress: 0,
-        progressValid: true,
         scrollOffsetPercent: 0,
         currentPage: 1,
         totalPages: 100,
@@ -771,7 +766,6 @@ describe('EpubReader Component', () => {
       vi.mocked(useCFITracking).mockReturnValue({
         currentCFI: 'epubcfi(/6/4[chap01ref]!/4/2/2[page1]/1:0)',
         progress: 45,
-        progressValid: true,
         scrollOffsetPercent: 0,
         currentPage: 45,
         totalPages: 100,
@@ -799,7 +793,6 @@ describe('EpubReader Component', () => {
       vi.mocked(useCFITracking).mockReturnValue({
         currentCFI: 'epubcfi(/6/4[chap01ref]!/4/2/2[page1]/1:0)',
         progress: 45,
-        progressValid: true,
         scrollOffsetPercent: 0,
         currentPage: 45,
         totalPages: 100,
@@ -978,7 +971,6 @@ describe('EpubReader Component', () => {
       vi.mocked(useCFITracking).mockReturnValue({
         currentCFI: 'epubcfi(/6/4[chap02ref]!/4/2/2[page1]/1:0)',
         progress: 100,
-        progressValid: true,
         scrollOffsetPercent: 0,
         currentPage: 100,
         totalPages: 100,
@@ -1018,7 +1010,6 @@ describe('EpubReader Component', () => {
       vi.mocked(useCFITracking).mockReturnValue({
         currentCFI: 'epubcfi(/6/4[chap01ref]!/4/2/2[page1]/1:0)',
         progress: 0,
-        progressValid: true,
         scrollOffsetPercent: 0,
         currentPage: 1,
         totalPages: 100,
