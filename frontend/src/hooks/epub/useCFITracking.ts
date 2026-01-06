@@ -385,26 +385,38 @@ export const useCFITracking = ({
   }, [rendition, locations, book, onLocationChange, calculateScrollOffset]);
 
   /**
-   * Calculate current page number from CFI
-   *
-   * epub.js provides locationFromCfi() to get the page number.
-   * This converts a CFI (Canonical Fragment Identifier) to a numeric page number.
-   *
-   * @returns Page number (1-based) or null if locations not ready
-   *
-   * @example
-   * // If current CFI is "epubcfi(/6/4!/4/2)" and locations are generated:
-   * // currentPage might be 42 (out of 500 total pages)
+   * Get total pages - uses locations if available, fallback to spine items
+   * Spine fallback estimates ~10 pages per chapter for mobile compatibility
    */
-  const currentPage = useMemo(() => {
-    if (!locations || !locations.total) return null;
+  const totalPages = useMemo(() => {
+    // Method 1: Use locations.total (most accurate)
+    if (locations && locations.total > 0) {
+      devLog('Total pages from locations:', locations.total);
+      return locations.total;
+    }
 
-    // Method 1: Use locationFromCfi (most accurate)
-    if (currentCFI) {
+    // Method 2: Fallback to spine items count (less accurate but works on mobile)
+    // Each spine item is roughly a "chapter", multiply by estimated pages per chapter
+    const spineItems = book?.spine?.items?.length || book?.spine?.length || 0;
+    if (spineItems > 0) {
+      // Estimate ~10 "pages" per spine item for rough approximation
+      const estimatedTotal = spineItems * 10;
+      devLog('Total pages from spine (estimated):', estimatedTotal);
+      return estimatedTotal;
+    }
+
+    return null;
+  }, [locations, book]);
+
+  const currentPage = useMemo(() => {
+    if (!totalPages) return null;
+
+    // Method 1: Use locationFromCfi (most accurate, only with real locations)
+    if (locations && locations.total > 0 && currentCFI) {
       try {
         const pageNumber = locations.locationFromCfi(currentCFI);
         if (pageNumber !== -1 && pageNumber > 0) {
-          devLog('Page: Current page from CFI:', pageNumber, '/', locations.total);
+          devLog('Page: Current page from CFI:', pageNumber, '/', totalPages);
           return pageNumber;
         }
       } catch (err) {
@@ -414,40 +426,16 @@ export const useCFITracking = ({
 
     // Method 2: Fallback - calculate from progress percentage
     // This handles mobile browsers where locationFromCfi returns -1 (epub.js bug)
+    // Also works when locations aren't ready yet
     if (progress > 0) {
-      const approximatePage = Math.max(1, Math.round((progress / 100) * locations.total));
-      devLog('Page: Approximate page from progress:', approximatePage, '/', locations.total);
+      const approximatePage = Math.max(1, Math.round((progress / 100) * totalPages));
+      devLog('Page: Approximate page from progress:', approximatePage, '/', totalPages);
       return approximatePage;
     }
 
     // At the beginning of the book
-    if (progress === 0) {
-      return 1;
-    }
-
-    return null;
-  }, [locations, currentCFI, progress]);
-
-  /**
-   * Get total pages from locations
-   *
-   * epub.js generates "locations" which divides the book into fixed-size pages.
-   * This provides a consistent page numbering system across different screen sizes.
-   *
-   * @returns Total number of pages in the book, or null if locations not generated yet
-   *
-   * @example
-   * // After locations are generated for "War and Peace":
-   * // totalPages might be 1523
-   */
-  const totalPages = useMemo(() => {
-    if (!locations || !locations.total) return null;
-
-    const total = locations.total;
-    devLog('Total pages: Total pages available:', total);
-
-    return total;
-  }, [locations]);
+    return 1;
+  }, [locations, currentCFI, progress, totalPages]);
 
   return {
     currentCFI,
