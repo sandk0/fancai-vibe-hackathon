@@ -39,8 +39,27 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Rendition, Book, EpubLocationEvent, EpubLocations } from '@/types/epub';
 
-// Debug logging - ALWAYS ON for now to diagnose mobile issues
+// Debug logging - ALWAYS ON to diagnose mobile progress issues
+// TODO: Revert to DEV-only after mobile bug is fixed
 const devLog = (...args: unknown[]) => console.log('[useCFITracking]', ...args);
+
+/**
+ * Calculate spine-based progress estimate
+ * Used for cross-validation when locations.percentageFromCfi returns suspicious values
+ */
+const calculateSpineProgress = (
+  spineIndex: number | undefined,
+  displayedPage: number,
+  displayedTotal: number,
+  totalSpineItems: number
+): number | null => {
+  if (totalSpineItems > 0 && spineIndex !== undefined && spineIndex >= 0) {
+    const withinSectionProgress = displayedPage / displayedTotal;
+    const spineProgress = ((spineIndex + withinSectionProgress) / totalSpineItems) * 100;
+    return Math.min(100, Math.max(0, Math.round(spineProgress * 10) / 10));
+  }
+  return null;
+};
 
 /**
  * Validate CFI format
@@ -274,14 +293,38 @@ export const useCFITracking = ({
       // Always update CFI
       setCurrentCFI(cfi);
 
-      // Calculate progress - try multiple methods in order of precision
+      // Calculate progress - try multiple methods with cross-validation
       let progressPercent: number | null = null;
+
+      // First, calculate spine-based progress for cross-validation
+      const spineIndex = location.start.index;
+      const displayedPage = location.start.displayed?.page || 1;
+      const displayedTotal = location.start.displayed?.total || 1;
+      const totalSpineItems = book?.spine?.items?.length || book?.spine?.length || 0;
+
+      const spineBasedProgress = calculateSpineProgress(
+        spineIndex,
+        displayedPage,
+        displayedTotal,
+        totalSpineItems
+      );
+
+      devLog('📊 Progress calculation starting:', {
+        cfi: cfi.substring(0, 60),
+        spineIndex,
+        totalSpineItems,
+        displayedPage,
+        displayedTotal,
+        spineBasedProgress,
+        hasLocations: !!locations,
+        locationsTotal: locations?.total,
+      });
 
       // Method 1: Use locations.percentageFromCfi (most precise, only after locations ready)
       if (locations && locations.total > 0) {
         try {
           const locationPercentage = locations.percentageFromCfi(cfi);
-          devLog('Locations percentageFromCfi result:', locationPercentage);
+          devLog('📊 locations.percentageFromCfi result:', locationPercentage);
 
           // Validate the result - must be a valid number between 0 and 1
           if (
@@ -290,8 +333,19 @@ export const useCFITracking = ({
             locationPercentage >= 0 &&
             locationPercentage <= 1
           ) {
-            progressPercent = Math.round(locationPercentage * 1000) / 10;
-            devLog('Progress from locations:', progressPercent + '%');
+            const locationBasedProgress = Math.round(locationPercentage * 1000) / 10;
+
+            // CRITICAL FIX (2026-01-06): Cross-validate with spine-based progress
+            // On mobile, percentageFromCfi sometimes returns 0 incorrectly
+            // If locations says 0% but spine says > 5%, prefer spine estimate
+            if (locationBasedProgress === 0 && spineBasedProgress !== null && spineBasedProgress > 5) {
+              devLog('⚠️ CROSS-VALIDATION MISMATCH: locations=0% but spine=' + spineBasedProgress + '%');
+              devLog('⚠️ Using spine-based progress instead (mobile percentageFromCfi bug)');
+              progressPercent = spineBasedProgress;
+            } else {
+              progressPercent = locationBasedProgress;
+              devLog('✅ Progress from locations:', progressPercent + '%');
+            }
           } else {
             devLog('⚠️ Invalid locationPercentage:', locationPercentage);
           }
@@ -303,37 +357,31 @@ export const useCFITracking = ({
       // Method 2: Use epub.js built-in percentage (available after locations)
       if (progressPercent === null && location.start.percentage !== undefined) {
         const builtInPercentage = location.start.percentage;
+        devLog('📊 location.start.percentage:', builtInPercentage);
+
         if (
           typeof builtInPercentage === 'number' &&
           !Number.isNaN(builtInPercentage) &&
           builtInPercentage >= 0 &&
           builtInPercentage <= 1
         ) {
-          progressPercent = Math.round(builtInPercentage * 100);
-          devLog('Progress from built-in percentage:', progressPercent + '%');
+          const builtInProgress = Math.round(builtInPercentage * 100);
+
+          // Same cross-validation for built-in percentage
+          if (builtInProgress === 0 && spineBasedProgress !== null && spineBasedProgress > 5) {
+            devLog('⚠️ CROSS-VALIDATION MISMATCH: built-in=0% but spine=' + spineBasedProgress + '%');
+            progressPercent = spineBasedProgress;
+          } else {
+            progressPercent = builtInProgress;
+            devLog('✅ Progress from built-in percentage:', progressPercent + '%');
+          }
         }
       }
 
-      // Method 3: Calculate from spine index (fallback before locations ready)
-      if (progressPercent === null) {
-        const spineIndex = location.start.index;
-        const displayedPage = location.start.displayed?.page || 1;
-        const displayedTotal = location.start.displayed?.total || 1;
-        const totalSpineItems = book?.spine?.items?.length || book?.spine?.length || 0;
-
-        devLog('Spine fallback calculation:', {
-          spineIndex,
-          totalSpineItems,
-          displayedPage,
-          displayedTotal,
-        });
-
-        if (totalSpineItems > 0 && spineIndex !== undefined && spineIndex >= 0) {
-          const withinSectionProgress = displayedPage / displayedTotal;
-          const spineProgress = ((spineIndex + withinSectionProgress) / totalSpineItems) * 100;
-          progressPercent = Math.min(100, Math.max(0, Math.round(spineProgress * 10) / 10));
-          devLog('Progress from spine:', progressPercent + '%');
-        }
+      // Method 3: Use spine-based calculation (fallback or when other methods unavailable)
+      if (progressPercent === null && spineBasedProgress !== null) {
+        progressPercent = spineBasedProgress;
+        devLog('✅ Progress from spine fallback:', progressPercent + '%');
       }
 
       // Final validation and state update
@@ -388,8 +436,8 @@ export const useCFITracking = ({
    * - locations become available (or change)
    * - Current progress is 0 (likely failed initial calculation)
    *
-   * This fixes the "always 0% on mobile" bug where progress never gets calculated
-   * because the initial relocated event fires before locations are ready.
+   * ALSO applies cross-validation against spine-based progress to detect
+   * the epub.js mobile bug where percentageFromCfi returns 0 incorrectly.
    */
   useEffect(() => {
     if (!locations || !locations.total || !currentCFI || !rendition) return;
@@ -409,6 +457,21 @@ export const useCFITracking = ({
     });
 
     try {
+      // First, get current location for spine-based cross-validation
+      const currentLocation = rendition.currentLocation();
+      let spineBasedProgress: number | null = null;
+
+      if (currentLocation && book) {
+        const totalSpineItems = book.spine?.items?.length || book.spine?.length || 0;
+        spineBasedProgress = calculateSpineProgress(
+          currentLocation.start.index,
+          currentLocation.start.displayed?.page || 1,
+          currentLocation.start.displayed?.total || 1,
+          totalSpineItems
+        );
+        devLog('📊 Spine-based progress for cross-validation:', spineBasedProgress);
+      }
+
       const locationPercentage = locations.percentageFromCfi(currentCFI);
       devLog('📊 percentageFromCfi result:', locationPercentage);
 
@@ -419,16 +482,34 @@ export const useCFITracking = ({
         locationPercentage <= 1
       ) {
         const calculatedProgress = Math.round(locationPercentage * 1000) / 10;
-        devLog('✅ Progress recalculated from locations:', calculatedProgress + '%');
-        setProgress(calculatedProgress);
+
+        // Cross-validate: if locations says 0% but spine says > 5%, use spine
+        if (calculatedProgress === 0 && spineBasedProgress !== null && spineBasedProgress > 5) {
+          devLog('⚠️ CROSS-VALIDATION MISMATCH in recalc: locations=0% but spine=' + spineBasedProgress + '%');
+          setProgress(spineBasedProgress);
+          setProgressValid(true);
+        } else if (calculatedProgress > 0) {
+          devLog('✅ Progress recalculated from locations:', calculatedProgress + '%');
+          setProgress(calculatedProgress);
+          setProgressValid(true);
+        } else if (spineBasedProgress !== null && spineBasedProgress > 0) {
+          // locations says 0%, spine also near 0% - use spine for consistency
+          devLog('✅ Progress from spine (both methods show ~0%):', spineBasedProgress + '%');
+          setProgress(spineBasedProgress);
+          setProgressValid(true);
+        }
+      } else if (spineBasedProgress !== null) {
+        // percentageFromCfi failed, fallback to spine
+        devLog('✅ Progress from spine fallback:', spineBasedProgress + '%');
+        setProgress(spineBasedProgress);
         setProgressValid(true);
       } else {
-        devLog('⚠️ percentageFromCfi returned invalid value:', locationPercentage);
+        devLog('⚠️ Could not calculate progress - no valid method available');
       }
     } catch (err) {
       devLog('⚠️ Error recalculating progress from locations:', err);
     }
-  }, [locations, currentCFI, progress, progressValid, rendition]);
+  }, [locations, currentCFI, progress, progressValid, rendition, book]);
 
   /**
    * Calculate current page number from CFI
