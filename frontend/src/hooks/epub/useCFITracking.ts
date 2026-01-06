@@ -241,16 +241,19 @@ export const useCFITracking = ({
         displayedTotal: location?.start?.displayed?.total,
         hasLocations: !!locations,
         locationsTotal: locations?.total,
+        hasRestoredCfi: !!restoredCfiRef.current,
       });
 
-      // Skip ONLY the first relocated after restore (exact match)
+      // Track if this is a restoration event - we still update state but skip save callback
+      // CRITICAL FIX: Previously we returned early and skipped ALL updates, which left
+      // progress at 0 if server returned 0 (old data before fix)
+      let isRestorationEvent = false;
       if (restoredCfiRef.current) {
         if (cfi === restoredCfiRef.current) {
-          devLog('Skip: First relocated after restore (exact match)');
-          restoredCfiRef.current = null;
-          return;
+          devLog('🔄 Restoration event detected - will update state but skip save');
+          isRestorationEvent = true;
         }
-        restoredCfiRef.current = null;
+        restoredCfiRef.current = null; // Clear in both cases
       }
 
       // Always update CFI
@@ -334,11 +337,15 @@ export const useCFITracking = ({
         cfi: cfi.substring(0, 50) + '...',
         progress: progressPercent !== null ? progressPercent + '%' : 'unchanged',
         scrollOffset: scrollOffset.toFixed(2) + '%',
+        isRestorationEvent,
       });
 
       // Callback for external handling (e.g., save to backend)
-      if (onLocationChange && progressPercent !== null) {
+      // SKIP on restoration to prevent re-saving the same position we just loaded
+      if (onLocationChange && progressPercent !== null && !isRestorationEvent) {
         onLocationChange(cfi, progressPercent, scrollOffset);
+      } else if (isRestorationEvent) {
+        devLog('📌 Skipped save callback - restoration event');
       }
     };
 

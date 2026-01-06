@@ -200,7 +200,12 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
         scroll_offset_percent: scroll,
       });
     },
-    enabled: renditionReady && !isGenerating,
+    // CRITICAL FIX: Allow saving even during location generation
+    // Previously: renditionReady && !isGenerating
+    // Problem: If user exits before locations finish (5-10s), progress was lost
+    // Solution: Save always when rendition is ready. CFI is always precise,
+    // progress uses spine-based fallback (less accurate but still useful)
+    enabled: renditionReady,
   });
 
   // Hook 6: Page navigation
