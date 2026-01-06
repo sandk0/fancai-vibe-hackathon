@@ -6,16 +6,11 @@
  * - Tap center 50% = do nothing (allow text selection and description clicks)
  *
  * ARCHITECTURE:
- * epub.js handles touch/click events on TWO levels:
- * 1. Container level (epub.js manager) - for swipe/tap navigation
- * 2. Inside iframe - for content interaction
- *
- * We intercept at BOTH levels:
- * - Container: Block epub.js swipe/tap handlers
- * - Iframe: Handle our custom navigation zones
+ * We add handlers directly to the viewerRef element (the container we control).
+ * This intercepts all touch/click events before they reach epub.js.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, RefObject } from 'react';
 import type { Rendition } from '@/types/epub';
 
 const TAP_MAX_DURATION = 350; // ms - max duration to be considered a tap
@@ -28,6 +23,7 @@ const log = (...args: unknown[]) => console.log('[TouchNav]', ...args);
 
 interface UseTouchNavigationOptions {
   rendition: Rendition | null;
+  viewerRef: RefObject<HTMLDivElement | null>;
   nextPage: () => void;
   prevPage: () => void;
   enabled?: boolean;
@@ -35,6 +31,7 @@ interface UseTouchNavigationOptions {
 
 export const useTouchNavigation = ({
   rendition,
+  viewerRef,
   nextPage,
   prevPage,
   enabled = true,
@@ -55,23 +52,16 @@ export const useTouchNavigation = ({
   }, [nextPage, prevPage, enabled]);
 
   /**
-   * Main effect - setup handlers when rendition is ready
+   * Main effect - setup handlers on viewerRef
    */
   useEffect(() => {
-    if (!rendition) return;
-
-    log('Setting up touch navigation handlers');
-
-    // Get the epub.js container element
-    // @ts-expect-error - accessing internal epub.js property
-    const manager = rendition.manager;
-    const container = manager?.container as HTMLElement | undefined;
-
-    if (!container) {
-      log('ERROR: Could not find epub.js container, trying viewerRef fallback');
-    } else {
-      log('Found epub.js container:', container.tagName, container.className);
+    const viewer = viewerRef.current;
+    if (!viewer) {
+      log('ERROR: viewerRef is null');
+      return;
     }
+
+    log('Setting up touch navigation on viewer element');
 
     // Use the main window width for zone calculations
     const getScreenWidth = () => window.innerWidth;
@@ -84,13 +74,15 @@ export const useTouchNavigation = ({
       const leftThreshold = screenWidth * LEFT_ZONE_END;
       const rightThreshold = screenWidth * RIGHT_ZONE_START;
 
+      log('Zone check:', { x, screenWidth, leftThreshold, rightThreshold });
+
       if (x < leftThreshold) return 'prev';
       if (x > rightThreshold) return 'next';
       return 'none';
     };
 
     /**
-     * Check if target is a description highlight
+     * Check if target is a description highlight (inside iframe)
      */
     const isDescriptionHighlight = (target: EventTarget | null): boolean => {
       if (!target || !(target instanceof HTMLElement)) return false;
@@ -98,16 +90,15 @@ export const useTouchNavigation = ({
              !!target.closest?.('.description-highlight');
     };
 
-    // ===== CONTAINER LEVEL HANDLERS =====
-    // These block epub.js default navigation
+    // ===== TOUCH HANDLERS =====
 
-    const containerTouchStart = (e: TouchEvent) => {
+    const handleTouchStart = (e: TouchEvent) => {
       if (!enabledRef.current) return;
 
       const touch = e.touches[0];
       const x = touch.clientX;
 
-      log('Container touchstart:', { x, screenWidth: getScreenWidth() });
+      log('TouchStart:', { x, y: touch.clientY });
 
       touchStartRef.current = {
         x,
@@ -115,25 +106,21 @@ export const useTouchNavigation = ({
         time: Date.now(),
       };
 
-      // Always prevent default on container to block epub.js
-      e.preventDefault();
-      e.stopPropagation();
+      // Check zone - if edge zone, prevent default to block text selection
+      const action = getNavigationAction(x);
+      if (action !== 'none') {
+        log('Edge zone touch - preventing default');
+        e.preventDefault();
+      }
     };
 
-    const containerTouchMove = (e: TouchEvent) => {
-      // Block epub.js swipe detection
-      e.preventDefault();
-      e.stopPropagation();
-    };
-
-    const containerTouchEnd = (e: TouchEvent) => {
+    const handleTouchEnd = (e: TouchEvent) => {
       if (!enabledRef.current) return;
 
-      // Always prevent default to block epub.js
-      e.preventDefault();
-      e.stopPropagation();
-
-      if (!touchStartRef.current) return;
+      if (!touchStartRef.current) {
+        log('TouchEnd: No touchStart recorded');
+        return;
+      }
 
       const touch = e.changedTouches[0];
       const endX = touch.clientX;
@@ -154,16 +141,10 @@ export const useTouchNavigation = ({
 
       const isTap = duration < TAP_MAX_DURATION && deltaX < TAP_MAX_MOVEMENT && deltaY < TAP_MAX_MOVEMENT;
 
-      log('Container touchend:', { startX, deltaX, deltaY, duration, isTap });
+      log('TouchEnd:', { startX, endX, deltaX, deltaY, duration, isTap });
 
       if (!isTap) {
         log('Not a tap - ignoring');
-        return;
-      }
-
-      // Check if tap is on description highlight
-      if (isDescriptionHighlight(e.target)) {
-        log('Tap on description highlight - allowing through');
         return;
       }
 
@@ -172,20 +153,28 @@ export const useTouchNavigation = ({
       log('Navigation action:', action);
 
       if (action === 'prev') {
-        log('LEFT ZONE TAP - navigating to previous page');
+        log('LEFT ZONE TAP - calling prevPage()');
+        e.preventDefault();
+        e.stopPropagation();
         prevPageRef.current();
       } else if (action === 'next') {
-        log('RIGHT ZONE TAP - navigating to next page');
+        log('RIGHT ZONE TAP - calling nextPage()');
+        e.preventDefault();
+        e.stopPropagation();
         nextPageRef.current();
       } else {
         log('CENTER ZONE TAP - no navigation');
+        // Don't prevent default in center - allow text selection and description clicks
       }
     };
 
-    const containerClick = (e: MouseEvent) => {
+    // ===== CLICK HANDLER (for desktop) =====
+
+    const handleClick = (e: MouseEvent) => {
       if (!enabledRef.current) return;
 
-      log('Container click:', { x: e.clientX });
+      const x = e.clientX;
+      log('Click:', { x, target: (e.target as HTMLElement)?.tagName });
 
       // Check if click is on description highlight
       if (isDescriptionHighlight(e.target)) {
@@ -193,86 +182,38 @@ export const useTouchNavigation = ({
         return;
       }
 
-      // Block all other clicks to prevent epub.js navigation
-      e.preventDefault();
-      e.stopPropagation();
-
-      // Handle desktop clicks
-      const action = getNavigationAction(e.clientX);
+      // Handle navigation based on zone
+      const action = getNavigationAction(x);
       log('Click action:', action);
 
       if (action === 'prev') {
-        log('LEFT ZONE CLICK - navigating to previous page');
+        log('LEFT ZONE CLICK - calling prevPage()');
+        e.preventDefault();
+        e.stopPropagation();
         prevPageRef.current();
       } else if (action === 'next') {
-        log('RIGHT ZONE CLICK - navigating to next page');
+        log('RIGHT ZONE CLICK - calling nextPage()');
+        e.preventDefault();
+        e.stopPropagation();
         nextPageRef.current();
       } else {
-        log('CENTER ZONE CLICK - no navigation');
+        log('CENTER ZONE CLICK - allowing through');
+        // Don't prevent default - allow text selection and description clicks
       }
     };
 
-    // Add container handlers if container found
-    if (container) {
-      log('Adding handlers to container');
-      container.addEventListener('touchstart', containerTouchStart, { capture: true, passive: false });
-      container.addEventListener('touchmove', containerTouchMove, { capture: true, passive: false });
-      container.addEventListener('touchend', containerTouchEnd, { capture: true, passive: false });
-      container.addEventListener('click', containerClick, { capture: true });
-    }
-
-    // ===== RENDITION CLICK HANDLER =====
-    // This handles clicks that come through from the iframe
-
-    const renditionClickHandler = (event: MouseEvent, contents: unknown) => {
-      if (!enabledRef.current) return;
-
-      // @ts-expect-error - contents has window property
-      const iframeWindow = contents?.window || window;
-      const x = event.clientX;
-
-      log('Rendition click:', { x, iframeWidth: iframeWindow.innerWidth });
-
-      // Check if click is on description highlight
-      if (isDescriptionHighlight(event.target)) {
-        log('Rendition click on description highlight - allowing through');
-        return;
-      }
-
-      // Block and handle
-      event.preventDefault();
-      event.stopPropagation();
-
-      // Use iframe width for zone calculation (coordinates are relative to iframe)
-      const screenWidth = iframeWindow.innerWidth || window.innerWidth;
-      const leftThreshold = screenWidth * LEFT_ZONE_END;
-      const rightThreshold = screenWidth * RIGHT_ZONE_START;
-
-      if (x < leftThreshold) {
-        log('LEFT ZONE (rendition) - navigating to previous page');
-        prevPageRef.current();
-      } else if (x > rightThreshold) {
-        log('RIGHT ZONE (rendition) - navigating to next page');
-        nextPageRef.current();
-      } else {
-        log('CENTER ZONE (rendition) - no navigation');
-      }
-    };
-
-    rendition.on('click', renditionClickHandler);
+    // Add handlers to viewer element with capture phase
+    log('Adding event listeners to viewer');
+    viewer.addEventListener('touchstart', handleTouchStart, { capture: true, passive: false });
+    viewer.addEventListener('touchend', handleTouchEnd, { capture: true, passive: false });
+    viewer.addEventListener('click', handleClick, { capture: true });
 
     // ===== CLEANUP =====
     return () => {
       log('Cleaning up touch navigation');
-
-      if (container) {
-        container.removeEventListener('touchstart', containerTouchStart, { capture: true });
-        container.removeEventListener('touchmove', containerTouchMove, { capture: true });
-        container.removeEventListener('touchend', containerTouchEnd, { capture: true });
-        container.removeEventListener('click', containerClick, { capture: true });
-      }
-
-      rendition.off('click', renditionClickHandler);
+      viewer.removeEventListener('touchstart', handleTouchStart, { capture: true });
+      viewer.removeEventListener('touchend', handleTouchEnd, { capture: true });
+      viewer.removeEventListener('click', handleClick, { capture: true });
     };
-  }, [rendition]);
+  }, [viewerRef, rendition]); // Re-run when viewerRef or rendition changes
 };

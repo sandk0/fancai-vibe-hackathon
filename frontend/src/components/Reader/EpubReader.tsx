@@ -229,6 +229,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   // Note: Disabled when modal is open; TOC sidebar is an overlay that doesn't block iframe touch events
   useTouchNavigation({
     rendition,
+    viewerRef,
     nextPage,
     prevPage,
     enabled: renditionReady && !isModalOpen,
