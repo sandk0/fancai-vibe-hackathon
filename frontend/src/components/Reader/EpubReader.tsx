@@ -166,7 +166,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   const { locations, isGenerating } = useLocationGeneration(epubBook, book.id);
 
   // Hook 3: Track CFI position and progress (including page numbers)
-  const { currentCFI, progress, scrollOffsetPercent, currentPage, totalPages, goToCFI, skipNextRelocated, setInitialProgress } = useCFITracking({
+  const { currentCFI, progress, progressValid, scrollOffsetPercent, currentPage, totalPages, goToCFI, skipNextRelocated, setInitialProgress } = useCFITracking({
     rendition,
     locations,
     book: epubBook,
@@ -197,6 +197,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     bookId: book.id,
     currentCFI,
     progress,
+    progressValid, // NEW: Only save when progress is calculated (fixes mobile 0% bug)
     scrollOffset: scrollOffsetPercent,
     currentChapter,
     onSave: async (cfi, prog, scroll, chapter) => {

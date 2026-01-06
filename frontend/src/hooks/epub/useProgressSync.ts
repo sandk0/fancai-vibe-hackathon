@@ -88,6 +88,7 @@ interface UseProgressSyncOptions {
   bookId: string;
   currentCFI: string;
   progress: number;
+  progressValid: boolean; // NEW: Only save when progress was actually calculated
   scrollOffset: number;
   currentChapter: number;
   onSave: (cfi: string, progress: number, scrollOffset: number, chapter: number) => Promise<void>;
@@ -104,6 +105,7 @@ export const useProgressSync = ({
   bookId,
   currentCFI,
   progress,
+  progressValid,
   scrollOffset,
   currentChapter,
   onSave,
@@ -156,6 +158,7 @@ export const useProgressSync = ({
    * 1. CFI must be valid EPUB CFI format (prevents saving corrupted data)
    * 2. Progress must be valid number (prevents NaN being saved)
    * 3. Regression protection - don't save if progress dropped suspiciously to 0%
+   * 4. (NEW) Progress validity - don't save 0% if progress wasn't calculated
    */
   const saveImmediate = useCallback(async () => {
     if (!enabled || !currentCFI || !bookId) return;
@@ -164,6 +167,13 @@ export const useProgressSync = ({
     // This prevents saving invalid/empty CFI which would corrupt the reading position
     if (!isValidCFI(currentCFI)) {
       console.warn('[useProgressSync] Skipping save - invalid CFI format:', currentCFI?.substring(0, 50));
+      return;
+    }
+
+    // CRITICAL (2026-01-06): Don't save if progress is 0 and wasn't properly calculated
+    // This fixes mobile bug where progress shows 0% because spine wasn't loaded yet
+    if (progress === 0 && !progressValid) {
+      console.warn('[useProgressSync] Skipping save - progress not yet calculated (progressValid=false)');
       return;
     }
 
@@ -212,7 +222,7 @@ export const useProgressSync = ({
     } finally {
       setIsSaving(false);
     }
-  }, [enabled, currentCFI, progress, scrollOffset, currentChapter, bookId, onSave]);
+  }, [enabled, currentCFI, progress, progressValid, scrollOffset, currentChapter, bookId, onSave]);
 
   /**
    * Debounced progress update
@@ -224,6 +234,13 @@ export const useProgressSync = ({
 
     // CRITICAL: Don't schedule save with invalid CFI
     if (!isValidCFI(currentCFI)) {
+      return;
+    }
+
+    // CRITICAL (2026-01-06): Don't schedule save if progress is 0 and not calculated
+    // This fixes mobile bug where 0% progress was being saved before spine loaded
+    if (progress === 0 && !progressValid) {
+      console.log('[useProgressSync] Skipping debounced save - progress not calculated yet');
       return;
     }
 
@@ -257,7 +274,7 @@ export const useProgressSync = ({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [currentCFI, progress, scrollOffset, currentChapter, enabled, bookId, debounceMs, saveImmediate]);
+  }, [currentCFI, progress, progressValid, scrollOffset, currentChapter, enabled, bookId, debounceMs, saveImmediate]);
 
   /**
    * Save on unmount or page close

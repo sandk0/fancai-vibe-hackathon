@@ -77,6 +77,7 @@ interface UseCFITrackingOptions {
 interface UseCFITrackingReturn {
   currentCFI: string;
   progress: number;
+  progressValid: boolean; // NEW: Indicates if progress was successfully calculated
   scrollOffsetPercent: number;
   currentPage: number | null;
   totalPages: number | null;
@@ -93,6 +94,7 @@ export const useCFITracking = ({
 }: UseCFITrackingOptions): UseCFITrackingReturn => {
   const [currentCFI, setCurrentCFI] = useState<string>('');
   const [progress, setProgress] = useState<number>(0);
+  const [progressValid, setProgressValid] = useState<boolean>(false); // NEW: Track if progress was calculated
   const [scrollOffsetPercent, setScrollOffsetPercent] = useState<number>(0);
 
   const restoredCfiRef = useRef<string | null>(null);
@@ -107,6 +109,7 @@ export const useCFITracking = ({
     });
     setCurrentCFI(cfi);
     setProgress(progressPercent);
+    setProgressValid(true); // Initial progress from server is always valid
   }, []);
 
   /**
@@ -325,8 +328,12 @@ export const useCFITracking = ({
       if (progressPercent !== null && !Number.isNaN(progressPercent)) {
         progressPercent = Math.min(100, Math.max(0, progressPercent));
         setProgress(progressPercent);
+        setProgressValid(true); // Mark progress as valid
+        devLog('✅ Progress calculated successfully:', progressPercent + '%');
       } else {
-        devLog('⚠️ Could not calculate progress - keeping previous value');
+        devLog('⚠️ Could not calculate progress - keeping previous value, marking as invalid');
+        // DON'T mark progressValid=false here - keep previous valid state
+        // This allows saves with previously calculated progress to continue
       }
 
       // Calculate scroll offset
@@ -411,6 +418,7 @@ export const useCFITracking = ({
   return {
     currentCFI,
     progress,
+    progressValid,
     scrollOffsetPercent,
     currentPage,
     totalPages,
