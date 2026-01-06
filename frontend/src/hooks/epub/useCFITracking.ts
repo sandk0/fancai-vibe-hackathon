@@ -88,7 +88,7 @@ interface UseCFITrackingReturn {
 export const useCFITracking = ({
   rendition,
   locations,
-  book: _book, // Kept for backward compatibility, not used after effect split
+  book, // Used for fallback progress calculation before locations are ready
   onLocationChange,
 }: UseCFITrackingOptions): UseCFITrackingReturn => {
   const [currentCFI, setCurrentCFI] = useState<string>('');
@@ -210,10 +210,13 @@ export const useCFITracking = ({
 
   /**
    * Effect 1: Basic relocated listener - works immediately without locations
-   * Uses epub.js built-in percentage as fallback
+   * Uses epub.js built-in percentage OR spine-based fallback
    *
    * This effect sets up immediately when rendition is ready, before locations are generated.
    * It provides basic progress tracking during the 5-10 seconds while locations are being built.
+   *
+   * IMPORTANT: epub.js only provides `percentage` AFTER locations are generated.
+   * Before that, we calculate a rough estimate using spine index.
    */
   useEffect(() => {
     if (!rendition) return;
@@ -225,8 +228,9 @@ export const useCFITracking = ({
         hasCFI: !!location?.start?.cfi,
         cfiStart: location?.start?.cfi?.substring(0, 40),
         percentage: location?.start?.percentage,
+        spineIndex: location?.start?.index,
         displayedPage: location?.start?.displayed?.page,
-        totalPages: location?.start?.displayed?.total,
+        displayedTotal: location?.start?.displayed?.total,
       });
 
       const cfi = location.start.cfi;
@@ -234,13 +238,42 @@ export const useCFITracking = ({
       // Always update CFI
       setCurrentCFI(cfi);
 
-      // Use epub.js built-in percentage as fallback (works without locations)
+      // Use epub.js built-in percentage if available (only after locations are generated)
       if (location.start.percentage !== undefined) {
-        const fallbackProgress = Math.round(location.start.percentage * 100);
-        devLog('Basic progress update:', fallbackProgress + '%');
-        setProgress(fallbackProgress);
+        const progressFromPercentage = Math.round(location.start.percentage * 100);
+        devLog('Basic progress update (from percentage):', progressFromPercentage + '%');
+        setProgress(progressFromPercentage);
       } else {
-        devLog('⚠️ No percentage in location event');
+        // FALLBACK: Calculate rough progress from spine index
+        // This works BEFORE locations are generated
+        const spineIndex = location.start.index;
+        const displayedPage = location.start.displayed?.page || 1;
+        const displayedTotal = location.start.displayed?.total || 1;
+
+        // Get total spine items from book
+        const totalSpineItems = book?.spine?.items?.length || book?.spine?.length || 0;
+
+        if (totalSpineItems > 0 && spineIndex !== undefined) {
+          // Progress within current spine item (section)
+          const withinSectionProgress = displayedPage / displayedTotal;
+
+          // Total progress = (spineIndex + progress within section) / total sections
+          const spineProgress = ((spineIndex + withinSectionProgress) / totalSpineItems) * 100;
+          const roundedProgress = Math.min(100, Math.max(0, Math.round(spineProgress * 10) / 10));
+
+          devLog('Basic progress update (from spine):', {
+            spineIndex,
+            totalSpineItems,
+            displayedPage,
+            displayedTotal,
+            withinSectionProgress: withinSectionProgress.toFixed(2),
+            calculatedProgress: roundedProgress + '%',
+          });
+
+          setProgress(roundedProgress);
+        } else {
+          devLog('⚠️ Cannot calculate progress: no percentage and no spine info');
+        }
       }
     };
 
@@ -249,7 +282,7 @@ export const useCFITracking = ({
     return () => {
       rendition.off('relocated', handleRelocatedBasic as (...args: unknown[]) => void);
     };
-  }, [rendition]); // Minimal dependencies - works immediately!
+  }, [rendition, book]); // Added book dependency for spine-based fallback
 
   /**
    * Effect 2: Enhanced progress with locations - more precise calculation

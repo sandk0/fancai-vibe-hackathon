@@ -188,24 +188,26 @@ export interface EpubDisplayEvent {
 
 export interface EpubLocationEvent {
   start: {
+    index: number; // Spine item index (available even without locations)
     cfi: string;
     href: string;
     displayed: {
       page: number;
       total: number;
     };
-    location: number;
-    percentage: number;
+    location?: number; // Only available after locations are generated
+    percentage?: number; // Only available after locations are generated
   };
   end: {
+    index: number;
     cfi: string;
     href: string;
     displayed: {
       page: number;
       total: number;
     };
-    location: number;
-    percentage: number;
+    location?: number;
+    percentage?: number;
   };
 }
 
