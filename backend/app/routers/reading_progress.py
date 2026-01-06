@@ -62,7 +62,13 @@ async def get_reading_progress(
     cache_key_str = cache_key("user", current_user.id, "progress", book_id)
     cached_result = await cache_manager.get(cache_key_str)
     if cached_result is not None:
-        return cached_result
+        # CRITICAL FIX (2026-01-06): Deserialize cached dict back to Pydantic model
+        # Cache stores dict (via model_dump), so we need to reconstruct the model
+        try:
+            return ReadingProgressDetailResponse.model_validate(cached_result)
+        except Exception:
+            # If cache is corrupted, invalidate and continue to fetch fresh data
+            await cache_manager.delete(cache_key_str)
 
     try:
         # Проверяем, что книга принадлежит пользователю
@@ -90,8 +96,14 @@ async def get_reading_progress(
 
         response = ReadingProgressDetailResponse(progress=progress_response)
 
-        # Cache the result (5 minutes TTL for progress data)
-        await cache_manager.set(cache_key_str, response, ttl=CACHE_TTL["user_progress"])
+        # CRITICAL FIX (2026-01-06): Serialize to dict before caching
+        # Pydantic models must be converted to dict for proper JSON serialization
+        # mode='json' ensures datetime/UUID are converted to JSON-compatible types
+        await cache_manager.set(
+            cache_key_str,
+            response.model_dump(mode="json"),
+            ttl=CACHE_TTL["user_progress"],
+        )
 
         return response
 
