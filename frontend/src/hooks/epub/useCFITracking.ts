@@ -385,57 +385,56 @@ export const useCFITracking = ({
   }, [rendition, locations, book, onLocationChange, calculateScrollOffset]);
 
   /**
-   * Get total pages - uses locations if available, fallback to spine items
-   * Spine fallback estimates ~10 pages per chapter for mobile compatibility
+   * Get total "pages" from locations
+   * Note: These are character-based markers (every ~1600 chars), not actual rendered pages
+   * Returns null if locations aren't generated yet
    */
   const totalPages = useMemo(() => {
-    // Method 1: Use locations.total (most accurate)
-    if (locations && locations.total > 0) {
-      devLog('Total pages from locations:', locations.total);
-      return locations.total;
+    if (!locations || !locations.total) {
+      devLog('Total pages: locations not available');
+      return null;
     }
+    devLog('Total pages from locations:', locations.total);
+    return locations.total;
+  }, [locations]);
 
-    // Method 2: Fallback to spine items count (less accurate but works on mobile)
-    // Each spine item is roughly a "chapter", multiply by estimated pages per chapter
-    const spineItems = book?.spine?.items?.length || book?.spine?.length || 0;
-    if (spineItems > 0) {
-      // Estimate ~10 "pages" per spine item for rough approximation
-      const estimatedTotal = spineItems * 10;
-      devLog('Total pages from spine (estimated):', estimatedTotal);
-      return estimatedTotal;
-    }
-
-    return null;
-  }, [locations, book]);
-
+  /**
+   * Get current "page" (location index)
+   * Uses locationFromCfi when available, falls back to progress-based calculation
+   */
   const currentPage = useMemo(() => {
-    if (!totalPages) return null;
+    if (!locations || !locations.total) {
+      devLog('Current page: locations not available');
+      return null;
+    }
 
-    // Method 1: Use locationFromCfi (most accurate, only with real locations)
-    if (locations && locations.total > 0 && currentCFI) {
+    // Method 1: Use locationFromCfi (direct mapping)
+    if (currentCFI) {
       try {
         const pageNumber = locations.locationFromCfi(currentCFI);
-        if (pageNumber !== -1 && pageNumber > 0) {
-          devLog('Page: Current page from CFI:', pageNumber, '/', totalPages);
-          return pageNumber;
+        devLog('locationFromCfi result:', pageNumber);
+        if (pageNumber !== -1 && pageNumber >= 0) {
+          // locationFromCfi returns 0-based index, add 1 for display
+          const displayPage = pageNumber + 1;
+          devLog('Page: Current page from CFI:', displayPage, '/', locations.total);
+          return displayPage;
         }
       } catch (err) {
         devLog('Warning: Could not get page from CFI:', err);
       }
     }
 
-    // Method 2: Fallback - calculate from progress percentage
-    // This handles mobile browsers where locationFromCfi returns -1 (epub.js bug)
-    // Also works when locations aren't ready yet
-    if (progress > 0) {
-      const approximatePage = Math.max(1, Math.round((progress / 100) * totalPages));
-      devLog('Page: Approximate page from progress:', approximatePage, '/', totalPages);
+    // Method 2: Calculate from progress percentage
+    // Handles mobile browsers where locationFromCfi may return -1
+    if (progress > 0 && locations.total > 0) {
+      const approximatePage = Math.max(1, Math.round((progress / 100) * locations.total));
+      devLog('Page: Approximate page from progress:', approximatePage, '/', locations.total);
       return approximatePage;
     }
 
     // At the beginning of the book
     return 1;
-  }, [locations, currentCFI, progress, totalPages]);
+  }, [locations, currentCFI, progress]);
 
   return {
     currentCFI,
