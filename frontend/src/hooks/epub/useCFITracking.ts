@@ -209,135 +209,145 @@ export const useCFITracking = ({
   }, [rendition]);
 
   /**
-   * Effect 1: Basic relocated listener - works immediately without locations
-   * Uses epub.js built-in percentage OR spine-based fallback
+   * UNIFIED Relocated Handler - Single source of truth for progress tracking
    *
-   * This effect sets up immediately when rendition is ready, before locations are generated.
-   * It provides basic progress tracking during the 5-10 seconds while locations are being built.
+   * CRITICAL FIX: Previously there were TWO separate effects registering handlers,
+   * causing race conditions where the second handler would overwrite progress with 0.
    *
-   * IMPORTANT: epub.js only provides `percentage` AFTER locations are generated.
-   * Before that, we calculate a rough estimate using spine index.
+   * This unified handler:
+   * 1. Works immediately when rendition is ready (spine-based fallback)
+   * 2. Upgrades to location-based precision when locations become available
+   * 3. Properly validates percentageFromCfi return values
+   * 4. Handles position restoration skip logic
    */
   useEffect(() => {
     if (!rendition) return;
 
-    devLog('Setting up basic relocated listener');
+    devLog('Setting up UNIFIED relocated listener', {
+      hasLocations: !!locations,
+      locationsTotal: locations?.total,
+      hasBook: !!book,
+      spineItemsCount: book?.spine?.items?.length || book?.spine?.length || 0,
+    });
 
-    const handleRelocatedBasic = (location: EpubLocationEvent) => {
-      devLog('📍 RELOCATED event fired (basic):', {
-        hasCFI: !!location?.start?.cfi,
-        cfiStart: location?.start?.cfi?.substring(0, 40),
+    const handleRelocated = (location: EpubLocationEvent) => {
+      const cfi = location.start.cfi;
+
+      devLog('📍 RELOCATED event fired:', {
+        cfi: cfi?.substring(0, 50),
         percentage: location?.start?.percentage,
         spineIndex: location?.start?.index,
         displayedPage: location?.start?.displayed?.page,
         displayedTotal: location?.start?.displayed?.total,
+        hasLocations: !!locations,
+        locationsTotal: locations?.total,
       });
-
-      const cfi = location.start.cfi;
-
-      // Always update CFI
-      setCurrentCFI(cfi);
-
-      // Use epub.js built-in percentage if available (only after locations are generated)
-      if (location.start.percentage !== undefined) {
-        const progressFromPercentage = Math.round(location.start.percentage * 100);
-        devLog('Basic progress update (from percentage):', progressFromPercentage + '%');
-        setProgress(progressFromPercentage);
-      } else {
-        // FALLBACK: Calculate rough progress from spine index
-        // This works BEFORE locations are generated
-        const spineIndex = location.start.index;
-        const displayedPage = location.start.displayed?.page || 1;
-        const displayedTotal = location.start.displayed?.total || 1;
-
-        // Get total spine items from book
-        const totalSpineItems = book?.spine?.items?.length || book?.spine?.length || 0;
-
-        if (totalSpineItems > 0 && spineIndex !== undefined) {
-          // Progress within current spine item (section)
-          const withinSectionProgress = displayedPage / displayedTotal;
-
-          // Total progress = (spineIndex + progress within section) / total sections
-          const spineProgress = ((spineIndex + withinSectionProgress) / totalSpineItems) * 100;
-          const roundedProgress = Math.min(100, Math.max(0, Math.round(spineProgress * 10) / 10));
-
-          devLog('Basic progress update (from spine):', {
-            spineIndex,
-            totalSpineItems,
-            displayedPage,
-            displayedTotal,
-            withinSectionProgress: withinSectionProgress.toFixed(2),
-            calculatedProgress: roundedProgress + '%',
-          });
-
-          setProgress(roundedProgress);
-        } else {
-          devLog('⚠️ Cannot calculate progress: no percentage and no spine info');
-        }
-      }
-    };
-
-    rendition.on('relocated', handleRelocatedBasic as (...args: unknown[]) => void);
-
-    return () => {
-      rendition.off('relocated', handleRelocatedBasic as (...args: unknown[]) => void);
-    };
-  }, [rendition, book]); // Added book dependency for spine-based fallback
-
-  /**
-   * Effect 2: Enhanced progress with locations - more precise calculation
-   * This replaces the basic progress once locations are ready
-   *
-   * Provides accurate page-based progress tracking using epub.js locations.
-   * Also handles skip logic for position restoration to prevent auto-save loops.
-   */
-  useEffect(() => {
-    if (!rendition || !locations || !locations.total) return;
-
-    const handleRelocatedWithLocations = (location: EpubLocationEvent) => {
-      const cfi = location.start.cfi;
 
       // Skip ONLY the first relocated after restore (exact match)
       if (restoredCfiRef.current) {
         if (cfi === restoredCfiRef.current) {
           devLog('Skip: First relocated after restore (exact match)');
-          restoredCfiRef.current = null; // Clear immediately after first skip
+          restoredCfiRef.current = null;
           return;
         }
-        // Any other CFI - clear the ref and continue processing
         restoredCfiRef.current = null;
       }
 
-      // Calculate precise progress with locations
-      const currentLocation = locations.percentageFromCfi(cfi);
-      const progressPercent = Math.min(100, Math.max(0, Math.round((currentLocation || 0) * 1000) / 10));
+      // Always update CFI
+      setCurrentCFI(cfi);
+
+      // Calculate progress - try multiple methods in order of precision
+      let progressPercent: number | null = null;
+
+      // Method 1: Use locations.percentageFromCfi (most precise, only after locations ready)
+      if (locations && locations.total > 0) {
+        try {
+          const locationPercentage = locations.percentageFromCfi(cfi);
+          devLog('Locations percentageFromCfi result:', locationPercentage);
+
+          // Validate the result - must be a valid number between 0 and 1
+          if (
+            typeof locationPercentage === 'number' &&
+            !Number.isNaN(locationPercentage) &&
+            locationPercentage >= 0 &&
+            locationPercentage <= 1
+          ) {
+            progressPercent = Math.round(locationPercentage * 1000) / 10;
+            devLog('Progress from locations:', progressPercent + '%');
+          } else {
+            devLog('⚠️ Invalid locationPercentage:', locationPercentage);
+          }
+        } catch (err) {
+          devLog('⚠️ Error calling percentageFromCfi:', err);
+        }
+      }
+
+      // Method 2: Use epub.js built-in percentage (available after locations)
+      if (progressPercent === null && location.start.percentage !== undefined) {
+        const builtInPercentage = location.start.percentage;
+        if (
+          typeof builtInPercentage === 'number' &&
+          !Number.isNaN(builtInPercentage) &&
+          builtInPercentage >= 0 &&
+          builtInPercentage <= 1
+        ) {
+          progressPercent = Math.round(builtInPercentage * 100);
+          devLog('Progress from built-in percentage:', progressPercent + '%');
+        }
+      }
+
+      // Method 3: Calculate from spine index (fallback before locations ready)
+      if (progressPercent === null) {
+        const spineIndex = location.start.index;
+        const displayedPage = location.start.displayed?.page || 1;
+        const displayedTotal = location.start.displayed?.total || 1;
+        const totalSpineItems = book?.spine?.items?.length || book?.spine?.length || 0;
+
+        devLog('Spine fallback calculation:', {
+          spineIndex,
+          totalSpineItems,
+          displayedPage,
+          displayedTotal,
+        });
+
+        if (totalSpineItems > 0 && spineIndex !== undefined && spineIndex >= 0) {
+          const withinSectionProgress = displayedPage / displayedTotal;
+          const spineProgress = ((spineIndex + withinSectionProgress) / totalSpineItems) * 100;
+          progressPercent = Math.min(100, Math.max(0, Math.round(spineProgress * 10) / 10));
+          devLog('Progress from spine:', progressPercent + '%');
+        }
+      }
+
+      // Final validation and state update
+      if (progressPercent !== null && !Number.isNaN(progressPercent)) {
+        progressPercent = Math.min(100, Math.max(0, progressPercent));
+        setProgress(progressPercent);
+      } else {
+        devLog('⚠️ Could not calculate progress - keeping previous value');
+      }
 
       // Calculate scroll offset
       const scrollOffset = calculateScrollOffset();
+      setScrollOffsetPercent(scrollOffset);
 
-      devLog('Location: Enhanced progress:', {
+      devLog('Final state update:', {
         cfi: cfi.substring(0, 50) + '...',
-        progress: progressPercent + '%',
+        progress: progressPercent !== null ? progressPercent + '%' : 'unchanged',
         scrollOffset: scrollOffset.toFixed(2) + '%',
       });
 
-      // Update state
-      setCurrentCFI(cfi);
-      setProgress(progressPercent);
-      setScrollOffsetPercent(scrollOffset);
-
       // Callback for external handling (e.g., save to backend)
-      if (onLocationChange) {
+      if (onLocationChange && progressPercent !== null) {
         onLocationChange(cfi, progressPercent, scrollOffset);
       }
     };
 
-    rendition.on('relocated', handleRelocatedWithLocations as (...args: unknown[]) => void);
+    rendition.on('relocated', handleRelocated as (...args: unknown[]) => void);
 
     return () => {
-      rendition.off('relocated', handleRelocatedWithLocations as (...args: unknown[]) => void);
+      rendition.off('relocated', handleRelocated as (...args: unknown[]) => void);
     };
-  }, [rendition, locations, onLocationChange, calculateScrollOffset]);
+  }, [rendition, locations, book, onLocationChange, calculateScrollOffset]);
 
   /**
    * Calculate current page number from CFI
