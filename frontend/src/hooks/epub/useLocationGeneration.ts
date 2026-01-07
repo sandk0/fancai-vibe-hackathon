@@ -131,31 +131,62 @@ export const useLocationGeneration = (
 
         // Try to load from cache first
         devLog('Progress: Checking cache for book:', bookId);
-        const cachedLocations = await getCachedLocations(bookId);
+        let locationsLoaded = false;
 
-        if (cachedLocations && isMounted) {
-          devLog('Success: Loaded locations from cache');
+        try {
+          const cachedLocations = await getCachedLocations(bookId);
 
-          // Load cached locations into book.locations
-          book.locations.load(cachedLocations);
-          setLocations(book.locations);
-          setIsGenerating(false);
-          return;
+          if (cachedLocations && isMounted) {
+            devLog('Progress: Loading locations from cache...');
+            book.locations.load(cachedLocations);
+
+            // Verify locations loaded correctly
+            if (book.locations.total && book.locations.total > 0) {
+              devLog('Success: Loaded locations from cache, total:', book.locations.total);
+              setLocations(book.locations);
+              setIsGenerating(false);
+              locationsLoaded = true;
+            } else {
+              devLog('Warning: Cached locations invalid, will regenerate');
+            }
+          }
+        } catch (cacheErr) {
+          devLog('Warning: Cache load failed:', cacheErr);
         }
 
-        // Generate locations if not cached
+        if (locationsLoaded) return;
+        if (!isMounted) return;
+
+        // Generate locations if not cached or cache was invalid
         devLog('Progress: Generating locations (this may take a few seconds)...');
-        await book.locations.generate(1600); // 1600 characters per "page"
+
+        try {
+          await book.locations.generate(1600); // 1600 characters per "page"
+        } catch (genErr) {
+          console.error('[useLocationGeneration] Generate failed:', genErr);
+          // Try with smaller chunk size on mobile
+          devLog('Retrying with smaller chunk size...');
+          await book.locations.generate(800);
+        }
 
         if (!isMounted) return;
 
         const total = book.locations.total || 0;
         devLog('Success: Locations generated:', total);
 
+        if (total === 0) {
+          console.error('[useLocationGeneration] Locations generated but total is 0');
+          throw new Error('Locations generation returned 0 total');
+        }
+
         // Cache the generated locations
-        const locationsData = book.locations.save();
-        await cacheLocations(bookId, locationsData);
-        devLog('Cache: Locations cached');
+        try {
+          const locationsData = book.locations.save();
+          await cacheLocations(bookId, locationsData);
+          devLog('Cache: Locations cached');
+        } catch (saveErr) {
+          devLog('Warning: Could not cache locations:', saveErr);
+        }
 
         setLocations(book.locations);
         setIsGenerating(false);
