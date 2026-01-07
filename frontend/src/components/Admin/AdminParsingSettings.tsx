@@ -100,9 +100,9 @@ export const AdminParsingSettings: React.FC<AdminParsingSettingsProps> = ({
             <div className="min-w-0">
               <label
                 htmlFor="priority-free-users"
-                className="block text-xs sm:text-sm font-medium text-muted-foreground mb-1.5 sm:mb-2 truncate"
+                className="block text-[10px] sm:text-sm font-medium text-muted-foreground mb-1.5 sm:mb-2 leading-tight"
               >
-                {t('admin.freeUsers')}
+                Free
               </label>
               <input
                 id="priority-free-users"
@@ -122,9 +122,9 @@ export const AdminParsingSettings: React.FC<AdminParsingSettingsProps> = ({
             <div className="min-w-0">
               <label
                 htmlFor="priority-premium-users"
-                className="block text-xs sm:text-sm font-medium text-muted-foreground mb-1.5 sm:mb-2 truncate"
+                className="block text-[10px] sm:text-sm font-medium text-muted-foreground mb-1.5 sm:mb-2 leading-tight"
               >
-                {t('admin.premiumUsers')}
+                Premium
               </label>
               <input
                 id="priority-premium-users"
@@ -144,9 +144,9 @@ export const AdminParsingSettings: React.FC<AdminParsingSettingsProps> = ({
             <div className="min-w-0">
               <label
                 htmlFor="priority-ultimate-users"
-                className="block text-xs sm:text-sm font-medium text-muted-foreground mb-1.5 sm:mb-2 truncate"
+                className="block text-[10px] sm:text-sm font-medium text-muted-foreground mb-1.5 sm:mb-2 leading-tight"
               >
-                {t('admin.ultimateUsers')}
+                Ultimate
               </label>
               <input
                 id="priority-ultimate-users"

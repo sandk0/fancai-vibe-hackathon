@@ -129,7 +129,7 @@ export const Accordion: React.FC<AccordionProps> = ({
                   transition={{ duration: 0.2, ease: 'easeInOut' }}
                   className="overflow-hidden"
                 >
-                  <div className="p-4 pt-0 border-t border-border">
+                  <div className="px-4 py-4 border-t border-border">
                     {item.content}
                   </div>
                 </m.div>
