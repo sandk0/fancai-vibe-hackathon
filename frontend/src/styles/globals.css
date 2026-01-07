@@ -902,3 +902,68 @@ button, a, [role="button"] {
   font-size: clamp(0.75rem, 0.8vw + 0.4rem, 0.875rem);
   line-height: 1.5;
 }
+
+/* Responsive text utilities for extra small screens (< 360px) */
+.text-responsive-3xl {
+  font-size: 1.875rem; /* 30px default */
+  line-height: 1.2;
+}
+
+.text-responsive-2xl {
+  font-size: 1.5rem; /* 24px default */
+  line-height: 1.25;
+}
+
+.text-responsive-xl {
+  font-size: 1.25rem; /* 20px default */
+  line-height: 1.3;
+}
+
+@media (max-width: 359px) {
+  .text-responsive-3xl {
+    font-size: 1.5rem; /* 24px instead of 30px */
+  }
+
+  .text-responsive-2xl {
+    font-size: 1.25rem; /* 20px instead of 24px */
+  }
+
+  .text-responsive-xl {
+    font-size: 1.125rem; /* 18px instead of 20px */
+  }
+}
+
+/* ===========================================
+   Scrollbar Hide Utility
+   Hides scrollbar while maintaining scroll functionality
+   =========================================== */
+
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari, Opera */
+}
+
+/* ===========================================
+   Mobile-Safe Container Utilities
+   Prevents horizontal overflow on mobile
+   =========================================== */
+
+.mobile-container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.mobile-scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+}
+
+.mobile-scroll-x > * {
+  scroll-snap-align: start;
+}

@@ -41,10 +41,12 @@ export const ThemeSwitcher: React.FC = () => {
       <DropdownMenuTrigger asChild>
         <button
           className={cn(
-            "flex items-center gap-2 px-3 py-2 rounded-lg transition-colors",
+            "flex items-center justify-center gap-2 rounded-lg transition-colors touch-target",
+            "min-h-[44px] min-w-[44px] px-3 sm:px-3",
             "bg-muted hover:bg-muted/80 text-foreground"
           )}
           title="Сменить тему"
+          aria-label="Сменить тему оформления"
         >
           {displayIcon}
           <span className="hidden sm:inline text-sm font-medium">{currentTheme?.label}</span>

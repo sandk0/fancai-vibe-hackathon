@@ -115,7 +115,7 @@ const GuestHero: React.FC = () => {
           </m.div>
 
           <m.h1
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 text-foreground"
+            className="fluid-h1 font-bold mb-4 sm:mb-6 text-foreground"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
@@ -191,7 +191,7 @@ const UserGreeting: React.FC<{ userName?: string }> = ({ userName }) => {
     >
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
+          <h1 className="fluid-h2 font-bold text-foreground">
             {getGreeting()}, {userName || 'Читатель'}!
           </h1>
           <p className="text-muted-foreground mt-1">

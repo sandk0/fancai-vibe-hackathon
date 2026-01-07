@@ -54,10 +54,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         )}
 
         {/* Main Content */}
+        {/* Mobile: pb-20 for bottom nav + pb-safe for home indicator */}
+        {/* Desktop (md+): No bottom padding needed (no bottom nav) */}
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex-1 min-h-screen pt-16 pb-20 md:pb-0 bg-muted outline-none"
+          className="flex-1 min-h-screen pt-16 pb-20 md:pb-0 px-safe mb-safe md:mb-0 bg-muted outline-none"
         >
           {children}
         </main>

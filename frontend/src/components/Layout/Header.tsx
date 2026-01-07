@@ -86,14 +86,17 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick: _onMenuClick }) => {
               className="md:hidden flex items-center justify-center w-11 h-11 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors touch-target"
               onClick={() => setSidebarOpen(!sidebarOpen)}
               aria-label={t('nav.openMenu')}
+              aria-expanded={sidebarOpen}
+              aria-controls="mobile-sidebar"
             >
-              <Menu className="w-6 h-6" />
+              <Menu className="w-6 h-6" aria-hidden="true" />
             </button>
 
             {/* Logo */}
             <Link
               to="/"
-              className="flex items-center gap-2 transition-opacity hover:opacity-80"
+              className="flex items-center gap-2 min-h-[44px] min-w-[44px] justify-center transition-opacity hover:opacity-80 touch-target"
+              aria-label="fancai - На главную"
             >
               <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary">
                 <BookOpen className="w-5 h-5 text-primary-foreground" />

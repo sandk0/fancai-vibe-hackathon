@@ -45,7 +45,7 @@ const ReaderSettings: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-full overflow-hidden">
       {/* Font Settings */}
       <div>
         <div className="flex items-center space-x-2 mb-4">
@@ -57,8 +57,8 @@ const ReaderSettings: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Font Size */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
+          <div className="min-w-0">
+            <label className="block text-sm font-medium text-foreground mb-2 break-words">
               {t('readerSettings.fontSize')}: {fontSize}px
             </label>
             <input
@@ -68,15 +68,16 @@ const ReaderSettings: React.FC = () => {
               step="1"
               value={fontSize}
               onChange={(e) => updateFontSize(Number(e.target.value))}
-              className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer
-                       [&::-webkit-slider-thumb]:appearance-none
-                       [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5
+              className="w-full max-w-full h-11 bg-transparent rounded-lg appearance-none cursor-pointer touch-pan-x
+                       [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:bg-secondary [&::-webkit-slider-runnable-track]:rounded-full
+                       [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:mt-[-10px]
+                       [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6
                        [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary
                        [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white
                        [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer
-                       [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5
+                       [&::-moz-range-track]:h-2 [&::-moz-range-track]:bg-secondary [&::-moz-range-track]:rounded-full
+                       [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:border-0
                        [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary
-                       [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white
                        [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-pointer"
             />
             <div className="flex justify-between text-xs text-muted-foreground mt-1">
@@ -87,8 +88,8 @@ const ReaderSettings: React.FC = () => {
           </div>
 
           {/* Line Height */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
+          <div className="min-w-0">
+            <label className="block text-sm font-medium text-foreground mb-2 break-words">
               {t('readerSettings.lineHeight')}: {lineHeight.toFixed(1)}
             </label>
             <input
@@ -98,15 +99,16 @@ const ReaderSettings: React.FC = () => {
               step="0.1"
               value={lineHeight}
               onChange={(e) => updateLineHeight(Number(e.target.value))}
-              className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer
-                       [&::-webkit-slider-thumb]:appearance-none
-                       [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5
+              className="w-full max-w-full h-11 bg-transparent rounded-lg appearance-none cursor-pointer touch-pan-x
+                       [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:bg-secondary [&::-webkit-slider-runnable-track]:rounded-full
+                       [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:mt-[-10px]
+                       [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6
                        [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary
                        [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white
                        [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer
-                       [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5
+                       [&::-moz-range-track]:h-2 [&::-moz-range-track]:bg-secondary [&::-moz-range-track]:rounded-full
+                       [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:border-0
                        [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary
-                       [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white
                        [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-pointer"
             />
             <div className="flex justify-between text-xs text-muted-foreground mt-1">
@@ -124,7 +126,7 @@ const ReaderSettings: React.FC = () => {
             <select
               value={fontFamily}
               onChange={(e) => updateFontFamily(e.target.value)}
-              className="w-full px-3 py-2 border border-input rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
+              className="w-full px-3 py-2 min-h-[44px] border border-input rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
             >
               <optgroup label={t('readerSettings.serifFonts')}>
                 {fontFamilyOptions.filter(f => f.category === 'serif').map(font => (
@@ -196,7 +198,7 @@ const ReaderSettings: React.FC = () => {
       </div>
 
       {/* Preview */}
-      <div>
+      <div className="min-w-0">
         <div className="flex items-center space-x-2 mb-4">
           <Monitor className="h-5 w-5 text-primary" />
           <h3 className="text-lg font-medium text-foreground">
@@ -205,26 +207,26 @@ const ReaderSettings: React.FC = () => {
         </div>
 
         <div
-          className="p-6 border border-input rounded-lg"
+          className="p-4 sm:p-6 border border-input rounded-lg overflow-hidden break-words"
           style={{
             backgroundColor: backgroundColor,
             color: textColor,
             fontFamily: fontFamily,
             fontSize: `${fontSize}px`,
             lineHeight: lineHeight,
-            maxWidth: `${maxWidth}px`,
+            maxWidth: `min(${maxWidth}px, 100%)`,
           }}
         >
-          <p className="mb-4">
+          <p className="mb-4 break-words">
             <strong>{t('readerSettings.sampleText')}</strong>
           </p>
-          <p className="mb-3">
+          <p className="mb-3 break-words">
             {t('readerSettings.sampleParagraph1')}
           </p>
-          <p className="mb-3">
+          <p className="mb-3 break-words">
             {t('readerSettings.sampleQuote')}
           </p>
-          <p>
+          <p className="break-words">
             {t('readerSettings.sampleParagraph2')}
           </p>
         </div>
@@ -238,8 +240,8 @@ const ReaderSettings: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Max Width */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
+          <div className="min-w-0">
+            <label className="block text-sm font-medium text-foreground mb-2 break-words">
               {t('readerSettings.maxWidth')}: {maxWidth}px
             </label>
             <input
@@ -249,15 +251,16 @@ const ReaderSettings: React.FC = () => {
               step="50"
               value={maxWidth}
               onChange={(e) => useReaderStore.setState({ maxWidth: Number(e.target.value) })}
-              className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer
-                       [&::-webkit-slider-thumb]:appearance-none
-                       [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5
+              className="w-full max-w-full h-11 bg-transparent rounded-lg appearance-none cursor-pointer touch-pan-x
+                       [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:bg-secondary [&::-webkit-slider-runnable-track]:rounded-full
+                       [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:mt-[-10px]
+                       [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6
                        [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary
                        [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white
                        [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer
-                       [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5
+                       [&::-moz-range-track]:h-2 [&::-moz-range-track]:bg-secondary [&::-moz-range-track]:rounded-full
+                       [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:border-0
                        [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary
-                       [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white
                        [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-pointer"
             />
             <div className="flex justify-between text-xs text-muted-foreground mt-1">
@@ -268,8 +271,8 @@ const ReaderSettings: React.FC = () => {
           </div>
 
           {/* Margin */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
+          <div className="min-w-0">
+            <label className="block text-sm font-medium text-foreground mb-2 break-words">
               {t('readerSettings.pageMargin')}: {margin}px
             </label>
             <input
@@ -279,15 +282,16 @@ const ReaderSettings: React.FC = () => {
               step="10"
               value={margin}
               onChange={(e) => useReaderStore.setState({ margin: Number(e.target.value) })}
-              className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer
-                       [&::-webkit-slider-thumb]:appearance-none
-                       [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5
+              className="w-full max-w-full h-11 bg-transparent rounded-lg appearance-none cursor-pointer touch-pan-x
+                       [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:bg-secondary [&::-webkit-slider-runnable-track]:rounded-full
+                       [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:mt-[-10px]
+                       [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6
                        [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary
                        [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white
                        [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer
-                       [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5
+                       [&::-moz-range-track]:h-2 [&::-moz-range-track]:bg-secondary [&::-moz-range-track]:rounded-full
+                       [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:border-0
                        [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary
-                       [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white
                        [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-pointer"
             />
             <div className="flex justify-between text-xs text-muted-foreground mt-1">
@@ -303,7 +307,7 @@ const ReaderSettings: React.FC = () => {
       <div className="flex justify-end pt-6 border-t border-border">
         <button
           onClick={handleReset}
-          className="inline-flex items-center px-4 py-2 border border-input rounded-lg text-sm font-medium text-foreground bg-background hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
+          className="inline-flex items-center px-4 py-2 min-h-[44px] border border-input rounded-lg text-sm font-medium text-foreground bg-background hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
         >
           <RotateCcw className="h-4 w-4 mr-2" />
           {t('readerSettings.resetToDefaults')}

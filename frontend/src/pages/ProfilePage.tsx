@@ -137,7 +137,7 @@ const ProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       {/* Hero Section with Avatar */}
       <div className="relative mb-12 overflow-hidden rounded-xl">
         {/* Gradient Background */}
@@ -191,7 +191,7 @@ const ProfilePage: React.FC = () => {
                 </div>
               ) : (
                 <div className="flex items-center gap-3 mb-3 justify-center md:justify-start">
-                  <h1 className="text-3xl md:text-4xl font-bold text-primary-foreground">
+                  <h1 className="fluid-h2 font-bold text-primary-foreground">
                     {user?.full_name || 'User'}
                   </h1>
                   <button
@@ -256,7 +256,7 @@ const ProfilePage: React.FC = () => {
       <div className="mb-12">
         <div className="flex items-center gap-3 mb-6">
           <Target className="w-6 h-6 text-primary" />
-          <h2 className="text-2xl font-bold text-foreground">
+          <h2 className="fluid-h3 font-bold text-foreground">
             Цели чтения
           </h2>
         </div>
@@ -301,7 +301,7 @@ const ProfilePage: React.FC = () => {
       <div className="p-8 rounded-xl border-2 bg-card border-border">
         <div className="flex items-center gap-3 mb-6">
           <User className="w-6 h-6 text-primary" />
-          <h2 className="text-2xl font-bold text-foreground">
+          <h2 className="fluid-h3 font-bold text-foreground">
             Информация профиля
           </h2>
         </div>

@@ -123,9 +123,9 @@ const Sidebar: React.FC = () => {
                     <Link
                       to={item.href}
                       className={cn(
-                        'group flex items-center rounded-lg',
+                        'group flex items-center rounded-lg min-h-[44px]',
                         'transition-all duration-200',
-                        isCollapsed ? 'justify-center px-2 py-3' : 'px-3 py-2.5',
+                        isCollapsed ? 'justify-center px-2 py-3' : 'px-3 py-3',
                         isActive
                           ? 'bg-[var(--color-accent-500)]/15 text-[var(--color-accent-600)]'
                           : 'text-[var(--color-text-muted)] hover:bg-[var(--color-bg-emphasis)] hover:text-[var(--color-text-default)]'
@@ -171,8 +171,8 @@ const Sidebar: React.FC = () => {
             <button
               onClick={toggleCollapsed}
               className={cn(
-                'w-full flex items-center rounded-lg',
-                'px-3 py-2.5',
+                'w-full flex items-center rounded-lg min-h-[44px]',
+                'px-3 py-3',
                 'text-[var(--color-text-muted)]',
                 'hover:bg-[var(--color-bg-emphasis)] hover:text-[var(--color-text-default)]',
                 'transition-all duration-200',
@@ -247,6 +247,7 @@ const Sidebar: React.FC = () => {
 
       {/* Mobile Sidebar */}
       <div
+        id="mobile-sidebar"
         className={cn(
           'fixed inset-y-0 left-0 z-[500] w-64 md:hidden',
           'transition-transform duration-300 ease-in-out',
@@ -281,7 +282,7 @@ const Sidebar: React.FC = () => {
                       to={item.href}
                       onClick={handleLinkClick}
                       className={cn(
-                        'group flex items-center px-3 py-2.5 rounded-lg',
+                        'group flex items-center px-3 py-3 rounded-lg min-h-[44px]',
                         'transition-all duration-200',
                         isActive
                           ? 'bg-[var(--color-accent-500)]/15 text-[var(--color-accent-600)]'

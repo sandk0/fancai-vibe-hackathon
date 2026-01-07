@@ -33,15 +33,15 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ checked, onChange, label, d
   const descriptionId = `${switchId}-description`;
 
   return (
-    <div className="flex items-center justify-between py-4">
-      <div className="flex-1">
+    <div className="flex items-center justify-between gap-3 py-4">
+      <div className="flex-1 min-w-0">
         <label
           id={switchId}
-          className="font-medium text-foreground cursor-pointer"
+          className="font-medium text-foreground cursor-pointer break-words"
         >
           {label}
         </label>
-        <p id={descriptionId} className="text-sm mt-1 text-muted-foreground">
+        <p id={descriptionId} className="text-sm mt-1 text-muted-foreground break-words">
           {description}
         </p>
       </div>
@@ -139,7 +139,7 @@ const SettingsPage: React.FC = () => {
                   <input
                     type="text"
                     value={user?.full_name || ''}
-                    className="w-full px-4 py-3 rounded-xl border-2 bg-muted border-border text-foreground"
+                    className="w-full px-4 py-3 min-h-[44px] rounded-xl border-2 bg-muted border-border text-foreground"
                     readOnly
                   />
                 </div>
@@ -150,7 +150,7 @@ const SettingsPage: React.FC = () => {
                   <input
                     type="email"
                     value={user?.email || ''}
-                    className="w-full px-4 py-3 rounded-xl border-2 bg-muted border-border text-foreground"
+                    className="w-full px-4 py-3 min-h-[44px] rounded-xl border-2 bg-muted border-border text-foreground"
                     readOnly
                   />
                 </div>
@@ -201,17 +201,17 @@ const SettingsPage: React.FC = () => {
 
       case 'privacy':
         return (
-          <div className="space-y-6">
+          <div className="space-y-6 max-w-full overflow-hidden">
             <div>
-              <h3 className="text-xl font-bold mb-6 text-foreground">
+              <h3 className="text-xl font-bold mb-6 text-foreground break-words">
                 Конфиденциальность и безопасность
               </h3>
               <div className="space-y-6">
                 {/* Info Box */}
-                <div className="p-6 rounded-xl border-2 bg-muted border-primary">
+                <div className="p-4 sm:p-6 rounded-xl border-2 bg-muted border-primary">
                   <div className="flex items-start gap-3">
                     <Shield className="w-6 h-6 flex-shrink-0 mt-0.5 text-primary" />
-                    <p className="text-foreground">
+                    <p className="text-foreground break-words min-w-0">
                       Ваши книги и данные чтения хранятся безопасно и не передаются третьим лицам.
                     </p>
                   </div>
@@ -230,7 +230,7 @@ const SettingsPage: React.FC = () => {
                     ].map((item, index) => (
                       <div key={index} className="flex items-start gap-2">
                         <Check className="w-5 h-5 flex-shrink-0 mt-0.5 text-primary" />
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-sm text-muted-foreground break-words min-w-0">
                           {item}
                         </span>
                       </div>
@@ -244,9 +244,9 @@ const SettingsPage: React.FC = () => {
 
       case 'about':
         return (
-          <div className="space-y-6">
+          <div className="space-y-6 max-w-full overflow-hidden">
             <div>
-              <h3 className="text-xl font-bold mb-6 text-foreground">
+              <h3 className="text-xl font-bold mb-6 text-foreground break-words">
                 О fancai
               </h3>
               <div className="space-y-6">
@@ -265,7 +265,7 @@ const SettingsPage: React.FC = () => {
                   <p className="font-semibold mb-2 text-foreground">
                     Описание
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground break-words">
                     Преобразите ваше чтение с AI-генерацией изображений из описаний книг.
                     Умная система распознавания текста находит описания локаций, персонажей
                     и атмосферы, создавая уникальные визуализации для каждой книги.
@@ -286,12 +286,12 @@ const SettingsPage: React.FC = () => {
                     ].map((item, index) => (
                       <div
                         key={index}
-                        className="p-3 rounded-xl border-2 bg-muted border-border"
+                        className="p-3 rounded-xl border-2 bg-muted border-border min-w-0"
                       >
-                        <p className="text-xs font-medium mb-1 text-muted-foreground">
+                        <p className="text-xs font-medium mb-1 text-muted-foreground break-words">
                           {item.label}
                         </p>
-                        <p className="text-sm font-semibold text-foreground">
+                        <p className="text-sm font-semibold text-foreground break-words">
                           {item.value}
                         </p>
                       </div>
@@ -333,13 +333,13 @@ const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 w-full overflow-x-hidden">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2 text-foreground">
+        <h1 className="text-3xl md:text-4xl font-bold mb-2 text-foreground break-words">
           {t('settings.title')}
         </h1>
-        <p className="text-lg text-muted-foreground">
+        <p className="text-lg text-muted-foreground break-words">
           Настройте ваш процесс чтения и управляйте настройками аккаунта
         </p>
       </div>
@@ -408,8 +408,8 @@ const SettingsPage: React.FC = () => {
         </aside>
 
         {/* Main Content */}
-        <main className="lg:col-span-9">
-          <div className="rounded-xl border-2 p-6 lg:p-8 bg-background border-border">
+        <main className="lg:col-span-9 min-w-0">
+          <div className="rounded-xl border-2 p-4 sm:p-6 lg:p-8 bg-background border-border overflow-hidden">
             {renderTabContent()}
           </div>
         </main>

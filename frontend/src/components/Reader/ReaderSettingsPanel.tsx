@@ -112,7 +112,7 @@ const SliderControl: React.FC<SliderControlProps> = ({
         <label className="text-sm font-medium text-muted-foreground">{label}</label>
         <span className="text-sm font-semibold text-foreground tabular-nums">{displayValue}</span>
       </div>
-      <div className="relative">
+      <div className="relative h-11 flex items-center">
         <input
           type="range"
           min={min}
@@ -120,21 +120,29 @@ const SliderControl: React.FC<SliderControlProps> = ({
           step={step}
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
-          className="w-full h-2 appearance-none cursor-pointer rounded-full bg-secondary
-                     [&::-webkit-slider-thumb]:appearance-none
-                     [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5
+          className="w-full h-11 appearance-none cursor-pointer bg-transparent touch-pan-x
+                     [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:rounded-full
+                     [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:mt-[-10px]
+                     [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6
                      [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary
                      [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-background
                      [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer
                      [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110
-                     [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5
+                     [&::-moz-range-track]:h-2 [&::-moz-range-track]:rounded-full
+                     [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:border-0
                      [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary
-                     [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-background
                      [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-pointer"
+          style={{
+            background: `linear-gradient(to right, transparent 0%, transparent 100%)`,
+          }}
+          aria-label={label}
+        />
+        {/* Custom track with gradient fill */}
+        <div
+          className="absolute left-0 right-0 h-2 rounded-full pointer-events-none"
           style={{
             background: `linear-gradient(to right, hsl(var(--primary)) 0%, hsl(var(--primary)) ${percentage}%, hsl(var(--secondary)) ${percentage}%, hsl(var(--secondary)) 100%)`,
           }}
-          aria-label={label}
         />
       </div>
     </div>

@@ -96,8 +96,8 @@ export const AdminParsingSettings: React.FC<AdminParsingSettingsProps> = ({
         {/* Priority Weights */}
         <div className="mt-4 sm:mt-6">
           <h4 className="text-sm sm:text-md font-medium text-foreground mb-3 sm:mb-4">{t('admin.priorityWeights')}</h4>
-          <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6">
-            <div>
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-6 min-w-0">
+            <div className="min-w-0">
               <label
                 htmlFor="priority-free-users"
                 className="block text-xs sm:text-sm font-medium text-muted-foreground mb-1.5 sm:mb-2 truncate"
@@ -114,12 +114,12 @@ export const AdminParsingSettings: React.FC<AdminParsingSettingsProps> = ({
                   ...settings,
                   queue_priority_weights: { ...settings.queue_priority_weights, free: parseInt(e.target.value) }
                 })}
-                className="w-full px-2 sm:px-3 py-2 border border-input rounded-lg bg-background text-foreground text-base"
+                className="w-full px-1.5 sm:px-3 py-2 border border-input rounded-lg bg-background text-foreground text-base"
                 aria-required="true"
               />
             </div>
 
-            <div>
+            <div className="min-w-0">
               <label
                 htmlFor="priority-premium-users"
                 className="block text-xs sm:text-sm font-medium text-muted-foreground mb-1.5 sm:mb-2 truncate"
@@ -136,12 +136,12 @@ export const AdminParsingSettings: React.FC<AdminParsingSettingsProps> = ({
                   ...settings,
                   queue_priority_weights: { ...settings.queue_priority_weights, premium: parseInt(e.target.value) }
                 })}
-                className="w-full px-2 sm:px-3 py-2 border border-input rounded-lg bg-background text-foreground text-base"
+                className="w-full px-1.5 sm:px-3 py-2 border border-input rounded-lg bg-background text-foreground text-base"
                 aria-required="true"
               />
             </div>
 
-            <div>
+            <div className="min-w-0">
               <label
                 htmlFor="priority-ultimate-users"
                 className="block text-xs sm:text-sm font-medium text-muted-foreground mb-1.5 sm:mb-2 truncate"
@@ -158,7 +158,7 @@ export const AdminParsingSettings: React.FC<AdminParsingSettingsProps> = ({
                   ...settings,
                   queue_priority_weights: { ...settings.queue_priority_weights, ultimate: parseInt(e.target.value) }
                 })}
-                className="w-full px-2 sm:px-3 py-2 border border-input rounded-lg bg-background text-foreground text-base"
+                className="w-full px-1.5 sm:px-3 py-2 border border-input rounded-lg bg-background text-foreground text-base"
                 aria-required="true"
               />
             </div>

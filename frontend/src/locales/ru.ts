@@ -467,6 +467,7 @@ export const ru = {
   nav: {
     searchBooks: 'Поиск книг...',
     uploadBook: 'Загрузить книгу',
+    openMenu: 'Открыть меню',
     openUserMenu: 'Открыть меню пользователя',
     profile: 'Профиль',
     settings: 'Настройки',

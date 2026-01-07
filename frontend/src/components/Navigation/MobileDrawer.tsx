@@ -260,7 +260,7 @@ const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
                     to={item.href}
                     onClick={handleLinkClick}
                     className={cn(
-                      'group flex items-center px-3 py-3 text-base font-medium rounded-lg transition-colors',
+                      'group flex items-center px-3 py-3 text-base font-medium rounded-lg transition-colors min-h-[44px]',
                       isActive
                         ? 'bg-primary/10 dark:bg-primary/20 text-primary'
                         : 'text-foreground hover:bg-muted'
@@ -314,7 +314,7 @@ const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
                 <button
                   onClick={handleLogout}
                   className={cn(
-                    'w-full flex items-center px-3 py-3 text-base font-medium rounded-lg',
+                    'w-full flex items-center px-3 py-3 text-base font-medium rounded-lg min-h-[44px]',
                     'text-red-600 dark:text-red-400',
                     'hover:bg-red-50 dark:hover:bg-red-900/20',
                     'focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2',

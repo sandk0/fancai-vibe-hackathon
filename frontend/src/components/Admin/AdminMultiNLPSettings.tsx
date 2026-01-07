@@ -42,20 +42,20 @@ export const AdminMultiNLPSettings: React.FC<AdminMultiNLPSettingsProps> = ({
               {t('admin.nlpRemovedDescription') ||
                 'The Multi-NLP system (SpaCy, Natasha, Stanza, GLiNER) has been removed in December 2025 for server optimization. Description extraction is now handled on-demand via LLM API (LangExtract/Google Gemini).'}
             </p>
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm">
-              <div className="bg-green-100 dark:bg-green-900/30 rounded-lg p-3">
-                <div className="font-medium text-green-800 dark:text-green-200 mb-1">
+            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3 sm:gap-4 text-sm">
+              <div className="bg-green-100 dark:bg-green-900/30 rounded-lg p-3 min-w-0">
+                <div className="font-medium text-green-800 dark:text-green-200 mb-1 truncate">
                   RAM Reduction
                 </div>
-                <div className="text-green-700 dark:text-green-300">
+                <div className="text-green-700 dark:text-green-300 text-xs sm:text-sm">
                   10-12 GB → 2-3 GB (-75%)
                 </div>
               </div>
-              <div className="bg-green-100 dark:bg-green-900/30 rounded-lg p-3">
-                <div className="font-medium text-green-800 dark:text-green-200 mb-1">
+              <div className="bg-green-100 dark:bg-green-900/30 rounded-lg p-3 min-w-0">
+                <div className="font-medium text-green-800 dark:text-green-200 mb-1 truncate">
                   Docker Image
                 </div>
-                <div className="text-green-700 dark:text-green-300">
+                <div className="text-green-700 dark:text-green-300 text-xs sm:text-sm">
                   2.5 GB → 800 MB (-68%)
                 </div>
               </div>

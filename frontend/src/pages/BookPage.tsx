@@ -85,11 +85,11 @@ const BookPage: React.FC = () => {
   const parsedChapters = book.chapters.filter(ch => ch.is_description_parsed).length;
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       {/* Back Button */}
       <button
         onClick={() => navigate('/library')}
-        className="inline-flex items-center gap-2 mb-6 transition-colors text-muted-foreground"
+        className="inline-flex items-center gap-2 mb-6 min-h-[44px] py-2.5 px-4 -ml-4 rounded-lg transition-colors text-muted-foreground hover:bg-muted/50"
       >
         <ArrowLeft className="w-4 h-4" />
         <span className="hover:underline">Назад в библиотеку</span>
@@ -122,7 +122,7 @@ const BookPage: React.FC = () => {
 
             {/* Book Info */}
             <div className="flex-1 text-center lg:text-left">
-              <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold mb-2 sm:mb-4 text-foreground">
+              <h1 className="fluid-h1 font-bold mb-2 sm:mb-4 text-foreground">
                 {book.title}
               </h1>
 
@@ -241,7 +241,7 @@ const BookPage: React.FC = () => {
       {/* Description */}
       {book.description && (
         <div className="p-4 sm:p-6 lg:p-8 rounded-xl border-2 mb-6 sm:mb-8 lg:mb-12 bg-background border-border">
-          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold mb-2 sm:mb-4 text-foreground">
+          <h2 className="fluid-h3 font-bold mb-2 sm:mb-4 text-foreground">
             Описание
           </h2>
           <p className="text-sm sm:text-base leading-relaxed text-muted-foreground">
@@ -252,7 +252,7 @@ const BookPage: React.FC = () => {
 
       {/* Chapters List */}
       <div>
-        <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6 text-foreground">
+        <h2 className="fluid-h2 font-bold mb-4 sm:mb-6 text-foreground">
           Главы ({book.chapters.length})
         </h2>
 
