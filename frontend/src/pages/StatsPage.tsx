@@ -191,7 +191,7 @@ const StatsPage: React.FC = () => {
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-3">
           <BarChart3 className="w-8 h-8 text-primary" />
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground">
+          <h1 className="fluid-h2 font-bold text-foreground">
             Статистика чтения
           </h1>
         </div>

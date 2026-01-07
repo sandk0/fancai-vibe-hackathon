@@ -265,7 +265,7 @@ const RegisterPage: React.FC = () => {
           <div className="flex items-center justify-center w-14 h-14 rounded-xl mb-4 bg-accent-600">
             <BookOpen className="w-8 h-8 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">
+          <h1 className="fluid-h2 font-bold text-foreground">
             fancai
           </h1>
         </div>

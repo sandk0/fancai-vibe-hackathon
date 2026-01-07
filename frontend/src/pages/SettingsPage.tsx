@@ -18,6 +18,7 @@ import ReaderSettings from '@/components/Settings/ReaderSettings';
 import { useAuthStore } from '@/stores/auth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
+import { Accordion, type AccordionItem } from '@/components/UI/Accordion';
 
 type SettingsTab = 'reader' | 'account' | 'notifications' | 'privacy' | 'about';
 
@@ -332,11 +333,158 @@ const SettingsPage: React.FC = () => {
     }
   };
 
+  // Mobile accordion items - built from tabs
+  const accordionItems: AccordionItem[] = [
+    {
+      id: 'reader',
+      title: t('settings.reading'),
+      description: 'Шрифт, тема и настройки чтения',
+      icon: Book,
+      content: <ReaderSettings />,
+    },
+    {
+      id: 'account',
+      title: 'Аккаунт',
+      description: 'Профиль и настройки подписки',
+      icon: User,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-bold text-foreground">
+            {t('profile.personalInfo')}
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2 text-muted-foreground">
+                {t('profile.fullName')}
+              </label>
+              <input
+                type="text"
+                value={user?.full_name || ''}
+                className="w-full px-4 py-3 min-h-[44px] rounded-xl border-2 bg-muted border-border text-foreground"
+                readOnly
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2 text-muted-foreground">
+                {t('profile.email')}
+              </label>
+              <input
+                type="email"
+                value={user?.email || ''}
+                className="w-full px-4 py-3 min-h-[44px] rounded-xl border-2 bg-muted border-border text-foreground"
+                readOnly
+              />
+            </div>
+          </div>
+          <div className="p-3 rounded-xl border-2 bg-muted border-border">
+            <p className="text-xs text-muted-foreground">
+              Настройки аккаунта доступны только для чтения.
+            </p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'notifications',
+      title: t('settings.notifications'),
+      description: 'Настройки уведомлений',
+      icon: Bell,
+      content: (
+        <div className="space-y-2">
+          <ToggleSwitch
+            checked={bookProcessing}
+            onChange={setBookProcessing}
+            label="Обработка книги"
+            description="Уведомление о завершении обработки"
+          />
+          <div className="h-px bg-border" />
+          <ToggleSwitch
+            checked={imageGeneration}
+            onChange={setImageGeneration}
+            label="Генерация изображений"
+            description="Уведомление о новых изображениях"
+          />
+          <div className="h-px bg-border" />
+          <ToggleSwitch
+            checked={readingReminders}
+            onChange={setReadingReminders}
+            label="Напоминания о чтении"
+            description="Напоминания продолжить чтение"
+          />
+        </div>
+      ),
+    },
+    {
+      id: 'privacy',
+      title: t('settings.privacy'),
+      description: 'Конфиденциальность и безопасность',
+      icon: Shield,
+      content: (
+        <div className="space-y-4">
+          <div className="p-3 rounded-xl border-2 bg-muted border-primary">
+            <div className="flex items-start gap-2">
+              <Shield className="w-5 h-5 flex-shrink-0 mt-0.5 text-primary" />
+              <p className="text-sm text-foreground">
+                Ваши данные хранятся безопасно и не передаются третьим лицам.
+              </p>
+            </div>
+          </div>
+          <div>
+            <h4 className="font-semibold mb-2 text-foreground text-sm">Сбор данных</h4>
+            <div className="space-y-1.5">
+              {[
+                'Прогресс чтения и закладки',
+                'Сгенерированные изображения',
+                'Анонимная статистика',
+              ].map((item, index) => (
+                <div key={index} className="flex items-start gap-2">
+                  <Check className="w-4 h-4 flex-shrink-0 mt-0.5 text-primary" />
+                  <span className="text-xs text-muted-foreground">{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'about',
+      title: 'О программе',
+      description: 'Версия и информация',
+      icon: Info,
+      content: (
+        <div className="space-y-4">
+          <div>
+            <p className="font-semibold text-sm text-foreground">Версия</p>
+            <p className="text-xs text-muted-foreground">1.0.0 (Бета)</p>
+          </div>
+          <div>
+            <p className="font-semibold text-sm mb-1 text-foreground">Описание</p>
+            <p className="text-xs text-muted-foreground">
+              AI-генерация изображений из описаний книг для улучшенного чтения.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: 'Frontend', value: 'React + TypeScript' },
+              { label: 'Backend', value: 'FastAPI + Python' },
+            ].map((item, index) => (
+              <div key={index} className="p-2 rounded-lg border bg-muted border-border">
+                <p className="text-[10px] text-muted-foreground">{item.label}</p>
+                <p className="text-xs font-semibold text-foreground">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-2 sm:py-4 lg:py-6 w-full max-w-full box-border">
       {/* Header */}
       <div className="mb-3 sm:mb-4 md:mb-6">
-        <h1 className="text-lg sm:text-xl md:text-2xl font-bold mb-1 text-foreground break-words">
+        <h1 className="fluid-h2 font-bold mb-1 text-foreground break-words">
           {t('settings.title')}
         </h1>
         <p className="text-xs sm:text-sm text-muted-foreground break-words">
@@ -344,34 +492,18 @@ const SettingsPage: React.FC = () => {
         </p>
       </div>
 
-      {/* Mobile/Tablet horizontal tabs */}
-      <div className="lg:hidden mb-3 sm:mb-4 overflow-x-auto -mx-3 px-3 overscroll-x-contain">
-        <div className="flex gap-1.5 sm:gap-2 pb-2">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  'flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg whitespace-nowrap min-h-[36px] sm:min-h-[40px] transition-colors text-xs sm:text-sm',
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-foreground hover:bg-muted/80'
-                )}
-              >
-                <Icon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                <span className="font-medium">{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
+      {/* Mobile: Accordion Navigation */}
+      <div className="lg:hidden">
+        <Accordion
+          items={accordionItems}
+          defaultOpen="reader"
+        />
       </div>
 
-      <div className="lg:grid lg:grid-cols-12 lg:gap-8">
+      {/* Desktop: Sidebar + Content */}
+      <div className="hidden lg:grid lg:grid-cols-12 lg:gap-8">
         {/* Desktop Sidebar Navigation */}
-        <aside className="hidden lg:block lg:col-span-3">
+        <aside className="lg:col-span-3">
           <nav className="space-y-2">
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -409,7 +541,7 @@ const SettingsPage: React.FC = () => {
 
         {/* Main Content */}
         <main className="lg:col-span-9 min-w-0 w-full max-w-full">
-          <div className="rounded-lg sm:rounded-xl border sm:border-2 p-3 sm:p-4 lg:p-6 bg-background border-border overflow-hidden">
+          <div className="rounded-xl border-2 p-6 bg-background border-border overflow-hidden">
             {renderTabContent()}
           </div>
         </main>

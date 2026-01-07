@@ -236,7 +236,7 @@ const LibraryPage: React.FC = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4 md:mb-6">
           <div>
-            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">
+            <h1 className="fluid-h2 font-bold text-foreground">
               Моя библиотека
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">

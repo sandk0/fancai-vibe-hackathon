@@ -50,7 +50,7 @@ export const LibraryHeader: React.FC<LibraryHeaderProps> = ({
       <div className="relative px-4 sm:px-8 py-6 sm:py-12">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6">
           <div>
-            <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold mb-2 sm:mb-3 text-foreground">
+            <h1 className="fluid-h2 font-bold mb-2 sm:mb-3 text-foreground">
               Моя библиотека
             </h1>
             <p className="text-base sm:text-lg text-muted-foreground">

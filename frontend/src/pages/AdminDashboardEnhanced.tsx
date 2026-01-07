@@ -17,7 +17,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Image, Server, Users } from 'lucide-react';
+import { AlertTriangle, Activity, Cpu, Database, Image, Server, Users } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
 import { notify } from '@/stores/ui';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -28,6 +28,7 @@ import { AdminTabNavigation, type AdminTab } from '@/components/Admin/AdminTabNa
 import { AdminStats } from '@/components/Admin/AdminStats';
 import { AdminMultiNLPSettings } from '@/components/Admin/AdminMultiNLPSettings';
 import { AdminParsingSettings } from '@/components/Admin/AdminParsingSettings';
+import { Accordion, type AccordionItem } from '@/components/UI/Accordion';
 import {
   adminAPI,
   type SystemStats,
@@ -135,6 +136,96 @@ const AdminDashboard: React.FC = () => {
     );
   }
 
+  // Mobile accordion items
+  const accordionItems: AccordionItem[] = [
+    {
+      id: 'overview',
+      title: t('admin.overview'),
+      description: 'Системная статистика',
+      icon: Activity,
+      content: statsError ? (
+        <ErrorMessage
+          title={t('admin.failedToLoadStats')}
+          message={statsError.message}
+        />
+      ) : (
+        <AdminStats
+          stats={stats}
+          isLoading={statsLoading}
+          t={t}
+        />
+      ),
+    },
+    {
+      id: 'nlp',
+      title: t('admin.multiNlpSettings'),
+      description: 'Настройки NLP-движков',
+      icon: Cpu,
+      content: (
+        <AdminMultiNLPSettings
+          settings={multiNlpSettings}
+          setSettings={setMultiNlpSettings}
+          isLoading={multiNlpLoading}
+          onSave={(settings) => saveMultiNlpSettings.mutate(settings)}
+          isSaving={saveMultiNlpSettings.isPending}
+          t={t}
+        />
+      ),
+    },
+    {
+      id: 'parsing',
+      title: t('admin.parsing'),
+      description: 'Настройки парсинга книг',
+      icon: Database,
+      content: (
+        <AdminParsingSettings
+          settings={parsingSettings}
+          setSettings={setParsingSettings}
+          isLoading={parsingLoading}
+          onSave={(settings) => saveParsingSettings.mutate(settings)}
+          isSaving={saveParsingSettings.isPending}
+          t={t}
+        />
+      ),
+    },
+    {
+      id: 'images',
+      title: t('admin.images'),
+      description: 'Генерация изображений',
+      icon: Image,
+      content: (
+        <div className="text-center py-8">
+          <Image className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground text-sm">{t('admin.imageSettings')}</p>
+        </div>
+      ),
+    },
+    {
+      id: 'system',
+      title: t('admin.system'),
+      description: 'Системные настройки',
+      icon: Server,
+      content: (
+        <div className="text-center py-8">
+          <Server className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground text-sm">{t('admin.systemSettings')}</p>
+        </div>
+      ),
+    },
+    {
+      id: 'users',
+      title: t('admin.users'),
+      description: 'Управление пользователями',
+      icon: Users,
+      content: (
+        <div className="text-center py-8">
+          <Users className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground text-sm">{t('admin.userManagement')}</p>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-2 sm:py-4 lg:py-6 w-full max-w-full box-border">
@@ -144,83 +235,93 @@ const AdminDashboard: React.FC = () => {
           subtitle={t('admin.subtitle')}
         />
 
-        {/* Tab Navigation */}
-        <AdminTabNavigation
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          t={t}
-        />
+        {/* Mobile: Accordion Navigation */}
+        <div className="lg:hidden">
+          <Accordion
+            items={accordionItems}
+            defaultOpen="overview"
+          />
+        </div>
 
-        {/* Tab Content */}
-        <div className="w-full max-w-full overflow-x-clip">
-          {/* Overview Tab */}
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
-              {statsError ? (
-                <ErrorMessage
-                  title={t('admin.failedToLoadStats')}
-                  message={statsError.message}
-                />
-              ) : (
-                <AdminStats
-                  stats={stats}
-                  isLoading={statsLoading}
-                  t={t}
-                />
-              )}
-            </div>
-          )}
+        {/* Desktop: Tab Navigation + Content */}
+        <div className="hidden lg:block">
+          <AdminTabNavigation
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            t={t}
+          />
 
-          {/* NLP Settings Tab */}
-          {activeTab === 'nlp' && (
-            <AdminMultiNLPSettings
-              settings={multiNlpSettings}
-              setSettings={setMultiNlpSettings}
-              isLoading={multiNlpLoading}
-              onSave={(settings) => saveMultiNlpSettings.mutate(settings)}
-              isSaving={saveMultiNlpSettings.isPending}
-              t={t}
-            />
-          )}
+          {/* Tab Content */}
+          <div className="w-full max-w-full overflow-x-clip">
+            {/* Overview Tab */}
+            {activeTab === 'overview' && (
+              <div className="space-y-6">
+                {statsError ? (
+                  <ErrorMessage
+                    title={t('admin.failedToLoadStats')}
+                    message={statsError.message}
+                  />
+                ) : (
+                  <AdminStats
+                    stats={stats}
+                    isLoading={statsLoading}
+                    t={t}
+                  />
+                )}
+              </div>
+            )}
 
-          {/* Parsing Settings Tab */}
-          {activeTab === 'parsing' && (
-            <AdminParsingSettings
-              settings={parsingSettings}
-              setSettings={setParsingSettings}
-              isLoading={parsingLoading}
-              onSave={(settings) => saveParsingSettings.mutate(settings)}
-              isSaving={saveParsingSettings.isPending}
-              t={t}
-            />
-          )}
+            {/* NLP Settings Tab */}
+            {activeTab === 'nlp' && (
+              <AdminMultiNLPSettings
+                settings={multiNlpSettings}
+                setSettings={setMultiNlpSettings}
+                isLoading={multiNlpLoading}
+                onSave={(settings) => saveMultiNlpSettings.mutate(settings)}
+                isSaving={saveMultiNlpSettings.isPending}
+                t={t}
+              />
+            )}
 
-          {/* Images Tab */}
-          {activeTab === 'images' && (
-            <div className="text-center py-12">
-              <Image className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">{t('admin.images')}</h3>
-              <p className="text-muted-foreground">{t('admin.imageSettings')}</p>
-            </div>
-          )}
+            {/* Parsing Settings Tab */}
+            {activeTab === 'parsing' && (
+              <AdminParsingSettings
+                settings={parsingSettings}
+                setSettings={setParsingSettings}
+                isLoading={parsingLoading}
+                onSave={(settings) => saveParsingSettings.mutate(settings)}
+                isSaving={saveParsingSettings.isPending}
+                t={t}
+              />
+            )}
 
-          {/* System Tab */}
-          {activeTab === 'system' && (
-            <div className="text-center py-12">
-              <Server className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">{t('admin.system')}</h3>
-              <p className="text-muted-foreground">{t('admin.systemSettings')}</p>
-            </div>
-          )}
+            {/* Images Tab */}
+            {activeTab === 'images' && (
+              <div className="text-center py-12">
+                <Image className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">{t('admin.images')}</h3>
+                <p className="text-muted-foreground">{t('admin.imageSettings')}</p>
+              </div>
+            )}
 
-          {/* Users Tab */}
-          {activeTab === 'users' && (
-            <div className="text-center py-12">
-              <Users className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">{t('admin.users')}</h3>
-              <p className="text-muted-foreground">{t('admin.userManagement')}</p>
-            </div>
-          )}
+            {/* System Tab */}
+            {activeTab === 'system' && (
+              <div className="text-center py-12">
+                <Server className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">{t('admin.system')}</h3>
+                <p className="text-muted-foreground">{t('admin.systemSettings')}</p>
+              </div>
+            )}
+
+            {/* Users Tab */}
+            {activeTab === 'users' && (
+              <div className="text-center py-12">
+                <Users className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">{t('admin.users')}</h3>
+                <p className="text-muted-foreground">{t('admin.userManagement')}</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

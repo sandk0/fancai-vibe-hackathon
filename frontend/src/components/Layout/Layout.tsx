@@ -59,7 +59,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex-1 min-h-screen pt-14 pb-20 md:pb-0 px-safe mb-safe md:mb-0 outline-none"
+          className="flex-1 min-h-screen pt-4 pb-20 md:pb-0 px-safe mb-safe md:mb-0 outline-none"
         >
           {children}
         </main>
