@@ -37,9 +37,9 @@ export const AdminTabNavigation: React.FC<AdminTabNavigationProps> = ({
   ];
 
   return (
-    <div className="mb-6 sm:mb-8 border-b border-border overflow-x-clip">
-      <div className="overflow-x-auto pb-px scrollbar-hide">
-        <nav className="-mb-px flex space-x-2 sm:space-x-4 md:space-x-6" aria-label="Tabs">
+    <div className="mb-4 sm:mb-6 md:mb-8 border-b border-border overflow-x-clip">
+      <div className="overflow-x-auto pb-px scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0">
+        <nav className="-mb-px flex space-x-1 sm:space-x-2 md:space-x-4" aria-label="Tabs">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -48,14 +48,14 @@ export const AdminTabNavigation: React.FC<AdminTabNavigationProps> = ({
               <button
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
-                className={`group inline-flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                className={`group inline-flex items-center gap-1.5 sm:gap-2 py-3 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap ${
                   isActive
                     ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                     : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                 }`}
                 aria-current={isActive ? 'page' : undefined}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 {tab.name}
               </button>
             );
