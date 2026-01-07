@@ -166,7 +166,7 @@ const PasswordStrengthIndicator: React.FC<{
       </div>
 
       {/* Criteria checklist */}
-      <div className="grid grid-cols-2 gap-1.5">
+      <div className="grid grid-cols-1 xs:grid-cols-2 gap-1 xs:gap-1.5">
         <CriteriaItem met={criteria.minLength} label="8+ символов" />
         <CriteriaItem met={criteria.hasNumber} label="Цифра" />
         <CriteriaItem met={criteria.hasLowercase} label="Строчная" />

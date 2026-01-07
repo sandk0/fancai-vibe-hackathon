@@ -17,6 +17,7 @@ import { useUIStore } from '@/stores/ui';
 import { useAuthStore } from '@/stores/auth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/utils/cn';
+import { isActiveRoute } from '@/utils/navigation';
 
 const SIDEBAR_COLLAPSED_KEY = 'fancai-sidebar-collapsed';
 
@@ -114,7 +115,7 @@ const Sidebar: React.FC = () => {
           >
             <ul className="space-y-1 px-2">
               {navigation.map((item) => {
-                const isActive = location.pathname === item.href;
+                const isActive = isActiveRoute(location.pathname, item.href);
                 const Icon = item.icon;
 
                 return (
@@ -271,7 +272,7 @@ const Sidebar: React.FC = () => {
           >
             <ul className="space-y-1 px-2">
               {navigation.map((item) => {
-                const isActive = location.pathname === item.href;
+                const isActive = isActiveRoute(location.pathname, item.href);
                 const Icon = item.icon;
 
                 return (

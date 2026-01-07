@@ -23,6 +23,7 @@ import {
 import { useAuthStore } from '@/stores/auth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/utils/cn';
+import { isActiveRoute } from '@/utils/navigation';
 
 interface MobileDrawerProps {
   isOpen: boolean;
@@ -250,7 +251,7 @@ const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
             {/* Navigation links */}
             <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
               {navigation.map((item) => {
-                const isActive = location.pathname === item.href;
+                const isActive = isActiveRoute(location.pathname, item.href);
                 const Icon = item.icon;
 
                 return (

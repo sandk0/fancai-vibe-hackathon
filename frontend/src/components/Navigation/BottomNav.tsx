@@ -1,19 +1,13 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Library, Image, BarChart3, User } from 'lucide-react';
+import { Home, Library, Image, BarChart3, User, Shield } from 'lucide-react';
+import { useAuthStore } from '@/stores/auth';
+import { isActiveRoute } from '@/utils/navigation';
 
 interface NavItem {
   path: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
 }
-
-const navItems: NavItem[] = [
-  { path: '/', label: 'Главная', icon: Home },
-  { path: '/library', label: 'Библиотека', icon: Library },
-  { path: '/images', label: 'Галерея', icon: Image },
-  { path: '/stats', label: 'Статистика', icon: BarChart3 },
-  { path: '/profile', label: 'Профиль', icon: User },
-];
 
 /**
  * BottomNav - Mobile navigation component
@@ -25,16 +19,22 @@ const navItems: NavItem[] = [
  * - Safe area support for iOS notch/home indicator
  * - Touch targets >= 44px for accessibility
  * - Smooth transitions for active states
+ * - Conditional admin panel for admin users
  */
 export function BottomNav() {
   const location = useLocation();
+  const { user } = useAuthStore();
 
-  const isActive = (path: string): boolean => {
-    if (path === '/') {
-      return location.pathname === '/';
-    }
-    return location.pathname.startsWith(path);
-  };
+  const navItems: NavItem[] = [
+    { path: '/', label: 'Главная', icon: Home },
+    { path: '/library', label: 'Библиотека', icon: Library },
+    { path: '/images', label: 'Галерея', icon: Image },
+    ...(user?.is_admin
+      ? [{ path: '/admin', label: 'Админ', icon: Shield }]
+      : [{ path: '/stats', label: 'Статистика', icon: BarChart3 }]
+    ),
+    { path: '/profile', label: 'Профиль', icon: User },
+  ];
 
   return (
     <nav
@@ -51,7 +51,7 @@ export function BottomNav() {
       {/* Navigation items */}
       <ul className="relative flex items-center justify-around pb-safe">
         {navItems.map(({ path, label, icon: Icon }) => {
-          const active = isActive(path);
+          const active = isActiveRoute(location.pathname, path);
 
           return (
             <li key={path} className="flex-1">
@@ -79,7 +79,7 @@ export function BottomNav() {
                 />
                 <span
                   className={`
-                    text-[10px] font-medium leading-tight
+                    text-[11px] sm:text-xs font-medium leading-tight
                     transition-opacity duration-200
                     ${active ? 'opacity-100' : 'opacity-80'}
                   `}

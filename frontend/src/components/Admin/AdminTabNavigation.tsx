@@ -38,28 +38,30 @@ export const AdminTabNavigation: React.FC<AdminTabNavigationProps> = ({
 
   return (
     <div className="mb-8 border-b border-border">
-      <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
+      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+        <nav className="-mb-px flex space-x-8 min-w-max sm:min-w-0" aria-label="Tabs">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
 
-          return (
-            <button
-              key={tab.id}
-              onClick={() => onTabChange(tab.id)}
-              className={`group inline-flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm ${
-                isActive
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-              }`}
-              aria-current={isActive ? 'page' : undefined}
-            >
-              <Icon className="w-4 h-4" />
-              {tab.name}
-            </button>
-          );
-        })}
-      </nav>
+            return (
+              <button
+                key={tab.id}
+                onClick={() => onTabChange(tab.id)}
+                className={`group inline-flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  isActive
+                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                }`}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.name}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
     </div>
   );
 };

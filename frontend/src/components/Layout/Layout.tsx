@@ -48,7 +48,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {/* Mobile overlay */}
         {(sidebarOpen || mobileMenuOpen) && (
           <div
-            className="fixed inset-0 z-30 bg-black bg-opacity-50 lg:hidden"
+            className="fixed inset-0 z-[400] bg-black bg-opacity-50 lg:hidden"
             onClick={handleBackdropClick}
           />
         )}
@@ -59,9 +59,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           tabIndex={-1}
           className="flex-1 min-h-screen pt-16 pb-20 md:pb-0 bg-muted outline-none"
         >
-          <div className="container mx-auto px-4 py-6">
-            {children}
-          </div>
+          {children}
         </main>
       </div>
 

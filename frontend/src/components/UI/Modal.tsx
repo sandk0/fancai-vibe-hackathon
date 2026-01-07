@@ -346,7 +346,7 @@ export function ModalHeader({
           type="button"
           onClick={onClose}
           className={cn(
-            'flex h-8 w-8 items-center justify-center rounded-md',
+            'flex h-11 w-11 items-center justify-center rounded-md',
             'text-muted-foreground hover:text-foreground',
             'hover:bg-accent transition-colors',
             'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-popover'

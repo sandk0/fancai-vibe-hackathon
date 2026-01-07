@@ -84,7 +84,7 @@ const BookImagesPage: React.FC = () => {
 
           <div className="flex flex-col lg:flex-row items-center gap-8">
             {/* Book Cover */}
-            <div className="w-40 h-56 rounded-xl overflow-hidden shadow-2xl flex-shrink-0 border-4 border-white/20">
+            <div className="w-32 h-44 sm:w-40 sm:h-56 rounded-xl overflow-hidden shadow-2xl flex-shrink-0 border-4 border-white/20">
               <AuthenticatedImage
                 src={
                   book.has_cover

@@ -42,6 +42,7 @@ const themeConfigs: Record<ReaderTheme, { bg: string; text: string; label: strin
   dark: { bg: '#121212', text: '#E0E0E0', label: 'Dark', icon: Moon },
   sepia: { bg: '#FBF0D9', text: '#3D2914', label: 'Sepia', icon: Sun },
   night: { bg: '#000000', text: '#B0B0B0', label: 'Night', icon: Moon },
+  outdoor: { bg: '#FFFEF5', text: '#000000', label: 'Outdoor', icon: Sun },
 };
 
 // Font family options
@@ -374,7 +375,7 @@ export const ReaderSettingsPanel: React.FC<ReaderSettingsPanelProps> = React.mem
         {/* Theme Section */}
         <section>
           <SectionHeader icon={<Sun className="w-5 h-5" />} title={t('readerSettings.theme') || 'Theme'} />
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-5 gap-2">
             {(Object.keys(themeConfigs) as ReaderTheme[]).map((themeKey) => (
               <ThemeButton
                 key={themeKey}

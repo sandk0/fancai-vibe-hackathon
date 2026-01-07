@@ -11,8 +11,8 @@ export interface ReadingProgress {
   totalTimeRead: number; // in seconds
 }
 
-// Reader theme type including 'night' mode
-export type ReaderTheme = 'light' | 'dark' | 'sepia' | 'night';
+// Reader theme type including 'night' and 'outdoor' modes
+export type ReaderTheme = 'light' | 'dark' | 'sepia' | 'night' | 'outdoor';
 
 interface ReaderState {
   // Settings
@@ -64,6 +64,10 @@ const themeSettings: Record<ReaderTheme, { backgroundColor: string; textColor: s
   night: {
     backgroundColor: '#000000',
     textColor: '#B0B0B0',
+  },
+  outdoor: {
+    backgroundColor: '#FFFEF5',
+    textColor: '#000000',
   },
 };
 

@@ -102,7 +102,7 @@ const GuestHero: React.FC = () => {
       <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-accent/10 to-secondary" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(251,191,36,0.15),transparent_50%)]" />
 
-      <div className="relative px-6 py-12 sm:px-10 sm:py-16 lg:py-24">
+      <div className="relative px-4 sm:px-6 md:px-10 py-8 sm:py-12 md:py-16 lg:py-24">
         <div className="max-w-3xl mx-auto text-center">
           <m.div
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-6"
@@ -416,15 +416,19 @@ const RecentBooksSection: React.FC<{ books: Book[]; isLoading: boolean }> = ({
         </div>
       </div>
 
-      <div
-        ref={scrollRef}
-        className={cn(
-          'flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0',
-          'scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent',
-          'snap-x snap-proximity sm:snap-none'
-        )}
-      >
-        {books.map((book, index) => (
+      <div className="relative">
+        {/* Gradient indicator - shows scroll affordance on mobile */}
+        <div className="absolute right-0 top-0 bottom-4 w-12 bg-gradient-to-l from-background to-transparent pointer-events-none z-10 sm:hidden" />
+
+        <div
+          ref={scrollRef}
+          className={cn(
+            'flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0',
+            'scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent',
+            'snap-x snap-mandatory sm:snap-none'
+          )}
+        >
+          {books.map((book, index) => (
           <m.div
             key={book.id}
             className="flex-shrink-0 w-36 sm:w-44 snap-start cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl"
@@ -502,7 +506,8 @@ const RecentBooksSection: React.FC<{ books: Book[]; isLoading: boolean }> = ({
           <span className="text-sm font-medium">Все книги</span>
         </Link>
       </div>
-    </m.section>
+    </div>
+  </m.section>
   );
 };
 
@@ -553,7 +558,7 @@ const StatisticsSection: React.FC<{
         <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
           Статистика чтения
         </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
           {[1, 2, 3, 4].map((i) => (
             <SkeletonStatCard key={i} />
           ))}
@@ -576,7 +581,7 @@ const StatisticsSection: React.FC<{
         </h2>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
         {statItems.map((item, index) => (
           <m.div
             key={item.label}

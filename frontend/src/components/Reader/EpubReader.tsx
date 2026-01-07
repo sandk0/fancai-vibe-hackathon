@@ -757,7 +757,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
           progress={progress}
           currentPage={currentPage ?? undefined}
           totalPages={totalPages ?? undefined}
-          onBack={() => navigate(`/book/${book.id}`)}
+          onBack={() => navigate(-1)}
           onTocToggle={() => setIsTocOpen(!isTocOpen)}
           onInfoOpen={() => setIsBookInfoOpen(true)}
           onSettingsOpen={() => setIsSettingsOpen(true)}

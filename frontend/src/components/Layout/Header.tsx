@@ -15,6 +15,8 @@ import { useAuthStore } from '@/stores/auth';
 import { useUIStore } from '@/stores/ui';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ThemeSwitcher } from '@/components/UI/ThemeSwitcher';
+import { isActiveRoute } from '@/utils/navigation';
+import { cn } from '@/utils/cn';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -72,13 +74,6 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick: _onMenuClick }) => {
     { to: '/library', label: t('nav.myLibrary'), icon: Library },
   ];
 
-  const isActiveLink = (path: string) => {
-    if (path === '/') {
-      return location.pathname === '/';
-    }
-    return location.pathname.startsWith(path);
-  };
-
   return (
     <header className="sticky top-0 left-0 right-0 z-[200] pt-safe border-b border-border bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
       <div className="px-4 sm:px-6 lg:px-8">
@@ -116,7 +111,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick: _onMenuClick }) => {
             >
               {navLinks.map((link) => {
                 const Icon = link.icon;
-                const isActive = isActiveLink(link.to);
+                const isActive = isActiveRoute(location.pathname, link.to);
                 return (
                   <Link
                     key={link.to}
@@ -180,7 +175,10 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick: _onMenuClick }) => {
               {/* User dropdown */}
               {showUserMenu && (
                 <div
-                  className="absolute right-0 mt-2 w-56 origin-top-right rounded-xl shadow-lg py-1 ring-1 ring-border bg-popover border border-border animate-fade-in-up"
+                  className={cn(
+                    "absolute right-0 mt-2 origin-top-right rounded-xl shadow-lg py-1 ring-1 ring-border bg-popover border border-border animate-fade-in-up",
+                    "w-56 max-w-[calc(100vw-2rem)]"
+                  )}
                   role="menu"
                   aria-orientation="vertical"
                 >

@@ -148,7 +148,7 @@ const ProfilePage: React.FC = () => {
           <div className="flex flex-col md:flex-row items-center gap-8">
             {/* Avatar */}
             <div className="relative group">
-              <div className="w-32 h-32 rounded-full flex items-center justify-center border-4 border-white/20 shadow-2xl transition-transform group-hover:scale-105 bg-primary">
+              <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full flex items-center justify-center border-4 border-white/20 shadow-2xl transition-transform group-hover:scale-105 bg-primary">
                 <span className="text-5xl font-bold text-primary-foreground">
                   {user?.full_name ? user.full_name.charAt(0).toUpperCase() : user?.email.charAt(0).toUpperCase()}
                 </span>
@@ -205,9 +205,9 @@ const ProfilePage: React.FC = () => {
               )}
 
               <div className="flex flex-col md:flex-row gap-4 text-primary-foreground/90 mb-4">
-                <div className="flex items-center gap-2 justify-center md:justify-start">
-                  <Mail className="w-4 h-4" />
-                  <span>{user?.email}</span>
+                <div className="flex items-center gap-2 justify-center md:justify-start min-w-0">
+                  <Mail className="w-4 h-4 flex-shrink-0" />
+                  <span className="truncate max-w-[200px] sm:max-w-none">{user?.email}</span>
                 </div>
                 <div className="flex items-center gap-2 justify-center md:justify-start">
                   <Calendar className="w-4 h-4" />
@@ -322,7 +322,7 @@ const ProfilePage: React.FC = () => {
             <label className="block text-sm font-medium mb-2 text-muted-foreground">
               Email
             </label>
-            <div className="px-4 py-3 rounded-xl border-2 bg-muted border-border text-foreground">
+            <div className="px-4 py-3 rounded-xl border-2 bg-muted border-border text-foreground truncate">
               {user?.email}
             </div>
           </div>

@@ -15,7 +15,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Rendition } from '@/types/epub';
 
-export type ThemeName = 'light' | 'dark' | 'sepia' | 'night';
+export type ThemeName = 'light' | 'dark' | 'sepia' | 'night' | 'outdoor';
 
 interface ThemeStyles {
   body: Record<string, string>;
@@ -121,6 +121,25 @@ const THEMES: Record<ThemeName, ThemeStyles> = {
     h2: { color: '#B0B0B0' },
     h3: { color: '#B0B0B0' },
   },
+  outdoor: {
+    body: {
+      color: '#000000', // Pure black for maximum contrast
+      background: '#FFFEF5', // Slightly warm white to reduce glare
+      'font-family': 'Georgia, serif',
+      'line-height': '1.6',
+      'font-weight': '500', // Slightly bolder for better outdoor readability
+    },
+    p: {
+      'margin-bottom': '1em',
+    },
+    a: {
+      color: '#1E40AF', // Deep blue for high contrast links
+      'font-weight': '600',
+    },
+    h1: { color: '#000000', 'font-weight': '700' },
+    h2: { color: '#000000', 'font-weight': '700' },
+    h3: { color: '#000000', 'font-weight': '600' },
+  },
 };
 
 export const useEpubThemes = (
@@ -168,7 +187,7 @@ export const useEpubThemes = (
    */
   const syncHtmlRoot = useCallback((themeName: ThemeName) => {
     const root = document.documentElement;
-    root.classList.remove('light', 'dark', 'sepia');
+    root.classList.remove('light', 'dark', 'sepia', 'outdoor');
     root.setAttribute('data-theme', themeName);
 
     if (themeName === 'dark' || themeName === 'night') {
@@ -176,6 +195,9 @@ export const useEpubThemes = (
       root.style.colorScheme = 'dark';
     } else if (themeName === 'sepia') {
       root.classList.add('sepia');
+      root.style.colorScheme = 'light';
+    } else if (themeName === 'outdoor') {
+      root.classList.add('outdoor');
       root.style.colorScheme = 'light';
     } else {
       root.style.colorScheme = 'light';

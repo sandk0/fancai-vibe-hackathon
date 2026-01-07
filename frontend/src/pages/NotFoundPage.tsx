@@ -50,7 +50,7 @@ const NotFoundPage: React.FC = () => {
           <div className="absolute inset-0 blur-3xl opacity-30 bg-gradient-radial from-primary to-transparent" />
 
           {/* 404 Text */}
-          <h1 className="relative text-9xl md:text-[12rem] font-black mb-4 bg-gradient-to-br from-primary to-purple-600 bg-clip-text text-transparent">
+          <h1 className="relative text-7xl sm:text-9xl md:text-[12rem] font-black mb-4 bg-gradient-to-br from-primary to-purple-600 bg-clip-text text-transparent">
             404
           </h1>
         </div>

@@ -8,6 +8,7 @@ import { ImageModal } from './ImageModal';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import ErrorMessage from '@/components/UI/ErrorMessage';
 import { STORAGE_KEYS } from '@/types/state';
+import { cn } from '@/utils/cn';
 import type { GeneratedImage } from '@/types/api';
 
 interface ImageGalleryProps {
@@ -234,20 +235,27 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
                   loading="lazy"
                 />
                 
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                {/* Overlay - hidden on mobile since actions are always visible */}
+                <div className={cn(
+                  "absolute inset-0 transition-colors flex items-center justify-center",
+                  "bg-black/0 md:group-hover:bg-black/40",
+                  "opacity-0 md:group-hover:opacity-100"
+                )}>
                   <Eye className="h-8 w-8 text-white" />
                 </div>
               </div>
               
-              {/* Actions */}
-              <div className="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              {/* Actions - always visible on mobile, hover-only on desktop */}
+              <div className={cn(
+                "absolute top-2 right-2 flex space-x-1 transition-opacity",
+                "opacity-100 md:opacity-0 md:group-hover:opacity-100"
+              )}>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDownload(image);
                   }}
-                  className="p-1.5 bg-black/50 text-white rounded-lg hover:bg-black/70 transition-colors"
+                  className="p-1.5 bg-black/50 text-white rounded-lg hover:bg-black/70 active:bg-black/80 transition-colors"
                   title="Скачать"
                 >
                   <Download className="h-4 w-4" />
@@ -257,7 +265,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
                     e.stopPropagation();
                     handleShare(image);
                   }}
-                  className="p-1.5 bg-black/50 text-white rounded-lg hover:bg-black/70 transition-colors"
+                  className="p-1.5 bg-black/50 text-white rounded-lg hover:bg-black/70 active:bg-black/80 transition-colors"
                   title="Поделиться"
                 >
                   <Share2 className="h-4 w-4" />
