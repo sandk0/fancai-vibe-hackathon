@@ -34,15 +34,15 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ checked, onChange, label, d
   const descriptionId = `${switchId}-description`;
 
   return (
-    <div className="flex items-center justify-between gap-3 py-4">
+    <div className="flex items-center justify-between gap-3 py-3">
       <div className="flex-1 min-w-0">
         <label
           id={switchId}
-          className="font-medium text-foreground cursor-pointer break-words"
+          className="text-sm font-medium text-foreground cursor-pointer break-words"
         >
           {label}
         </label>
-        <p id={descriptionId} className="text-sm mt-1 text-muted-foreground break-words">
+        <p id={descriptionId} className="text-xs mt-0.5 text-muted-foreground break-words">
           {description}
         </p>
       </div>
@@ -59,15 +59,14 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ checked, onChange, label, d
           }
         }}
         className={cn(
-          'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+          'relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full transition-colors',
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-          'min-h-[44px] min-w-[44px]',
-          checked ? 'bg-green-500' : 'bg-muted'
+          checked ? 'bg-green-500' : 'bg-zinc-600'
         )}
       >
         <span
           className={cn(
-            'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+            'inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform',
             checked ? 'translate-x-6' : 'translate-x-1'
           )}
           aria-hidden="true"

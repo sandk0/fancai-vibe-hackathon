@@ -69,13 +69,13 @@ const ReaderSettings: React.FC = () => {
               value={fontSize}
               onChange={(e) => updateFontSize(Number(e.target.value))}
               className="w-full max-w-full h-11 bg-transparent rounded-lg appearance-none cursor-pointer touch-pan-x
-                       [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:bg-secondary [&::-webkit-slider-runnable-track]:rounded-full
+                       [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:bg-zinc-300 [&::-webkit-slider-runnable-track]:dark:bg-zinc-600 [&::-webkit-slider-runnable-track]:rounded-full
                        [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:mt-[-10px]
                        [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6
                        [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary
                        [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white
                        [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer
-                       [&::-moz-range-track]:h-2 [&::-moz-range-track]:bg-secondary [&::-moz-range-track]:rounded-full
+                       [&::-moz-range-track]:h-2 [&::-moz-range-track]:bg-zinc-300 [&::-moz-range-track]:dark:bg-zinc-600 [&::-moz-range-track]:rounded-full
                        [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:border-0
                        [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary
                        [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-pointer"
@@ -100,13 +100,13 @@ const ReaderSettings: React.FC = () => {
               value={lineHeight}
               onChange={(e) => updateLineHeight(Number(e.target.value))}
               className="w-full max-w-full h-11 bg-transparent rounded-lg appearance-none cursor-pointer touch-pan-x
-                       [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:bg-secondary [&::-webkit-slider-runnable-track]:rounded-full
+                       [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:bg-zinc-300 [&::-webkit-slider-runnable-track]:dark:bg-zinc-600 [&::-webkit-slider-runnable-track]:rounded-full
                        [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:mt-[-10px]
                        [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6
                        [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary
                        [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white
                        [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer
-                       [&::-moz-range-track]:h-2 [&::-moz-range-track]:bg-secondary [&::-moz-range-track]:rounded-full
+                       [&::-moz-range-track]:h-2 [&::-moz-range-track]:bg-zinc-300 [&::-moz-range-track]:dark:bg-zinc-600 [&::-moz-range-track]:rounded-full
                        [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:border-0
                        [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary
                        [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-pointer"
@@ -252,13 +252,13 @@ const ReaderSettings: React.FC = () => {
               value={maxWidth}
               onChange={(e) => useReaderStore.setState({ maxWidth: Number(e.target.value) })}
               className="w-full max-w-full h-11 bg-transparent rounded-lg appearance-none cursor-pointer touch-pan-x
-                       [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:bg-secondary [&::-webkit-slider-runnable-track]:rounded-full
+                       [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:bg-zinc-300 [&::-webkit-slider-runnable-track]:dark:bg-zinc-600 [&::-webkit-slider-runnable-track]:rounded-full
                        [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:mt-[-10px]
                        [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6
                        [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary
                        [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white
                        [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer
-                       [&::-moz-range-track]:h-2 [&::-moz-range-track]:bg-secondary [&::-moz-range-track]:rounded-full
+                       [&::-moz-range-track]:h-2 [&::-moz-range-track]:bg-zinc-300 [&::-moz-range-track]:dark:bg-zinc-600 [&::-moz-range-track]:rounded-full
                        [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:border-0
                        [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary
                        [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-pointer"
@@ -283,13 +283,13 @@ const ReaderSettings: React.FC = () => {
               value={margin}
               onChange={(e) => useReaderStore.setState({ margin: Number(e.target.value) })}
               className="w-full max-w-full h-11 bg-transparent rounded-lg appearance-none cursor-pointer touch-pan-x
-                       [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:bg-secondary [&::-webkit-slider-runnable-track]:rounded-full
+                       [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:bg-zinc-300 [&::-webkit-slider-runnable-track]:dark:bg-zinc-600 [&::-webkit-slider-runnable-track]:rounded-full
                        [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:mt-[-10px]
                        [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6
                        [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary
                        [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white
                        [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer
-                       [&::-moz-range-track]:h-2 [&::-moz-range-track]:bg-secondary [&::-moz-range-track]:rounded-full
+                       [&::-moz-range-track]:h-2 [&::-moz-range-track]:bg-zinc-300 [&::-moz-range-track]:dark:bg-zinc-600 [&::-moz-range-track]:rounded-full
                        [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:border-0
                        [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary
                        [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-pointer"
