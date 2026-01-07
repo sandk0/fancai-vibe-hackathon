@@ -28,7 +28,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen transition-colors bg-background text-foreground">
+    <div className="min-h-screen transition-colors bg-background text-foreground overflow-x-clip">
       {/* Skip Link for Keyboard Navigation */}
       <a
         href="#main-content"

@@ -38,9 +38,10 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-[300] md:hidden"
+      className="fixed bottom-0 inset-x-0 z-[500] md:hidden"
       role="navigation"
       aria-label="Мобильная навигация"
+      style={{ position: 'fixed' }}
     >
       {/* Background with blur */}
       <div

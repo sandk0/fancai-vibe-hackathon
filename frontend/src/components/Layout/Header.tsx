@@ -138,7 +138,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick: _onMenuClick }) => {
           </div>
 
           {/* Right side - Actions and User menu */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {/* Upload button - icon only on mobile */}
             <button
               type="button"

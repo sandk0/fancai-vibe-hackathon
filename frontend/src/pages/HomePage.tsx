@@ -72,7 +72,7 @@ const SkeletonCard: React.FC<{ className?: string }> = ({ className }) => (
 );
 
 const SkeletonBookCard: React.FC = () => (
-  <div className="flex-shrink-0 w-36 sm:w-44">
+  <div className="flex-shrink-0 w-28 sm:w-36 md:w-44">
     <SkeletonCard className="aspect-[2/3] mb-2" />
     <SkeletonCard className="h-4 w-3/4 mb-1" />
     <SkeletonCard className="h-3 w-1/2" />
@@ -80,10 +80,10 @@ const SkeletonBookCard: React.FC = () => (
 );
 
 const SkeletonStatCard: React.FC = () => (
-  <div className="p-4 rounded-xl border border-border bg-card animate-pulse">
-    <SkeletonCard className="h-8 w-8 rounded-lg mb-3" />
-    <SkeletonCard className="h-8 w-16 mb-2" />
-    <SkeletonCard className="h-4 w-24" />
+  <div className="p-3 sm:p-4 rounded-xl border border-border bg-card animate-pulse min-w-0">
+    <SkeletonCard className="h-6 w-6 sm:h-8 sm:w-8 rounded-lg mb-2 sm:mb-3" />
+    <SkeletonCard className="h-6 sm:h-8 w-12 sm:w-16 mb-1 sm:mb-2" />
+    <SkeletonCard className="h-3 sm:h-4 w-16 sm:w-24" />
   </div>
 );
 
@@ -431,7 +431,7 @@ const RecentBooksSection: React.FC<{ books: Book[]; isLoading: boolean }> = ({
           {books.map((book, index) => (
           <m.div
             key={book.id}
-            className="flex-shrink-0 w-36 sm:w-44 snap-start cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl"
+            className="flex-shrink-0 w-28 sm:w-36 md:w-44 snap-start cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl"
             onClick={() => navigate(`/book/${book.id}`)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
@@ -495,15 +495,15 @@ const RecentBooksSection: React.FC<{ books: Book[]; isLoading: boolean }> = ({
         <Link
           to="/library"
           className={cn(
-            'flex-shrink-0 w-36 sm:w-44 aspect-[2/3] snap-start',
+            'flex-shrink-0 w-28 sm:w-36 md:w-44 aspect-[2/3] snap-start',
             'rounded-xl border-2 border-dashed border-border',
             'flex flex-col items-center justify-center gap-2',
             'text-muted-foreground hover:text-primary hover:border-primary/50',
             'transition-colors duration-200'
           )}
         >
-          <ArrowRight className="w-6 h-6" />
-          <span className="text-sm font-medium">Все книги</span>
+          <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6" />
+          <span className="text-xs sm:text-sm font-medium">Все книги</span>
         </Link>
       </div>
     </div>
@@ -586,7 +586,7 @@ const StatisticsSection: React.FC<{
           <m.div
             key={item.label}
             className={cn(
-              'p-4 rounded-xl border border-border bg-card',
+              'p-3 sm:p-4 rounded-xl border border-border bg-card min-w-0 overflow-hidden',
               'hover:border-primary/30 hover:shadow-sm',
               'transition-all duration-200'
             )}
@@ -594,15 +594,15 @@ const StatisticsSection: React.FC<{
             custom={index}
             whileHover={{ y: -2 }}
           >
-            <div className={cn('inline-flex p-2 rounded-lg mb-3', item.bgColor)}>
-              <item.icon className={cn('w-5 h-5', item.color)} />
+            <div className={cn('inline-flex p-1.5 sm:p-2 rounded-lg mb-2 sm:mb-3', item.bgColor)}>
+              <item.icon className={cn('w-4 h-4 sm:w-5 sm:h-5', item.color)} />
             </div>
 
-            <div className="text-2xl sm:text-3xl font-bold text-foreground">
+            <div className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground truncate">
               {item.value}
             </div>
 
-            <div className="text-xs sm:text-sm text-muted-foreground">
+            <div className="text-[11px] sm:text-xs md:text-sm text-muted-foreground truncate">
               {item.label}
             </div>
           </m.div>
@@ -665,7 +665,7 @@ const HomePage: React.FC = () => {
   // Guest view
   if (!isAuthenticated) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 overflow-x-hidden">
         <GuestHero />
 
         {/* Feature highlights for guests */}
@@ -718,7 +718,7 @@ const HomePage: React.FC = () => {
 
   // Authenticated user view
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 overflow-x-hidden">
       <UserGreeting userName={user?.full_name} />
 
       <ContinueReadingCard book={continueBook!} isLoading={booksLoading} />

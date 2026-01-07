@@ -37,9 +37,9 @@ export const AdminTabNavigation: React.FC<AdminTabNavigationProps> = ({
   ];
 
   return (
-    <div className="mb-6 sm:mb-8 border-b border-border overflow-hidden">
-      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
-        <nav className="-mb-px flex space-x-4 sm:space-x-8 min-w-max" aria-label="Tabs">
+    <div className="mb-6 sm:mb-8 border-b border-border overflow-x-clip">
+      <div className="overflow-x-auto pb-px scrollbar-hide">
+        <nav className="-mb-px flex space-x-2 sm:space-x-4 md:space-x-6" aria-label="Tabs">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;

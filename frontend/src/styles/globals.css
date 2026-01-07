@@ -371,6 +371,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Prevent horizontal scroll without breaking fixed positioning */
+#root {
+  overflow-x: hidden;
+  width: 100%;
+  min-height: 100vh;
+}
+
 /* Reader text styles (used by EPUB renderer) */
 .reader-text {
   line-height: var(--line-height, 1.6);
