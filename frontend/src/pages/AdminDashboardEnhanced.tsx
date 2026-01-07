@@ -136,8 +136,8 @@ const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 w-full overflow-x-hidden">
+    <div className="min-h-screen bg-background overflow-x-clip">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 w-full">
         {/* Header */}
         <AdminHeader
           title={t('admin.title')}
@@ -152,7 +152,7 @@ const AdminDashboard: React.FC = () => {
         />
 
         {/* Tab Content */}
-        <div className="w-full max-w-full overflow-x-hidden">
+        <div className="w-full max-w-full overflow-x-clip">
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div className="space-y-6">

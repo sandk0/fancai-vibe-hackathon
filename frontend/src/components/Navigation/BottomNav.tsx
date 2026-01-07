@@ -1,6 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Library, Image, BarChart3, User, Shield } from 'lucide-react';
-import { useAuthStore } from '@/stores/auth';
+import { Home, Library, Image, Settings, User } from 'lucide-react';
 import { isActiveRoute } from '@/utils/navigation';
 
 interface NavItem {
@@ -19,20 +18,15 @@ interface NavItem {
  * - Safe area support for iOS notch/home indicator
  * - Touch targets >= 44px for accessibility
  * - Smooth transitions for active states
- * - Conditional admin panel for admin users
  */
 export function BottomNav() {
   const location = useLocation();
-  const { user } = useAuthStore();
 
   const navItems: NavItem[] = [
     { path: '/', label: 'Главная', icon: Home },
     { path: '/library', label: 'Библиотека', icon: Library },
     { path: '/images', label: 'Галерея', icon: Image },
-    ...(user?.is_admin
-      ? [{ path: '/admin', label: 'Админ', icon: Shield }]
-      : [{ path: '/stats', label: 'Статистика', icon: BarChart3 }]
-    ),
+    { path: '/settings', label: 'Настройки', icon: Settings },
     { path: '/profile', label: 'Профиль', icon: User },
   ];
 

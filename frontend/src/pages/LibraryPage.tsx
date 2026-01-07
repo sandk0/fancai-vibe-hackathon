@@ -494,15 +494,15 @@ const LibraryPage: React.FC = () => {
         )}
       </div>
 
-      {/* Mobile FAB (Floating Action Button) */}
+      {/* Mobile FAB (Floating Action Button) - positioned above bottom nav */}
       <m.button
-        className="fixed bottom-6 right-6 mb-safe md:hidden w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-xl flex items-center justify-center z-30"
+        className="fixed bottom-[72px] right-4 mb-safe md:hidden w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-xl flex items-center justify-center z-30"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={handleUploadClick}
         aria-label="Загрузить книгу"
       >
-        <Plus className="w-7 h-7" />
+        <Plus className="w-6 h-6" />
       </m.button>
 
       {/* Upload Modal */}

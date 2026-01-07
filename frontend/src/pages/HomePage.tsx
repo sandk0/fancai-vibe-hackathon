@@ -72,10 +72,10 @@ const SkeletonCard: React.FC<{ className?: string }> = ({ className }) => (
 );
 
 const SkeletonBookCard: React.FC = () => (
-  <div className="flex-shrink-0 w-24 sm:w-32 md:w-40">
-    <SkeletonCard className="aspect-[2/3] mb-2" />
-    <SkeletonCard className="h-4 w-3/4 mb-1" />
-    <SkeletonCard className="h-3 w-1/2" />
+  <div className="sm:flex-shrink-0 sm:w-32 md:w-40">
+    <SkeletonCard className="aspect-[2/3] mb-1.5 sm:mb-2 rounded-lg sm:rounded-xl" />
+    <SkeletonCard className="h-3 sm:h-4 w-3/4 mb-1" />
+    <SkeletonCard className="h-2.5 sm:h-3 w-1/2" />
   </div>
 );
 
@@ -282,9 +282,9 @@ const ContinueReadingCard: React.FC<{ book: Book; isLoading: boolean }> = ({
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.99 }}
       >
-        <div className="p-5 sm:p-6 flex gap-4 sm:gap-6">
+        <div className="p-3 sm:p-4 flex gap-3 sm:gap-4">
           {/* Book cover */}
-          <div className="flex-shrink-0 w-20 sm:w-24 aspect-[2/3] rounded-lg overflow-hidden">
+          <div className="flex-shrink-0 w-16 sm:w-20 aspect-[2/3] rounded-lg overflow-hidden">
             {book.has_cover ? (
               <AuthenticatedImage
                 src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/books/${book.id}/cover`}
@@ -305,22 +305,22 @@ const ContinueReadingCard: React.FC<{ book: Book; isLoading: boolean }> = ({
 
           {/* Book info */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg sm:text-xl font-semibold text-foreground truncate mb-1">
+            <h3 className="text-base sm:text-lg font-semibold text-foreground truncate mb-0.5">
               {book.title}
             </h3>
-            <p className="text-sm text-muted-foreground truncate mb-3">
+            <p className="text-xs sm:text-sm text-muted-foreground truncate mb-2">
               {book.author}
             </p>
 
             {/* Progress bar */}
-            <div className="mb-2">
-              <div className="flex justify-between text-xs text-muted-foreground mb-1">
+            <div className="mb-1.5">
+              <div className="flex justify-between text-[10px] sm:text-xs text-muted-foreground mb-0.5">
                 <span>Прогресс</span>
                 <span className="font-medium text-primary">
                   {Math.round(book.reading_progress_percent)}%
                 </span>
               </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                 <m.div
                   className="h-full bg-gradient-to-r from-primary to-amber-500 rounded-full"
                   initial={{ width: 0 }}
@@ -330,14 +330,14 @@ const ContinueReadingCard: React.FC<{ book: Book; isLoading: boolean }> = ({
               </div>
             </div>
 
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">
               {book.chapters_count} глав
             </p>
           </div>
 
           {/* Arrow */}
           <div className="flex items-center">
-            <ArrowRight className="w-5 h-5 text-muted-foreground" />
+            <ArrowRight className="w-4 h-4 text-muted-foreground" />
           </div>
         </div>
       </m.div>
@@ -345,7 +345,7 @@ const ContinueReadingCard: React.FC<{ book: Book; isLoading: boolean }> = ({
   );
 };
 
-// Horizontal scroll book list
+// Recent books grid (mobile: 2 columns, desktop: horizontal scroll)
 const RecentBooksSection: React.FC<{ books: Book[]; isLoading: boolean }> = ({
   books,
   isLoading,
@@ -365,11 +365,11 @@ const RecentBooksSection: React.FC<{ books: Book[]; isLoading: boolean }> = ({
 
   if (isLoading) {
     return (
-      <section className="mb-8 sm:mb-10" aria-busy="true" aria-live="polite">
-        <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
+      <section className="mb-6 sm:mb-10" aria-busy="true" aria-live="polite">
+        <h2 className="text-base sm:text-lg md:text-xl font-semibold text-foreground mb-3 sm:mb-4">
           Недавно добавленные
         </h2>
-        <div className="flex gap-4 overflow-hidden">
+        <div className="grid grid-cols-2 sm:flex sm:gap-4 gap-3 sm:overflow-hidden">
           {[1, 2, 3, 4].map((i) => (
             <SkeletonBookCard key={i} />
           ))}
@@ -380,15 +380,18 @@ const RecentBooksSection: React.FC<{ books: Book[]; isLoading: boolean }> = ({
 
   if (!books || books.length === 0) return null;
 
+  // Limit books on mobile to 4 + "See all" card
+  const displayBooks = books.slice(0, 5);
+
   return (
     <m.section
-      className="mb-8 sm:mb-10"
+      className="mb-6 sm:mb-10"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.2 }}
     >
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg sm:text-xl font-semibold text-foreground">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <h2 className="text-base sm:text-lg md:text-xl font-semibold text-foreground">
           Недавно добавленные
         </h2>
 
@@ -416,98 +419,137 @@ const RecentBooksSection: React.FC<{ books: Book[]; isLoading: boolean }> = ({
         </div>
       </div>
 
-      <div className="relative">
-        {/* Gradient indicator - shows scroll affordance on mobile */}
-        <div className="absolute right-0 top-0 bottom-4 w-12 bg-gradient-to-l from-background to-transparent pointer-events-none z-10 sm:hidden" />
+      {/* Mobile: Grid layout */}
+      <div className="sm:hidden">
+        <div className="grid grid-cols-2 gap-2.5">
+          {displayBooks.map((book, index) => (
+            <m.div
+              key={book.id}
+              className="cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
+              onClick={() => navigate(`/book/${book.id}`)}
+              role="button"
+              tabIndex={0}
+              aria-label={`Open ${book.title} by ${book.author}`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.05 }}
+            >
+              <div className="aspect-[2/3] rounded-lg mb-1.5 overflow-hidden border border-border shadow-sm">
+                {book.has_cover ? (
+                  <AuthenticatedImage
+                    src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/books/${book.id}/cover`}
+                    alt={`${book.title} cover`}
+                    className="w-full h-full object-cover"
+                    fallback={
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 via-accent/10 to-secondary">
+                        <BookOpen className="w-8 h-8 text-primary/40" />
+                      </div>
+                    }
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 via-accent/10 to-secondary">
+                    <BookOpen className="w-8 h-8 text-primary/40" />
+                  </div>
+                )}
+              </div>
+              <h3 className="text-xs font-medium text-foreground truncate">{book.title}</h3>
+              <p className="text-[10px] text-muted-foreground truncate">{book.author}</p>
+            </m.div>
+          ))}
 
+          {/* "See all" link - same size as book cards */}
+          <Link
+            to="/library"
+            className={cn(
+              'aspect-[2/3] rounded-lg',
+              'border-2 border-dashed border-border',
+              'flex flex-col items-center justify-center gap-1.5',
+              'text-muted-foreground hover:text-primary hover:border-primary/50',
+              'transition-colors duration-200'
+            )}
+          >
+            <ArrowRight className="w-5 h-5" />
+            <span className="text-xs font-medium">Все книги</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* Desktop: Horizontal scroll */}
+      <div className="hidden sm:block relative">
         <div
           ref={scrollRef}
           className={cn(
-            'flex gap-3 sm:gap-4 overflow-x-auto pb-4 -mx-3 px-3 sm:mx-0 sm:px-0',
-            'scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent',
-            'snap-x snap-mandatory sm:snap-none'
+            'flex gap-4 overflow-x-auto pb-4',
+            'scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent'
           )}
         >
           {books.map((book, index) => (
-          <m.div
-            key={book.id}
-            className="flex-shrink-0 w-24 sm:w-32 md:w-40 snap-start cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl"
-            onClick={() => navigate(`/book/${book.id}`)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                navigate(`/book/${book.id}`);
-              }
-            }}
-            role="button"
-            tabIndex={0}
-            aria-label={`Open ${book.title} by ${book.author}${book.reading_progress_percent > 0 ? `, ${Math.round(book.reading_progress_percent)}% read` : ''}`}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: index * 0.05 }}
-            whileHover={{ y: -4 }}
-          >
-            {/* Book cover */}
-            <div
-              className={cn(
-                'aspect-[2/3] rounded-xl mb-2 overflow-hidden',
-                'border border-border hover:border-primary/30',
-                'transition-all duration-200 shadow-sm hover:shadow-md'
-              )}
+            <m.div
+              key={book.id}
+              className="flex-shrink-0 w-32 md:w-40 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl"
+              onClick={() => navigate(`/book/${book.id}`)}
+              role="button"
+              tabIndex={0}
+              aria-label={`Open ${book.title} by ${book.author}`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.05 }}
+              whileHover={{ y: -4 }}
             >
-              {book.has_cover ? (
-                <AuthenticatedImage
-                  src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/books/${book.id}/cover`}
-                  alt={`${book.title} cover`}
-                  className="w-full h-full object-cover"
-                  fallback={
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 via-accent/10 to-secondary">
-                      <BookOpen className="w-10 h-10 text-primary/40" />
-                    </div>
-                  }
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 via-accent/10 to-secondary">
-                  <BookOpen className="w-10 h-10 text-primary/40" />
+              <div
+                className={cn(
+                  'aspect-[2/3] rounded-xl mb-2 overflow-hidden',
+                  'border border-border hover:border-primary/30',
+                  'transition-all duration-200 shadow-sm hover:shadow-md'
+                )}
+              >
+                {book.has_cover ? (
+                  <AuthenticatedImage
+                    src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/books/${book.id}/cover`}
+                    alt={`${book.title} cover`}
+                    className="w-full h-full object-cover"
+                    fallback={
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 via-accent/10 to-secondary">
+                        <BookOpen className="w-10 h-10 text-primary/40" />
+                      </div>
+                    }
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 via-accent/10 to-secondary">
+                    <BookOpen className="w-10 h-10 text-primary/40" />
+                  </div>
+                )}
+              </div>
+              <h3 className="text-sm font-medium text-foreground truncate">{book.title}</h3>
+              <p className="text-xs text-muted-foreground truncate">{book.author}</p>
+              {book.reading_progress_percent > 0 && (
+                <div className="mt-1 h-1 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full"
+                    style={{ width: `${Math.min(book.reading_progress_percent, 100)}%` }}
+                  />
                 </div>
               )}
-            </div>
+            </m.div>
+          ))}
 
-            {/* Book info */}
-            <h3 className="text-sm font-medium text-foreground truncate">
-              {book.title}
-            </h3>
-            <p className="text-xs text-muted-foreground truncate">{book.author}</p>
-
-            {/* Progress indicator */}
-            {book.reading_progress_percent > 0 && (
-              <div className="mt-1 h-1 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary rounded-full"
-                  style={{ width: `${Math.min(book.reading_progress_percent, 100)}%` }}
-                />
-              </div>
+          {/* "See all" link */}
+          <Link
+            to="/library"
+            className={cn(
+              'flex-shrink-0 w-32 md:w-40 aspect-[2/3]',
+              'rounded-xl border-2 border-dashed border-border',
+              'flex flex-col items-center justify-center gap-2',
+              'text-muted-foreground hover:text-primary hover:border-primary/50',
+              'transition-colors duration-200'
             )}
-          </m.div>
-        ))}
-
-        {/* "See all" link */}
-        <Link
-          to="/library"
-          className={cn(
-            'flex-shrink-0 w-24 sm:w-32 md:w-40 aspect-[2/3] snap-start',
-            'rounded-xl border-2 border-dashed border-border',
-            'flex flex-col items-center justify-center gap-2',
-            'text-muted-foreground hover:text-primary hover:border-primary/50',
-            'transition-colors duration-200'
-          )}
-        >
-          <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6" />
-          <span className="text-xs sm:text-sm font-medium">Все книги</span>
-        </Link>
+          >
+            <ArrowRight className="w-6 h-6" />
+            <span className="text-sm font-medium">Все книги</span>
+          </Link>
+        </div>
       </div>
-    </div>
-  </m.section>
+    </m.section>
   );
 };
 

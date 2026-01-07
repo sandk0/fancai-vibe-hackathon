@@ -37,8 +37,8 @@ export const AdminTabNavigation: React.FC<AdminTabNavigationProps> = ({
   ];
 
   return (
-    <div className="mb-4 sm:mb-6 md:mb-8 border-b border-border overflow-x-clip">
-      <div className="overflow-x-auto pb-px scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0">
+    <div className="mb-4 sm:mb-6 md:mb-8 border-b border-border">
+      <div className="overflow-x-auto pb-px scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0 overscroll-x-contain">
         <nav className="-mb-px flex space-x-1 sm:space-x-2 md:space-x-4" aria-label="Tabs">
           {tabs.map((tab) => {
             const Icon = tab.icon;
