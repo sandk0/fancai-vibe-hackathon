@@ -375,11 +375,11 @@ export function useDeleteBook(
         skip: number;
         limit: number;
       }>({ queryKey: bookKeys.all(userId) }, (old) => {
-        if (!old) return old;
+        if (!old || !old.books) return old;
         return {
           ...old,
           books: old.books.filter((book) => book.id !== bookId),
-          total: old.total - 1,
+          total: Math.max(0, (old.total || 0) - 1),
         };
       });
 
