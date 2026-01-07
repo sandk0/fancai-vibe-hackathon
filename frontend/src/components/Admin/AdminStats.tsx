@@ -52,7 +52,7 @@ export const AdminStats: React.FC<AdminStatsProps> = ({ stats, isLoading, t }) =
 
   return (
     <div
-      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+      className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6"
       aria-busy={isLoading}
       aria-live="polite"
     >
@@ -61,18 +61,18 @@ export const AdminStats: React.FC<AdminStatsProps> = ({ stats, isLoading, t }) =
         return (
           <div
             key={index}
-            className="bg-card rounded-xl p-6 shadow-sm border border-border"
+            className="bg-card rounded-xl p-4 sm:p-5 md:p-6 shadow-sm border border-border"
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">
                   {stat.title}
                 </p>
-                <p className="text-2xl font-bold text-foreground">
+                <p className="text-xl sm:text-2xl font-bold text-foreground">
                   {isLoading ? '...' : stat.value.toLocaleString()}
                 </p>
               </div>
-              <Icon className={`w-8 h-8 text-${stat.color}-500`} aria-hidden="true" />
+              <Icon className={`w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 text-${stat.color}-500`} aria-hidden="true" />
             </div>
           </div>
         );

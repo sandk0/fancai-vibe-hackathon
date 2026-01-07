@@ -29,20 +29,20 @@ export const AdminMultiNLPSettings: React.FC<AdminMultiNLPSettingsProps> = ({
   t
 }) => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Deprecation Notice */}
-      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-6">
-        <div className="flex items-start gap-4">
-          <AlertTriangle className="w-8 h-8 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-1" />
+      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 sm:p-6">
+        <div className="flex items-start gap-3 sm:gap-4">
+          <AlertTriangle className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5 sm:mt-1" />
           <div>
-            <h3 className="text-lg font-semibold text-amber-800 dark:text-amber-200 mb-2">
+            <h3 className="text-base sm:text-lg font-semibold text-amber-800 dark:text-amber-200 mb-2">
               {t('admin.nlpRemovedTitle') || 'NLP System Removed'}
             </h3>
-            <p className="text-amber-700 dark:text-amber-300 mb-4">
+            <p className="text-sm sm:text-base text-amber-700 dark:text-amber-300 mb-3 sm:mb-4">
               {t('admin.nlpRemovedDescription') ||
                 'The Multi-NLP system (SpaCy, Natasha, Stanza, GLiNER) has been removed in December 2025 for server optimization. Description extraction is now handled on-demand via LLM API (LangExtract/Google Gemini).'}
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm">
               <div className="bg-green-100 dark:bg-green-900/30 rounded-lg p-3">
                 <div className="font-medium text-green-800 dark:text-green-200 mb-1">
                   RAM Reduction
@@ -65,12 +65,12 @@ export const AdminMultiNLPSettings: React.FC<AdminMultiNLPSettingsProps> = ({
       </div>
 
       {/* LLM Extraction Info */}
-      <div className="bg-card rounded-lg p-6 shadow-sm border border-border">
-        <h3 className="text-lg font-medium text-foreground mb-4 flex items-center gap-2">
-          <Cpu className="w-5 h-5" />
+      <div className="bg-card rounded-lg p-4 sm:p-6 shadow-sm border border-border">
+        <h3 className="text-base sm:text-lg font-medium text-foreground mb-3 sm:mb-4 flex items-center gap-2">
+          <Cpu className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
           {t('admin.llmExtractionTitle') || 'LLM-Based Extraction'}
         </h3>
-        <div className="space-y-4 text-muted-foreground">
+        <div className="space-y-3 sm:space-y-4 text-sm sm:text-base text-muted-foreground">
           <p>
             {t('admin.llmExtractionInfo') ||
               'Descriptions are now extracted on-demand using Google Gemini API when a user navigates to a chapter. This approach:'}
@@ -96,8 +96,8 @@ export const AdminMultiNLPSettings: React.FC<AdminMultiNLPSettingsProps> = ({
       </div>
 
       {/* Configuration Note */}
-      <div className="bg-muted/50 rounded-lg p-4 border border-border">
-        <p className="text-sm text-muted-foreground">
+      <div className="bg-muted/50 rounded-lg p-3 sm:p-4 border border-border">
+        <p className="text-xs sm:text-sm text-muted-foreground">
           <strong>Configuration:</strong> Set <code className="bg-secondary px-1 rounded">GOOGLE_API_KEY</code> environment variable to enable LLM extraction.
         </p>
       </div>
