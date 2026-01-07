@@ -19,12 +19,12 @@ interface AdminHeaderProps {
 
 export const AdminHeader: React.FC<AdminHeaderProps> = ({ title, subtitle }) => {
   return (
-    <div className="mb-4 sm:mb-6 md:mb-8">
-      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
-        <Shield className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 flex-shrink-0" />
+    <div className="mb-3 sm:mb-4 md:mb-6">
+      <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground flex items-center gap-2">
+        <Shield className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 flex-shrink-0" />
         <span className="truncate">{title}</span>
       </h1>
-      <p className="mt-1 text-xs sm:text-sm md:text-base text-muted-foreground">
+      <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground">
         {subtitle}
       </p>
     </div>

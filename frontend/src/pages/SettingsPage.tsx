@@ -333,20 +333,20 @@ const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 w-full overflow-x-hidden">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-2 sm:py-4 lg:py-6 w-full max-w-full box-border">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2 text-foreground break-words">
+      <div className="mb-3 sm:mb-4 md:mb-6">
+        <h1 className="text-lg sm:text-xl md:text-2xl font-bold mb-1 text-foreground break-words">
           {t('settings.title')}
         </h1>
-        <p className="text-lg text-muted-foreground break-words">
+        <p className="text-xs sm:text-sm text-muted-foreground break-words">
           Настройте ваш процесс чтения и управляйте настройками аккаунта
         </p>
       </div>
 
       {/* Mobile/Tablet horizontal tabs */}
-      <div className="lg:hidden mb-6 overflow-x-auto -mx-4 px-4">
-        <div className="flex gap-2 min-w-max pb-2">
+      <div className="lg:hidden mb-3 sm:mb-4 overflow-x-auto -mx-3 px-3 overscroll-x-contain">
+        <div className="flex gap-1.5 sm:gap-2 pb-2">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -355,13 +355,13 @@ const SettingsPage: React.FC = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  'flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap min-h-[44px] transition-colors',
+                  'flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg whitespace-nowrap min-h-[36px] sm:min-h-[40px] transition-colors text-xs sm:text-sm',
                   isActive
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-foreground hover:bg-muted/80'
                 )}
               >
-                <Icon className="h-5 w-5 flex-shrink-0" />
+                <Icon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                 <span className="font-medium">{tab.label}</span>
               </button>
             );
@@ -408,8 +408,8 @@ const SettingsPage: React.FC = () => {
         </aside>
 
         {/* Main Content */}
-        <main className="lg:col-span-9 min-w-0">
-          <div className="rounded-xl border-2 p-4 sm:p-6 lg:p-8 bg-background border-border overflow-hidden">
+        <main className="lg:col-span-9 min-w-0 w-full max-w-full">
+          <div className="rounded-lg sm:rounded-xl border sm:border-2 p-3 sm:p-4 lg:p-6 bg-background border-border overflow-hidden">
             {renderTabContent()}
           </div>
         </main>

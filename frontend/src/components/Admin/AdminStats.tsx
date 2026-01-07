@@ -52,7 +52,7 @@ export const AdminStats: React.FC<AdminStatsProps> = ({ stats, isLoading, t }) =
 
   return (
     <div
-      className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4"
+      className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 w-full max-w-full"
       aria-busy={isLoading}
       aria-live="polite"
     >
