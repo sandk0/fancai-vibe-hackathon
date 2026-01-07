@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { ChevronDown, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -102,7 +102,7 @@ export const Accordion: React.FC<AccordionProps> = ({
                   )}
                 </div>
               </div>
-              <motion.div
+              <m.div
                 animate={{ rotate: open ? 180 : 0 }}
                 transition={{ duration: 0.2 }}
               >
@@ -113,13 +113,13 @@ export const Accordion: React.FC<AccordionProps> = ({
                   )}
                   aria-hidden="true"
                 />
-              </motion.div>
+              </m.div>
             </button>
 
             {/* Content */}
             <AnimatePresence initial={false}>
               {open && (
-                <motion.div
+                <m.div
                   id={contentId}
                   role="region"
                   aria-labelledby={headerId}
@@ -132,7 +132,7 @@ export const Accordion: React.FC<AccordionProps> = ({
                   <div className="p-4 pt-0 border-t border-border">
                     {item.content}
                   </div>
-                </motion.div>
+                </m.div>
               )}
             </AnimatePresence>
           </div>
