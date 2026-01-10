@@ -106,7 +106,7 @@ const BookPage: React.FC = () => {
                 <AuthenticatedImage
                   src={
                     book.has_cover
-                      ? `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/books/${book.id}/cover`
+                      ? `${import.meta.env.VITE_API_BASE_URL || '/api/v1'}/books/${book.id}/cover`
                       : null
                   }
                   alt={`${book.title} cover`}

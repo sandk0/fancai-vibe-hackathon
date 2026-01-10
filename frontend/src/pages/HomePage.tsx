@@ -287,7 +287,7 @@ const ContinueReadingCard: React.FC<{ book: Book; isLoading: boolean }> = ({
           <div className="flex-shrink-0 w-16 sm:w-20 aspect-[2/3] rounded-lg overflow-hidden">
             {book.has_cover ? (
               <AuthenticatedImage
-                src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/books/${book.id}/cover`}
+                src={`${import.meta.env.VITE_API_BASE_URL || '/api/v1'}/books/${book.id}/cover`}
                 alt={`${book.title} cover`}
                 className="w-full h-full object-cover"
                 fallback={
@@ -437,7 +437,7 @@ const RecentBooksSection: React.FC<{ books: Book[]; isLoading: boolean }> = ({
               <div className="aspect-[2/3] rounded-lg mb-1.5 overflow-hidden border border-border shadow-sm">
                 {book.has_cover ? (
                   <AuthenticatedImage
-                    src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/books/${book.id}/cover`}
+                    src={`${import.meta.env.VITE_API_BASE_URL || '/api/v1'}/books/${book.id}/cover`}
                     alt={`${book.title} cover`}
                     className="w-full h-full object-cover"
                     fallback={
@@ -505,7 +505,7 @@ const RecentBooksSection: React.FC<{ books: Book[]; isLoading: boolean }> = ({
               >
                 {book.has_cover ? (
                   <AuthenticatedImage
-                    src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/books/${book.id}/cover`}
+                    src={`${import.meta.env.VITE_API_BASE_URL || '/api/v1'}/books/${book.id}/cover`}
                     alt={`${book.title} cover`}
                     className="w-full h-full object-cover"
                     fallback={

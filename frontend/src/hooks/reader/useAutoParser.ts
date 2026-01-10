@@ -89,7 +89,7 @@ export const useAutoParser = (
     console.log('📝 [useAutoParser] Auto-triggering parsing for book:', bookId);
     setIsAutoParsing(true);
 
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
     fetch(`${apiUrl}/books/${bookId}/process`, {
       method: 'POST',
       headers: {

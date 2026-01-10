@@ -168,7 +168,7 @@ class DownloadManager {
         title: book.title,
         author: book.author,
         coverUrl: book.has_cover
-          ? `${import.meta.env.VITE_API_URL || '/api/v1'}/books/${bookId}/cover`
+          ? `${import.meta.env.VITE_API_BASE_URL || '/api/v1'}/books/${bookId}/cover`
           : null,
         totalChapters,
         fileSize: book.file_size || 0,

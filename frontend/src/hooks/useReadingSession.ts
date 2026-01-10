@@ -321,7 +321,7 @@ export function useReadingSession({
             onError: () => {
               // If graceful end fails, use beacon API as fallback
               try {
-                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+                const apiUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
                 navigator.sendBeacon(
                   `${apiUrl}/reading-sessions/${sessionId}/end`,
                   JSON.stringify({
