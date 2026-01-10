@@ -24,8 +24,9 @@
 
 services:
   # PostgreSQL Database (optimized for 8GB server)
+  # NOTE: Using v15 because server data was initialized with v15, and v17 is incompatible
   postgres:
-    image: postgres:17-alpine
+    image: postgres:15-alpine
     container_name: bookreader_postgres_lite
     environment:
       POSTGRES_DB: ${DB_NAME:-bookreader_dev}
