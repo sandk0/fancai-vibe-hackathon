@@ -62,7 +62,12 @@ RUN mkdir -p /tmp/nginx /var/cache/nginx/client_temp && \
     mkdir -p /var/cache/nginx/proxy_temp && \
     mkdir -p /var/cache/nginx/fastcgi_temp && \
     mkdir -p /var/cache/nginx/uwsgi_temp && \
-    mkdir -p /var/cache/nginx/scgi_temp
+    mkdir -p /var/cache/nginx/scgi_temp && \
+    mkdir -p /var/run/nginx
+
+# Fix nginx.conf to use writable pid location (for non-root user)
+RUN sed -i 's|/run/nginx.pid|/tmp/nginx.pid|g' /etc/nginx/nginx.conf && \
+    sed -i 's|user  nginx;|#user  nginx;|g' /etc/nginx/nginx.conf
 
 # Set proper permissions
 RUN chown -R nginx:nginx /usr/share/nginx/html && \
