@@ -19,9 +19,10 @@
 import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { booksAPI } from '@/api/books';
-import { getCurrentUserId, bookKeys, descriptionKeys } from './queryKeys';
+import { bookKeys, descriptionKeys } from './queryKeys';
 import { chapterCache } from '@/services/chapterCache';
 import { notify } from '@/stores/ui';
+import { useAuthStore } from '@/stores/auth';
 
 interface UseParsingStatusOptions {
   /** Book ID to track */
@@ -53,7 +54,9 @@ export function useParsingStatus({
   pollingInterval = 3000,
 }: UseParsingStatusOptions): UseParsingStatusReturn {
   const queryClient = useQueryClient();
-  const userId = getCurrentUserId();
+  // Get userId reactively - handles PWA rehydration gracefully
+  const user = useAuthStore((state) => state.user);
+  const userId = user?.id || '';
   const previousIsParsing = useRef<boolean | null>(null);
 
   const query = useQuery({
@@ -87,13 +90,13 @@ export function useParsingStatus({
       }
       return false;
     },
-    enabled: enabled && !!bookId,
+    enabled: enabled && !!bookId && !!userId,
     staleTime: 1000, // Consider data stale quickly during parsing
   });
 
   // Detect when parsing completes and invalidate caches
   useEffect(() => {
-    if (!query.data) return;
+    if (!query.data || !userId) return;
 
     const { isParsing, isReady, progress } = query.data;
 

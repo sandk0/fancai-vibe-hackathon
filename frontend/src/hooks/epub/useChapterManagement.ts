@@ -32,7 +32,7 @@ import { booksAPI } from '@/api/books';
 import { imagesAPI } from '@/api/images';
 import type { Description, GeneratedImage } from '@/types/api';
 import { chapterCache } from '@/services/chapterCache';
-import { getCurrentUserId } from '@/hooks/api/queryKeys';
+import { useAuthStore } from '@/stores/auth';
 
 // Conditional logging - only in development mode
 const devLog = import.meta.env.DEV
@@ -67,7 +67,11 @@ export const useChapterManagement = ({
   getChapterNumberByLocation,
   isRestoringPosition = false,
 }: UseChapterManagementOptions): UseChapterManagementReturn => {
-  const userId = getCurrentUserId();
+  // Get userId reactively from auth store - handles PWA resume/rehydration gracefully
+  // Using hook instead of getCurrentUserId() which throws during auth rehydration
+  const user = useAuthStore((state) => state.user);
+  const userId = user?.id || '';
+
   const [currentChapter, setCurrentChapter] = useState<number>(1);
   const [descriptions, setDescriptions] = useState<Description[]>([]);
   const [images, setImages] = useState<GeneratedImage[]>([]);
@@ -128,9 +132,16 @@ export const useChapterManagement = ({
    * Load descriptions and images for current chapter
    * ОПТИМИЗАЦИЯ: Использует IndexedDB кэш для избежания повторных API запросов
    * FIXED (2025-12-25): Added AbortController to cancel pending requests
+   * FIXED (2026-01-10): Skip loading if userId is not available (PWA rehydration)
    */
   const loadChapterData = useCallback(async (chapter: number) => {
     if (!bookId || chapter <= 0) return;
+
+    // Skip if userId is not available (auth rehydrating after PWA resume)
+    if (!userId) {
+      devLog('Waiting: No userId available, deferring chapter load');
+      return;
+    }
 
     // Cancel any previous pending request
     if (abortControllerRef.current) {
@@ -348,7 +359,7 @@ export const useChapterManagement = ({
     chapterNumber: number,
     allowLLMExtraction: boolean = true
   ): Promise<boolean> => {
-    if (!bookId || chapterNumber <= 0) return false;
+    if (!bookId || chapterNumber <= 0 || !userId) return false;
 
     try {
       // Проверяем, есть ли уже в кэше
@@ -593,6 +604,7 @@ export const useChapterManagement = ({
   /**
    * Load chapter data when chapter changes
    * FIXED (2025-12-25): Skip loading during position restoration to prevent race condition
+   * FIXED (2026-01-10): Also trigger when userId becomes available (PWA rehydration)
    */
   useEffect(() => {
     if (currentChapter > 0) {
@@ -600,22 +612,28 @@ export const useChapterManagement = ({
         // Store pending chapter to load after restoration completes
         devLog('Waiting: Position restoration in progress, deferring chapter load:', currentChapter);
         pendingChapterRef.current = currentChapter;
-      } else {
+      } else if (userId) {
+        // Only load if userId is available
         loadChapterData(currentChapter);
+      } else {
+        // userId not yet available (PWA rehydrating), defer loading
+        devLog('Waiting: No userId, deferring chapter load:', currentChapter);
+        pendingChapterRef.current = currentChapter;
       }
     }
-  }, [currentChapter, loadChapterData, isRestoringPosition]);
+  }, [currentChapter, loadChapterData, isRestoringPosition, userId]);
 
   /**
-   * Load pending chapter after position restoration completes
+   * Load pending chapter after position restoration completes OR userId becomes available
+   * FIXED (2026-01-10): Also load when userId becomes available (PWA rehydration)
    */
   useEffect(() => {
-    if (!isRestoringPosition && pendingChapterRef.current !== null) {
-      devLog('Success: Position restoration complete, loading pending chapter:', pendingChapterRef.current);
+    if (!isRestoringPosition && userId && pendingChapterRef.current !== null) {
+      devLog('Success: Ready to load pending chapter:', pendingChapterRef.current);
       loadChapterData(pendingChapterRef.current);
       pendingChapterRef.current = null;
     }
-  }, [isRestoringPosition, loadChapterData]);
+  }, [isRestoringPosition, loadChapterData, userId]);
 
   /**
    * Cleanup: abort pending requests on unmount
