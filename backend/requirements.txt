@@ -69,3 +69,6 @@ sqlalchemy[mypy]==2.0.45
 python-dateutil==2.9.0.post0
 pillow>=11.0.0
 tenacity==9.0.0  # Retry library with exponential backoff
+
+# Web Push Notifications (January 2026)
+pywebpush>=2.0.0

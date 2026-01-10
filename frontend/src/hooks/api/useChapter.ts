@@ -1,11 +1,12 @@
 /**
  * React Query хуки для работы с главами книг
  *
- * Интеграция с chapterCache для оптимизации загрузки глав.
- * Кэширует главы в IndexedDB для offline доступа.
+ * Интеграция с Dexie.js для offline-first кэширования глав.
  *
  * Особенности:
- * - Двухуровневый кэш: React Query (memory) + IndexedDB (persistent)
+ * - Offline-first: сначала IndexedDB, потом сервер
+ * - Двухуровневый кэш: React Query (memory) + Dexie/IndexedDB (persistent)
+ * - Фоновое обновление при наличии сети
  * - Prefetching соседних глав
  * - Автоматическая инвалидация при обновлении книги
  *
@@ -20,6 +21,13 @@ import {
 } from '@tanstack/react-query';
 import { booksAPI } from '@/api/books';
 import { chapterCache } from '@/services/chapterCache';
+import {
+  db,
+  createChapterId,
+  type CachedChapter,
+  type CachedDescription,
+} from '@/services/db';
+import { isOnline } from '@/hooks/useOnlineStatus';
 import { chapterKeys, descriptionKeys, getCurrentUserId } from './queryKeys';
 import type { Chapter, Description } from '@/types/api';
 
@@ -35,12 +43,134 @@ interface ChapterResponse {
     previous_chapter?: number;
     next_chapter?: number;
   };
+  /** Флаг что данные из offline кэша */
+  _cached?: boolean;
+}
+
+/**
+ * Маппинг типов описаний из кэша в API формат
+ */
+function mapDescriptionType(cachedType: CachedDescription['type']): Description['type'] {
+  const typeMap: Record<CachedDescription['type'], Description['type']> = {
+    scene: 'action',
+    character: 'character',
+    setting: 'location',
+    object: 'object',
+  };
+  return typeMap[cachedType] ?? 'object';
+}
+
+/**
+ * Конвертирует CachedDescription в Description формат API
+ */
+function convertCachedDescriptions(
+  cached: CachedDescription[]
+): Description[] {
+  return cached.map((desc) => ({
+    id: desc.id,
+    content: desc.content,
+    type: mapDescriptionType(desc.type),
+    confidence_score: desc.confidence,
+    priority_score: desc.confidence, // Use confidence as priority fallback
+    entities_mentioned: [], // Empty for cached data
+    generated_image: desc.imageUrl ? {
+      id: `cached_${desc.id}`,
+      service_used: 'cached',
+      status: desc.imageStatus === 'generated' ? 'completed' : 'pending',
+      image_url: desc.imageUrl,
+      is_moderated: false,
+      view_count: 0,
+      download_count: 0,
+      created_at: new Date().toISOString(),
+      description: {
+        id: desc.id,
+        type: mapDescriptionType(desc.type),
+        text: desc.content,
+        content: desc.content,
+        confidence_score: desc.confidence,
+        priority_score: desc.confidence,
+      },
+      chapter: { id: '', number: 0, title: '' },
+    } : undefined,
+  })) as Description[];
+}
+
+/**
+ * Маппинг типов описаний из API в кэш формат
+ */
+function mapToCachedDescriptionType(apiType: Description['type']): CachedDescription['type'] {
+  const typeMap: Record<Description['type'], CachedDescription['type']> = {
+    action: 'scene',
+    character: 'character',
+    location: 'setting',
+    object: 'object',
+    atmosphere: 'setting',
+  };
+  return typeMap[apiType] ?? 'object';
+}
+
+/**
+ * Сохраняет главу в Dexie IndexedDB
+ */
+async function saveChapterToCache(
+  userId: string,
+  bookId: string,
+  chapterNumber: number,
+  response: ChapterResponse
+): Promise<void> {
+  const cacheId = createChapterId(userId, bookId, chapterNumber);
+
+  const cachedDescriptions: CachedDescription[] = (response.descriptions ?? []).map((desc) => ({
+    id: desc.id,
+    content: desc.content,
+    type: mapToCachedDescriptionType(desc.type),
+    confidence: desc.confidence_score ?? 0,
+    imageUrl: desc.generated_image?.image_url ?? null,
+    imageStatus: desc.generated_image?.status === 'completed' ? 'generated' as const : 'none' as const,
+  }));
+
+  const chapter: CachedChapter = {
+    id: cacheId,
+    userId,
+    bookId,
+    chapterNumber,
+    title: response.chapter.title ?? `Chapter ${chapterNumber}`,
+    content: response.chapter.content ?? '',
+    descriptions: cachedDescriptions,
+    wordCount: response.chapter.word_count ?? 0,
+    cachedAt: Date.now(),
+    lastAccessedAt: Date.now(),
+  };
+
+  await db.chapters.put(chapter);
+}
+
+/**
+ * Фоновое обновление главы с сервера (не блокирует UI)
+ */
+async function backgroundRefreshChapter(
+  userId: string,
+  bookId: string,
+  chapterNumber: number
+): Promise<void> {
+  try {
+    console.log(`🔄 [useChapter] Background refresh chapter ${chapterNumber}`);
+    const response = await booksAPI.getChapter(bookId, chapterNumber);
+    await saveChapterToCache(userId, bookId, chapterNumber, response);
+    console.log(`✅ [useChapter] Background refresh complete for chapter ${chapterNumber}`);
+  } catch (error) {
+    console.warn(`⚠️ [useChapter] Background refresh failed for chapter ${chapterNumber}:`, error);
+  }
 }
 
 /**
  * Получение конкретной главы книги
  *
- * Сначала проверяет IndexedDB кэш, затем загружает с API.
+ * Offline-first подход:
+ * 1. Сначала проверяет Dexie IndexedDB кэш
+ * 2. Если есть - возвращает сразу + запускает фоновое обновление
+ * 3. Если нет - загружает с API и сохраняет в кэш
+ *
  * Автоматически prefetch'ит следующую главу для плавной навигации.
  *
  * @param bookId - ID книги
@@ -55,6 +185,7 @@ interface ChapterResponse {
  *   console.log('Chapter:', data.chapter.title);
  *   console.log('Descriptions:', data.descriptions?.length);
  *   console.log('Has next:', data.navigation.has_next);
+ *   console.log('From cache:', data._cached);
  * }
  * ```
  */
@@ -68,21 +199,58 @@ export function useChapter(
 
   const query = useQuery({
     queryKey: chapterKeys.detail(userId, bookId, chapterNumber),
-    queryFn: async () => {
+    queryFn: async (): Promise<ChapterResponse> => {
       console.log(
         `📖 [useChapter] Fetching chapter ${chapterNumber} for book ${bookId}`
       );
 
-      // 1. Проверяем IndexedDB кэш
-      const cached = await chapterCache.get(userId, bookId, chapterNumber);
+      // 1. Проверяем Dexie IndexedDB кэш
+      const cacheId = createChapterId(userId, bookId, chapterNumber);
+      const cached = await db.chapters.get(cacheId);
+
       if (cached) {
         console.log(
-          `✅ [useChapter] Chapter ${chapterNumber} loaded from IndexedDB cache`
+          `✅ [useChapter] Chapter ${chapterNumber} loaded from Dexie cache`
         );
 
+        // Обновляем время последнего доступа
+        await db.chapters.update(cacheId, { lastAccessedAt: Date.now() }).catch(() => {});
+
+        // Если онлайн - запускаем фоновое обновление (не блокирует)
+        if (isOnline()) {
+          backgroundRefreshChapter(userId, bookId, chapterNumber).catch(() => {});
+        }
+
         // Возвращаем данные из кэша
-        // Navigation определим по наличию соседних глав в кэше
-        // (в реальности нужно хранить navigation в кэше)
+        return {
+          chapter: {
+            id: `${bookId}_${chapterNumber}`,
+            book_id: bookId,
+            number: chapterNumber,
+            title: cached.title,
+            content: cached.content,
+            word_count: cached.wordCount,
+            estimated_reading_time_minutes: Math.ceil(cached.wordCount / 200),
+            descriptions: convertCachedDescriptions(cached.descriptions),
+          } as Chapter,
+          descriptions: convertCachedDescriptions(cached.descriptions),
+          navigation: {
+            has_previous: chapterNumber > 1,
+            has_next: true, // Пессимистично предполагаем что есть следующая
+            previous_chapter: chapterNumber > 1 ? chapterNumber - 1 : undefined,
+            next_chapter: chapterNumber + 1,
+          },
+          _cached: true,
+        };
+      }
+
+      // 2. Пробуем старый chapterCache как fallback (для миграции)
+      const legacyCached = await chapterCache.get(userId, bookId, chapterNumber).catch(() => null);
+      if (legacyCached) {
+        console.log(
+          `✅ [useChapter] Chapter ${chapterNumber} loaded from legacy chapterCache`
+        );
+
         return {
           chapter: {
             id: `${bookId}_${chapterNumber}`,
@@ -92,31 +260,40 @@ export function useChapter(
             content: '',
             word_count: 0,
             estimated_reading_time_minutes: 0,
-            descriptions: cached.descriptions,
+            descriptions: legacyCached.descriptions,
           } as Chapter,
-          descriptions: cached.descriptions,
+          descriptions: legacyCached.descriptions,
           navigation: {
             has_previous: chapterNumber > 1,
             has_next: true,
             previous_chapter: chapterNumber > 1 ? chapterNumber - 1 : undefined,
             next_chapter: chapterNumber + 1,
           },
+          _cached: true,
         };
       }
 
-      // 2. Загружаем с API
+      // 3. Загружаем с API
       console.log(
         `📡 [useChapter] Chapter ${chapterNumber} not in cache, fetching from API`
       );
       const response = await booksAPI.getChapter(bookId, chapterNumber);
 
-      // 3. Сохраняем в IndexedDB кэш
+      // 4. Сохраняем в Dexie IndexedDB кэш
+      await saveChapterToCache(userId, bookId, chapterNumber, response).catch((err) => {
+        console.warn(
+          `⚠️ [useChapter] Failed to cache chapter ${chapterNumber} in Dexie:`,
+          err
+        );
+      });
+
+      // 5. Также сохраняем в старый chapterCache для обратной совместимости
       if (response.descriptions) {
         await chapterCache
           .set(userId, bookId, chapterNumber, response.descriptions, [])
           .catch((err) => {
             console.warn(
-              `⚠️ [useChapter] Failed to cache chapter ${chapterNumber}:`,
+              `⚠️ [useChapter] Failed to cache chapter ${chapterNumber} in legacy cache:`,
               err
             );
           });
@@ -124,7 +301,8 @@ export function useChapter(
 
       return response;
     },
-    staleTime: 10 * 60 * 1000, // 10 минут - главы редко меняются
+    // Увеличенный staleTime для offline-first
+    staleTime: 60 * 60 * 1000, // 1 час - главы редко меняются
     enabled: !!bookId && chapterNumber > 0,
     ...options,
   });

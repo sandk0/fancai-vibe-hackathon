@@ -87,7 +87,7 @@ describe('useOnlineStatus', () => {
       const eventListener = vi.fn();
       window.addEventListener(ONLINE_EVENT, eventListener);
 
-      const { result } = renderHook(() => useOnlineStatus());
+      renderHook(() => useOnlineStatus());
 
       act(() => {
         window.dispatchEvent(new Event('online'));
@@ -138,7 +138,7 @@ describe('useOnlineStatus', () => {
       const eventListener = vi.fn();
       window.addEventListener(OFFLINE_EVENT, eventListener);
 
-      const { result } = renderHook(() => useOnlineStatus());
+      renderHook(() => useOnlineStatus());
 
       act(() => {
         window.dispatchEvent(new Event('offline'));
@@ -308,7 +308,7 @@ describe('useOnlineStatus', () => {
 
   describe('Console Logging', () => {
     it('should log when network is restored', () => {
-      const { result } = renderHook(() => useOnlineStatus());
+      renderHook(() => useOnlineStatus());
 
       act(() => {
         window.dispatchEvent(new Event('online'));
@@ -320,7 +320,7 @@ describe('useOnlineStatus', () => {
     });
 
     it('should log when network is lost', () => {
-      const { result } = renderHook(() => useOnlineStatus());
+      renderHook(() => useOnlineStatus());
 
       act(() => {
         window.dispatchEvent(new Event('offline'));

@@ -1,63 +1,23 @@
-// Service Worker Registration and Management
+// Service Worker Utilities
+// NOTE: Service Worker registration is handled by VitePWA in main.tsx
+// This file provides utility functions for SW interaction
 import { useUIStore } from '@/stores/ui';
 
-// Reserved for future localhost-specific logic (currently unused)
-// const _isLocalhost = Boolean(
-//   window.location.hostname === 'localhost' ||
-//   window.location.hostname === '[::1]' ||
-//   window.location.hostname.match(
-//     /^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/
-//   )
-// );
-
+/**
+ * @deprecated Use VitePWA registerSW in main.tsx instead
+ * This function is kept for backward compatibility but does nothing
+ */
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
-  if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
-    const { notify } = useUIStore.getState();
+  console.warn('[SW] registerServiceWorker is deprecated. SW is registered by VitePWA in main.tsx');
 
-    try {
-      const registration = await navigator.serviceWorker.register('/sw.js', {
-        scope: '/',
-      });
-
-      console.log('SW registered:', registration);
-
-      registration.addEventListener('updatefound', () => {
-        const newWorker = registration.installing;
-        
-        if (newWorker) {
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed') {
-              if (navigator.serviceWorker.controller) {
-                // New content available
-                notify.info(
-                  'App Update Available',
-                  'New content is available. Refresh to update.'
-                );
-              } else {
-                // Content cached for offline use
-                notify.success(
-                  'App Ready',
-                  'fancai is now available offline!'
-                );
-              }
-            }
-          });
-        }
-      });
-
-      // Handle service worker messages
-      navigator.serviceWorker.addEventListener('message', (event) => {
-        handleServiceWorkerMessage(event.data);
-      });
-
-      return registration;
-    } catch (error) {
-      console.error('SW registration failed:', error);
-      return null;
-    }
+  // Set up message listener for custom SW events
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      handleServiceWorkerMessage(event.data);
+    });
   }
 
-  return null;
+  return navigator.serviceWorker?.ready || null;
 }
 
 export async function unregisterServiceWorker(): Promise<boolean> {
@@ -102,23 +62,23 @@ function handleServiceWorkerMessage(data: unknown): void {
 
   switch (messageData.type) {
     case 'CACHE_UPDATED':
-      console.log('Cache updated:', messageData.cacheName as string);
+      console.log('[SW] Cache updated:', messageData.cacheName as string);
       break;
-      
+
     case 'OFFLINE_FALLBACK':
       notify.warning(
         'Offline Mode',
         'You are currently offline. Some features may not be available.'
       );
       break;
-      
+
     case 'BACK_ONLINE':
       notify.success(
         'Back Online',
         'Your connection has been restored!'
       );
       break;
-      
+
     case 'SYNC_COMPLETE':
       notify.success(
         'Data Synced',
@@ -126,8 +86,16 @@ function handleServiceWorkerMessage(data: unknown): void {
       );
       break;
 
+    case 'SYNC_REQUESTED':
+      // Background sync triggered - notify syncQueue to process
+      console.log('[SW] Sync requested:', messageData.tag);
+      window.dispatchEvent(new CustomEvent('sw-sync-requested', {
+        detail: { tag: messageData.tag }
+      }));
+      break;
+
     default:
-      console.log('Unknown SW message:', messageData);
+      console.log('[SW] Unknown message:', messageData);
   }
 }
 

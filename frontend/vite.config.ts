@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import { visualizer } from 'rollup-plugin-visualizer'
+import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -14,6 +15,47 @@ export default defineConfig({
       gzipSize: true,
       brotliSize: true,
     }) as any,
+    // PWA - Service Worker generation via Workbox injectManifest
+    // Custom SW at src/sw.ts for more flexible caching control
+    VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      registerType: 'prompt', // User decides when to update
+      injectRegister: false, // We register manually in main.tsx
+
+      // Static assets to include in precache
+      includeAssets: [
+        'icon-192.png',
+        'manifest.json',
+      ],
+
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,woff}'],
+        // Exclude large files and sourcemaps from precache
+        globIgnores: ['**/stats.html', '**/*.map'],
+      },
+
+      // Workbox options for production
+      workbox: {
+        // SPA fallback for navigation requests
+        navigateFallback: '/index.html',
+        // Exclude API routes from navigation fallback
+        navigateFallbackDenylist: [/^\/api\//],
+        // Clean old caches
+        cleanupOutdatedCaches: true,
+        // Client claims for immediate control
+        clientsClaim: true,
+      },
+
+      manifest: false, // Use existing public/manifest.json
+
+      devOptions: {
+        enabled: true,
+        type: 'module',
+        navigateFallback: 'index.html',
+      },
+    }),
   ],
   resolve: {
     alias: {

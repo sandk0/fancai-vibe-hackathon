@@ -110,6 +110,9 @@ class User(Base):
     generated_images = relationship(
         "GeneratedImage", back_populates="user", cascade="all, delete-orphan", lazy="raise"
     )
+    push_subscriptions = relationship(
+        "PushSubscription", back_populates="user", cascade="all, delete-orphan", lazy="raise"
+    )
 
     def __repr__(self):
         return f"<User(id={self.id}, email='{self.email}')>"

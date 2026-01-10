@@ -51,7 +51,7 @@ describe('useDescriptionHighlighting', () => {
 
   describe('Initial Setup', () => {
     it('should skip highlighting when rendition is null', () => {
-      const { result } = renderHook(() =>
+      renderHook(() =>
         useDescriptionHighlighting({
           rendition: null,
           descriptions: [],
@@ -65,7 +65,7 @@ describe('useDescriptionHighlighting', () => {
     });
 
     it('should skip highlighting when enabled is false', () => {
-      const { result } = renderHook(() =>
+      renderHook(() =>
         useDescriptionHighlighting({
           rendition: mockRendition as Rendition,
           descriptions: [],
@@ -82,7 +82,7 @@ describe('useDescriptionHighlighting', () => {
     });
 
     it('should skip highlighting when descriptions array is empty', () => {
-      const { result } = renderHook(() =>
+      renderHook(() =>
         useDescriptionHighlighting({
           rendition: mockRendition as Rendition,
           descriptions: [],
@@ -165,10 +165,11 @@ describe('useDescriptionHighlighting', () => {
       const descriptions: Description[] = [
         {
           id: 'desc-1',
-          chapter_id: 'ch-1',
           content: 'Test content with some text to highlight',
           type: 'character',
           confidence_score: 0.9,
+          priority_score: 0.5,
+          entities_mentioned: [],
         },
       ];
 
@@ -202,10 +203,11 @@ describe('useDescriptionHighlighting', () => {
       const descriptions: Description[] = [
         {
           id: 'desc-1',
-          chapter_id: 'ch-1',
           content: 'Test content',
           type: 'location',
           confidence_score: 0.85,
+          priority_score: 0.5,
+          entities_mentioned: [],
         },
       ];
 
@@ -241,10 +243,11 @@ describe('useDescriptionHighlighting', () => {
       const descriptions: Description[] = [
         {
           id: 'desc-1',
-          chapter_id: 'ch-1',
           content: 'some text',
           type: 'character',
           confidence_score: 0.9,
+          priority_score: 0.5,
+          entities_mentioned: [],
         },
       ];
 
@@ -282,10 +285,11 @@ describe('useDescriptionHighlighting', () => {
       const descriptions: Description[] = [
         {
           id: 'desc-1',
-          chapter_id: 'ch-1',
           content: 'clickable text',
           type: 'character',
           confidence_score: 0.9,
+          priority_score: 0.5,
+          entities_mentioned: [],
         },
       ];
 
@@ -323,25 +327,38 @@ describe('useDescriptionHighlighting', () => {
       const descriptions: Description[] = [
         {
           id: 'desc-1',
-          chapter_id: 'ch-1',
           content: 'text with image',
           type: 'character',
           confidence_score: 0.9,
+          priority_score: 0.5,
+          entities_mentioned: [],
         },
       ];
 
       const images: GeneratedImage[] = [
         {
           id: 'img-1',
-          book_id: 'book-1',
-          chapter_id: 'ch-1',
-          description: descriptions[0],
           image_url: 'https://example.com/image.png',
           service_used: 'imagen',
-          prompt: 'test prompt',
+          prompt_used: 'test prompt',
           status: 'completed',
+          is_moderated: false,
+          view_count: 0,
+          download_count: 0,
           created_at: new Date().toISOString(),
-        },
+          description: {
+            id: 'desc-1',
+            type: 'character',
+            text: 'text with image',
+            content: 'text with image',
+            confidence_score: 0.9,
+            priority_score: 0.5,
+          },
+          chapter: {
+            id: 'ch-1',
+            number: 1,
+          },
+        } as GeneratedImage,
       ];
 
       mockDocument.body.innerHTML = '<p>Here is text with image content.</p>';
@@ -379,17 +396,19 @@ describe('useDescriptionHighlighting', () => {
       const descriptions: Description[] = [
         {
           id: 'desc-1',
-          chapter_id: 'ch-1',
           content: 'first description',
           type: 'character',
           confidence_score: 0.9,
+          priority_score: 0.5,
+          entities_mentioned: [],
         },
         {
           id: 'desc-2',
-          chapter_id: 'ch-1',
           content: 'second description',
           type: 'location',
           confidence_score: 0.85,
+          priority_score: 0.5,
+          entities_mentioned: [],
         },
       ];
 
@@ -442,10 +461,11 @@ describe('useDescriptionHighlighting', () => {
       const newDescriptions: Description[] = [
         {
           id: 'desc-1',
-          chapter_id: 'ch-1',
           content: 'Test content',
           type: 'character',
           confidence_score: 0.9,
+          priority_score: 0.5,
+          entities_mentioned: [],
         },
       ];
 
@@ -463,10 +483,11 @@ describe('useDescriptionHighlighting', () => {
       const descriptions: Description[] = [
         {
           id: 'desc-old',
-          chapter_id: 'ch-1',
           content: 'old content',
           type: 'character',
           confidence_score: 0.9,
+          priority_score: 0.5,
+          entities_mentioned: [],
         },
       ];
 
@@ -508,10 +529,11 @@ describe('useDescriptionHighlighting', () => {
       const descriptions: Description[] = [
         {
           id: 'desc-1',
-          chapter_id: 'ch-1',
           content: 'current content',
           type: 'character',
           confidence_score: 0.9,
+          priority_score: 0.5,
+          entities_mentioned: [],
         },
       ];
 
@@ -553,10 +575,11 @@ describe('useDescriptionHighlighting', () => {
       const descriptions: Description[] = [
         {
           id: 'desc-1',
-          chapter_id: 'ch-1',
           content: 'performance test',
           type: 'character',
           confidence_score: 0.9,
+          priority_score: 0.5,
+          entities_mentioned: [],
         },
       ];
 
@@ -601,10 +624,11 @@ describe('useDescriptionHighlighting', () => {
       const descriptions: Description[] = [
         {
           id: 'desc-1',
-          chapter_id: 'ch-1',
           content: 'slow test',
           type: 'character',
           confidence_score: 0.9,
+          priority_score: 0.5,
+          entities_mentioned: [],
         },
       ];
 
@@ -651,10 +675,11 @@ describe('useDescriptionHighlighting', () => {
       const descriptions: Description[] = [
         {
           id: 'desc-1',
-          chapter_id: 'ch-1',
           content: 'missing content',
           type: 'character',
           confidence_score: 0.9,
+          priority_score: 0.5,
+          entities_mentioned: [],
         },
       ];
 
@@ -685,10 +710,11 @@ describe('useDescriptionHighlighting', () => {
       const descriptions: Description[] = [
         {
           id: 'desc-1',
-          chapter_id: 'ch-1',
           content: 'text with "quotes" and — dashes',
           type: 'character',
           confidence_score: 0.9,
+          priority_score: 0.5,
+          entities_mentioned: [],
         },
       ];
 
@@ -721,10 +747,11 @@ describe('useDescriptionHighlighting', () => {
       const descriptions: Description[] = [
         {
           id: 'desc-1',
-          chapter_id: 'ch-1',
           content: 'Hi',
           type: 'character',
           confidence_score: 0.9,
+          priority_score: 0.5,
+          entities_mentioned: [],
         },
       ];
 

@@ -12,6 +12,7 @@ from .image import GeneratedImage
 from .reading_session import ReadingSession
 from .reading_goal import ReadingGoal, GoalType, GoalPeriod
 from .feature_flag import FeatureFlag, FeatureFlagCategory
+from .push_subscription import PushSubscription
 
 __all__ = [
     "User",
@@ -28,4 +29,5 @@ __all__ = [
     "GoalPeriod",
     "FeatureFlag",
     "FeatureFlagCategory",
+    "PushSubscription",
 ]

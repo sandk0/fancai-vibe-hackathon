@@ -10,6 +10,7 @@ from .admin import router as admin_router
 from .images import router as images_router
 from .reading_sessions import router as reading_sessions_router
 from .health import router as health_router
+from .push import router as push_router
 
 __all__ = [
     "books_router",
@@ -22,4 +23,5 @@ __all__ = [
     "images_router",
     "reading_sessions_router",
     "health_router",
+    "push_router",
 ]

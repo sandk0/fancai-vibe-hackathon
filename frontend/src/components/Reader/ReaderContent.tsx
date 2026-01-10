@@ -21,7 +21,7 @@ interface ReaderContentProps {
   fontSize: number;
   fontFamily: string;
   lineHeight: number;
-  contentRef: React.RefObject<HTMLDivElement>;
+  contentRef: React.RefObject<HTMLDivElement | null>;
 }
 
 export const ReaderContent: React.FC<ReaderContentProps> = React.memo(({

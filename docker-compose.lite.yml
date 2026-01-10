@@ -25,7 +25,7 @@
 services:
   # PostgreSQL Database (optimized for 8GB server)
   postgres:
-    image: postgres:15.7-alpine
+    image: postgres:17-alpine
     container_name: bookreader_postgres_lite
     environment:
       POSTGRES_DB: ${DB_NAME:-bookreader_dev}
@@ -122,6 +122,10 @@ services:
       - USE_NLP_PROCESSORS=false
       # Image generation
       - POLLINATIONS_ENABLED=${POLLINATIONS_ENABLED:-true}
+      # Web Push (VAPID) - required for PWA notifications
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
+      - VAPID_SUBJECT=${VAPID_SUBJECT:-mailto:admin@fancai.ru}
     volumes:
       - ./backend:/app
       - uploaded_books:/app/storage
@@ -173,6 +177,10 @@ services:
       - USE_ADVANCED_PARSER=false
       - USE_NLP_PROCESSORS=false
       - MAX_FILE_SIZE=${MAX_FILE_SIZE:-52428800}
+      # Web Push (VAPID) - required for PWA notifications from Celery tasks
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
+      - VAPID_SUBJECT=${VAPID_SUBJECT:-mailto:admin@fancai.ru}
     volumes:
       - ./backend:/app
       - uploaded_books:/app/storage
@@ -239,51 +247,47 @@ services:
     restart: unless-stopped
     command: celery -A app.core.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
 
-  # React + Vite Frontend (dev server - light resources)
+  # React + Vite Frontend (Production Build with nginx)
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.prod
+      args:
+        - VITE_API_URL=${VITE_API_URL:-/api/v1}
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-}
+        - VITE_WS_URL=${VITE_WS_URL:-/ws}
+        - VITE_APP_NAME=${VITE_APP_NAME:-fancai}
+        - VITE_ENVIRONMENT=${ENVIRONMENT:-production}
     container_name: bookreader_frontend_lite
     environment:
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:8000/api/v1}
-      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8000}
-      - VITE_WS_URL=${VITE_WS_URL:-ws://localhost:8000}
-      - VITE_APP_NAME=${VITE_APP_NAME:-FanCai - AI Читалка}
-      - VITE_DEBUG=${DEBUG:-false}
-      - VITE_ENVIRONMENT=${ENVIRONMENT:-development}
-    volumes:
-      - ./frontend:/app
-      - frontend_node_modules:/app/node_modules
+      - NODE_ENV=production
     ports:
-      - "5173:5173"
+      - "5173:80"
     depends_on:
       backend:
         condition: service_healthy
     networks:
       - bookreader_network
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:5173"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 30s
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.2'
+          cpus: '0.3'
           memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
     restart: unless-stopped
-    command: npm run dev -- --host 0.0.0.0
 
 volumes:
   postgres_data:
   redis_data:
   uploaded_books:
-  frontend_node_modules:
 
 networks:
   bookreader_network:

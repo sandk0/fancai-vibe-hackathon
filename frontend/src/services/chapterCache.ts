@@ -1,137 +1,131 @@
 /**
- * IndexedDB Chapter Cache Service
+ * IndexedDB Chapter Cache Service (Dexie.js)
  *
- * Кэширует загруженные главы книг для уменьшения запросов к API
- * и ускорения навигации по книге.
+ * Provides offline caching for book chapters using Dexie.js.
+ * Migrated from raw IndexedDB for improved developer experience and reliability.
  *
- * Особенности:
- * - Хранение глав в IndexedDB (descriptions + images)
- * - TTL (Time To Live) - 7 дней по умолчанию
- * - LRU (Least Recently Used) cleanup при превышении лимита
- * - Инвалидация при обновлении книги
+ * Features:
+ * - Store chapters with descriptions in IndexedDB via Dexie
+ * - TTL (Time To Live) - 7 days by default
+ * - LRU (Least Recently Used) cleanup
+ * - User data isolation
+ * - Reactive queries with useLiveQuery support
  *
  * @module services/chapterCache
  */
 
-import type { Description, GeneratedImage } from '@/types/api';
+import { db, createChapterId, CHAPTER_CACHE_TTL, type CachedChapter, type CachedDescription } from './db'
+import type { Description, GeneratedImage } from '@/types/api'
 
-const DB_NAME = 'BookReaderChapterCache';
-const DB_VERSION = 2; // v2: Added userId isolation and userBookChapter index
-const STORE_NAME = 'chapters';
-const CACHE_EXPIRATION_DAYS = 7;
-const MAX_CHAPTERS_PER_BOOK = 50; // Максимум глав одной книги в кэше
-
-interface CachedChapter {
-  id: string; // Composite key: `${userId}:${bookId}:${chapterNumber}`
-  userId: string; // User ID для изоляции данных
-  bookId: string;
-  chapterNumber: number;
-  descriptions: Description[];
-  images: GeneratedImage[];
-  cachedAt: number; // Timestamp
-  lastAccessedAt: number; // Для LRU
-}
+const MAX_CHAPTERS_PER_BOOK = 50
 
 interface CacheStats {
-  totalChapters: number;
-  chaptersByBook: Record<string, number>;
-  oldestCacheDate: Date | null;
-  newestCacheDate: Date | null;
+  totalChapters: number
+  chaptersByBook: Record<string, number>
+  oldestCacheDate: Date | null
+  newestCacheDate: Date | null
 }
 
-class ChapterCacheService {
-  private db: IDBDatabase | null = null;
-  private dbPromise: Promise<IDBDatabase> | null = null;
-
-  /**
-   * Инициализация IndexedDB
-   */
-  private async getDB(): Promise<IDBDatabase> {
-    if (this.db) return this.db;
-    if (this.dbPromise) return this.dbPromise;
-
-    this.dbPromise = new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-      request.onerror = () => {
-        console.error('❌ [ChapterCache] Failed to open IndexedDB:', request.error);
-        reject(request.error);
-      };
-
-      request.onsuccess = () => {
-        this.db = request.result;
-        console.log('✅ [ChapterCache] IndexedDB connected');
-        resolve(this.db);
-      };
-
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        const oldVersion = (event as IDBVersionChangeEvent).oldVersion;
-
-        console.log(`🔄 [ChapterCache] Upgrading from version ${oldVersion} to ${DB_VERSION}`);
-
-        // Migration from v1 to v2: Delete old store and recreate with userId isolation
-        if (oldVersion < 2 && db.objectStoreNames.contains(STORE_NAME)) {
-          console.log('🗑️ [ChapterCache] Deleting old store (v1 data without userId)');
-          db.deleteObjectStore(STORE_NAME);
-        }
-
-        // Create store with new schema
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-
-          // Индексы для быстрого поиска с изоляцией по userId
-          store.createIndex('userId', 'userId', { unique: false });
-          store.createIndex('bookId', 'bookId', { unique: false });
-          store.createIndex('chapterNumber', 'chapterNumber', { unique: false });
-          store.createIndex('cachedAt', 'cachedAt', { unique: false });
-          store.createIndex('lastAccessedAt', 'lastAccessedAt', { unique: false });
-          store.createIndex('userBookChapter', ['userId', 'bookId', 'chapterNumber'], { unique: true });
-
-          console.log('✅ [ChapterCache] IndexedDB store created with userId isolation (v2)');
-        }
-      };
-    });
-
-    return this.dbPromise;
+/**
+ * Convert API Description to CachedDescription
+ */
+function toCachedDescription(desc: Description): CachedDescription {
+  const typeMap: Record<string, CachedDescription['type']> = {
+    location: 'setting',
+    character: 'character',
+    atmosphere: 'scene',
+    object: 'object',
+    action: 'scene',
   }
 
+  return {
+    id: desc.id,
+    content: desc.content,
+    type: typeMap[desc.type] || 'scene',
+    confidence: desc.confidence_score,
+    imageUrl: desc.generated_image?.image_url ?? null,
+    imageStatus: desc.generated_image
+      ? (desc.generated_image.status === 'completed' ? 'generated' : 'pending')
+      : 'none',
+  }
+}
+
+/**
+ * Convert CachedDescription back to API Description format
+ */
+function fromCachedDescription(cached: CachedDescription): Description {
+  const typeMap: Record<CachedDescription['type'], Description['type']> = {
+    setting: 'location',
+    character: 'character',
+    scene: 'atmosphere',
+    object: 'object',
+  }
+
+  return {
+    id: cached.id,
+    type: typeMap[cached.type] || 'atmosphere',
+    content: cached.content,
+    text: cached.content,
+    confidence_score: cached.confidence,
+    priority_score: cached.confidence,
+    entities_mentioned: [],
+    generated_image: cached.imageUrl ? {
+      id: '',
+      service_used: 'cached',
+      status: cached.imageStatus === 'generated' ? 'completed' : 'pending',
+      image_url: cached.imageUrl,
+      is_moderated: false,
+      view_count: 0,
+      download_count: 0,
+      created_at: new Date().toISOString(),
+      description: {
+        id: cached.id,
+        type: typeMap[cached.type] || 'atmosphere',
+        text: cached.content,
+        content: cached.content,
+        confidence_score: cached.confidence,
+        priority_score: cached.confidence,
+      },
+      chapter: {
+        id: '',
+        number: 0,
+        title: '',
+      },
+    } : undefined,
+  }
+}
+
+/**
+ * Chapter Cache Service using Dexie.js
+ */
+class ChapterCacheService {
   /**
-   * Проверка наличия главы в кэше
+   * Check if chapter exists in cache and is not expired
    */
   async has(userId: string, bookId: string, chapterNumber: number): Promise<boolean> {
     try {
-      const db = await this.getDB();
-      return new Promise((resolve) => {
-        const transaction = db.transaction(STORE_NAME, 'readonly');
-        const store = transaction.objectStore(STORE_NAME);
-        const index = store.index('userBookChapter');
-        const request = index.get([userId, bookId, chapterNumber]);
+      const id = createChapterId(userId, bookId, chapterNumber)
+      const chapter = await db.chapters.get(id)
 
-        request.onsuccess = () => {
-          const cached = request.result as CachedChapter | undefined;
-          if (cached) {
-            // Проверка на истечение срока
-            const isExpired = this.isExpired(cached.cachedAt);
-            resolve(!isExpired);
-          } else {
-            resolve(false);
-          }
-        };
+      if (!chapter) return false
 
-        request.onerror = () => {
-          console.warn('⚠️ [ChapterCache] Error checking cache:', request.error);
-          resolve(false);
-        };
-      });
+      // Check expiration
+      if (this.isExpired(chapter.cachedAt)) {
+        // Delete expired entry asynchronously
+        this.delete(userId, bookId, chapterNumber).catch(() => {})
+        return false
+      }
+
+      return true
     } catch (err) {
-      console.warn('⚠️ [ChapterCache] IndexedDB not available:', err);
-      return false;
+      console.warn('[ChapterCache] Error checking cache:', err)
+      return false
     }
   }
 
   /**
-   * Получение главы из кэша
+   * Get chapter from cache
+   * Returns null if not cached or expired
    */
   async get(
     userId: string,
@@ -139,59 +133,49 @@ class ChapterCacheService {
     chapterNumber: number
   ): Promise<{ descriptions: Description[]; images: GeneratedImage[] } | null> {
     try {
-      const db = await this.getDB();
-      return new Promise((resolve) => {
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        const index = store.index('userBookChapter');
-        const request = index.get([userId, bookId, chapterNumber]);
+      const id = createChapterId(userId, bookId, chapterNumber)
+      const chapter = await db.chapters.get(id)
 
-        request.onsuccess = () => {
-          const cached = request.result as CachedChapter | undefined;
-          if (cached) {
-            // Проверка на истечение срока
-            if (this.isExpired(cached.cachedAt)) {
-              console.log('⏰ [ChapterCache] Cache expired for:', { userId, bookId, chapterNumber });
-              // Удаляем устаревшую запись
-              this.delete(userId, bookId, chapterNumber).catch(() => {});
-              resolve(null);
-            } else {
-              // Обновляем lastAccessedAt для LRU
-              cached.lastAccessedAt = Date.now();
-              store.put(cached);
+      if (!chapter) {
+        console.log('[ChapterCache] Cache miss for:', { userId, bookId, chapterNumber })
+        return null
+      }
 
-              console.log('✅ [ChapterCache] Cache hit for:', {
-                userId,
-                bookId,
-                chapterNumber,
-                descriptionsCount: cached.descriptions.length,
-                imagesCount: cached.images.length,
-              });
+      // Check expiration
+      if (this.isExpired(chapter.cachedAt)) {
+        console.log('[ChapterCache] Cache expired for:', { userId, bookId, chapterNumber })
+        await this.delete(userId, bookId, chapterNumber)
+        return null
+      }
 
-              resolve({
-                descriptions: cached.descriptions,
-                images: cached.images,
-              });
-            }
-          } else {
-            console.log('⬜ [ChapterCache] Cache miss for:', { userId, bookId, chapterNumber });
-            resolve(null);
-          }
-        };
+      // Update lastAccessedAt for LRU
+      await db.chapters.update(id, { lastAccessedAt: Date.now() })
 
-        request.onerror = () => {
-          console.warn('⚠️ [ChapterCache] Error reading cache:', request.error);
-          resolve(null);
-        };
-      });
+      // Convert cached descriptions to API format
+      const descriptions = chapter.descriptions.map(fromCachedDescription)
+
+      // Extract images from descriptions
+      const images = descriptions
+        .filter(d => d.generated_image)
+        .map(d => d.generated_image as GeneratedImage)
+
+      console.log('[ChapterCache] Cache hit for:', {
+        userId,
+        bookId,
+        chapterNumber,
+        descriptionsCount: descriptions.length,
+        imagesCount: images.length,
+      })
+
+      return { descriptions, images }
     } catch (err) {
-      console.warn('⚠️ [ChapterCache] IndexedDB not available:', err);
-      return null;
+      console.warn('[ChapterCache] Error reading cache:', err)
+      return null
     }
   }
 
   /**
-   * Сохранение главы в кэш
+   * Store chapter in cache
    */
   async set(
     userId: string,
@@ -201,420 +185,269 @@ class ChapterCacheService {
     images: GeneratedImage[]
   ): Promise<boolean> {
     try {
-      // Проверка лимита глав для книги
-      await this.ensureBookLimit(userId, bookId);
+      // Enforce book limit
+      await this.ensureBookLimit(userId, bookId)
 
-      const db = await this.getDB();
-      return new Promise((resolve) => {
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
+      const id = createChapterId(userId, bookId, chapterNumber)
+      const now = Date.now()
 
-        const cachedChapter: CachedChapter = {
-          id: `${userId}:${bookId}:${chapterNumber}`,
-          userId,
-          bookId,
-          chapterNumber,
-          descriptions,
-          images,
-          cachedAt: Date.now(),
-          lastAccessedAt: Date.now(),
-        };
+      // Merge images into descriptions
+      const descriptionsWithImages = descriptions.map(desc => {
+        const image = images.find(img => img.description_id === desc.id || img.description?.id === desc.id)
+        if (image && !desc.generated_image) {
+          return { ...desc, generated_image: image }
+        }
+        return desc
+      })
 
-        const request = store.put(cachedChapter);
+      // Convert to cached format
+      const cachedDescriptions = descriptionsWithImages.map(toCachedDescription)
 
-        request.onsuccess = () => {
-          console.log('✅ [ChapterCache] Chapter cached:', {
-            userId,
-            bookId,
-            chapterNumber,
-            descriptionsCount: descriptions.length,
-            imagesCount: images.length,
-          });
-          resolve(true);
-        };
+      const cachedChapter: CachedChapter = {
+        id,
+        userId,
+        bookId,
+        chapterNumber,
+        title: '', // Will be set from chapter content if available
+        content: '', // Content stored separately if needed
+        descriptions: cachedDescriptions,
+        wordCount: 0,
+        cachedAt: now,
+        lastAccessedAt: now,
+      }
 
-        request.onerror = () => {
-          console.warn('⚠️ [ChapterCache] Error caching chapter:', request.error);
-          resolve(false);
-        };
-      });
+      await db.chapters.put(cachedChapter)
+
+      console.log('[ChapterCache] Chapter cached:', {
+        userId,
+        bookId,
+        chapterNumber,
+        descriptionsCount: descriptions.length,
+        imagesCount: images.length,
+      })
+
+      return true
     } catch (err) {
-      console.warn('⚠️ [ChapterCache] Error caching chapter:', err);
-      return false;
+      console.warn('[ChapterCache] Error caching chapter:', err)
+      return false
     }
   }
 
   /**
-   * Удаление главы из кэша
+   * Delete chapter from cache
    */
   async delete(userId: string, bookId: string, chapterNumber: number): Promise<boolean> {
     try {
-      const db = await this.getDB();
-      return new Promise((resolve) => {
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        const id = `${userId}:${bookId}:${chapterNumber}`;
-        const request = store.delete(id);
-
-        request.onsuccess = () => {
-          console.log('🗑️ [ChapterCache] Deleted:', { userId, bookId, chapterNumber });
-          resolve(true);
-        };
-
-        request.onerror = () => {
-          console.warn('⚠️ [ChapterCache] Error deleting:', request.error);
-          resolve(false);
-        };
-      });
+      const id = createChapterId(userId, bookId, chapterNumber)
+      await db.chapters.delete(id)
+      console.log('[ChapterCache] Deleted:', { userId, bookId, chapterNumber })
+      return true
     } catch (err) {
-      console.warn('⚠️ [ChapterCache] Error deleting:', err);
-      return false;
+      console.warn('[ChapterCache] Error deleting:', err)
+      return false
     }
   }
 
   /**
-   * Очистка всех глав книги (при обновлении/удалении)
+   * Clear all chapters for a book
    */
   async clearBook(userId: string, bookId: string): Promise<number> {
     try {
-      const db = await this.getDB();
-      return new Promise((resolve) => {
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.openCursor();
-        let deletedCount = 0;
+      const deletedCount = await db.chapters
+        .where('[userId+bookId]')
+        .equals([userId, bookId])
+        .delete()
 
-        request.onsuccess = () => {
-          const cursor = request.result;
-          if (cursor) {
-            const cached = cursor.value as CachedChapter;
-            // Удаляем только записи конкретного пользователя и книги
-            if (cached.userId === userId && cached.bookId === bookId) {
-              cursor.delete();
-              deletedCount++;
-            }
-            cursor.continue();
-          } else {
-            console.log('🗑️ [ChapterCache] Cleared book cache:', { userId, bookId, deletedCount });
-            resolve(deletedCount);
-          }
-        };
-
-        request.onerror = () => {
-          console.warn('⚠️ [ChapterCache] Error clearing book cache:', request.error);
-          resolve(deletedCount);
-        };
-      });
+      console.log('[ChapterCache] Cleared book cache:', { userId, bookId, deletedCount })
+      return deletedCount
     } catch (err) {
-      console.warn('⚠️ [ChapterCache] Error clearing book cache:', err);
-      return 0;
+      console.warn('[ChapterCache] Error clearing book cache:', err)
+      return 0
     }
   }
 
   /**
-   * Очистка устаревших записей
+   * Clear expired entries
    */
   async clearExpired(): Promise<number> {
     try {
-      const db = await this.getDB();
-      const expirationTime = Date.now() - CACHE_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
+      const expirationTime = Date.now() - CHAPTER_CACHE_TTL
 
-      return new Promise((resolve) => {
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        const index = store.index('cachedAt');
-        const request = index.openCursor(IDBKeyRange.upperBound(expirationTime));
-        let deletedCount = 0;
+      const deletedCount = await db.chapters
+        .where('lastAccessedAt')
+        .below(expirationTime)
+        .delete()
 
-        request.onsuccess = () => {
-          const cursor = request.result;
-          if (cursor) {
-            cursor.delete();
-            deletedCount++;
-            cursor.continue();
-          } else {
-            console.log('🧹 [ChapterCache] Cleared expired entries:', deletedCount);
-            resolve(deletedCount);
-          }
-        };
-
-        request.onerror = () => {
-          console.warn('⚠️ [ChapterCache] Error clearing expired:', request.error);
-          resolve(deletedCount);
-        };
-      });
+      console.log('[ChapterCache] Cleared expired entries:', deletedCount)
+      return deletedCount
     } catch (err) {
-      console.warn('⚠️ [ChapterCache] Error clearing expired:', err);
-      return 0;
+      console.warn('[ChapterCache] Error clearing expired:', err)
+      return 0
     }
   }
 
   /**
-   * Полная очистка кэша конкретного пользователя
+   * Clear all cached chapters for a user
    */
   async clearAll(userId: string): Promise<number> {
     try {
-      const db = await this.getDB();
-      return new Promise((resolve) => {
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        const index = store.index('userId');
-        const request = index.openCursor(IDBKeyRange.only(userId));
-        let deletedCount = 0;
+      // Get all chapters for user
+      const chapters = await db.chapters
+        .filter(ch => ch.userId === userId)
+        .toArray()
 
-        request.onsuccess = () => {
-          const cursor = request.result;
-          if (cursor) {
-            cursor.delete();
-            deletedCount++;
-            cursor.continue();
-          } else {
-            console.log('🗑️ [ChapterCache] All cache cleared for user:', { userId, deletedCount });
-            resolve(deletedCount);
-          }
-        };
+      const ids = chapters.map(ch => ch.id)
+      await db.chapters.bulkDelete(ids)
 
-        request.onerror = () => {
-          console.warn('⚠️ [ChapterCache] Error clearing all:', request.error);
-          resolve(deletedCount);
-        };
-      });
+      console.log('[ChapterCache] All cache cleared for user:', { userId, deletedCount: ids.length })
+      return ids.length
     } catch (err) {
-      console.warn('⚠️ [ChapterCache] Error clearing all:', err);
-      return 0;
+      console.warn('[ChapterCache] Error clearing all:', err)
+      return 0
     }
   }
 
   /**
-   * Получение статистики кэша
+   * Get cache statistics
    */
   async getStats(): Promise<CacheStats> {
     try {
-      const db = await this.getDB();
-      return new Promise((resolve) => {
-        const transaction = db.transaction(STORE_NAME, 'readonly');
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.openCursor();
+      const chapters = await db.chapters.toArray()
 
-        const stats: CacheStats = {
-          totalChapters: 0,
-          chaptersByBook: {},
-          oldestCacheDate: null,
-          newestCacheDate: null,
-        };
+      const stats: CacheStats = {
+        totalChapters: chapters.length,
+        chaptersByBook: {},
+        oldestCacheDate: null,
+        newestCacheDate: null,
+      }
 
-        request.onsuccess = () => {
-          const cursor = request.result;
-          if (cursor) {
-            const cached = cursor.value as CachedChapter;
-            stats.totalChapters++;
+      for (const chapter of chapters) {
+        // Count by book
+        if (!stats.chaptersByBook[chapter.bookId]) {
+          stats.chaptersByBook[chapter.bookId] = 0
+        }
+        stats.chaptersByBook[chapter.bookId]++
 
-            // Подсчёт глав по книгам
-            if (!stats.chaptersByBook[cached.bookId]) {
-              stats.chaptersByBook[cached.bookId] = 0;
-            }
-            stats.chaptersByBook[cached.bookId]++;
+        // Track dates
+        const cacheDate = new Date(chapter.cachedAt)
+        if (!stats.oldestCacheDate || cacheDate < stats.oldestCacheDate) {
+          stats.oldestCacheDate = cacheDate
+        }
+        if (!stats.newestCacheDate || cacheDate > stats.newestCacheDate) {
+          stats.newestCacheDate = cacheDate
+        }
+      }
 
-            // Даты
-            const cacheDate = new Date(cached.cachedAt);
-            if (!stats.oldestCacheDate || cacheDate < stats.oldestCacheDate) {
-              stats.oldestCacheDate = cacheDate;
-            }
-            if (!stats.newestCacheDate || cacheDate > stats.newestCacheDate) {
-              stats.newestCacheDate = cacheDate;
-            }
+      console.log('[ChapterCache] Stats:', {
+        totalChapters: stats.totalChapters,
+        booksCount: Object.keys(stats.chaptersByBook).length,
+      })
 
-            cursor.continue();
-          } else {
-            console.log('📊 [ChapterCache] Stats:', {
-              totalChapters: stats.totalChapters,
-              booksCount: Object.keys(stats.chaptersByBook).length,
-            });
-            resolve(stats);
-          }
-        };
-
-        request.onerror = () => {
-          console.warn('⚠️ [ChapterCache] Error getting stats:', request.error);
-          resolve({
-            totalChapters: 0,
-            chaptersByBook: {},
-            oldestCacheDate: null,
-            newestCacheDate: null,
-          });
-        };
-      });
+      return stats
     } catch (err) {
-      console.warn('⚠️ [ChapterCache] Error getting stats:', err);
+      console.warn('[ChapterCache] Error getting stats:', err)
       return {
         totalChapters: 0,
         chaptersByBook: {},
         oldestCacheDate: null,
         newestCacheDate: null,
-      };
+      }
     }
   }
 
   /**
-   * Проверка истечения срока
+   * Check if cache entry is expired
    */
   private isExpired(cachedAt: number): boolean {
-    const expirationTime = CACHE_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
-    return Date.now() - cachedAt > expirationTime;
+    return Date.now() - cachedAt > CHAPTER_CACHE_TTL
   }
 
   /**
-   * Контроль количества глав на книгу (LRU cleanup)
+   * Enforce maximum chapters per book (LRU cleanup)
    */
   private async ensureBookLimit(userId: string, bookId: string): Promise<void> {
     try {
-      const db = await this.getDB();
-      return new Promise((resolve) => {
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.openCursor();
+      const chapters = await db.chapters
+        .where('[userId+bookId]')
+        .equals([userId, bookId])
+        .toArray()
 
-        const chapters: CachedChapter[] = [];
+      if (chapters.length >= MAX_CHAPTERS_PER_BOOK) {
+        console.log('[ChapterCache] Book limit reached, applying LRU cleanup...')
 
-        request.onsuccess = () => {
-          const cursor = request.result;
-          if (cursor) {
-            const cached = cursor.value as CachedChapter;
-            // Собираем только главы конкретного пользователя и книги
-            if (cached.userId === userId && cached.bookId === bookId) {
-              chapters.push(cached);
-            }
-            cursor.continue();
-          } else {
-            // Если превышен лимит - удаляем самые старые по lastAccessedAt
-            if (chapters.length >= MAX_CHAPTERS_PER_BOOK) {
-              console.log('⚠️ [ChapterCache] Book limit reached, applying LRU cleanup...');
+        // Sort by lastAccessedAt (oldest first)
+        chapters.sort((a, b) => a.lastAccessedAt - b.lastAccessedAt)
 
-              // Сортируем по lastAccessedAt (старые первыми)
-              chapters.sort((a, b) => a.lastAccessedAt - b.lastAccessedAt);
+        // Delete oldest entries
+        const toDelete = chapters.slice(0, chapters.length - MAX_CHAPTERS_PER_BOOK + 1)
+        const idsToDelete = toDelete.map(ch => ch.id)
+        await db.chapters.bulkDelete(idsToDelete)
 
-              // Удаляем старые записи
-              const toDelete = chapters.slice(0, chapters.length - MAX_CHAPTERS_PER_BOOK + 1);
-              const deleteTransaction = db.transaction(STORE_NAME, 'readwrite');
-              const deleteStore = deleteTransaction.objectStore(STORE_NAME);
-
-              toDelete.forEach((chapter) => {
-                deleteStore.delete(chapter.id);
-              });
-
-              console.log('🧹 [ChapterCache] Deleted LRU entries:', toDelete.length);
-            }
-            resolve();
-          }
-        };
-
-        request.onerror = () => {
-          console.warn('⚠️ [ChapterCache] Error checking book limit:', request.error);
-          resolve();
-        };
-      });
+        console.log('[ChapterCache] Deleted LRU entries:', toDelete.length)
+      }
     } catch (err) {
-      console.warn('⚠️ [ChapterCache] Error ensuring book limit:', err);
+      console.warn('[ChapterCache] Error ensuring book limit:', err)
     }
   }
 
   /**
-   * Очистка записей без userId (старый формат)
-   * Вызывается автоматически при первом доступе для миграции
-   */
-  async clearLegacyData(): Promise<number> {
-    try {
-      const db = await this.getDB();
-      return new Promise((resolve) => {
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.openCursor();
-        let deletedCount = 0;
-
-        request.onsuccess = () => {
-          const cursor = request.result;
-          if (cursor) {
-            const cached = cursor.value as CachedChapter;
-            // Удаляем записи без userId (старый формат)
-            if (!cached.userId) {
-              cursor.delete();
-              deletedCount++;
-            }
-            cursor.continue();
-          } else {
-            if (deletedCount > 0) {
-              console.log('🧹 [ChapterCache] Cleared legacy data without userId:', deletedCount);
-            }
-            resolve(deletedCount);
-          }
-        };
-
-        request.onerror = () => {
-          console.warn('⚠️ [ChapterCache] Error clearing legacy data:', request.error);
-          resolve(deletedCount);
-        };
-      });
-    } catch (err) {
-      console.warn('⚠️ [ChapterCache] Error clearing legacy data:', err);
-      return 0;
-    }
-  }
-
-  /**
-   * Очистка записей с пустыми описаниями
-   * (Нужно при миграции на on-demand extraction)
+   * Clear entries with empty descriptions
+   * (Useful during migration to on-demand extraction)
    */
   async clearEmptyDescriptions(): Promise<number> {
     try {
-      const db = await this.getDB();
-      return new Promise((resolve) => {
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.openCursor();
-        let deletedCount = 0;
+      const chapters = await db.chapters.toArray()
+      const emptyChapters = chapters.filter(ch => !ch.descriptions || ch.descriptions.length === 0)
+      const idsToDelete = emptyChapters.map(ch => ch.id)
 
-        request.onsuccess = () => {
-          const cursor = request.result;
-          if (cursor) {
-            const cached = cursor.value as CachedChapter;
-            // Удаляем записи с пустыми описаниями
-            if (!cached.descriptions || cached.descriptions.length === 0) {
-              cursor.delete();
-              deletedCount++;
-            }
-            cursor.continue();
-          } else {
-            console.log('🧹 [ChapterCache] Cleared empty description entries:', deletedCount);
-            resolve(deletedCount);
-          }
-        };
+      await db.chapters.bulkDelete(idsToDelete)
 
-        request.onerror = () => {
-          console.warn('⚠️ [ChapterCache] Error clearing empty:', request.error);
-          resolve(deletedCount);
-        };
-      });
+      console.log('[ChapterCache] Cleared empty description entries:', idsToDelete.length)
+      return idsToDelete.length
     } catch (err) {
-      console.warn('⚠️ [ChapterCache] Error clearing empty:', err);
-      return 0;
+      console.warn('[ChapterCache] Error clearing empty:', err)
+      return 0
     }
   }
 
   /**
-   * Автоматическая очистка устаревших записей (вызывать периодически)
+   * Clear legacy data without userId
+   * Called automatically for migration
+   */
+  async clearLegacyData(): Promise<number> {
+    try {
+      const chapters = await db.chapters.toArray()
+      const legacyChapters = chapters.filter(ch => !ch.userId)
+      const idsToDelete = legacyChapters.map(ch => ch.id)
+
+      if (idsToDelete.length > 0) {
+        await db.chapters.bulkDelete(idsToDelete)
+        console.log('[ChapterCache] Cleared legacy data without userId:', idsToDelete.length)
+      }
+
+      return idsToDelete.length
+    } catch (err) {
+      console.warn('[ChapterCache] Error clearing legacy data:', err)
+      return 0
+    }
+  }
+
+  /**
+   * Perform maintenance tasks (cleanup expired, empty, legacy data)
    */
   async performMaintenance(): Promise<void> {
-    console.log('🔧 [ChapterCache] Performing maintenance...');
-    await this.clearLegacyData(); // Очищаем старые данные без userId
-    await this.clearExpired();
-    await this.clearEmptyDescriptions(); // Также очищаем пустые записи
-    const stats = await this.getStats();
-    console.log('✅ [ChapterCache] Maintenance complete:', stats);
+    console.log('[ChapterCache] Performing maintenance...')
+    await this.clearLegacyData()
+    await this.clearExpired()
+    await this.clearEmptyDescriptions()
+    const stats = await this.getStats()
+    console.log('[ChapterCache] Maintenance complete:', stats)
   }
 }
 
 // Singleton instance
-export const chapterCache = new ChapterCacheService();
+export const chapterCache = new ChapterCacheService()
 
-// Export types
-export type { CachedChapter, CacheStats };
+// Export types for compatibility
+export type { CacheStats }
+export type { CachedChapter, CachedDescription } from './db'

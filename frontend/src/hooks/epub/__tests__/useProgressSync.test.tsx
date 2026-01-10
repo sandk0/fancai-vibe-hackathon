@@ -238,7 +238,7 @@ describe('useProgressSync', () => {
     it('should not save if progress has not changed', async () => {
       const onSave = vi.fn().mockResolvedValue(undefined);
 
-      const { result } = renderHook(
+      renderHook(
         () =>
           useProgressSync({
             bookId: 'book-1',

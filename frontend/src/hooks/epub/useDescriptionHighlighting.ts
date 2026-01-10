@@ -84,10 +84,8 @@ const getHighlightColors = (): { bg: string; border: string; active: string } =>
 };
 
 /**
- * Performance thresholds (v2.2 - stricter targets)
+ * Timing constants for debouncing and performance
  */
-const PERFORMANCE_WARNING_MS = 100;
-const PERFORMANCE_TARGET_MS = 50; // Target for <20 descriptions
 const DEBOUNCE_DELAY_MS = 100;
 
 /**
@@ -795,14 +793,15 @@ export const useDescriptionHighlighting = ({
     };
 
     rendition.on('rendered', handleRendered);
-    rendition.on('click', handleClick);
+    // Cast to satisfy epub.js type expectations
+    rendition.on('click', handleClick as (...args: unknown[]) => void);
 
     // Initial highlighting (immediate)
     handleRendered();
 
     return () => {
       rendition.off('rendered', handleRendered);
-      rendition.off('click', handleClick);
+      rendition.off('click', handleClick as (...args: unknown[]) => void);
       // Clear debounce timer on cleanup
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);

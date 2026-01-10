@@ -75,6 +75,9 @@ describe('useBooks hooks', () => {
       login: vi.fn(),
       register: vi.fn(),
       logout: vi.fn(),
+      refreshAccessToken: vi.fn(),
+      updateUser: vi.fn(),
+      loadUserFromStorage: vi.fn(),
     });
 
     // Spy on console
@@ -252,8 +255,10 @@ describe('useBooks hooks', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.pages).toHaveLength(1);
-      expect(result.current.data?.pages[0].books).toHaveLength(1);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((result.current.data as any)?.pages).toHaveLength(1);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((result.current.data as any)?.pages[0].books).toHaveLength(1);
     });
 
     it('should fetch next page when fetchNextPage is called', async () => {
@@ -289,7 +294,8 @@ describe('useBooks hooks', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.data?.pages).toHaveLength(2);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        expect((result.current.data as any)?.pages).toHaveLength(2);
       });
 
       expect(booksAPI.getBooks).toHaveBeenCalledTimes(2);
@@ -427,9 +433,13 @@ describe('useBooks hooks', () => {
         average_reading_speed_wpm: 250,
         favorite_genres: [{ genre: 'fiction', count: 10 }, { genre: 'mystery', count: 5 }],
         reading_streak_days: 7,
+        longest_streak_days: 14,
         weekly_activity: [],
         total_pages_read: 3000,
         avg_minutes_per_day: 60,
+        books_this_month: 5,
+        reading_time_this_month: 1200,
+        pages_this_month: 300,
       };
 
       vi.mocked(booksAPI.getUserReadingStatistics).mockResolvedValue(mockStats);
@@ -454,8 +464,9 @@ describe('useBooks hooks', () => {
           id: 'new-book-id',
           title: 'Uploaded Book',
           author: 'Author',
-        } as Book,
+        } as BookDetail,
         message: 'Book uploaded successfully',
+        task_id: null,
       };
 
       vi.mocked(booksAPI.uploadBook).mockResolvedValue(mockResponse);
@@ -475,14 +486,15 @@ describe('useBooks hooks', () => {
       const mockFile = new File(['content'], 'test.epub', { type: 'application/epub+zip' });
       const onProgress = vi.fn();
 
-      vi.mocked(booksAPI.uploadBook).mockImplementation(async (formData, config) => {
+      vi.mocked(booksAPI.uploadBook).mockImplementation(async (_formData, config) => {
         // Simulate progress
         if (config?.onUploadProgress) {
           config.onUploadProgress({ loaded: 50, total: 100 } as any);
         }
         return {
-          book: { id: 'new-book-id' } as Book,
+          book: { id: 'new-book-id' } as BookDetail,
           message: 'Success',
+          task_id: null,
         };
       });
 
@@ -498,8 +510,9 @@ describe('useBooks hooks', () => {
     it('should invalidate books list after successful upload', async () => {
       const mockFile = new File(['content'], 'test.epub', { type: 'application/epub+zip' });
       const mockResponse = {
-        book: { id: 'new-book-id', title: 'Book' } as Book,
+        book: { id: 'new-book-id', title: 'Book' } as BookDetail,
         message: 'Success',
+        task_id: null,
       };
 
       vi.mocked(booksAPI.uploadBook).mockResolvedValue(mockResponse);
@@ -520,8 +533,9 @@ describe('useBooks hooks', () => {
     it('should set book in cache after upload', async () => {
       const mockFile = new File(['content'], 'test.epub', { type: 'application/epub+zip' });
       const mockResponse = {
-        book: { id: 'new-book-id', title: 'Uploaded Book' } as Book,
+        book: { id: 'new-book-id', title: 'Uploaded Book' } as BookDetail,
         message: 'Success',
+        task_id: null,
       };
 
       vi.mocked(booksAPI.uploadBook).mockResolvedValue(mockResponse);
@@ -558,8 +572,8 @@ describe('useBooks hooks', () => {
       const mockResponse = { message: 'Book deleted successfully' };
 
       vi.mocked(booksAPI.deleteBook).mockResolvedValue(mockResponse);
-      vi.mocked(chapterCache.clearBook).mockResolvedValue(undefined);
-      vi.mocked(imageCache.clearBook).mockResolvedValue(undefined);
+      vi.mocked(chapterCache.clearBook).mockResolvedValue(0);
+      vi.mocked(imageCache.clearBook).mockResolvedValue(0);
 
       const { result } = renderHook(() => useDeleteBook(), { wrapper: createWrapper() });
 
@@ -575,8 +589,8 @@ describe('useBooks hooks', () => {
       const mockResponse = { message: 'Deleted' };
 
       vi.mocked(booksAPI.deleteBook).mockResolvedValue(mockResponse);
-      vi.mocked(chapterCache.clearBook).mockResolvedValue(undefined);
-      vi.mocked(imageCache.clearBook).mockResolvedValue(undefined);
+      vi.mocked(chapterCache.clearBook).mockResolvedValue(0);
+      vi.mocked(imageCache.clearBook).mockResolvedValue(0);
 
       const { result } = renderHook(() => useDeleteBook(), { wrapper: createWrapper() });
 
@@ -606,8 +620,8 @@ describe('useBooks hooks', () => {
       vi.mocked(booksAPI.deleteBook).mockImplementation(
         () => new Promise((resolve) => setTimeout(() => resolve(mockResponse), 100))
       );
-      vi.mocked(chapterCache.clearBook).mockResolvedValue(undefined);
-      vi.mocked(imageCache.clearBook).mockResolvedValue(undefined);
+      vi.mocked(chapterCache.clearBook).mockResolvedValue(0);
+      vi.mocked(imageCache.clearBook).mockResolvedValue(0);
 
       const { result } = renderHook(() => useDeleteBook(), { wrapper: createWrapper() });
 

@@ -136,9 +136,8 @@ describe('useProgressSync (simplified)', () => {
   describe('Saving State Tracking', () => {
     it('should track lastSaved after successful save', async () => {
       const onSave = vi.fn().mockResolvedValue(undefined);
-      const beforeTime = Date.now();
 
-      const { result, unmount } = renderHook(
+      const { unmount } = renderHook(
         () =>
           useProgressSync({
             bookId: 'book-1',

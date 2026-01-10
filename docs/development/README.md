@@ -4,6 +4,7 @@ Development planning, progress tracking, and process documentation.
 
 ## Planning
 - [Development Plan](planning/development-plan.md) - Overall development roadmap
+- [PWA Development Plan](planning/pwa-development-plan.md) - Progressive Web App implementation plan
 - [Development Calendar](planning/development-calendar.md) - Timeline and milestones
 - [Gap Analysis](planning/gap-analysis.md) - Feature gap analysis
 

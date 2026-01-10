@@ -213,6 +213,52 @@ export const imageKeys = {
 };
 
 /**
+ * Query keys для PWA функциональности (January 2026)
+ *
+ * Управление оффлайн-данными, push-уведомлениями и хранилищем.
+ * SECURITY: Все keys требуют userId для изоляции данных между пользователями
+ */
+export const pwaKeys = {
+  /**
+   * Базовый ключ для всех PWA данных конкретного пользователя
+   * @param userId - ID пользователя
+   */
+  all: (userId: string) => ['pwa', userId] as const,
+
+  /**
+   * Информация о хранилище устройства
+   * @param userId - ID пользователя
+   */
+  storage: (userId: string) => [...pwaKeys.all(userId), 'storage'] as const,
+
+  /**
+   * Список скачанных книг для оффлайн-доступа
+   * @param userId - ID пользователя
+   */
+  downloads: (userId: string) => [...pwaKeys.all(userId), 'downloads'] as const,
+
+  /**
+   * Статус скачивания конкретной книги
+   * @param userId - ID пользователя
+   * @param bookId - ID книги
+   */
+  downloadStatus: (userId: string, bookId: string) =>
+    [...pwaKeys.downloads(userId), bookId] as const,
+
+  /**
+   * Push-подписка пользователя
+   * @param userId - ID пользователя
+   */
+  pushSubscription: (userId: string) => [...pwaKeys.all(userId), 'push-subscription'] as const,
+
+  /**
+   * Очередь синхронизации
+   * @param userId - ID пользователя
+   */
+  syncQueue: (userId: string) => [...pwaKeys.all(userId), 'sync-queue'] as const,
+};
+
+/**
  * Utility функции для работы с query keys
  *
  * SECURITY: Все функции требуют userId для изоляции данных между пользователями

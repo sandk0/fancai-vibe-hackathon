@@ -27,7 +27,7 @@
 services:
   # Nginx Reverse Proxy with SSL
   nginx:
-    image: nginx:1.25-alpine
+    image: nginx:1.27-alpine
     container_name: bookreader_nginx
     ports:
       - "80:80"
@@ -128,6 +128,10 @@ services:
       - USE_NLP_PROCESSORS=false
       # Image generation
       - POLLINATIONS_ENABLED=${POLLINATIONS_ENABLED:-true}
+      # Web Push (VAPID) - required for PWA notifications
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
+      - VAPID_SUBJECT=${VAPID_SUBJECT:-mailto:admin@fancai.ru}
       # Performance
       - WORKERS_COUNT=${WORKERS_COUNT:-2}
       - MAX_FILE_SIZE=${MAX_FILE_SIZE:-52428800}
@@ -188,6 +192,10 @@ services:
       # Image generation
       - POLLINATIONS_ENABLED=${POLLINATIONS_ENABLED:-true}
       - MAX_FILE_SIZE=${MAX_FILE_SIZE:-52428800}
+      # Web Push (VAPID) - required for PWA notifications from Celery tasks
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
+      - VAPID_SUBJECT=${VAPID_SUBJECT:-mailto:admin@fancai.ru}
     volumes:
       - ./backend/storage:/app/storage
       - /dev/shm:/dev/shm
@@ -249,7 +257,7 @@ services:
 
   # PostgreSQL Database (optimized for 8GB server)
   postgres:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     container_name: bookreader_postgres
     environment:
       - POSTGRES_DB=${DB_NAME}
@@ -290,7 +298,7 @@ services:
 
   # Redis Cache & Queue (optimized for 8GB server)
   redis:
-    image: redis:7-alpine
+    image: redis:7.4-alpine
     container_name: bookreader_redis
     command: >
       redis-server

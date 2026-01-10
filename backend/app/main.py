@@ -24,6 +24,7 @@ from .routers import (
     reading_sessions_router,
     health_router,
     descriptions_router,
+    push_router,
 )
 from .routers.admin import admin_router
 from .routers.books import books_router
@@ -255,6 +256,9 @@ app.include_router(reading_sessions_router, prefix="/api/v1", tags=["reading-ses
 
 # Health & Monitoring router
 app.include_router(health_router, prefix="/api/v1", tags=["health"])
+
+# Push Notifications router (January 2026)
+app.include_router(push_router, prefix="/api/v1", tags=["push"])
 
 
 @app.get("/")

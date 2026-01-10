@@ -17,7 +17,7 @@
 services:
   # Nginx Reverse Proxy - MINIMAL RESOURCES
   nginx:
-    image: nginx:1.25-alpine
+    image: nginx:1.27-alpine
     container_name: bookreader_nginx_staging
     ports:
       - "80:80"
@@ -243,7 +243,7 @@ services:
 
   # PostgreSQL Database - OPTIMIZED FOR 4GB
   postgres:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     container_name: bookreader_postgres_staging
     environment:
       - POSTGRES_DB=${DB_NAME}
@@ -290,7 +290,7 @@ services:
 
   # Redis - MINIMAL CONFIGURATION
   redis:
-    image: redis:7-alpine
+    image: redis:7.4-alpine
     container_name: bookreader_redis_staging
     command: >
       redis-server

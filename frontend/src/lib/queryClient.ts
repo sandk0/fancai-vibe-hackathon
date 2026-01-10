@@ -6,9 +6,10 @@
  * for clearing on logout/login.
  *
  * Features:
+ * - Offline-first mode for PWA support
  * - Exponential backoff retry with jitter
  * - Configurable retry behavior based on error type
- * - Aligned stale times with backend cache
+ * - Extended cache times for offline support
  *
  * @module lib/queryClient
  */
@@ -25,30 +26,64 @@ import {
  *
  * Uses exponential backoff with jitter to prevent thundering herd.
  * Retries on network errors, timeouts, and 5xx server errors.
+ * Does NOT retry on 4xx client errors (except 408, 429).
  */
 const defaultRetry = createTanStackRetry(RETRY_PRESETS.api);
 const defaultRetryDelay = createTanStackRetryDelay(RETRY_PRESETS.api);
 
 /**
+ * Custom retry function that skips 4xx errors
+ * except for 408 (Timeout) and 429 (Too Many Requests)
+ */
+function offlineFirstRetry(failureCount: number, error: unknown): boolean {
+  // Check for HTTP error status
+  if (error instanceof Error && 'status' in error) {
+    const status = (error as Error & { status: number }).status;
+    // Don't retry on 4xx client errors (except 408 Timeout and 429 Rate Limit)
+    if (status >= 400 && status < 500 && status !== 408 && status !== 429) {
+      return false;
+    }
+  }
+  // Delegate to default retry logic
+  return defaultRetry(failureCount, error);
+}
+
+/**
  * Singleton QueryClient instance
  *
- * Configuration:
- * - retry: Exponential backoff with jitter (3 retries, 1-10s delays)
+ * Configuration for PWA offline-first support:
+ * - networkMode: 'offlineFirst' - Return cached data immediately, then fetch
+ * - retry: Custom retry that skips 4xx errors
  * - retryDelay: Exponential delay calculation with jitter
- * - refetchOnWindowFocus: false - Don't refetch when tab becomes active
- * - staleTime: 10s - Aligned with backend cache for fresh data
- * - gcTime: 5 minutes - Keep unused data in cache for 5 minutes
+ * - refetchOnWindowFocus: true - Refetch when tab becomes active (sync fresh data)
+ * - refetchOnReconnect: true - Refetch when network is restored
+ * - staleTime: 5 minutes - Data considered fresh for offline scenarios
+ * - gcTime: 24 hours - Extended cache for offline support
  */
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: defaultRetry,
+      // Critical for PWA offline-first!
+      networkMode: 'offlineFirst',
+
+      // Custom retry that skips 4xx client errors
+      retry: offlineFirstRetry,
       retryDelay: defaultRetryDelay,
-      refetchOnWindowFocus: false,
-      staleTime: 10 * 1000, // 10 seconds
-      gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
+
+      // Refetch on window focus and network reconnect for data sync
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+
+      // Data considered fresh for 5 minutes (optimized for offline)
+      staleTime: 5 * 60 * 1000, // 5 minutes
+
+      // Extended cache time for offline support (24 hours)
+      gcTime: 24 * 60 * 60 * 1000, // 24 hours
     },
     mutations: {
+      // Mutations also in offline-first mode
+      networkMode: 'offlineFirst',
+
       // Mutations use fast retry preset (2 retries, 0.3-3s delays)
       retry: createTanStackRetry(RETRY_PRESETS.fast),
       retryDelay: createTanStackRetryDelay(RETRY_PRESETS.fast),

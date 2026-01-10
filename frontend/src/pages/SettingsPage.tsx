@@ -8,19 +8,45 @@
  * - Notification preferences
  * - Privacy & security
  * - About section
+ * - PWA settings (installation, storage, notifications)
  * - Fully theme-aware (Light/Dark/Sepia)
  * - Responsive sidebar
  */
 
 import React, { useState } from 'react';
-import { Book, User, Bell, Shield, Info, Check } from 'lucide-react';
+import {
+  Book,
+  User,
+  Bell,
+  Shield,
+  Info,
+  Check,
+  Smartphone,
+  HardDrive,
+  Download,
+  Trash2,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  BellRing,
+} from 'lucide-react';
 import ReaderSettings from '@/components/Settings/ReaderSettings';
 import { useAuthStore } from '@/stores/auth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
 import { Accordion, type AccordionItem } from '@/components/UI/Accordion';
+import { Button } from '@/components/UI/button';
+import { Progress } from '@/components/UI/progress';
+import { ConfirmDialog } from '@/components/UI/Dialog';
+import { IOSInstallInstructions } from '@/components/UI/IOSInstallInstructions';
 
-type SettingsTab = 'reader' | 'account' | 'notifications' | 'privacy' | 'about';
+// PWA Hooks
+import { useStorageInfo, useRequestPersistence, useClearOfflineData, formatBytes } from '@/hooks/useStorageInfo';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { usePWAInstall } from '@/hooks/usePWAInstall';
+import { useOfflineBooks } from '@/hooks/useOfflineBook';
+
+type SettingsTab = 'reader' | 'account' | 'notifications' | 'privacy' | 'pwa' | 'about';
 
 interface ToggleSwitchProps {
   checked: boolean;
@@ -86,6 +112,44 @@ const SettingsPage: React.FC = () => {
   const [imageGeneration, setImageGeneration] = useState(true);
   const [readingReminders, setReadingReminders] = useState(false);
 
+  // PWA settings state
+  const [showClearDataDialog, setShowClearDataDialog] = useState(false);
+
+  // PWA Hooks
+  const { data: storageInfo, isLoading: isStorageLoading } = useStorageInfo();
+  const { mutate: requestPersistence, isPending: isRequestingPersistence } = useRequestPersistence();
+  const { mutate: clearOfflineData, isPending: isClearingData } = useClearOfflineData();
+  const { offlineBooks } = useOfflineBooks();
+
+  const {
+    isSupported: isPushSupported,
+    canUsePush,
+    unavailableReason,
+    permissionState,
+    isSubscribed,
+    isLoading: isPushLoading,
+    subscribe: subscribePush,
+    unsubscribe: unsubscribePush,
+    testNotification,
+  } = usePushNotifications();
+
+  const {
+    isInstallable,
+    isInstalled,
+    isInstalling,
+    isIOSDevice,
+    install,
+  } = usePWAInstall();
+
+  // Handle clear offline data
+  const handleClearOfflineData = () => {
+    clearOfflineData(undefined, {
+      onSuccess: () => {
+        setShowClearDataDialog(false);
+      },
+    });
+  };
+
   const tabs = [
     {
       id: 'reader' as SettingsTab,
@@ -110,6 +174,12 @@ const SettingsPage: React.FC = () => {
       label: t('settings.privacy'),
       icon: Shield,
       description: 'Конфиденциальность и безопасность'
+    },
+    {
+      id: 'pwa' as SettingsTab,
+      label: 'Приложение',
+      icon: Smartphone,
+      description: 'Установка, хранилище и уведомления'
     },
     {
       id: 'about' as SettingsTab,
@@ -239,6 +309,311 @@ const SettingsPage: React.FC = () => {
                 </div>
               </div>
             </div>
+          </div>
+        );
+
+      case 'pwa':
+        return (
+          <div className="space-y-8 max-w-full overflow-hidden">
+            {/* Section 1: App Installation */}
+            <div>
+              <h3 className="text-xl font-bold mb-6 text-foreground break-words">
+                Установка приложения
+              </h3>
+              <div className="space-y-4">
+                {isInstalled ? (
+                  // App is installed
+                  <div className="p-4 sm:p-6 rounded-xl border-2 bg-green-50 dark:bg-green-950 border-green-500">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="w-6 h-6 flex-shrink-0 text-green-600 dark:text-green-400" />
+                      <div>
+                        <p className="font-semibold text-green-700 dark:text-green-300">
+                          Приложение установлено
+                        </p>
+                        <p className="text-sm text-green-600 dark:text-green-400">
+                          Вы используете установленную версию приложения
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : isIOSDevice ? (
+                  // iOS device - show manual instructions
+                  <IOSInstallInstructions mode="inline" showOnlyOnIOS={false} forceShow />
+                ) : isInstallable ? (
+                  // Browser supports installation
+                  <div className="p-4 sm:p-6 rounded-xl border-2 bg-muted border-primary">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex items-start gap-3">
+                        <Download className="w-6 h-6 flex-shrink-0 mt-0.5 text-primary" />
+                        <div>
+                          <p className="font-semibold text-foreground">
+                            Установите приложение
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Получите быстрый доступ и офлайн-режим
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="primary"
+                        onClick={install}
+                        isLoading={isInstalling}
+                        loadingText="Установка..."
+                      >
+                        Установить
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  // Browser doesn't support installation
+                  <div className="p-4 sm:p-6 rounded-xl border-2 bg-muted border-border">
+                    <div className="flex items-start gap-3">
+                      <Info className="w-6 h-6 flex-shrink-0 mt-0.5 text-muted-foreground" />
+                      <div>
+                        <p className="font-semibold text-foreground">
+                          Установка недоступна
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Откройте сайт в Chrome, Safari или Edge и выберите "Добавить на главный экран" или "Установить приложение" в меню браузера
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Section 2: Offline Storage */}
+            <div>
+              <h3 className="text-xl font-bold mb-6 text-foreground break-words">
+                Офлайн-хранилище
+              </h3>
+              <div className="space-y-4">
+                {/* Storage Usage */}
+                <div className="p-4 sm:p-6 rounded-xl border-2 bg-muted border-border">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <HardDrive className="w-5 h-5 text-muted-foreground" />
+                        <span className="font-medium text-foreground">Использование хранилища</span>
+                      </div>
+                      {isStorageLoading ? (
+                        <span className="text-sm text-muted-foreground">Загрузка...</span>
+                      ) : storageInfo ? (
+                        <span className="text-sm text-muted-foreground">
+                          {formatBytes(storageInfo.used)} из {formatBytes(storageInfo.quota)}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {/* Progress Bar */}
+                    {storageInfo && (
+                      <Progress
+                        value={storageInfo.percentUsed}
+                        className={cn(
+                          'h-3',
+                          storageInfo.isCritical && '[&>div]:bg-red-500',
+                          storageInfo.isWarning && !storageInfo.isCritical && '[&>div]:bg-yellow-500'
+                        )}
+                      />
+                    )}
+
+                    {/* Warning Messages */}
+                    {storageInfo?.isCritical && (
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300">
+                        <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                        <span className="text-sm">
+                          Критически мало места! Удалите неиспользуемые книги для освобождения пространства.
+                        </span>
+                      </div>
+                    )}
+                    {storageInfo?.isWarning && !storageInfo.isCritical && (
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-100 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-300">
+                        <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                        <span className="text-sm">
+                          Заканчивается место. Рекомендуется очистить неиспользуемые данные.
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Persistent Storage */}
+                <div className="p-4 sm:p-6 rounded-xl border-2 bg-muted border-border">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-foreground">Постоянное хранилище</span>
+                        {storageInfo?.isPersistent ? (
+                          <CheckCircle className="w-4 h-4 text-green-500" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {storageInfo?.isPersistent
+                          ? 'Ваши данные защищены от автоматического удаления'
+                          : 'Браузер может автоматически удалить данные при нехватке места'}
+                      </p>
+                    </div>
+                    {!storageInfo?.isPersistent && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => requestPersistence()}
+                        isLoading={isRequestingPersistence}
+                        loadingText="Запрос..."
+                      >
+                        Запросить
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Offline Books Count */}
+                <div className="p-4 sm:p-6 rounded-xl border-2 bg-muted border-border">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Book className="w-5 h-5 text-muted-foreground" />
+                      <span className="font-medium text-foreground">Скачанные книги</span>
+                    </div>
+                    <span className="text-lg font-semibold text-foreground">
+                      {offlineBooks.length}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Clear Data Button */}
+                <Button
+                  variant="destructive"
+                  className="w-full sm:w-auto"
+                  onClick={() => setShowClearDataDialog(true)}
+                  disabled={isClearingData}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Очистить офлайн-данные
+                </Button>
+              </div>
+            </div>
+
+            {/* Section 3: Push Notifications */}
+            <div>
+              <h3 className="text-xl font-bold mb-6 text-foreground break-words">
+                Push-уведомления
+              </h3>
+              <div className="space-y-4">
+                {!isPushSupported ? (
+                  // Push not supported
+                  <div className="p-4 sm:p-6 rounded-xl border-2 bg-muted border-border">
+                    <div className="flex items-start gap-3">
+                      <XCircle className="w-6 h-6 flex-shrink-0 mt-0.5 text-muted-foreground" />
+                      <div>
+                        <p className="font-semibold text-foreground">
+                          Push-уведомления не поддерживаются
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Ваш браузер не поддерживает push-уведомления
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : !canUsePush ? (
+                  // Can't use push (iOS not in standalone)
+                  <div className="p-4 sm:p-6 rounded-xl border-2 bg-muted border-border">
+                    <div className="flex items-start gap-3">
+                      <Info className="w-6 h-6 flex-shrink-0 mt-0.5 text-muted-foreground" />
+                      <div>
+                        <p className="font-semibold text-foreground">
+                          Установите приложение
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {unavailableReason || 'Для получения уведомлений установите приложение на главный экран'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : permissionState === 'denied' ? (
+                  // Permission denied
+                  <div className="p-4 sm:p-6 rounded-xl border-2 bg-red-50 dark:bg-red-950 border-red-500">
+                    <div className="flex items-start gap-3">
+                      <XCircle className="w-6 h-6 flex-shrink-0 mt-0.5 text-red-500" />
+                      <div>
+                        <p className="font-semibold text-red-700 dark:text-red-300">
+                          Уведомления заблокированы
+                        </p>
+                        <p className="text-sm text-red-600 dark:text-red-400">
+                          Разрешите уведомления в настройках браузера
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // Push available - show toggle
+                  <>
+                    <div className="p-4 sm:p-6 rounded-xl border-2 bg-muted border-border">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                          <BellRing className="w-6 h-6 flex-shrink-0 mt-0.5 text-muted-foreground" />
+                          <div>
+                            <p className="font-semibold text-foreground">
+                              Получать уведомления
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              О завершении обработки книг и генерации изображений
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          role="switch"
+                          aria-checked={isSubscribed}
+                          onClick={() => isSubscribed ? unsubscribePush() : subscribePush()}
+                          disabled={isPushLoading}
+                          className={cn(
+                            'relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full transition-colors',
+                            'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                            'disabled:opacity-50 disabled:cursor-not-allowed',
+                            isSubscribed ? 'bg-green-500' : 'bg-zinc-600'
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform',
+                              isSubscribed ? 'translate-x-6' : 'translate-x-1'
+                            )}
+                          />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Test notification button */}
+                    {isSubscribed && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => testNotification()}
+                        disabled={isPushLoading}
+                      >
+                        <Bell className="w-4 h-4 mr-2" />
+                        Тестовое уведомление
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Clear Data Confirmation Dialog */}
+            <ConfirmDialog
+              isOpen={showClearDataDialog}
+              onClose={() => setShowClearDataDialog(false)}
+              title="Очистить офлайн-данные?"
+              description="Все скачанные книги, изображения и кэшированные данные будут удалены. Это действие нельзя отменить."
+              confirmText="Очистить"
+              cancelText="Отмена"
+              destructive
+              onConfirm={handleClearOfflineData}
+              isLoading={isClearingData}
+            />
           </div>
         );
 
@@ -443,6 +818,217 @@ const SettingsPage: React.FC = () => {
               ))}
             </div>
           </div>
+        </div>
+      ),
+    },
+    {
+      id: 'pwa',
+      title: 'Приложение',
+      description: 'Установка, хранилище и уведомления',
+      icon: Smartphone,
+      content: (
+        <div className="space-y-6">
+          {/* Installation Section */}
+          <div>
+            <h4 className="font-semibold mb-3 text-foreground text-sm">Установка</h4>
+            {isInstalled ? (
+              <div className="p-3 rounded-xl border-2 bg-green-50 dark:bg-green-950 border-green-500">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 flex-shrink-0 text-green-600 dark:text-green-400" />
+                  <span className="text-sm text-green-700 dark:text-green-300">
+                    Приложение установлено
+                  </span>
+                </div>
+              </div>
+            ) : isIOSDevice ? (
+              <IOSInstallInstructions mode="inline" showOnlyOnIOS={false} forceShow />
+            ) : isInstallable ? (
+              <div className="p-3 rounded-xl border-2 bg-muted border-primary">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Download className="w-5 h-5 text-primary" />
+                    <span className="text-sm text-foreground">Установить приложение</span>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={install}
+                    isLoading={isInstalling}
+                  >
+                    Установить
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl border-2 bg-muted border-border">
+                <p className="text-xs text-muted-foreground">
+                  Выберите "Добавить на главный экран" в меню браузера
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Storage Section */}
+          <div>
+            <h4 className="font-semibold mb-3 text-foreground text-sm">Хранилище</h4>
+            <div className="space-y-3">
+              {/* Storage Progress */}
+              <div className="p-3 rounded-xl border-2 bg-muted border-border">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <HardDrive className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm text-foreground">Использовано</span>
+                  </div>
+                  {storageInfo && (
+                    <span className="text-xs text-muted-foreground">
+                      {formatBytes(storageInfo.used)} / {formatBytes(storageInfo.quota)}
+                    </span>
+                  )}
+                </div>
+                {storageInfo && (
+                  <Progress
+                    value={storageInfo.percentUsed}
+                    className={cn(
+                      'h-2',
+                      storageInfo.isCritical && '[&>div]:bg-red-500',
+                      storageInfo.isWarning && !storageInfo.isCritical && '[&>div]:bg-yellow-500'
+                    )}
+                  />
+                )}
+                {storageInfo?.isCritical && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                    Критически мало места!
+                  </p>
+                )}
+                {storageInfo?.isWarning && !storageInfo.isCritical && (
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
+                    Заканчивается место
+                  </p>
+                )}
+              </div>
+
+              {/* Offline Books */}
+              <div className="flex items-center justify-between p-3 rounded-xl border-2 bg-muted border-border">
+                <div className="flex items-center gap-2">
+                  <Book className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm text-foreground">Скачанные книги</span>
+                </div>
+                <span className="font-semibold text-foreground">{offlineBooks.length}</span>
+              </div>
+
+              {/* Persistent Storage */}
+              <div className="flex items-center justify-between p-3 rounded-xl border-2 bg-muted border-border">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-foreground">Постоянное хранилище</span>
+                  {storageInfo?.isPersistent ? (
+                    <CheckCircle className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <XCircle className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </div>
+                {!storageInfo?.isPersistent && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => requestPersistence()}
+                    isLoading={isRequestingPersistence}
+                    className="h-8 px-2"
+                  >
+                    Запросить
+                  </Button>
+                )}
+              </div>
+
+              {/* Clear Data */}
+              <Button
+                variant="destructive"
+                size="sm"
+                className="w-full"
+                onClick={() => setShowClearDataDialog(true)}
+                disabled={isClearingData}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Очистить данные
+              </Button>
+            </div>
+          </div>
+
+          {/* Push Notifications Section */}
+          <div>
+            <h4 className="font-semibold mb-3 text-foreground text-sm">Push-уведомления</h4>
+            {!isPushSupported ? (
+              <div className="p-3 rounded-xl border-2 bg-muted border-border">
+                <p className="text-xs text-muted-foreground">
+                  Push-уведомления не поддерживаются
+                </p>
+              </div>
+            ) : !canUsePush ? (
+              <div className="p-3 rounded-xl border-2 bg-muted border-border">
+                <p className="text-xs text-muted-foreground">
+                  {unavailableReason || 'Установите приложение для получения уведомлений'}
+                </p>
+              </div>
+            ) : permissionState === 'denied' ? (
+              <div className="p-3 rounded-xl border-2 bg-red-50 dark:bg-red-950 border-red-500">
+                <p className="text-xs text-red-600 dark:text-red-400">
+                  Уведомления заблокированы в настройках браузера
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-xl border-2 bg-muted border-border">
+                  <div className="flex items-center gap-2">
+                    <BellRing className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm text-foreground">Уведомления</span>
+                  </div>
+                  <button
+                    role="switch"
+                    aria-checked={isSubscribed}
+                    onClick={() => isSubscribed ? unsubscribePush() : subscribePush()}
+                    disabled={isPushLoading}
+                    className={cn(
+                      'relative inline-flex h-6 w-10 flex-shrink-0 items-center rounded-full transition-colors',
+                      'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      'disabled:opacity-50',
+                      isSubscribed ? 'bg-green-500' : 'bg-zinc-600'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform',
+                        isSubscribed ? 'translate-x-5' : 'translate-x-1'
+                      )}
+                    />
+                  </button>
+                </div>
+                {isSubscribed && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => testNotification()}
+                    disabled={isPushLoading}
+                    className="w-full"
+                  >
+                    <Bell className="w-4 h-4 mr-2" />
+                    Тест
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Clear Data Dialog (rendered here for mobile) */}
+          <ConfirmDialog
+            isOpen={showClearDataDialog}
+            onClose={() => setShowClearDataDialog(false)}
+            title="Очистить офлайн-данные?"
+            description="Все скачанные книги и кэшированные данные будут удалены."
+            confirmText="Очистить"
+            cancelText="Отмена"
+            destructive
+            onConfirm={handleClearOfflineData}
+            isLoading={isClearingData}
+          />
         </div>
       ),
     },

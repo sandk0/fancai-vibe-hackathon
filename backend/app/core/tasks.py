@@ -21,6 +21,7 @@ from app.core.logging import logger
 from app.models.book import Book
 from app.models.chapter import Chapter
 from app.services.image_generator import image_generator_service
+from app.services.push_notification_service import push_notification_service
 
 
 def _run_async_task(coro):
@@ -267,6 +268,20 @@ async def _process_book_async(book_id: UUID) -> Dict[str, Any]:
             chapters_preparsed=chapters_parsed,
             descriptions_extracted=total_descriptions,
         )
+
+        # Send push notification to user (non-blocking)
+        try:
+            await push_notification_service.send_book_ready_notification(
+                db=db,
+                user_id=book.user_id,
+                book_id=book.id,
+                book_title=book.title,
+            )
+            logger.debug("Push notification sent for book ready", book_id=str(book_id))
+        except Exception as e:
+            # Don't fail the task if push notification fails
+            logger.warning("Failed to send book ready push notification", error=str(e))
+
         return result
 
 
@@ -613,6 +628,34 @@ async def _generate_image_async(
                 task_id=task_id,
                 image_id=str(generated_image.id),
             )
+
+            # Send push notification to user (non-blocking)
+            try:
+                # Get book_id from description -> chapter -> book
+                from app.models.description import Description
+                desc_result = await db.execute(
+                    select(Description).where(Description.id == description_id)
+                )
+                description_obj = desc_result.scalar_one_or_none()
+
+                if description_obj:
+                    chapter_result = await db.execute(
+                        select(Chapter).where(Chapter.id == description_obj.chapter_id)
+                    )
+                    chapter_obj = chapter_result.scalar_one_or_none()
+
+                    if chapter_obj:
+                        await push_notification_service.send_image_ready_notification(
+                            db=db,
+                            user_id=user_id,
+                            book_id=chapter_obj.book_id,
+                            description_id=description_id,
+                            image_count=1,
+                        )
+                        logger.debug("Push notification sent for image ready", task_id=task_id)
+            except Exception as e:
+                # Don't fail the task if push notification fails
+                logger.warning("Failed to send image ready push notification", error=str(e))
 
             return {
                 "task_id": task_id,

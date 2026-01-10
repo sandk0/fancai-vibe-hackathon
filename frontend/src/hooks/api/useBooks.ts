@@ -5,6 +5,7 @@
  * для всех операций с книгами.
  *
  * Особенности:
+ * - Offline-first: placeholderData из IndexedDB для мгновенного отображения
  * - Автоматический кэш с настраиваемым staleTime
  * - Оптимистичные обновления для лучшего UX
  * - Интеграция с чистящими функциями кэша (chapterCache, imageCache)
@@ -26,6 +27,7 @@ import {
 import { booksAPI } from '@/api/books';
 import { chapterCache } from '@/services/chapterCache';
 import { imageCache } from '@/services/imageCache';
+import { db } from '@/services/db';
 import { bookKeys, queryKeyUtils, getCurrentUserId } from './queryKeys';
 import type {
   Book,
@@ -44,7 +46,66 @@ interface BooksListParams extends PaginationParams {
 }
 
 /**
+ * Расширенный тип книги с маркером offline
+ */
+interface OfflineBookMarker {
+  _offline?: boolean;
+}
+
+/**
+ * Загрузка offline книг из IndexedDB для placeholderData
+ *
+ * @param userId - ID пользователя
+ * @returns Массив книг из IndexedDB или undefined
+ */
+async function getOfflineBooksPlaceholder(
+  userId: string
+): Promise<{ books: Book[]; total: number; skip: number; limit: number } | undefined> {
+  try {
+    const offlineBooks = await db.offlineBooks
+      .where('userId')
+      .equals(userId)
+      .toArray();
+
+    if (offlineBooks.length === 0) return undefined;
+
+    // Преобразуем OfflineBook в Book формат для API совместимости
+    const books: (Book & OfflineBookMarker)[] = offlineBooks.map((ob) => ({
+      id: ob.bookId,
+      title: ob.metadata.title,
+      author: ob.metadata.author,
+      genre: ob.metadata.genre ?? undefined,
+      language: ob.metadata.language,
+      description: undefined,
+      total_pages: 0, // Unknown for offline
+      estimated_reading_time_hours: 0,
+      chapters_count: ob.metadata.totalChapters,
+      reading_progress_percent: 0, // Will be updated from server
+      has_cover: !!ob.metadata.coverUrl,
+      is_parsed: ob.status === 'complete',
+      is_processing: ob.status === 'downloading',
+      created_at: new Date(ob.downloadedAt).toISOString(),
+      last_accessed: new Date(ob.lastAccessedAt).toISOString(),
+      // Маркер что это offline данные
+      _offline: true,
+    }));
+
+    return {
+      books,
+      total: books.length,
+      skip: 0,
+      limit: books.length,
+    };
+  } catch (error) {
+    console.warn('[useBooks] Failed to load offline placeholder:', error);
+    return undefined;
+  }
+}
+
+/**
  * Получение списка книг с пагинацией
+ *
+ * Поддерживает offline-first: показывает книги из IndexedDB пока загружаются данные с сервера.
  *
  * @param params - Параметры пагинации и сортировки
  * @param options - Опции React Query
@@ -79,9 +140,18 @@ export function useBooks(
   const query = useQuery({
     queryKey: bookKeys.list(userId, params),
     queryFn: () => booksAPI.getBooks(params),
+
+    // Offline-first: показываем книги из IndexedDB пока загружаем с сервера
+    placeholderData: () => {
+      // Используем синхронный placeholder из предыдущего запроса или undefined
+      // Async placeholder загружается в initialData через отдельный эффект
+      return undefined;
+    },
+
     // P2.1: Adaptive staleTime based on processing status
     // Base staleTime is 5 minutes for completed books
     staleTime: 5 * 60 * 1000,
+
     // Dynamic refetchInterval: poll every 10s if any book is processing
     refetchInterval: (query) => {
       const data = query.state.data;
@@ -96,6 +166,23 @@ export function useBooks(
     },
     ...options,
   });
+
+  // Загружаем offline данные при первом рендере для fallback
+  React.useEffect(() => {
+    // Если данные уже загружены с сервера - не нужен offline fallback
+    if (query.data) return;
+
+    // Если нет данных и не идёт загрузка - пробуем offline
+    if (!query.data && !query.isFetching) {
+      getOfflineBooksPlaceholder(userId).then((offlineData) => {
+        if (offlineData && !query.data) {
+          // Устанавливаем offline данные как placeholder
+          queryClient.setQueryData(bookKeys.list(userId, params), offlineData);
+          console.log('[useBooks] Loaded offline placeholder data:', offlineData.books.length, 'books');
+        }
+      });
+    }
+  }, [userId, params, query.data, query.isFetching, queryClient]);
 
   // Prefetch следующей страницы после успешной загрузки
   React.useEffect(() => {

@@ -14,6 +14,7 @@ import { initializeStores } from '@/stores';
 import Layout from '@/components/Layout/Layout';
 import AuthGuard from '@/components/Auth/AuthGuard';
 import { OfflineBanner } from '@/components/UI/OfflineBanner';
+import { PWAUpdatePrompt } from '@/components/UI/PWAUpdatePrompt';
 
 // Core pages (eagerly loaded - small and frequently accessed)
 import HomePage from '@/pages/HomePage';
@@ -121,6 +122,9 @@ function App() {
           
           {/* Offline status banner */}
           <OfflineBanner />
+
+          {/* PWA update prompt */}
+          <PWAUpdatePrompt />
 
           {/* Global notifications */}
           <Toaster

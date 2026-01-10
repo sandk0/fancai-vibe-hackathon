@@ -1,7 +1,7 @@
 # Lightweight Backend Dockerfile
 # NLP REMOVAL (December 2025): SpaCy, NLTK, Stanza removed
 # syntax=docker/dockerfile:1.4
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \

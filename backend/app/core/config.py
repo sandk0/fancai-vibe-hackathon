@@ -102,6 +102,11 @@ class Settings(BaseSettings):
     # Логирование
     LOG_LEVEL: str = "INFO"
 
+    # Web Push (VAPID) Configuration (January 2026)
+    VAPID_PUBLIC_KEY: Optional[str] = None
+    VAPID_PRIVATE_KEY: Optional[str] = None
+    VAPID_SUBJECT: str = "mailto:admin@fancai.ru"
+
     # CORS - загружается из .env (docker-compose передает полный список)
     CORS_ORIGINS: str = (
         "http://localhost:3000,http://localhost:5173,http://localhost:5174"  # Development: React (3000), Vite (5173, 5174)

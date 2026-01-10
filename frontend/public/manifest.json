@@ -1,9 +1,10 @@
 {
+  "id": "/",
   "name": "fancai - Read with AI-Generated Illustrations",
   "short_name": "fancai",
   "description": "Transform your reading experience with AI-powered image generation from book descriptions. Upload EPUB and FB2 files and watch your stories come to life.",
   "version": "1.0.0",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "display": "standalone",
   "orientation": "portrait-primary",
   "theme_color": "#0ea5e9",
@@ -11,101 +12,34 @@
   "lang": "en",
   "scope": "/",
   "categories": ["books", "entertainment", "education", "productivity"],
-  
+
   "icons": [
     {
-      "src": "/favicon-16x16.png",
-      "sizes": "16x16",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon-32x32.png",
-      "sizes": "32x32",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon-72.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon-96.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon-128.png",
-      "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon-144.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/apple-touch-icon.png",
-      "sizes": "180x180",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon-192.png",
+      "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/favicon-384.png",
-      "sizes": "384x384",
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/favicon-512.png",
+      "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     }
   ],
-  
-  "screenshots": [
-    {
-      "src": "/screenshots/library-desktop.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "platform": "wide",
-      "label": "Book library with AI-generated images"
-    },
-    {
-      "src": "/screenshots/reader-desktop.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "platform": "wide",
-      "label": "Reading experience with inline AI illustrations"
-    },
-    {
-      "src": "/screenshots/library-mobile.png",
-      "sizes": "375x812",
-      "type": "image/png",
-      "platform": "narrow",
-      "label": "Mobile book library"
-    },
-    {
-      "src": "/screenshots/reader-mobile.png",
-      "sizes": "375x812",
-      "type": "image/png",
-      "platform": "narrow",
-      "label": "Mobile reading experience"
-    }
-  ],
-  
+
   "shortcuts": [
     {
       "name": "My Library",
@@ -114,8 +48,8 @@
       "url": "/library",
       "icons": [
         {
-          "src": "/icons/library-shortcut.png",
-          "sizes": "96x96",
+          "src": "/icon-192.png",
+          "sizes": "192x192",
           "type": "image/png"
         }
       ]
@@ -127,41 +61,16 @@
       "url": "/library?action=upload",
       "icons": [
         {
-          "src": "/icons/upload-shortcut.png",
-          "sizes": "96x96",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "Continue Reading",
-      "short_name": "Continue",
-      "description": "Continue your current book",
-      "url": "/continue-reading",
-      "icons": [
-        {
-          "src": "/icons/continue-shortcut.png",
-          "sizes": "96x96",
+          "src": "/icon-192.png",
+          "sizes": "192x192",
           "type": "image/png"
         }
       ]
     }
   ],
-  
-  "features": [
-    "Cross Platform",
-    "Fast",
-    "Fullscreen Capable",
-    "Installable",
-    "Offline Capable"
-  ],
-  
+
   "prefer_related_applications": false,
-  
-  "edge_side_panel": {
-    "preferred_width": 400
-  },
-  
+
   "file_handlers": [
     {
       "action": "/upload",
@@ -171,14 +80,7 @@
       }
     }
   ],
-  
-  "protocol_handlers": [
-    {
-      "protocol": "web+bookreader",
-      "url": "/import?url=%s"
-    }
-  ],
-  
+
   "share_target": {
     "action": "/upload",
     "method": "POST",
@@ -192,7 +94,7 @@
       ]
     }
   },
-  
+
   "launch_handler": {
     "client_mode": "focus-existing"
   }
