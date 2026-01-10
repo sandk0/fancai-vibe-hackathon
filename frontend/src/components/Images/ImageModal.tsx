@@ -316,7 +316,8 @@ export const ImageModal: React.FC<ImageModalProps> = ({
             onClick={() => !isRegenerating && setIsZoomed(!isZoomed)}
             onError={(e) => {
               const target = e.target as HTMLImageElement;
-              target.src = '/placeholder-image.jpg'; // Fallback image
+              // Use a gray placeholder SVG as fallback
+              target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"%3E%3Crect fill="%23374151" width="400" height="300"/%3E%3Ctext fill="%239CA3AF" font-family="system-ui" font-size="16" text-anchor="middle" x="200" y="150"%3EImage not available%3C/text%3E%3C/svg%3E';
             }}
           />
         </div>

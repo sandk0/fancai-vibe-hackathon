@@ -53,16 +53,22 @@ function normalizeImageUrl(url: string | null | undefined): string {
     return url;
   }
 
-  // If URL is a relative API path, prepend the base URL (without /api/v1 suffix)
+  // If URL is a relative API path starting with /api/v1/, it's already correct
+  // Just use the browser's origin to make it absolute
   if (url.startsWith('/api/')) {
-    // config.api.baseUrl is like "https://fancai.ru" (VITE_API_BASE_URL)
+    // Use window.location.origin to get the current host (e.g., "https://fancai.ru")
     // url is like "/api/v1/images/file/xxx.png"
     // Result: "https://fancai.ru/api/v1/images/file/xxx.png"
-    const baseUrl = config.api.baseUrl.replace(/\/+$/, ''); // Remove trailing slashes
-    return `${baseUrl}${url}`;
+    return `${window.location.origin}${url}`;
   }
 
-  // For other relative URLs, just return as is
+  // For other relative URLs (like "/images/xxx.png"), prepend baseUrl
+  if (url.startsWith('/')) {
+    const baseUrl = config.api.baseUrl.replace(/\/+$/, '');
+    return `${window.location.origin}${baseUrl}${url}`;
+  }
+
+  // For other URLs, just return as is
   return url;
 }
 
