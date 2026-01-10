@@ -72,6 +72,9 @@ import { ProgressSaveIndicator } from './ProgressSaveIndicator';
 import { PositionConflictDialog } from './PositionConflictDialog';
 import { notify } from '@/stores/ui';
 import { useNavigate } from 'react-router-dom';
+import { chapterCache } from '@/services/chapterCache';
+import { imageCache } from '@/services/imageCache';
+import { getCurrentUserId } from '@/hooks/api/queryKeys';
 
 // Types for position conflict
 interface PositionConflict {
@@ -629,11 +632,14 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   // Hook 19: Rendition health check on app resume from background
   // iOS may unload JavaScript heap after memory pressure or long idle,
   // causing epub.js objects to become corrupted
+  //
+  // P7 FIX: Also clears corrupted IndexedDB cache before reload to prevent
+  // "Forever Broken Book" state where corrupted cache persists across reloads
   useEffect(() => {
-    const handleVisibility = () => {
+    const handleVisibility = async () => {
       if (document.visibilityState === 'visible' && rendition) {
         // Wait a bit for state to stabilize after resume
-        setTimeout(() => {
+        setTimeout(async () => {
           try {
             // Quick health check - try to get current location
             const loc = rendition.currentLocation();
@@ -661,6 +667,29 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
               }
             } catch {
               // Ignore errors when trying to save position
+            }
+
+            // P7 FIX: Clear potentially corrupted IndexedDB cache for this book
+            // This prevents the "Forever Broken Book" state where corrupted cache
+            // persists and causes reload failures
+            try {
+              const userId = getCurrentUserId();
+              if (import.meta.env.DEV) {
+                console.log('[EpubReader] P7: Clearing corrupted cache for book:', book.id);
+              }
+
+              // Clear chapter cache (descriptions) and image cache for this book
+              await Promise.all([
+                chapterCache.clearBook(userId, book.id),
+                imageCache.clearBook(userId, book.id),
+              ]);
+
+              if (import.meta.env.DEV) {
+                console.log('[EpubReader] P7: Cache cleared successfully, proceeding with reload');
+              }
+            } catch (cacheError) {
+              console.error('[EpubReader] P7: Failed to clear cache:', cacheError);
+              // Continue with reload anyway - better to try than to stay broken
             }
 
             // Trigger reload to recover from corrupted state

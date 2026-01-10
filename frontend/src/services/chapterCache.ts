@@ -259,6 +259,7 @@ class ChapterCacheService {
    * Store chapter in cache
    *
    * DEFENSIVE: Validates input data before caching to prevent corruption
+   * P7 FIX: Skips writes when app is not visible to prevent IndexedDB corruption
    */
   async set(
     userId: string,
@@ -268,6 +269,15 @@ class ChapterCacheService {
     images: GeneratedImage[]
   ): Promise<boolean> {
     try {
+      // P7 FIX: Skip cache writes when app is not visible to prevent corruption
+      // during background/foreground transitions (PWA "Forever Broken Book" bug)
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        if (DEBUG) {
+          console.log('[ChapterCache] Skipping set() - app not visible:', { bookId, chapterNumber })
+        }
+        return false
+      }
+
       // DEFENSIVE: Validate inputs
       if (!userId || typeof userId !== 'string') {
         console.error('[ChapterCache] Invalid userId:', userId)

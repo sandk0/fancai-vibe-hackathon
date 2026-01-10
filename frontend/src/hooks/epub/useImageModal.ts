@@ -22,6 +22,9 @@ import { getCurrentUserId } from '@/hooks/api/queryKeys';
 /** Polling interval for checking async task status (ms) */
 const POLLING_INTERVAL = 3000;
 
+/** Debug logging */
+const DEBUG = import.meta.env.DEV;
+
 export type GenerationStatus = 'idle' | 'generating' | 'completed' | 'error';
 
 interface UseImageModalOptions {
@@ -64,6 +67,66 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
   // Current task ID for async generation
   const currentTaskIdRef = useRef<string | null>(null);
 
+  // Visibility tracking - pause polling when app is in background (P7 fix)
+  const isVisibleRef = useRef(document.visibilityState === 'visible');
+  const wasPollingRef = useRef(false); // Track if polling was active before visibility change
+
+  /**
+   * Handle visibility changes - pause/resume polling (P7 fix for "Forever Broken Book")
+   *
+   * When app goes to background during image generation polling:
+   * - Pause polling to prevent state updates and IndexedDB writes
+   * - Resume polling when app returns to foreground
+   *
+   * This prevents the race condition where polling callbacks try to write
+   * to IndexedDB while the app is transitioning, which can corrupt data.
+   */
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const nowVisible = document.visibilityState === 'visible';
+      const wasVisible = isVisibleRef.current;
+      isVisibleRef.current = nowVisible;
+
+      if (DEBUG) {
+        console.log('[useImageModal] Visibility changed:', { wasVisible, nowVisible, hasPolling: !!pollingIntervalRef.current, wasPolling: wasPollingRef.current });
+      }
+
+      // Going to background - pause polling
+      if (wasVisible && !nowVisible) {
+        if (pollingIntervalRef.current) {
+          wasPollingRef.current = true;
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+          if (DEBUG) {
+            console.log('[useImageModal] Paused polling due to background');
+          }
+        }
+      }
+
+      // Returning to foreground - resume polling if it was active
+      if (!wasVisible && nowVisible) {
+        if (wasPollingRef.current && currentTaskIdRef.current && isGenerating) {
+          if (DEBUG) {
+            console.log('[useImageModal] Resuming polling after foreground, taskId:', currentTaskIdRef.current);
+          }
+          // Delay resume slightly to let other systems stabilize (200ms)
+          setTimeout(() => {
+            // Double check we're still visible and should be polling
+            if (document.visibilityState === 'visible' && currentTaskIdRef.current && isGenerating) {
+              resumePolling(currentTaskIdRef.current);
+            }
+            wasPollingRef.current = false;
+          }, 200);
+        } else {
+          wasPollingRef.current = false;
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isGenerating]); // Note: resumePolling will be defined below
+
   /**
    * Cleanup polling interval and abort controller on unmount
    */
@@ -99,10 +162,20 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
 
   /**
    * Cache image for offline use
+   * Skips caching if app is not visible (P7 fix)
    */
   const cacheImage = useCallback(
     async (descriptionId: string, imageUrl: string): Promise<void> => {
       if (!enableCache || !bookId) return;
+
+      // P7 fix: Skip caching if app is not visible to prevent IndexedDB corruption
+      if (document.visibilityState !== 'visible') {
+        if (DEBUG) {
+          console.log('[useImageModal] Skipping cache write - app not visible');
+        }
+        return;
+      }
+
       try {
         const userId = getCurrentUserId();
         await imageCache.set(userId, descriptionId, imageUrl, bookId);
@@ -112,6 +185,139 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
     },
     [enableCache, bookId]
   );
+
+  /**
+   * Resume polling for a task after returning from background (P7 fix)
+   * This creates a new polling interval with the same taskId
+   */
+  const resumePolling = useCallback((taskId: string) => {
+    // Don't start new polling if one exists
+    if (pollingIntervalRef.current) {
+      if (DEBUG) {
+        console.log('[useImageModal] resumePolling: polling already exists');
+      }
+      return;
+    }
+
+    // Don't resume if aborted
+    if (abortControllerRef.current?.signal.aborted) {
+      if (DEBUG) {
+        console.log('[useImageModal] resumePolling: aborted, not resuming');
+      }
+      return;
+    }
+
+    const signal = abortControllerRef.current?.signal;
+
+    if (DEBUG) {
+      console.log('[useImageModal] resumePolling: starting polling for task', taskId);
+    }
+
+    pollingIntervalRef.current = setInterval(async () => {
+      // P7 fix: Don't poll if not visible
+      if (document.visibilityState !== 'visible') {
+        if (DEBUG) {
+          console.log('[useImageModal] Skipping poll - app not visible');
+        }
+        return;
+      }
+
+      if (signal?.aborted) {
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+        return;
+      }
+
+      try {
+        const status = await imagesAPI.getTaskStatus(taskId, signal);
+
+        // P7 fix: Double-check visibility before updating state
+        if (document.visibilityState !== 'visible') {
+          if (DEBUG) {
+            console.log('[useImageModal] Skipping state update - app not visible');
+          }
+          return;
+        }
+
+        if (status.status === 'SUCCESS' && status.result?.success) {
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+
+          const imageUrl = status.result.image_url || '';
+          const generationTime = status.result.generation_time_seconds || 0;
+
+          // Get the current description from state for creating the image object
+          const currentDescription = selectedDescription;
+          if (!currentDescription) {
+            if (DEBUG) {
+              console.warn('[useImageModal] No selected description for completed task');
+            }
+            return;
+          }
+
+          const newImage: GeneratedImage = {
+            id: status.result.image_id || currentDescription.id,
+            image_url: imageUrl,
+            service_used: 'imagen',
+            status: 'completed',
+            generation_time_seconds: generationTime,
+            created_at: new Date().toISOString(),
+            is_moderated: false,
+            view_count: 0,
+            download_count: 0,
+            description: {
+              id: currentDescription.id,
+              type: currentDescription.type,
+              text: currentDescription.content,
+              content: currentDescription.content,
+              confidence_score: currentDescription.confidence_score || 0,
+              priority_score: currentDescription.priority_score,
+            },
+            chapter: {
+              id: '',
+              number: 0,
+              title: '',
+            },
+          };
+
+          setSelectedImage(newImage);
+          setGenerationStatus('completed');
+          setIsGenerating(false);
+          currentTaskIdRef.current = null;
+
+          // Cache with visibility check built-in
+          cacheImage(currentDescription.id, imageUrl);
+
+          notify.success(
+            'Изображение создано',
+            `Сгенерировано за ${generationTime.toFixed(1)}с`
+          );
+        } else if (status.status === 'FAILURE') {
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+
+          const errorMessage = status.result?.error_message || status.message || 'Не удалось создать изображение';
+
+          setGenerationError(errorMessage);
+          setGenerationStatus('error');
+          setIsGenerating(false);
+          currentTaskIdRef.current = null;
+          notify.error('Ошибка генерации', errorMessage);
+        }
+      } catch (pollError: unknown) {
+        if (pollError instanceof Error && pollError.name === 'AbortError') {
+          return;
+        }
+        console.error('[useImageModal] Polling error:', pollError);
+      }
+    }, POLLING_INTERVAL);
+  }, [cacheImage, selectedDescription]);
 
   /**
    * Open modal with description and optional image
@@ -194,8 +400,16 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
 
       currentTaskIdRef.current = queueResult.task_id;
 
-      // Start polling for task status
+      // Start polling for task status (with P7 visibility checks)
       pollingIntervalRef.current = setInterval(async () => {
+        // P7 fix: Skip polling if app is not visible
+        if (document.visibilityState !== 'visible') {
+          if (DEBUG) {
+            console.log('[useImageModal] Skipping poll tick - app not visible');
+          }
+          return;
+        }
+
         if (signal.aborted) {
           if (pollingIntervalRef.current) {
             clearInterval(pollingIntervalRef.current);
@@ -206,6 +420,14 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
 
         try {
           const status = await imagesAPI.getTaskStatus(queueResult.task_id, signal);
+
+          // P7 fix: Double-check visibility before updating state
+          if (document.visibilityState !== 'visible') {
+            if (DEBUG) {
+              console.log('[useImageModal] Skipping state update after poll - app not visible');
+            }
+            return;
+          }
 
           if (status.status === 'SUCCESS' && status.result?.success) {
             // Task completed successfully
@@ -247,7 +469,7 @@ export const useImageModal = (options: UseImageModalOptions = {}): UseImageModal
             setIsGenerating(false);
             currentTaskIdRef.current = null;
 
-            // Cache the generated image (async, don't wait)
+            // Cache the generated image (with visibility check built-in)
             cacheImage(description.id, imageUrl);
 
             notify.success(

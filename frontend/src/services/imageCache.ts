@@ -169,6 +169,8 @@ class ImageCacheService {
   /**
    * Store image in cache
    * Downloads the image from URL and stores as blob
+   *
+   * P7 FIX: Skips writes when app is not visible to prevent IndexedDB corruption
    */
   async set(
     userId: string,
@@ -177,6 +179,15 @@ class ImageCacheService {
     bookId: string
   ): Promise<boolean> {
     try {
+      // P7 FIX: Skip cache writes when app is not visible to prevent corruption
+      // during background/foreground transitions (PWA "Forever Broken Book" bug)
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        if (DEBUG) {
+          console.log('[ImageCache] Skipping set() - app not visible:', descriptionId)
+        }
+        return false
+      }
+
       // Download image as blob with Authorization header
       if (DEBUG) console.log('[ImageCache] Downloading image for caching:', descriptionId)
       const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)
