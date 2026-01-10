@@ -626,6 +626,54 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
     }
   }, [rendition, positionConflict, goToCFI, skipNextRelocated, setInitialProgress, locations, markPositionRestored]);
 
+  // Hook 19: Rendition health check on app resume from background
+  // iOS may unload JavaScript heap after memory pressure or long idle,
+  // causing epub.js objects to become corrupted
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && rendition) {
+        // Wait a bit for state to stabilize after resume
+        setTimeout(() => {
+          try {
+            // Quick health check - try to get current location
+            const loc = rendition.currentLocation();
+            if (!loc) {
+              throw new Error('Rendition returned null location');
+            }
+
+            // Verify location has expected properties
+            if (!loc.start || !loc.end) {
+              throw new Error('Rendition location is incomplete');
+            }
+
+            if (import.meta.env.DEV) {
+              console.log('[EpubReader] Rendition health check passed');
+            }
+          } catch (e) {
+            console.error('[EpubReader] Rendition corrupted after resume, triggering reload:', e);
+
+            // Save current position before reload if possible
+            try {
+              const currentLoc = rendition.currentLocation();
+              const currentCfi = currentLoc?.start?.cfi;
+              if (currentCfi) {
+                localStorage.setItem(`book_${book.id}_last_cfi`, currentCfi);
+              }
+            } catch {
+              // Ignore errors when trying to save position
+            }
+
+            // Trigger reload to recover from corrupted state
+            reload?.();
+          }
+        }, 500); // 500ms delay for stability
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [rendition, book.id, reload]);
+
   // Get background color based on theme - memoized to prevent recalculation
   // Use explicit colors instead of CSS variables to prevent flash during initial render
   const backgroundColor = useMemo(() => {

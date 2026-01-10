@@ -25,6 +25,7 @@ export {
   useBooks,
   useBooksInfinite,
   useBook,
+  useBookForReader,
   useReadingProgress,
   useUserStatistics,
   useUploadBook,
@@ -36,6 +37,7 @@ export {
 // Chapter Hooks
 export {
   useChapter,
+  useChapterForReader,
   useChapterContent,
   useChapterNavigation,
   usePrefetchChapter,

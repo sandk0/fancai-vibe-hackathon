@@ -1,5 +1,8 @@
 // Store imports for initialization
 import { useAuthStore as _useAuthStore } from './auth';
+import { initializeStorageManagement } from '@/services/storageManager';
+
+const DEBUG = import.meta.env.DEV;
 
 // Main store exports
 export { useAuthStore } from './auth';
@@ -23,10 +26,15 @@ export const initializeStores = () => {
   // Load auth data from storage (lazy initialization)
   setTimeout(() => {
     try {
-      console.log('🚀 Initializing auth store...');
+      if (DEBUG) console.log('[Stores] Initializing auth store...');
       _useAuthStore.getState().loadUserFromStorage();
     } catch (error) {
       console.warn('Failed to initialize auth store:', error);
     }
   }, 0);
+
+  // Initialize storage management for PWA (delay to ensure app is ready)
+  setTimeout(() => {
+    initializeStorageManagement();
+  }, 1000);
 };

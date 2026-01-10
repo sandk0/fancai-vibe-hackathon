@@ -30,5 +30,11 @@ export { useStorageInfo } from '../useStorageInfo';
 // Online Status
 export { useOnlineStatus } from '../useOnlineStatus';
 
+// PWA Resume Guard
+export {
+  usePWAResumeGuard,
+  type PWAResumeGuardReturn,
+} from './usePWAResumeGuard';
+
 // Re-export query keys for PWA
 export { pwaKeys } from '../api/queryKeys';

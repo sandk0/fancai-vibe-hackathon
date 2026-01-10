@@ -19,6 +19,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Share, Plus, X } from 'lucide-react';
 import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { Z_INDEX } from '@/lib/zIndex';
 import { Button } from '@/components/UI/button';
 import {
   isIOSSafari,
@@ -376,23 +377,27 @@ export function IOSInstallInstructions({
           <>
             {/* Backdrop */}
             <m.div
-              className="fixed inset-0 z-[400] bg-black/50 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+              style={{ zIndex: Z_INDEX.iosInstall - 1 }}
               variants={modalBackdropVariants}
               initial="hidden"
               animate="visible"
               exit="exit"
               transition={{ duration: 0.2 }}
               onClick={handleDismiss}
+              onTouchEnd={handleDismiss}
               aria-hidden="true"
             />
 
             {/* Modal container */}
             <div
               className={cn(
-                'fixed inset-0 z-[500] flex items-end justify-center p-4',
+                'fixed inset-0 flex items-end justify-center p-4',
                 'sm:items-center'
               )}
+              style={{ zIndex: Z_INDEX.iosInstall }}
               onClick={handleDismiss}
+              onTouchEnd={handleDismiss}
             >
               {/* Modal content */}
               <m.div
@@ -410,6 +415,7 @@ export function IOSInstallInstructions({
                 animate="visible"
                 exit="exit"
                 onClick={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="ios-install-title"

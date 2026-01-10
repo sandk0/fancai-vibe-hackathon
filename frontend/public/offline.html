@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#121212" id="theme-color-meta">
+  <title>Нет подключения - fancai</title>
+  <style>
+    /* Theme CSS Variables */
+    :root {
+      /* Light theme (default) */
+      --background: #ffffff;
+      --foreground: #1a1a1a;
+      --muted: #6b7280;
+      --accent: #0ea5e9;
+      --accent-hover: #0284c7;
+      --accent-active: #0369a1;
+    }
+
+    /* Dark theme */
+    body.dark {
+      --background: #121212;
+      --foreground: #e8e8e8;
+      --muted: #a0a0a0;
+      --accent: #0ea5e9;
+      --accent-hover: #0284c7;
+      --accent-active: #0369a1;
+    }
+
+    /* Sepia theme */
+    body.sepia {
+      --background: #f4ecd8;
+      --foreground: #5c4b37;
+      --muted: #7d6b56;
+      --accent: #8b6914;
+      --accent-hover: #725610;
+      --accent-active: #5a440d;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+      background-color: var(--background);
+      color: var(--foreground);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100%;
+      padding: 24px;
+      text-align: center;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .container {
+      max-width: 400px;
+      width: 100%;
+    }
+
+    .icon {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 24px;
+      opacity: 0.7;
+    }
+
+    .icon svg {
+      width: 100%;
+      height: 100%;
+      fill: currentColor;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--foreground);
+    }
+
+    p {
+      font-size: 1rem;
+      line-height: 1.6;
+      color: var(--muted);
+      margin-bottom: 32px;
+    }
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background-color: var(--accent);
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      font-family: inherit;
+    }
+
+    button:hover {
+      background-color: var(--accent-hover);
+    }
+
+    button:active {
+      background-color: var(--accent-active);
+    }
+
+    button:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .refresh-icon {
+      width: 18px;
+      height: 18px;
+    }
+
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 1.25rem;
+      }
+
+      p {
+        font-size: 0.9375rem;
+      }
+
+      button {
+        width: 100%;
+        padding: 14px 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">
+      <!-- Offline/Cloud icon -->
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 2l20 20"/>
+        <path d="M5 5a8 8 0 0 0 1.5 15h9.5a6 6 0 0 0 1.81-.28"/>
+        <path d="M21.5 16.5A6 6 0 0 0 12 6c-.46 0-.91.04-1.35.12"/>
+      </svg>
+    </div>
+
+    <h1>Нет подключения к интернету</h1>
+
+    <p>
+      Проверьте подключение и попробуйте снова.
+      Загруженные книги доступны офлайн в библиотеке.
+    </p>
+
+    <button onclick="location.reload()">
+      <svg class="refresh-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+        <path d="M3 3v5h5"/>
+        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+        <path d="M16 21h5v-5"/>
+      </svg>
+      Попробовать снова
+    </button>
+  </div>
+
+  <script>
+    (function() {
+      // Theme configuration
+      var themeColors = {
+        light: '#ffffff',
+        dark: '#121212',
+        sepia: '#f4ecd8'
+      };
+      var validThemes = ['light', 'dark', 'sepia', 'system'];
+
+      /**
+       * Get stored theme from localStorage with error handling
+       * Handles Safari private mode and other localStorage restrictions
+       */
+      function getStoredTheme() {
+        try {
+          var stored = localStorage.getItem('app-theme');
+          if (stored && validThemes.indexOf(stored) !== -1) {
+            return stored;
+          }
+        } catch (e) {
+          // localStorage not available (Safari private mode, etc.)
+          console.warn('localStorage not available:', e);
+        }
+        return null;
+      }
+
+      /**
+       * Check if system prefers dark mode
+       */
+      function systemPrefersDark() {
+        try {
+          return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      /**
+       * Resolve 'system' theme to actual theme based on OS preference
+       */
+      function resolveTheme(theme) {
+        if (theme === 'system' || !theme) {
+          return systemPrefersDark() ? 'dark' : 'light';
+        }
+        return theme;
+      }
+
+      /**
+       * Apply theme to the page
+       */
+      function applyTheme(theme) {
+        var resolved = resolveTheme(theme);
+        var body = document.body;
+
+        // Remove all theme classes
+        body.classList.remove('light', 'dark', 'sepia');
+
+        // Add theme class (light uses default :root variables, no class needed)
+        if (resolved !== 'light') {
+          body.classList.add(resolved);
+        }
+
+        // Update theme-color meta tag for browser chrome
+        var metaThemeColor = document.getElementById('theme-color-meta');
+        if (metaThemeColor && themeColors[resolved]) {
+          metaThemeColor.setAttribute('content', themeColors[resolved]);
+        }
+      }
+
+      // Initialize theme
+      var storedTheme = getStoredTheme();
+      applyTheme(storedTheme);
+
+      // Listen for system theme changes (for 'system' theme setting)
+      try {
+        var mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        if (mediaQuery.addEventListener) {
+          mediaQuery.addEventListener('change', function() {
+            var currentTheme = getStoredTheme();
+            if (currentTheme === 'system' || !currentTheme) {
+              applyTheme('system');
+            }
+          });
+        } else if (mediaQuery.addListener) {
+          // Fallback for older browsers
+          mediaQuery.addListener(function() {
+            var currentTheme = getStoredTheme();
+            if (currentTheme === 'system' || !currentTheme) {
+              applyTheme('system');
+            }
+          });
+        }
+      } catch (e) {
+        // matchMedia not supported
+        console.warn('matchMedia not supported:', e);
+      }
+    })();
+  </script>
+</body>
+</html>

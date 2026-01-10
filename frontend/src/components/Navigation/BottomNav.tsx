@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Library, Image, Settings, User } from 'lucide-react';
 import { isActiveRoute } from '@/utils/navigation';
+import { Z_INDEX } from '@/lib/zIndex';
 
 interface NavItem {
   path: string;
@@ -32,19 +33,26 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 inset-x-0 z-[500] md:hidden"
+      className="fixed bottom-0 inset-x-0 md:hidden"
       role="navigation"
       aria-label="Мобильная навигация"
-      style={{ position: 'fixed' }}
+      style={{ zIndex: Z_INDEX.bottomNav }}
     >
-      {/* Background with blur */}
+      {/* Background with blur - pointer-events: none to allow touch pass-through */}
       <div
         className="absolute inset-0 bg-background/80 backdrop-blur-lg border-t border-border"
+        style={{ pointerEvents: 'none' }}
         aria-hidden="true"
       />
 
-      {/* Navigation items */}
-      <ul className="relative flex items-center justify-around pb-safe">
+      {/* Navigation items - pointer-events: auto for clickable content */}
+      <ul
+        className="relative flex items-center justify-around"
+        style={{
+          pointerEvents: 'auto',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        }}
+      >
         {navItems.map(({ path, label, icon: Icon }) => {
           const active = isActiveRoute(location.pathname, path);
 

@@ -25,6 +25,7 @@ import React, {
 import { createPortal } from 'react-dom';
 import { m, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { Z_INDEX } from '@/lib/zIndex';
 
 // --- Types ---
 
@@ -251,7 +252,8 @@ export function Modal({
         <ModalContext.Provider value={{ onClose, variant }}>
           {/* Backdrop */}
           <m.div
-            className="fixed inset-0 z-[400] bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm pointer-events-auto"
+            style={{ zIndex: Z_INDEX.modalOverlay }}
             variants={backdropVariants}
             initial="hidden"
             animate="visible"
@@ -264,12 +266,12 @@ export function Modal({
           {/* Modal Container */}
           <div
             className={cn(
-              'fixed inset-0 z-[500] flex overflow-y-auto',
+              'fixed inset-0 flex overflow-y-auto pointer-events-none',
               variant === 'drawer' ? 'items-end' : 'items-center justify-center',
               variant === 'fullscreen' && 'p-0',
               variant === 'default' && 'p-4'
             )}
-            onClick={handleBackdropClick}
+            style={{ zIndex: Z_INDEX.modal }}
           >
             {/* Modal Content */}
             <m.div
@@ -280,7 +282,7 @@ export function Modal({
               aria-describedby={descriptionId}
               tabIndex={-1}
               className={cn(
-                'relative flex flex-col bg-popover text-popover-foreground shadow-xl outline-none',
+                'relative flex flex-col bg-popover text-popover-foreground shadow-xl outline-none pointer-events-auto',
                 // Default variant: full width on mobile, constrained on desktop
                 variant === 'default' && [
                   'w-full rounded-lg',

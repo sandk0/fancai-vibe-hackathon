@@ -14,6 +14,7 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { X, AlertTriangle, Trash2 } from 'lucide-react';
 import { m, AnimatePresence } from 'framer-motion';
+import { Z_INDEX } from '@/lib/zIndex';
 
 interface DeleteConfirmModalProps {
   isOpen: boolean;
@@ -58,19 +59,26 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
 
   return (
     <AnimatePresence>
+      {/* Backdrop */}
       <m.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm pointer-events-auto"
+        style={{ zIndex: Z_INDEX.modalOverlay }}
         onClick={onCancel}
         role="presentation"
+      />
+      {/* Modal Container */}
+      <div
+        className="fixed inset-0 flex items-center justify-center pointer-events-none"
+        style={{ zIndex: Z_INDEX.modal }}
       >
         <m.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="relative rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden bg-background"
+          className="relative rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden bg-background pointer-events-auto"
           onClick={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
@@ -147,7 +155,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
             </button>
           </div>
         </m.div>
-      </m.div>
+      </div>
     </AnimatePresence>
   );
 };

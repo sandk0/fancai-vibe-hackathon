@@ -25,6 +25,7 @@ from .routers import (
     health_router,
     descriptions_router,
     push_router,
+    sync_router,
 )
 from .routers.admin import admin_router
 from .routers.books import books_router
@@ -259,6 +260,9 @@ app.include_router(health_router, prefix="/api/v1", tags=["health"])
 
 # Push Notifications router (January 2026)
 app.include_router(push_router, prefix="/api/v1", tags=["push"])
+
+# Sync router for PWA offline queue batch operations (January 2026)
+app.include_router(sync_router, prefix="/api/v1", tags=["sync"])
 
 
 @app.get("/")

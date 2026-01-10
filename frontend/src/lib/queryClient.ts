@@ -10,16 +10,49 @@
  * - Exponential backoff retry with jitter
  * - Configurable retry behavior based on error type
  * - Extended cache times for offline support
+ * - Custom focusManager for PWA resume handling
  *
  * @module lib/queryClient
  */
 
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, focusManager } from '@tanstack/react-query';
 import {
   createTanStackRetry,
   createTanStackRetryDelay,
   RETRY_PRESETS,
 } from '@/utils/retryWithBackoff';
+
+// ============================================================================
+// FocusManager Configuration for PWA
+// ============================================================================
+
+/**
+ * Custom focus handler for PWA resume handling.
+ *
+ * This integrates with:
+ * - Standard visibility change events (document.visibilityState)
+ * - Custom app:online event from useOnlineStatus hook
+ *
+ * The usePWAResumeGuard hook can temporarily disable focus via focusManager.setFocused(false)
+ * to prevent premature refetches before auth state is ready.
+ */
+focusManager.setEventListener((handleFocus) => {
+  // Standard visibility change handler
+  const visibilityHandler = () => {
+    handleFocus(document.visibilityState === 'visible');
+  };
+
+  document.addEventListener('visibilitychange', visibilityHandler, false);
+
+  // Also listen for custom app events (dispatched by useOnlineStatus)
+  const onlineHandler = () => handleFocus(true);
+  window.addEventListener('app:online', onlineHandler);
+
+  return () => {
+    document.removeEventListener('visibilitychange', visibilityHandler);
+    window.removeEventListener('app:online', onlineHandler);
+  };
+});
 
 /**
  * Default retry configuration for API queries
@@ -136,3 +169,19 @@ export const QUERY_RETRY_PRESETS = {
     retry: false as const,
   },
 } as const;
+
+/**
+ * Export focusManager for use in PWA resume handling
+ *
+ * @example
+ * ```typescript
+ * import { focusManager } from '@/lib/queryClient';
+ *
+ * // Temporarily disable focus to prevent premature refetch
+ * focusManager.setFocused(false);
+ *
+ * // Re-enable after auth is ready
+ * focusManager.setFocused(true);
+ * ```
+ */
+export { focusManager };

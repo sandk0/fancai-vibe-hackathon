@@ -6,14 +6,17 @@
  *
  * Features:
  * - Real-time network status tracking
- * - Pending sync operations count
- * - Smooth transitions between states
- * - Auto-hide after successful sync
+ * - Pending sync operations count (async via IndexedDB)
+ * - Smooth slide-down animation via framer-motion
+ * - Safe area padding for notched devices
+ * - Dark theme compatible
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { m, AnimatePresence } from 'framer-motion';
+import { WifiOff, RefreshCw, CheckCircle } from 'lucide-react';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-import { syncQueue, subscribeSyncQueue } from '@/services/syncQueue';
+import { getPendingCount, subscribeSyncQueue } from '@/services/syncQueue';
 
 interface OfflineBannerProps {
   /** Auto-hide banner after sync complete (ms). Set to 0 to disable. */
@@ -22,24 +25,56 @@ interface OfflineBannerProps {
   className?: string;
 }
 
+/**
+ * OfflineBanner component for displaying network and sync status
+ *
+ * @example
+ * ```tsx
+ * // Basic usage (in App.tsx)
+ * <OfflineBanner />
+ *
+ * // With custom auto-hide delay
+ * <OfflineBanner autoHideDelay={5000} />
+ * ```
+ */
 export function OfflineBanner({
   autoHideDelay = 3000,
   className = '',
 }: OfflineBannerProps) {
   const { isOnline, wasOffline } = useOnlineStatus();
-  const [pendingCount, setPendingCount] = useState(() => syncQueue.getQueueLength());
+  const [pendingCount, setPendingCount] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const [showSyncSuccess, setShowSyncSuccess] = useState(false);
 
-  // Subscribe to queue changes
-  useEffect(() => {
-    const updateCount = () => {
-      setPendingCount(syncQueue.getQueueLength());
-    };
-
-    const unsubscribe = subscribeSyncQueue(updateCount);
-    return unsubscribe;
+  // Fetch pending count asynchronously
+  const updatePendingCount = useCallback(async () => {
+    try {
+      const count = await getPendingCount();
+      setPendingCount(count);
+    } catch (error) {
+      console.warn('[OfflineBanner] Failed to get pending count:', error);
+      setPendingCount(0);
+    }
   }, []);
+
+  // Initial load and periodic updates
+  useEffect(() => {
+    updatePendingCount();
+
+    // Update pending count periodically (every 5 seconds)
+    const interval = setInterval(updatePendingCount, 5000);
+
+    return () => clearInterval(interval);
+  }, [updatePendingCount]);
+
+  // Subscribe to queue changes for immediate updates
+  useEffect(() => {
+    const unsubscribe = subscribeSyncQueue(() => {
+      updatePendingCount();
+    });
+
+    return unsubscribe;
+  }, [updatePendingCount]);
 
   // Manage visibility state
   useEffect(() => {
@@ -62,115 +97,115 @@ export function OfflineBanner({
         }, autoHideDelay);
         return () => clearTimeout(timer);
       }
+    } else if (pendingCount > 0) {
+      // Show if there are pending items even if never went offline
+      setIsVisible(true);
+      setShowSyncSuccess(false);
     } else {
-      // Online and never was offline - hide
+      // Online with no pending items - hide
       setIsVisible(false);
     }
   }, [isOnline, wasOffline, pendingCount, autoHideDelay]);
 
-  // Don't render if not visible
-  if (!isVisible) {
-    return null;
-  }
+  // Animation variants for slide-down effect
+  const variants = {
+    hidden: {
+      y: -100,
+      opacity: 0,
+    },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: 'spring',
+        damping: 25,
+        stiffness: 300,
+      },
+    },
+    exit: {
+      y: -100,
+      opacity: 0,
+      transition: {
+        duration: 0.2,
+      },
+    },
+  };
 
-  // Determine banner state and content
-  let bgColor: string;
-  let content: React.ReactNode;
+  // Determine banner state and styling
+  const getBannerConfig = () => {
+    if (!isOnline) {
+      return {
+        bgColor: 'bg-red-600 dark:bg-red-700',
+        icon: <WifiOff className="h-4 w-4" />,
+        text: 'Нет подключения',
+        subtext: pendingCount > 0
+          ? `Ожидает синхронизации: ${pendingCount}`
+          : 'Изменения сохранятся локально',
+      };
+    }
 
-  if (!isOnline) {
-    // Offline state
-    bgColor = 'bg-yellow-600';
-    content = (
-      <>
-        <span className="mr-2" role="img" aria-label="offline">
-          &#128225;
-        </span>
-        <span>
-          Вы offline. Изменения сохранятся при восстановлении связи.
-          {pendingCount > 0 && (
-            <span className="ml-2 opacity-80">
-              ({pendingCount} {getPluralForm(pendingCount, 'изменение', 'изменения', 'изменений')} в очереди)
-            </span>
-          )}
-        </span>
-      </>
-    );
-  } else if (pendingCount > 0) {
-    // Syncing state
-    bgColor = 'bg-blue-600';
-    content = (
-      <>
-        <span className="mr-2 inline-block animate-spin" role="img" aria-label="syncing">
-          &#8635;
-        </span>
-        <span>
-          Соединение восстановлено. Синхронизация {pendingCount}{' '}
-          {getPluralForm(pendingCount, 'изменения', 'изменений', 'изменений')}...
-        </span>
-      </>
-    );
-  } else if (showSyncSuccess) {
-    // Success state
-    bgColor = 'bg-green-600';
-    content = (
-      <>
-        <span className="mr-2" role="img" aria-label="success">
-          &#10003;
-        </span>
-        <span>Соединение восстановлено. Все изменения синхронизированы.</span>
-      </>
-    );
-  } else {
-    // Fallback (shouldn't normally reach here)
+    if (pendingCount > 0) {
+      return {
+        bgColor: 'bg-amber-500 dark:bg-amber-600',
+        icon: <RefreshCw className="h-4 w-4 animate-spin" />,
+        text: 'Синхронизация...',
+        subtext: `Ожидает синхронизации: ${pendingCount}`,
+      };
+    }
+
+    if (showSyncSuccess) {
+      return {
+        bgColor: 'bg-green-600 dark:bg-green-700',
+        icon: <CheckCircle className="h-4 w-4" />,
+        text: 'Синхронизация завершена',
+        subtext: 'Все изменения сохранены',
+      };
+    }
+
     return null;
-  }
+  };
+
+  const config = getBannerConfig();
 
   return (
-    <div
-      className={`
-        fixed top-0 left-0 right-0 z-[800]
-        px-4 py-2
-        text-center text-sm text-primary-foreground
-        transition-all duration-300 ease-in-out
-        ${bgColor}
-        ${className}
-      `}
-      role="status"
-      aria-live="polite"
-    >
-      <div className="flex items-center justify-center">
-        {content}
-      </div>
-    </div>
+    <AnimatePresence>
+      {isVisible && config && (
+        <m.div
+          className={`
+            fixed top-0 left-0 right-0 z-[800]
+            pt-[env(safe-area-inset-top,0px)]
+            ${config.bgColor}
+            ${className}
+          `}
+          variants={variants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="px-4 py-2">
+            <div className="flex items-center justify-center gap-2 text-white text-sm">
+              {config.icon}
+              <span className="font-medium">{config.text}</span>
+              {config.subtext && (
+                <>
+                  <span className="hidden sm:inline text-white/80">|</span>
+                  <span className="hidden sm:inline text-white/80">{config.subtext}</span>
+                </>
+              )}
+            </div>
+            {/* Mobile subtext on second line */}
+            {config.subtext && (
+              <div className="sm:hidden text-center text-xs text-white/80 mt-0.5">
+                {config.subtext}
+              </div>
+            )}
+          </div>
+        </m.div>
+      )}
+    </AnimatePresence>
   );
-}
-
-/**
- * Helper for Russian plural forms
- */
-function getPluralForm(
-  count: number,
-  one: string,
-  few: string,
-  many: string
-): string {
-  const absCount = Math.abs(count);
-  const lastTwo = absCount % 100;
-  const lastOne = absCount % 10;
-
-  if (lastTwo >= 11 && lastTwo <= 19) {
-    return many;
-  }
-
-  if (lastOne === 1) {
-    return one;
-  }
-
-  if (lastOne >= 2 && lastOne <= 4) {
-    return few;
-  }
-
-  return many;
 }
 
 export default OfflineBanner;

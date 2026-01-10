@@ -17,6 +17,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
 import { X, ChevronRight, Check, Search, BookOpen } from 'lucide-react';
+import { Z_INDEX } from '@/lib/zIndex';
 import type { NavItem } from 'epubjs';
 
 interface TocSidebarProps {
@@ -388,7 +389,8 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
             animate={{ opacity: 1 }}
             exit={reducedMotion ? { opacity: 1 } : { opacity: 0 }}
             transition={{ duration: reducedMotion ? 0 : 0.2 }}
-            className="fixed inset-0 z-[400] bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm pointer-events-auto"
+            style={{ zIndex: Z_INDEX.sidebar }}
             onClick={onClose}
             aria-hidden="true"
           />
@@ -404,7 +406,8 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
               damping: 30,
               stiffness: 300,
             }}
-            className="fixed top-0 right-0 z-[500] h-full w-full md:w-96 bg-[var(--color-bg-base)] shadow-2xl flex flex-col overflow-hidden pt-safe pb-safe pr-safe"
+            className="fixed top-0 right-0 h-full w-full md:w-96 bg-[var(--color-bg-base)] shadow-2xl flex flex-col overflow-hidden pt-safe pb-safe pr-safe pointer-events-auto"
+            style={{ zIndex: Z_INDEX.modal }}
             role="dialog"
             aria-modal="true"
             aria-label="Table of contents"
@@ -426,10 +429,10 @@ export const TocSidebar: React.FC<TocSidebarProps> = ({
               </div>
               <m.button
                 onClick={onClose}
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-default)] hover:bg-[var(--color-bg-emphasis)] transition-colors"
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-default)] hover:bg-[var(--color-bg-emphasis)] transition-colors touch-target"
                 aria-label="Close table of contents"
                 whileHover={reducedMotion ? undefined : { scale: 1.05 }}
-                whileTap={reducedMotion ? undefined : { scale: 0.95 }}
+                whileTap={{ scale: 0.95 }}
               >
                 <X className="w-5 h-5" />
               </m.button>

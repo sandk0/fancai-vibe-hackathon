@@ -18,6 +18,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/utils/cn';
 import { isActiveRoute } from '@/utils/navigation';
+import { Z_INDEX } from '@/lib/zIndex';
 
 const SIDEBAR_COLLAPSED_KEY = 'fancai-sidebar-collapsed';
 
@@ -94,11 +95,12 @@ const Sidebar: React.FC = () => {
       <aside
         className={cn(
           'hidden md:flex md:flex-shrink-0 md:flex-col',
-          'fixed left-0 top-16 h-[calc(100vh-4rem)] z-[300]',
+          'fixed left-0 top-16 h-[calc(100vh-4rem)]',
           'transition-all duration-300 ease-in-out'
         )}
         style={{
           width: isCollapsed ? '64px' : '240px',
+          zIndex: Z_INDEX.sidebar,
         }}
       >
         <div
@@ -249,12 +251,13 @@ const Sidebar: React.FC = () => {
       <div
         id="mobile-sidebar"
         className={cn(
-          'fixed inset-y-0 left-0 z-[500] w-64 md:hidden',
+          'fixed inset-y-0 left-0 w-64 md:hidden',
           'transition-transform duration-300 ease-in-out',
           'bg-[var(--color-bg-base)] border-r border-[var(--color-border-default)]',
           'pt-safe pb-safe',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
+        style={{ zIndex: Z_INDEX.modal }}
       >
         <div className="flex flex-col h-full overflow-y-auto">
           {/* Logo */}
@@ -333,7 +336,8 @@ const Sidebar: React.FC = () => {
       {/* Mobile backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-[400] bg-black/50 md:hidden"
+          className="fixed inset-0 bg-black/50 md:hidden pointer-events-auto"
+          style={{ zIndex: Z_INDEX.modalOverlay }}
           onClick={() => setSidebarOpen(false)}
           aria-hidden="true"
         />

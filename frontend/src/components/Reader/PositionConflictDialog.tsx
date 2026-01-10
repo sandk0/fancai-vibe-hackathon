@@ -9,6 +9,7 @@
 
 import React, { useRef } from 'react';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { Z_INDEX } from '@/lib/zIndex';
 
 interface PositionConflictDialogProps {
   isOpen: boolean;
@@ -69,13 +70,22 @@ export const PositionConflictDialog: React.FC<PositionConflictDialogProps> = ({
   useFocusTrap(isOpen, dialogRef);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[500]">
+    <div
+      className="fixed inset-0 flex items-center justify-center pointer-events-none"
+      style={{ zIndex: Z_INDEX.modal }}
+    >
+      {/* Backdrop overlay */}
+      <div
+        className="absolute inset-0 bg-black/50 pointer-events-auto"
+        style={{ zIndex: Z_INDEX.modalOverlay }}
+      />
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="position-conflict-title"
-        className="bg-popover rounded-xl p-6 max-w-md mx-4 shadow-xl"
+        className="relative bg-popover rounded-xl p-6 max-w-md mx-4 shadow-xl pointer-events-auto"
+        style={{ zIndex: Z_INDEX.modal }}
       >
         <h3
           id="position-conflict-title"

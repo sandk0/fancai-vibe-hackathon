@@ -7,10 +7,16 @@
  * Features:
  * - Dexie.js (IndexedDB) persistence for reliable storage
  * - Workbox BackgroundSyncPlugin for automatic retry via Service Worker
- * - iOS fallback via visibilitychange (Background Sync not supported on iOS)
  * - Priority-based processing (critical > high > normal > low)
  * - Exponential backoff with max retries
  * - Deduplication of duplicate operations
+ *
+ * iOS Safari Fallback (Background Sync not supported):
+ * - Periodic sync timer (every 30 seconds when document is visible)
+ * - Immediate sync on online event when coming back from offline
+ * - visibilitychange handler for sync when app becomes visible
+ * - pagehide/beforeunload with sendBeacon for last-chance critical data sync
+ * - localStorage cache for critical operations to enable sendBeacon sync
  *
  * Architecture:
  * - Service Worker handles BackgroundSyncPlugin routes for /api/v1/books/.../progress,
@@ -67,6 +73,43 @@ interface SyncEventDetail {
 }
 
 // ============================================================================
+// iOS Safari Fallback Configuration
+// ============================================================================
+
+/** Periodic sync interval in milliseconds (30 seconds) */
+const PERIODIC_SYNC_INTERVAL = 30000
+
+/** Enable debug logging */
+const DEBUG = import.meta.env.DEV
+
+// ============================================================================
+// Badging API Support
+// ============================================================================
+
+/**
+ * Update app badge with pending sync count
+ * Uses Badging API (supported on Android Chrome PWA)
+ */
+async function updateBadge(count: number): Promise<void> {
+  if (!('setAppBadge' in navigator)) {
+    return; // Not supported (iOS, desktop browsers)
+  }
+
+  try {
+    if (count > 0) {
+      await (navigator as Navigator & { setAppBadge: (count: number) => Promise<void> }).setAppBadge(count);
+    } else {
+      await (navigator as Navigator & { clearAppBadge: () => Promise<void> }).clearAppBadge();
+    }
+  } catch (err) {
+    // Silently fail - badge is non-critical
+    if (DEBUG) {
+      console.log('[SyncQueue] Badge update failed:', err);
+    }
+  }
+}
+
+// ============================================================================
 // SyncQueue Service
 // ============================================================================
 
@@ -74,9 +117,11 @@ class SyncQueue {
   private isProcessing = false
   private processingPromise: Promise<void> | null = null
   private listeners: Set<() => void> = new Set()
+  private periodicSyncInterval: number | null = null
 
   constructor() {
     this.setupEventListeners()
+    this.setupIOSFallback()
   }
 
   /**
@@ -86,22 +131,27 @@ class SyncQueue {
     // iOS does not support Background Sync - use visibilitychange as fallback
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
-        console.log('[SyncQueue] App visible, processing queue...')
+        if (DEBUG) console.log('[SyncQueue] App visible, processing queue...')
+        this.startPeriodicSync()
         this.processQueue()
+      } else {
+        // Stop periodic sync when app goes to background to save battery
+        this.stopPeriodicSync()
       }
     })
 
     // Process when network is restored
-    window.addEventListener('online', () => {
-      console.log('[SyncQueue] Online, processing queue...')
-      this.processQueue()
+    window.addEventListener('online', async () => {
+      if (DEBUG) console.log('[SyncQueue] Online event - triggering sync')
+      // Immediate sync attempt when coming back online
+      await this.processQueue()
     })
 
     // Listen for messages from Service Worker
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('message', (event) => {
         if (event.data?.type === 'SYNC_SUCCESS') {
-          console.log('[SyncQueue] SW sync success:', event.data.url)
+          if (DEBUG) console.log('[SyncQueue] SW sync success:', event.data.url)
           window.dispatchEvent(
             new CustomEvent('sync:success', {
               detail: event.data,
@@ -110,7 +160,7 @@ class SyncQueue {
           this.notifyListeners()
         } else if (event.data?.type === 'SYNC_REQUESTED') {
           // Service Worker requested queue processing
-          console.log('[SyncQueue] SW requested sync:', event.data.tag)
+          if (DEBUG) console.log('[SyncQueue] SW requested sync:', event.data.tag)
           this.processQueue()
         }
       })
@@ -118,9 +168,131 @@ class SyncQueue {
 
     // Also listen to custom app:online event from useOnlineStatus
     window.addEventListener('app:online', () => {
-      console.log('[SyncQueue] App online event, processing queue...')
+      if (DEBUG) console.log('[SyncQueue] App online event, processing queue...')
       this.processQueue()
     })
+  }
+
+  /**
+   * Setup iOS Safari-specific fallbacks
+   * iOS Safari doesn't support Background Sync API, so we need alternative sync mechanisms
+   */
+  private setupIOSFallback(): void {
+    // Start periodic sync if document is already visible
+    if (document.visibilityState === 'visible') {
+      this.startPeriodicSync()
+    }
+
+    // beforeunload handler for last-chance sync
+    window.addEventListener('beforeunload', () => {
+      this.handleBeforeUnload()
+    })
+
+    // pagehide is more reliable than beforeunload on iOS Safari
+    window.addEventListener('pagehide', (event) => {
+      // persisted = true means page might be restored from bfcache
+      if (!event.persisted) {
+        this.handleBeforeUnload()
+      }
+    })
+  }
+
+  /**
+   * Start periodic sync timer (every 30 seconds when document is visible)
+   * This is the primary iOS Safari fallback since Background Sync is not supported
+   */
+  private startPeriodicSync(): void {
+    if (this.periodicSyncInterval !== null) {
+      return // Already running
+    }
+
+    this.periodicSyncInterval = window.setInterval(async () => {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        const pending = await this.getPendingCount()
+        if (pending > 0) {
+          if (DEBUG) console.log('[SyncQueue] Periodic sync triggered, pending:', pending)
+          await this.processQueue()
+        }
+      }
+    }, PERIODIC_SYNC_INTERVAL)
+
+    if (DEBUG) console.log('[SyncQueue] Periodic sync started (interval:', PERIODIC_SYNC_INTERVAL, 'ms)')
+  }
+
+  /**
+   * Stop periodic sync timer (when app goes to background)
+   */
+  private stopPeriodicSync(): void {
+    if (this.periodicSyncInterval !== null) {
+      clearInterval(this.periodicSyncInterval)
+      this.periodicSyncInterval = null
+      if (DEBUG) console.log('[SyncQueue] Periodic sync stopped')
+    }
+  }
+
+  /**
+   * Handle beforeunload/pagehide - attempt last-chance sync using sendBeacon
+   * sendBeacon is reliable for sending data when page is being unloaded
+   */
+  private handleBeforeUnload(): void {
+    // Get critical pending operations synchronously from IndexedDB is not possible,
+    // so we use a fallback localStorage cache for critical data
+    const criticalData = localStorage.getItem('syncQueue_critical')
+
+    if (criticalData && navigator.sendBeacon) {
+      try {
+        const data = JSON.parse(criticalData)
+        if (data && data.length > 0) {
+          // Get auth token for the beacon request
+          const token = localStorage.getItem('auth_token')
+
+          // Create a blob with the data and content type
+          const blob = new Blob([JSON.stringify({ operations: data, token })], {
+            type: 'application/json'
+          })
+
+          // sendBeacon returns true if the browser successfully queued the data for transfer
+          const queued = navigator.sendBeacon('/api/v1/sync/batch', blob)
+
+          if (queued) {
+            // Clear the critical data cache since it's queued for sending
+            localStorage.removeItem('syncQueue_critical')
+            if (DEBUG) console.log('[SyncQueue] Critical data queued via sendBeacon')
+          }
+        }
+      } catch (error) {
+        // Ignore errors during unload - nothing we can do
+        if (DEBUG) console.warn('[SyncQueue] sendBeacon failed:', error)
+      }
+    }
+  }
+
+  /**
+   * Cache critical operation data for beforeunload sync
+   * Called when adding critical priority operations
+   */
+  private async cacheCriticalData(): Promise<void> {
+    try {
+      const criticalOps = await db.syncQueue
+        .where('priority')
+        .equals('critical')
+        .filter((op) => op.status === 'pending')
+        .toArray()
+
+      if (criticalOps.length > 0) {
+        // Store minimal data needed for sync
+        const minimalData = criticalOps.map((op) => ({
+          endpoint: op.endpoint,
+          method: op.method,
+          body: op.body,
+        }))
+        localStorage.setItem('syncQueue_critical', JSON.stringify(minimalData))
+      } else {
+        localStorage.removeItem('syncQueue_critical')
+      }
+    } catch (error) {
+      if (DEBUG) console.warn('[SyncQueue] Failed to cache critical data:', error)
+    }
   }
 
   /**
@@ -173,9 +345,18 @@ class SyncQueue {
     }
 
     await db.syncQueue.add(operation)
-    console.log('[SyncQueue] Added operation:', operation.type, operation.endpoint)
+    if (DEBUG) console.log('[SyncQueue] Added operation:', operation.type, operation.endpoint)
+
+    // Update badge with new pending count
+    const pendingCount = await this.getPendingCount()
+    await updateBadge(pendingCount)
 
     this.notifyListeners()
+
+    // Cache critical data for beforeunload sync (iOS fallback)
+    if (operation.priority === 'critical') {
+      await this.cacheCriticalData()
+    }
 
     // If online - try to send immediately
     if (navigator.onLine) {
@@ -202,10 +383,10 @@ class SyncQueue {
       // Check if SyncManager is available (not on iOS)
       if ('sync' in registration) {
         await (registration as ServiceWorkerRegistration & { sync: { register: (tag: string) => Promise<void> } }).sync.register('fancai-sync')
-        console.log('[SyncQueue] Background Sync registered')
+        if (DEBUG) console.log('[SyncQueue] Background Sync registered')
       }
     } catch (error) {
-      console.warn('[SyncQueue] Background Sync registration failed:', error)
+      if (DEBUG) console.warn('[SyncQueue] Background Sync registration failed:', error)
     }
   }
 
@@ -230,7 +411,7 @@ class SyncQueue {
 
   private async doProcessQueue(): Promise<void> {
     if (!navigator.onLine) {
-      console.log('[SyncQueue] Offline, skipping queue processing')
+      if (DEBUG) console.log('[SyncQueue] Offline, skipping queue processing')
       return
     }
 
@@ -255,11 +436,15 @@ class SyncQueue {
       return a.createdAt - b.createdAt
     })
 
-    console.log(`[SyncQueue] Processing ${operations.length} operations...`)
+    if (DEBUG) console.log(`[SyncQueue] Processing ${operations.length} operations...`)
 
     for (const op of operations) {
       await this.processOperation(op)
     }
+
+    // Update badge after processing (may have succeeded or failed)
+    const remainingCount = await this.getPendingCount()
+    await updateBadge(remainingCount)
 
     this.notifyListeners()
   }
@@ -287,7 +472,10 @@ class SyncQueue {
 
       // Success - remove from queue
       await db.syncQueue.delete(op.id)
-      console.log('[SyncQueue] Operation completed:', op.type, op.endpoint)
+      if (DEBUG) console.log('[SyncQueue] Operation completed:', op.type, op.endpoint)
+
+      // Update critical data cache after successful sync
+      await this.cacheCriticalData()
 
       // Notify UI
       window.dispatchEvent(
@@ -299,7 +487,7 @@ class SyncQueue {
       const newRetries = op.retries + 1
       const errorMessage = (error as Error).message
 
-      console.warn('[SyncQueue] Operation failed:', op.type, errorMessage)
+      if (DEBUG) console.warn('[SyncQueue] Operation failed:', op.type, errorMessage)
 
       if (newRetries >= op.maxRetries) {
         // Max retries exceeded
@@ -392,6 +580,10 @@ class SyncQueue {
    */
   async clearUserQueue(userId: string): Promise<number> {
     const count = await db.syncQueue.where('userId').equals(userId).delete()
+
+    // Clear the badge when user queue is cleared
+    await updateBadge(0)
+
     this.notifyListeners()
     return count
   }
@@ -410,8 +602,20 @@ class SyncQueue {
    */
   async clearQueue(): Promise<void> {
     await db.syncQueue.clear()
+    localStorage.removeItem('syncQueue_critical')
+
+    // Clear the badge when queue is cleared
+    await updateBadge(0)
+
     this.notifyListeners()
-    console.log('[SyncQueue] Queue cleared')
+    if (DEBUG) console.log('[SyncQueue] Queue cleared')
+  }
+
+  /**
+   * Cleanup resources (for testing or app shutdown)
+   */
+  destroy(): void {
+    this.stopPeriodicSync()
   }
 }
 
@@ -494,6 +698,17 @@ function mapTypeToMethod(type: SyncOperationType): 'POST' | 'PUT' {
 export const processSyncQueue = syncQueue.processQueue.bind(syncQueue)
 export const getSyncQueueLength = syncQueue.getQueueLength.bind(syncQueue)
 export const subscribeSyncQueue = syncQueue.subscribe.bind(syncQueue)
+
+/**
+ * Get pending operations count (async version for UI)
+ * Use this for displaying sync status in the UI
+ */
+export const getPendingCount = syncQueue.getPendingCount.bind(syncQueue)
+
+/**
+ * Get failed operations count (async version for UI)
+ */
+export const getFailedCount = syncQueue.getFailedCount.bind(syncQueue)
 
 // ============================================================================
 // Specialized Queue Functions

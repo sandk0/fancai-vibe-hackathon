@@ -16,6 +16,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { m, AnimatePresence, PanInfo, useDragControls } from 'framer-motion';
 import { X, Type, Sun, Moon, Maximize2, RotateCcw, Minus, Plus, GripHorizontal } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
+import { Z_INDEX } from '@/lib/zIndex';
 import type { ReaderTheme } from '@/stores/reader';
 
 interface ReaderSettingsPanelProps {
@@ -513,8 +514,9 @@ export const ReaderSettingsPanel: React.FC<ReaderSettingsPanelProps> = React.mem
       dragElastic={{ top: 0, bottom: 0.5 }}
       onDrag={(_, info) => setDragY(Math.max(0, info.offset.y))}
       onDragEnd={handleDragEnd}
-      className="fixed inset-x-0 bottom-0 z-[500] bg-background rounded-t-xl shadow-2xl
-                 max-h-[90vh] flex flex-col touch-none"
+      className="fixed inset-x-0 bottom-0 bg-background rounded-t-xl shadow-2xl
+                 max-h-[90vh] flex flex-col touch-none pointer-events-auto"
+      style={{ zIndex: Z_INDEX.modal }}
     >
       {/* Drag handle */}
       <div
@@ -537,8 +539,9 @@ export const ReaderSettingsPanel: React.FC<ReaderSettingsPanelProps> = React.mem
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: '100%', opacity: 0 }}
       transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-      className="fixed right-0 top-0 bottom-0 z-[500] w-[380px] bg-background shadow-2xl
-                 border-l border-border flex flex-col"
+      className="fixed right-0 top-0 bottom-0 w-[380px] bg-background shadow-2xl
+                 border-l border-border flex flex-col pointer-events-auto"
+      style={{ zIndex: Z_INDEX.modal }}
     >
       {panelContent}
     </m.div>
@@ -554,7 +557,8 @@ export const ReaderSettingsPanel: React.FC<ReaderSettingsPanelProps> = React.mem
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[400] bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm pointer-events-auto"
+            style={{ zIndex: Z_INDEX.modalOverlay }}
             onClick={onClose}
             aria-hidden="true"
           />

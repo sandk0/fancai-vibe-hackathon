@@ -7,6 +7,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import { STORAGE_KEYS } from '@/types/state';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { Z_INDEX } from '@/lib/zIndex';
 import type { Description } from '@/types/api';
 
 interface ImageModalProps {
@@ -138,24 +139,32 @@ export const ImageModal: React.FC<ImageModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <m.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[500] flex items-center justify-center bg-black/80 backdrop-blur-sm pt-safe pb-safe"
-      onClick={onClose}
-    >
+    <>
+      {/* Backdrop */}
       <m.div
-        ref={modalRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="image-modal-title"
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        className="relative max-w-4xl max-h-[90vh] mx-4"
-        onClick={(e) => e.stopPropagation()}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm pt-safe pb-safe pointer-events-auto"
+        style={{ zIndex: Z_INDEX.modalOverlay }}
+        onClick={onClose}
+      />
+      {/* Modal Container */}
+      <div
+        className="fixed inset-0 flex items-center justify-center pt-safe pb-safe pointer-events-none"
+        style={{ zIndex: Z_INDEX.modal }}
       >
+        <m.div
+          ref={modalRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="image-modal-title"
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          className="relative max-w-4xl max-h-[90vh] mx-4 pointer-events-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/50 to-transparent p-4">
           <div className="flex items-start justify-between gap-2">
@@ -332,6 +341,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({
           </div>
         )}
       </m.div>
-    </m.div>
+      </div>
+    </>
   );
 };

@@ -43,6 +43,8 @@ const AdminDashboard = lazy(() => import('@/pages/AdminDashboardEnhanced'));
 // Global styles with theme support
 import '@/styles/globals.css';
 
+const DEBUG = import.meta.env.DEV;
+
 /**
  * Loading fallback component
  * Shown while lazy-loaded chunks are being fetched
@@ -59,18 +61,18 @@ const PageLoadingFallback = () => (
 function App() {
   useEffect(() => {
     // Initialize stores when app starts
-    console.log('🚀 App starting, initializing stores...');
+    if (DEBUG) console.log('[App] Starting, initializing stores...');
     try {
       initializeStores();
-      console.log('✅ Stores initialized successfully');
+      if (DEBUG) console.log('[App] Stores initialized successfully');
     } catch (error) {
-      console.warn('❌ Failed to initialize stores:', error);
+      console.warn('[App] Failed to initialize stores:', error);
     }
   }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <LazyMotion features={domAnimation} strict>
+      <LazyMotion features={domAnimation}>
         <Router>
           <div className="App min-h-screen transition-colors bg-background text-foreground">
           <Routes>

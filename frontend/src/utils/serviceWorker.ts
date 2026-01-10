@@ -191,7 +191,7 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription |
   try {
     const registration = await navigator.serviceWorker.ready;
     
-    const vapidKey = urlBase64ToUint8Array(process.env.REACT_APP_VAPID_PUBLIC_KEY || '');
+    const vapidKey = urlBase64ToUint8Array(import.meta.env.VITE_VAPID_PUBLIC_KEY || '');
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: vapidKey as unknown as ArrayBuffer,
@@ -232,46 +232,5 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return outputArray;
 }
 
-// Network status monitoring
-export class NetworkMonitor {
-  private online = navigator.onLine;
-  private callbacks: Array<(online: boolean) => void> = [];
-
-  constructor() {
-    window.addEventListener('online', () => this.updateStatus(true));
-    window.addEventListener('offline', () => this.updateStatus(false));
-  }
-
-  private updateStatus(online: boolean): void {
-    if (this.online !== online) {
-      this.online = online;
-      this.callbacks.forEach(callback => callback(online));
-      
-      // Notify service worker
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({
-          type: online ? 'BACK_ONLINE' : 'WENT_OFFLINE',
-        });
-      }
-    }
-  }
-
-  public isOnline(): boolean {
-    return this.online;
-  }
-
-  public onStatusChange(callback: (online: boolean) => void): void {
-    this.callbacks.push(callback);
-  }
-
-  public removeStatusListener(callback: (online: boolean) => void): void {
-    const index = this.callbacks.indexOf(callback);
-    if (index > -1) {
-      this.callbacks.splice(index, 1);
-    }
-  }
-}
-
-// Singleton instances
+// Singleton instance
 export const pwaInstallPrompt = new PWAInstallPrompt();
-export const networkMonitor = new NetworkMonitor();

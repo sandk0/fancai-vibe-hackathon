@@ -363,6 +363,36 @@ export function useChapter(
 }
 
 /**
+ * Получение главы для Reader контекста
+ *
+ * Отключает автоматический refetch при фокусе окна для предотвращения
+ * race conditions с инициализацией Zustand auth store.
+ *
+ * @param bookId - ID книги
+ * @param chapterNumber - Номер главы
+ * @param options - Опции React Query
+ *
+ * @example
+ * ```tsx
+ * // В EpubReader компоненте
+ * const { data, isLoading } = useChapterForReader('book-123', 5);
+ * ```
+ */
+export function useChapterForReader(
+  bookId: string,
+  chapterNumber: number,
+  options?: Omit<UseQueryOptions<ChapterResponse, Error>, 'queryKey' | 'queryFn'>
+) {
+  return useChapter(bookId, chapterNumber, {
+    // Reader-specific: отключаем auto-refetch для предотвращения race conditions
+    // с инициализацией Zustand auth store (100ms delay)
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    ...options,
+  });
+}
+
+/**
  * Получение только контента главы (без descriptions)
  *
  * Легковесная версия useChapter для случаев, когда descriptions не нужны.

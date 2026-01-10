@@ -297,6 +297,40 @@ export function useBook(
 }
 
 /**
+ * Получение деталей книги для Reader контекста
+ *
+ * Отключает автоматический refetch при фокусе окна для предотвращения
+ * race conditions с инициализацией Zustand auth store.
+ *
+ * @param bookId - ID книги
+ * @param options - Опции React Query
+ *
+ * @example
+ * ```tsx
+ * // В EpubReader или BookReaderPage
+ * const { data: book, isLoading } = useBookForReader('book-123');
+ * ```
+ */
+export function useBookForReader(
+  bookId: string,
+  options?: Omit<UseQueryOptions<BookDetail, Error>, 'queryKey' | 'queryFn'>
+) {
+  const userId = getCurrentUserId();
+
+  return useQuery({
+    queryKey: bookKeys.detail(userId, bookId),
+    queryFn: () => booksAPI.getBook(bookId),
+    staleTime: 5 * 60 * 1000, // 5 минут
+    enabled: !!bookId,
+    // Reader-specific: отключаем auto-refetch для предотвращения race conditions
+    // с инициализацией Zustand auth store (100ms delay)
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    ...options,
+  });
+}
+
+/**
  * Получение прогресса чтения книги
  *
  * @param bookId - ID книги

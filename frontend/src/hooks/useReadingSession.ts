@@ -262,15 +262,51 @@ export function useReadingSession({
       return;
     }
 
-    // Set up interval for periodic updates
-    intervalRef.current = setInterval(() => {
-      if (sessionIdRef.current && !isEndingRef.current) {
-        console.log('⏱️ [useReadingSession] Periodic update triggered');
-        updatePosition(positionRef.current);
+    const startInterval = () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
       }
-    }, updateInterval);
+      intervalRef.current = setInterval(() => {
+        if (sessionIdRef.current && !isEndingRef.current) {
+          if (import.meta.env.DEV) {
+            console.log('[useReadingSession] Periodic update triggered');
+          }
+          updatePosition(positionRef.current);
+        }
+      }, updateInterval);
+    };
+
+    // Start interval initially
+    startInterval();
+
+    // Handle visibility changes to pause/resume interval
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        // Stop interval when app goes to background
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+          if (import.meta.env.DEV) {
+            console.log('[useReadingSession] Interval paused (background)');
+          }
+        }
+      } else if (document.visibilityState === 'visible') {
+        // Restart interval when app resumes (with delay for auth)
+        setTimeout(() => {
+          if (enabled && sessionIdRef.current && !isEndingRef.current) {
+            startInterval();
+            if (import.meta.env.DEV) {
+              console.log('[useReadingSession] Interval resumed');
+            }
+          }
+        }, 300); // 300ms delay to allow auth to stabilize
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;

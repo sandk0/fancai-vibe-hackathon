@@ -11,6 +11,7 @@ from .images import router as images_router
 from .reading_sessions import router as reading_sessions_router
 from .health import router as health_router
 from .push import router as push_router
+from .sync import router as sync_router
 
 __all__ = [
     "books_router",
@@ -24,4 +25,5 @@ __all__ = [
     "reading_sessions_router",
     "health_router",
     "push_router",
+    "sync_router",
 ]

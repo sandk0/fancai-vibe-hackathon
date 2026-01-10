@@ -9,6 +9,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { getErrorMessage } from '@/utils/errors';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { Z_INDEX } from '@/lib/zIndex';
 
 interface BookUploadModalProps {
   isOpen: boolean;
@@ -263,12 +264,19 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
 
   return (
     <AnimatePresence>
+      {/* Backdrop */}
       <m.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm pointer-events-auto"
+        style={{ zIndex: Z_INDEX.modalOverlay }}
         onClick={handleClose}
+      />
+      {/* Modal Container */}
+      <div
+        className="fixed inset-0 flex items-center justify-center pointer-events-none"
+        style={{ zIndex: Z_INDEX.modal }}
       >
         <m.div
           ref={modalRef}
@@ -278,7 +286,7 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="relative bg-card rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden"
+          className="relative bg-card rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden pointer-events-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -446,7 +454,7 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
             aria-label={t('upload.chooseFiles')}
           />
         </m.div>
-      </m.div>
+      </div>
     </AnimatePresence>
   );
 };

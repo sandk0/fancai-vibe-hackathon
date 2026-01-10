@@ -17,6 +17,9 @@
 import { db, createImageId, IMAGE_CACHE_TTL, type CachedImage } from './db'
 import { STORAGE_KEYS } from '@/types/state'
 
+/** Enable debug logging only in development */
+const DEBUG = import.meta.env.DEV
+
 const MAX_CACHE_SIZE_MB = 100 // Maximum cache size in MB
 
 interface CacheStats {
@@ -95,7 +98,7 @@ class ImageCacheService {
       // Check if we already have an Object URL for this description
       const existing = this.objectURLs.get(descriptionId)
       if (existing) {
-        console.log('[ImageCache] Reusing existing Object URL for:', descriptionId)
+        if (DEBUG) console.log('[ImageCache] Reusing existing Object URL for:', descriptionId)
         return existing.url
       }
 
@@ -103,13 +106,13 @@ class ImageCacheService {
       const image = await db.images.get(id)
 
       if (!image) {
-        console.log('[ImageCache] Cache miss for:', descriptionId)
+        if (DEBUG) console.log('[ImageCache] Cache miss for:', descriptionId)
         return null
       }
 
       // Check expiration
       if (this.isExpired(image.cachedAt)) {
-        console.log('[ImageCache] Cache expired for:', descriptionId)
+        if (DEBUG) console.log('[ImageCache] Cache expired for:', descriptionId)
         await this.delete(userId, descriptionId)
         return null
       }
@@ -123,7 +126,7 @@ class ImageCacheService {
         createdAt: Date.now(),
       })
 
-      console.log('[ImageCache] Cache hit for:', descriptionId, `(tracked: ${this.objectURLs.size} URLs)`)
+      if (DEBUG) console.log('[ImageCache] Cache hit for:', descriptionId, `(tracked: ${this.objectURLs.size} URLs)`)
       return objectUrl
     } catch (err) {
       console.warn('[ImageCache] Error reading cache:', err)
@@ -142,7 +145,7 @@ class ImageCacheService {
     if (tracker) {
       URL.revokeObjectURL(tracker.url)
       this.objectURLs.delete(descriptionId)
-      console.log('[ImageCache] Released Object URL for:', descriptionId, `(tracked: ${this.objectURLs.size} URLs)`)
+      if (DEBUG) console.log('[ImageCache] Released Object URL for:', descriptionId, `(tracked: ${this.objectURLs.size} URLs)`)
       return true
     }
     return false
@@ -175,7 +178,7 @@ class ImageCacheService {
   ): Promise<boolean> {
     try {
       // Download image as blob with Authorization header
-      console.log('[ImageCache] Downloading image for caching:', descriptionId)
+      if (DEBUG) console.log('[ImageCache] Downloading image for caching:', descriptionId)
       const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)
       const response = await fetch(imageUrl, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {},
@@ -207,11 +210,13 @@ class ImageCacheService {
 
       await db.images.put(cachedImage)
 
-      console.log('[ImageCache] Image cached:', {
-        userId,
-        descriptionId,
-        size: (blob.size / 1024).toFixed(1) + 'KB',
-      })
+      if (DEBUG) {
+        console.log('[ImageCache] Image cached:', {
+          userId,
+          descriptionId,
+          size: (blob.size / 1024).toFixed(1) + 'KB',
+        })
+      }
 
       return true
     } catch (err) {
@@ -232,7 +237,7 @@ class ImageCacheService {
       const id = createImageId(userId, descriptionId)
       await db.images.delete(id)
 
-      console.log('[ImageCache] Deleted:', descriptionId)
+      if (DEBUG) console.log('[ImageCache] Deleted:', descriptionId)
       return true
     } catch (err) {
       console.warn('[ImageCache] Error deleting:', err)
@@ -262,11 +267,13 @@ class ImageCacheService {
         this.releaseMany(descriptionIds)
       }
 
-      console.log('[ImageCache] Cleared book cache:', {
-        userId,
-        bookId,
-        deletedCount: ids.length,
-      })
+      if (DEBUG) {
+        console.log('[ImageCache] Cleared book cache:', {
+          userId,
+          bookId,
+          deletedCount: ids.length,
+        })
+      }
 
       return ids.length
     } catch (err) {
@@ -297,10 +304,12 @@ class ImageCacheService {
         this.releaseMany(descriptionIds)
       }
 
-      console.log('[ImageCache] Cleared expired entries:', {
-        userId,
-        deletedCount: ids.length,
-      })
+      if (DEBUG) {
+        console.log('[ImageCache] Cleared expired entries:', {
+          userId,
+          deletedCount: ids.length,
+        })
+      }
 
       return ids.length
     } catch (err) {
@@ -327,10 +336,12 @@ class ImageCacheService {
         this.releaseMany(descriptionIds)
       }
 
-      console.log('[ImageCache] All cache cleared for user:', {
-        userId,
-        deletedCount: ids.length,
-      })
+      if (DEBUG) {
+        console.log('[ImageCache] All cache cleared for user:', {
+          userId,
+          deletedCount: ids.length,
+        })
+      }
 
       return ids.length
     } catch (err) {
@@ -374,11 +385,13 @@ class ImageCacheService {
         }
       }
 
-      console.log('[ImageCache] Stats:', {
-        userId: userId || 'all',
-        images: stats.totalImages,
-        size: (stats.totalSizeBytes / 1024 / 1024).toFixed(2) + 'MB',
-      })
+      if (DEBUG) {
+        console.log('[ImageCache] Stats:', {
+          userId: userId || 'all',
+          images: stats.totalImages,
+          size: (stats.totalSizeBytes / 1024 / 1024).toFixed(2) + 'MB',
+        })
+      }
 
       return stats
     } catch (err) {
@@ -408,7 +421,7 @@ class ImageCacheService {
     const maxSizeBytes = MAX_CACHE_SIZE_MB * 1024 * 1024
 
     if (stats.totalSizeBytes + newEntrySize > maxSizeBytes) {
-      console.log('[ImageCache] Cache size exceeded, cleaning oldest entries...')
+      if (DEBUG) console.log('[ImageCache] Cache size exceeded, cleaning oldest entries...')
 
       // Clear expired first
       await this.clearExpired(userId)
@@ -444,10 +457,12 @@ class ImageCacheService {
         await db.images.bulkDelete(ids)
         this.releaseMany(descriptionIds)
 
-        console.log('[ImageCache] Deleted oldest entries:', {
-          userId,
-          deleted: ids.length,
-        })
+        if (DEBUG) {
+          console.log('[ImageCache] Deleted oldest entries:', {
+            userId,
+            deleted: ids.length,
+          })
+        }
       }
     } catch (err) {
       console.warn('[ImageCache] Error deleting oldest:', err)
@@ -471,7 +486,7 @@ class ImageCacheService {
     })
 
     if (staleIds.length > 0) {
-      console.log('[ImageCache] Cleaning up stale Object URLs:', staleIds.length)
+      if (DEBUG) console.log('[ImageCache] Cleaning up stale Object URLs:', staleIds.length)
       return this.releaseMany(staleIds)
     }
 
@@ -483,7 +498,7 @@ class ImageCacheService {
    */
   startAutoCleanup(): void {
     if (this.cleanupIntervalId !== null) {
-      console.warn('[ImageCache] Auto-cleanup already started')
+      if (DEBUG) console.log('[ImageCache] Auto-cleanup already started')
       return
     }
 
@@ -492,7 +507,7 @@ class ImageCacheService {
       this.cleanupStaleObjectURLs()
     }, 5 * 60 * 1000)
 
-    console.log('[ImageCache] Auto-cleanup started (interval: 5 minutes)')
+    if (DEBUG) console.log('[ImageCache] Auto-cleanup started (interval: 5 minutes)')
   }
 
   /**
@@ -502,7 +517,7 @@ class ImageCacheService {
     if (this.cleanupIntervalId !== null) {
       clearInterval(this.cleanupIntervalId)
       this.cleanupIntervalId = null
-      console.log('[ImageCache] Auto-cleanup stopped')
+      if (DEBUG) console.log('[ImageCache] Auto-cleanup stopped')
     }
   }
 
@@ -515,7 +530,7 @@ class ImageCacheService {
    * - Stops auto-cleanup interval
    */
   destroy(): void {
-    console.log('[ImageCache] Destroying service...')
+    if (DEBUG) console.log('[ImageCache] Destroying service...')
 
     // Release all Object URLs
     const urlCount = this.objectURLs.size
@@ -527,9 +542,11 @@ class ImageCacheService {
     // Stop auto-cleanup
     this.stopAutoCleanup()
 
-    console.log('[ImageCache] Service destroyed', {
-      releasedURLs: urlCount,
-    })
+    if (DEBUG) {
+      console.log('[ImageCache] Service destroyed', {
+        releasedURLs: urlCount,
+      })
+    }
   }
 
   /**

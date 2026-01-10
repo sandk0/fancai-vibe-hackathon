@@ -131,6 +131,9 @@ export const useProgressSync = ({
     }
   }, [enabled, currentCFI, progress, scrollOffset, currentChapter, bookId, onSave]);
 
+  // Ref to track if we had a pending save when backgrounded
+  const pendingSaveOnBackgroundRef = useRef(false);
+
   /**
    * Debounced progress update
    */
@@ -163,6 +166,50 @@ export const useProgressSync = ({
       }
     };
   }, [currentCFI, progress, scrollOffset, currentChapter, enabled, bookId, debounceMs, saveImmediate]);
+
+  /**
+   * Handle visibility changes to pause/resume sync
+   * Prevents stale state issues when app goes to background
+   */
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        // App going to background - clear pending timeout and track state
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = undefined;
+          pendingSaveOnBackgroundRef.current = true;
+          if (import.meta.env.DEV) {
+            console.log('[useProgressSync] Timeout paused (background)');
+          }
+        }
+      } else if (document.visibilityState === 'visible') {
+        // App resuming - reschedule save if there was a pending one
+        if (pendingSaveOnBackgroundRef.current && enabled && currentCFI && bookId) {
+          setTimeout(() => {
+            // Check if there are unsaved changes
+            if (
+              lastSavedRef.current.cfi !== currentCFI ||
+              lastSavedRef.current.progress !== progress ||
+              lastSavedRef.current.scrollOffset !== scrollOffset ||
+              lastSavedRef.current.chapter !== currentChapter
+            ) {
+              timeoutRef.current = setTimeout(async () => {
+                await saveImmediate();
+              }, debounceMs);
+              if (import.meta.env.DEV) {
+                console.log('[useProgressSync] Timeout resumed');
+              }
+            }
+          }, 300); // 300ms delay to allow auth to stabilize
+        }
+        pendingSaveOnBackgroundRef.current = false;
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [enabled, currentCFI, bookId, progress, scrollOffset, currentChapter, debounceMs, saveImmediate]);
 
   /**
    * Save on unmount or page close

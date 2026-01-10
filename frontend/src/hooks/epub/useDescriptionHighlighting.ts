@@ -419,6 +419,25 @@ export const useDescriptionHighlighting = ({
   enabled = true,
 }: UseDescriptionHighlightingOptions): void => {
 
+  // DEFENSIVE: Ensure descriptions and images are always arrays
+  // This prevents crashes from corrupted IndexedDB data in PWA mode
+  const safeDescriptions = useMemo(() => {
+    if (!Array.isArray(descriptions)) {
+      console.error('[useDescriptionHighlighting] descriptions is not an array:', typeof descriptions);
+      return [];
+    }
+    // Filter out any null/undefined or invalid entries
+    return descriptions.filter(d => d && typeof d === 'object' && d.id && d.content);
+  }, [descriptions]);
+
+  const safeImages = useMemo(() => {
+    if (!Array.isArray(images)) {
+      console.error('[useDescriptionHighlighting] images is not an array:', typeof images);
+      return [];
+    }
+    return images.filter(img => img && typeof img === 'object');
+  }, [images]);
+
   // Debounce timer reference
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -428,13 +447,13 @@ export const useDescriptionHighlighting = ({
   // Memoize images lookup map for O(1) access
   const imagesByDescId = useMemo(() => {
     const map = new Map<string, GeneratedImage>();
-    images.forEach(img => {
+    safeImages.forEach(img => {
       if (img.description?.id) {
         map.set(img.description.id, img);
       }
     });
     return map;
-  }, [images]);
+  }, [safeImages]);
 
   /**
    * Apply highlights to current page (OPTIMIZED v2.2)
@@ -449,7 +468,8 @@ export const useDescriptionHighlighting = ({
   const highlightDescriptions = useCallback(() => {
     const startTime = import.meta.env.DEV ? performance.now() : 0;
 
-    if (!rendition || !enabled || descriptions.length === 0) {
+    // Use safeDescriptions (validated array)
+    if (!rendition || !enabled || safeDescriptions.length === 0) {
       return;
     }
 
@@ -469,7 +489,7 @@ export const useDescriptionHighlighting = ({
     const existingHighlights = doc.querySelectorAll('.description-highlight');
     if (existingHighlights.length > 0) {
       const firstHighlightId = existingHighlights[0].getAttribute('data-description-id');
-      const currentDescriptionIds = descriptions.map(d => d.id);
+      const currentDescriptionIds = safeDescriptions.map(d => d.id);
 
       if (firstHighlightId && currentDescriptionIds.includes(firstHighlightId)) {
         return; // Already highlighted for current page
@@ -491,7 +511,7 @@ export const useDescriptionHighlighting = ({
     }
 
     // OPTIMIZATION 1: Preprocess all descriptions ONCE (cached)
-    const preprocessedDescriptions = descriptions.map(desc => ({
+    const preprocessedDescriptions = safeDescriptions.map(desc => ({
       desc,
       patterns: preprocessDescription(desc),
     }));
@@ -693,7 +713,7 @@ export const useDescriptionHighlighting = ({
                   if (import.meta.env.DEV) {
                     console.log('[useDescriptionHighlighting] Description touched:', descId);
                   }
-                  const desc = descriptions.find(d => d.id === descId);
+                  const desc = safeDescriptions.find(d => d.id === descId);
                   if (desc) {
                     const image = imagesByDescId.get(descId);
                     onDescriptionClick(desc, image);
@@ -738,12 +758,12 @@ export const useDescriptionHighlighting = ({
     // Performance tracking (dev only)
     if (import.meta.env.DEV) {
       const duration = performance.now() - startTime;
-      const coverage = descriptions.length > 0
-        ? Math.round((highlightedCount / descriptions.length) * 100)
+      const coverage = safeDescriptions.length > 0
+        ? Math.round((highlightedCount / safeDescriptions.length) * 100)
         : 0;
-      console.log(`[useDescriptionHighlighting] Highlighting complete: ${highlightedCount}/${descriptions.length} (${coverage}%) in ${duration.toFixed(2)}ms`);
+      console.log(`[useDescriptionHighlighting] Highlighting complete: ${highlightedCount}/${safeDescriptions.length} (${coverage}%) in ${duration.toFixed(2)}ms`);
     }
-  }, [rendition, descriptions, imagesByDescId, onDescriptionClick, enabled, images.length]);
+  }, [rendition, safeDescriptions, imagesByDescId, onDescriptionClick, enabled, safeImages.length]);
 
   /**
    * Re-highlight when page is rendered (with debouncing)
@@ -782,8 +802,8 @@ export const useDescriptionHighlighting = ({
             console.log('[useDescriptionHighlighting] Description clicked via rendition:', descId);
           }
 
-          // Find the description by ID
-          const desc = descriptions.find(d => d.id === descId);
+          // Find the description by ID (use safeDescriptions for PWA safety)
+          const desc = safeDescriptions.find(d => d.id === descId);
           if (desc) {
             const image = imagesByDescId.get(descId);
             onDescriptionClick(desc, image);
@@ -810,7 +830,7 @@ export const useDescriptionHighlighting = ({
       cleanupFunctionsRef.current.forEach(cleanup => cleanup());
       cleanupFunctionsRef.current = [];
     };
-  }, [rendition, enabled, highlightDescriptions, descriptions, imagesByDescId, onDescriptionClick]);
+  }, [rendition, enabled, highlightDescriptions, safeDescriptions, imagesByDescId, onDescriptionClick]);
 
   /**
    * FIX: Force re-highlight when descriptions load after page is already rendered
@@ -826,7 +846,7 @@ export const useDescriptionHighlighting = ({
   useEffect(() => {
     // Only trigger when descriptions change from empty to non-empty
     const prevCount = prevDescriptionsCountRef.current;
-    const currentCount = descriptions.length;
+    const currentCount = safeDescriptions.length;
 
     prevDescriptionsCountRef.current = currentCount;
 
@@ -842,5 +862,5 @@ export const useDescriptionHighlighting = ({
     }, 150); // Slightly longer than debounce to ensure stability
 
     return () => clearTimeout(timer);
-  }, [descriptions.length, rendition, enabled, highlightDescriptions]);
+  }, [safeDescriptions.length, rendition, enabled, highlightDescriptions]);
 };

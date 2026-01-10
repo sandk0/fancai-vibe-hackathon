@@ -137,17 +137,31 @@ export const useLocationGeneration = (
           const cachedLocations = await getCachedLocations(bookId);
 
           if (cachedLocations && isMounted) {
-            devLog('Progress: Loading locations from cache...');
-            book.locations.load(cachedLocations);
+            try {
+              // Validate cached data format before loading
+              if (typeof cachedLocations !== 'string' || cachedLocations.length < 10) {
+                throw new Error('Invalid cached locations format');
+              }
 
-            // Verify locations loaded correctly
-            if (book.locations.total && book.locations.total > 0) {
+              devLog('Progress: Loading locations from cache...');
+              book.locations.load(cachedLocations);
+
+              // Verify locations loaded correctly
+              if (!book.locations.total || book.locations.total <= 0) {
+                throw new Error('Locations loaded but total is invalid');
+              }
+
               devLog('Success: Loaded locations from cache, total:', book.locations.total);
               setLocations(book.locations);
               setIsGenerating(false);
               locationsLoaded = true;
-            } else {
-              devLog('Warning: Cached locations invalid, will regenerate');
+
+            } catch (loadErr) {
+              // AUTO-CLEANUP: Remove corrupted cache data and regenerate
+              console.warn('[useLocationGeneration] Corrupted cache detected, auto-cleaning:', loadErr);
+              devLog('Warning: Cached locations corrupted, clearing cache and regenerating...');
+              await clearCachedLocations(bookId);
+              // locationsLoaded stays false, will regenerate below
             }
           }
         } catch (cacheErr) {

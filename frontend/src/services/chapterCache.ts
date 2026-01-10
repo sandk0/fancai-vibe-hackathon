@@ -17,6 +17,9 @@
 import { db, createChapterId, CHAPTER_CACHE_TTL, type CachedChapter, type CachedDescription } from './db'
 import type { Description, GeneratedImage } from '@/types/api'
 
+/** Enable debug logging only in development */
+const DEBUG = import.meta.env.DEV
+
 const MAX_CHAPTERS_PER_BOOK = 50
 
 interface CacheStats {
@@ -51,9 +54,44 @@ function toCachedDescription(desc: Description): CachedDescription {
 }
 
 /**
- * Convert CachedDescription back to API Description format
+ * Validate that a cached description has required fields
+ * Returns false if data is corrupted or invalid
  */
-function fromCachedDescription(cached: CachedDescription): Description {
+function isValidCachedDescription(cached: unknown): cached is CachedDescription {
+  if (!cached || typeof cached !== 'object') {
+    return false
+  }
+
+  const desc = cached as Record<string, unknown>
+
+  // Must have id and content as strings
+  if (typeof desc.id !== 'string' || !desc.id) {
+    return false
+  }
+  if (typeof desc.content !== 'string') {
+    return false
+  }
+
+  // type must be valid enum value
+  const validTypes = ['setting', 'character', 'scene', 'object']
+  if (typeof desc.type !== 'string' || !validTypes.includes(desc.type)) {
+    return false
+  }
+
+  return true
+}
+
+/**
+ * Convert CachedDescription back to API Description format
+ * Returns null if data is corrupted (defensive against IndexedDB corruption)
+ */
+function fromCachedDescription(cached: CachedDescription): Description | null {
+  // Defensive validation for corrupted IndexedDB data
+  if (!isValidCachedDescription(cached)) {
+    console.warn('[ChapterCache] Corrupted description detected, skipping:', cached)
+    return null
+  }
+
   const typeMap: Record<CachedDescription['type'], Description['type']> = {
     setting: 'location',
     character: 'character',
@@ -66,8 +104,8 @@ function fromCachedDescription(cached: CachedDescription): Description {
     type: typeMap[cached.type] || 'atmosphere',
     content: cached.content,
     text: cached.content,
-    confidence_score: cached.confidence,
-    priority_score: cached.confidence,
+    confidence_score: cached.confidence ?? 0,
+    priority_score: cached.confidence ?? 0,
     entities_mentioned: [],
     generated_image: cached.imageUrl ? {
       id: '',
@@ -83,8 +121,8 @@ function fromCachedDescription(cached: CachedDescription): Description {
         type: typeMap[cached.type] || 'atmosphere',
         text: cached.content,
         content: cached.content,
-        confidence_score: cached.confidence,
-        priority_score: cached.confidence,
+        confidence_score: cached.confidence ?? 0,
+        priority_score: cached.confidence ?? 0,
       },
       chapter: {
         id: '',
@@ -126,6 +164,11 @@ class ChapterCacheService {
   /**
    * Get chapter from cache
    * Returns null if not cached or expired
+   *
+   * DEFENSIVE: Handles corrupted IndexedDB data gracefully (PWA issue)
+   * - Validates chapter.descriptions is an array
+   * - Filters out corrupted description entries
+   * - Auto-cleans corrupted cache entries
    */
   async get(
     userId: string,
@@ -137,13 +180,27 @@ class ChapterCacheService {
       const chapter = await db.chapters.get(id)
 
       if (!chapter) {
-        console.log('[ChapterCache] Cache miss for:', { userId, bookId, chapterNumber })
+        if (DEBUG) console.log('[ChapterCache] Cache miss for:', { userId, bookId, chapterNumber })
         return null
       }
 
       // Check expiration
       if (this.isExpired(chapter.cachedAt)) {
-        console.log('[ChapterCache] Cache expired for:', { userId, bookId, chapterNumber })
+        if (DEBUG) console.log('[ChapterCache] Cache expired for:', { userId, bookId, chapterNumber })
+        await this.delete(userId, bookId, chapterNumber)
+        return null
+      }
+
+      // DEFENSIVE: Validate chapter.descriptions is an array (PWA corruption fix)
+      if (!Array.isArray(chapter.descriptions)) {
+        console.error('[ChapterCache] Corrupted cache entry detected - descriptions is not an array:', {
+          userId,
+          bookId,
+          chapterNumber,
+          descriptionsType: typeof chapter.descriptions,
+          descriptionsValue: chapter.descriptions,
+        })
+        // Auto-clean corrupted entry
         await this.delete(userId, bookId, chapterNumber)
         return null
       }
@@ -152,30 +209,56 @@ class ChapterCacheService {
       await db.chapters.update(id, { lastAccessedAt: Date.now() })
 
       // Convert cached descriptions to API format
-      const descriptions = chapter.descriptions.map(fromCachedDescription)
+      // DEFENSIVE: Filter out null (corrupted) entries
+      const descriptions = chapter.descriptions
+        .map(fromCachedDescription)
+        .filter((d): d is Description => d !== null)
+
+      // Log if we had to filter out corrupted entries
+      const corruptedCount = chapter.descriptions.length - descriptions.length
+      if (corruptedCount > 0 && DEBUG) {
+        console.warn('[ChapterCache] Filtered out corrupted descriptions:', {
+          userId,
+          bookId,
+          chapterNumber,
+          corruptedCount,
+          validCount: descriptions.length,
+        })
+      }
 
       // Extract images from descriptions
       const images = descriptions
         .filter(d => d.generated_image)
         .map(d => d.generated_image as GeneratedImage)
 
-      console.log('[ChapterCache] Cache hit for:', {
-        userId,
-        bookId,
-        chapterNumber,
-        descriptionsCount: descriptions.length,
-        imagesCount: images.length,
-      })
+      if (DEBUG) {
+        console.log('[ChapterCache] Cache hit for:', {
+          userId,
+          bookId,
+          chapterNumber,
+          descriptionsCount: descriptions.length,
+          imagesCount: images.length,
+        })
+      }
 
       return { descriptions, images }
     } catch (err) {
-      console.warn('[ChapterCache] Error reading cache:', err)
+      console.error('[ChapterCache] Error reading cache, auto-cleaning:', err)
+      // DEFENSIVE: Auto-clean corrupted entry to prevent "forever broken" state
+      try {
+        await this.delete(userId, bookId, chapterNumber)
+        if (DEBUG) console.log('[ChapterCache] Auto-cleaned corrupted cache entry:', { userId, bookId, chapterNumber })
+      } catch (deleteErr) {
+        console.error('[ChapterCache] Failed to auto-clean:', deleteErr)
+      }
       return null
     }
   }
 
   /**
    * Store chapter in cache
+   *
+   * DEFENSIVE: Validates input data before caching to prevent corruption
    */
   async set(
     userId: string,
@@ -185,14 +268,53 @@ class ChapterCacheService {
     images: GeneratedImage[]
   ): Promise<boolean> {
     try {
+      // DEFENSIVE: Validate inputs
+      if (!userId || typeof userId !== 'string') {
+        console.error('[ChapterCache] Invalid userId:', userId)
+        return false
+      }
+      if (!bookId || typeof bookId !== 'string') {
+        console.error('[ChapterCache] Invalid bookId:', bookId)
+        return false
+      }
+      if (typeof chapterNumber !== 'number' || chapterNumber < 0) {
+        console.error('[ChapterCache] Invalid chapterNumber:', chapterNumber)
+        return false
+      }
+      if (!Array.isArray(descriptions)) {
+        console.error('[ChapterCache] descriptions is not an array:', typeof descriptions)
+        return false
+      }
+      if (!Array.isArray(images)) {
+        console.error('[ChapterCache] images is not an array:', typeof images)
+        return false
+      }
+
       // Enforce book limit
       await this.ensureBookLimit(userId, bookId)
 
       const id = createChapterId(userId, bookId, chapterNumber)
       const now = Date.now()
 
+      // Filter out invalid descriptions before caching
+      const validDescriptions = descriptions.filter(desc => {
+        if (!desc || typeof desc !== 'object') {
+          console.warn('[ChapterCache] Skipping invalid description (not object):', desc)
+          return false
+        }
+        if (!desc.id || typeof desc.id !== 'string') {
+          console.warn('[ChapterCache] Skipping description without valid id:', desc)
+          return false
+        }
+        if (typeof desc.content !== 'string') {
+          console.warn('[ChapterCache] Skipping description without valid content:', desc)
+          return false
+        }
+        return true
+      })
+
       // Merge images into descriptions
-      const descriptionsWithImages = descriptions.map(desc => {
+      const descriptionsWithImages = validDescriptions.map(desc => {
         const image = images.find(img => img.description_id === desc.id || img.description?.id === desc.id)
         if (image && !desc.generated_image) {
           return { ...desc, generated_image: image }
@@ -218,13 +340,16 @@ class ChapterCacheService {
 
       await db.chapters.put(cachedChapter)
 
-      console.log('[ChapterCache] Chapter cached:', {
-        userId,
-        bookId,
-        chapterNumber,
-        descriptionsCount: descriptions.length,
-        imagesCount: images.length,
-      })
+      if (DEBUG) {
+        console.log('[ChapterCache] Chapter cached:', {
+          userId,
+          bookId,
+          chapterNumber,
+          descriptionsCount: validDescriptions.length,
+          imagesCount: images.length,
+          skippedDescriptions: descriptions.length - validDescriptions.length,
+        })
+      }
 
       return true
     } catch (err) {
@@ -240,7 +365,7 @@ class ChapterCacheService {
     try {
       const id = createChapterId(userId, bookId, chapterNumber)
       await db.chapters.delete(id)
-      console.log('[ChapterCache] Deleted:', { userId, bookId, chapterNumber })
+      if (DEBUG) console.log('[ChapterCache] Deleted:', { userId, bookId, chapterNumber })
       return true
     } catch (err) {
       console.warn('[ChapterCache] Error deleting:', err)
@@ -258,7 +383,7 @@ class ChapterCacheService {
         .equals([userId, bookId])
         .delete()
 
-      console.log('[ChapterCache] Cleared book cache:', { userId, bookId, deletedCount })
+      if (DEBUG) console.log('[ChapterCache] Cleared book cache:', { userId, bookId, deletedCount })
       return deletedCount
     } catch (err) {
       console.warn('[ChapterCache] Error clearing book cache:', err)
@@ -278,7 +403,7 @@ class ChapterCacheService {
         .below(expirationTime)
         .delete()
 
-      console.log('[ChapterCache] Cleared expired entries:', deletedCount)
+      if (DEBUG) console.log('[ChapterCache] Cleared expired entries:', deletedCount)
       return deletedCount
     } catch (err) {
       console.warn('[ChapterCache] Error clearing expired:', err)
@@ -299,7 +424,7 @@ class ChapterCacheService {
       const ids = chapters.map(ch => ch.id)
       await db.chapters.bulkDelete(ids)
 
-      console.log('[ChapterCache] All cache cleared for user:', { userId, deletedCount: ids.length })
+      if (DEBUG) console.log('[ChapterCache] All cache cleared for user:', { userId, deletedCount: ids.length })
       return ids.length
     } catch (err) {
       console.warn('[ChapterCache] Error clearing all:', err)
@@ -338,10 +463,12 @@ class ChapterCacheService {
         }
       }
 
-      console.log('[ChapterCache] Stats:', {
-        totalChapters: stats.totalChapters,
-        booksCount: Object.keys(stats.chaptersByBook).length,
-      })
+      if (DEBUG) {
+        console.log('[ChapterCache] Stats:', {
+          totalChapters: stats.totalChapters,
+          booksCount: Object.keys(stats.chaptersByBook).length,
+        })
+      }
 
       return stats
     } catch (err) {
@@ -373,7 +500,7 @@ class ChapterCacheService {
         .toArray()
 
       if (chapters.length >= MAX_CHAPTERS_PER_BOOK) {
-        console.log('[ChapterCache] Book limit reached, applying LRU cleanup...')
+        if (DEBUG) console.log('[ChapterCache] Book limit reached, applying LRU cleanup...')
 
         // Sort by lastAccessedAt (oldest first)
         chapters.sort((a, b) => a.lastAccessedAt - b.lastAccessedAt)
@@ -383,7 +510,7 @@ class ChapterCacheService {
         const idsToDelete = toDelete.map(ch => ch.id)
         await db.chapters.bulkDelete(idsToDelete)
 
-        console.log('[ChapterCache] Deleted LRU entries:', toDelete.length)
+        if (DEBUG) console.log('[ChapterCache] Deleted LRU entries:', toDelete.length)
       }
     } catch (err) {
       console.warn('[ChapterCache] Error ensuring book limit:', err)
@@ -402,7 +529,7 @@ class ChapterCacheService {
 
       await db.chapters.bulkDelete(idsToDelete)
 
-      console.log('[ChapterCache] Cleared empty description entries:', idsToDelete.length)
+      if (DEBUG) console.log('[ChapterCache] Cleared empty description entries:', idsToDelete.length)
       return idsToDelete.length
     } catch (err) {
       console.warn('[ChapterCache] Error clearing empty:', err)
@@ -422,7 +549,7 @@ class ChapterCacheService {
 
       if (idsToDelete.length > 0) {
         await db.chapters.bulkDelete(idsToDelete)
-        console.log('[ChapterCache] Cleared legacy data without userId:', idsToDelete.length)
+        if (DEBUG) console.log('[ChapterCache] Cleared legacy data without userId:', idsToDelete.length)
       }
 
       return idsToDelete.length
@@ -436,12 +563,12 @@ class ChapterCacheService {
    * Perform maintenance tasks (cleanup expired, empty, legacy data)
    */
   async performMaintenance(): Promise<void> {
-    console.log('[ChapterCache] Performing maintenance...')
+    if (DEBUG) console.log('[ChapterCache] Performing maintenance...')
     await this.clearLegacyData()
     await this.clearExpired()
     await this.clearEmptyDescriptions()
     const stats = await this.getStats()
-    console.log('[ChapterCache] Maintenance complete:', stats)
+    if (DEBUG) console.log('[ChapterCache] Maintenance complete:', stats)
   }
 }
 

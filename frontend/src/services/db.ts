@@ -172,6 +172,50 @@ class FancaiDatabase extends Dexie {
 export const db = new FancaiDatabase()
 
 // ============================================================================
+// Обработчики событий базы данных
+// ============================================================================
+
+const DB_NAME = 'FancaiDB'
+const isDev = import.meta.env.DEV
+
+/**
+ * Handle database blocked event.
+ * Occurs when another tab has an older version of the database open.
+ */
+db.on('blocked', () => {
+  console.warn('[DB] Database blocked - please close other tabs with this app')
+  // In production, could show a toast notification to the user
+})
+
+/**
+ * Handle version change event.
+ * Occurs when another tab upgraded the database schema.
+ */
+db.on('versionchange', () => {
+  console.warn('[DB] Database version change detected - reloading')
+  db.close()
+  window.location.reload()
+})
+
+/**
+ * Open the database and handle errors with recovery.
+ * This ensures the database is ready before use.
+ */
+db.open().catch((err: Error & { name?: string }) => {
+  console.error('[DB] Failed to open database:', err)
+
+  // Try to recover from version/state errors
+  if (err.name === 'VersionError' || err.name === 'InvalidStateError') {
+    if (isDev) {
+      console.warn('[DB] Attempting recovery by deleting and recreating database')
+    }
+    // Note: This is a last resort - user will lose local data
+    indexedDB.deleteDatabase(DB_NAME)
+    window.location.reload()
+  }
+})
+
+// ============================================================================
 // Вспомогательные функции
 // ============================================================================
 

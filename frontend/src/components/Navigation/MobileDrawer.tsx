@@ -24,6 +24,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/utils/cn';
 import { isActiveRoute } from '@/utils/navigation';
+import { Z_INDEX } from '@/lib/zIndex';
 
 interface MobileDrawerProps {
   isOpen: boolean;
@@ -188,19 +189,20 @@ const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
     <AnimatePresence>
       {isOpen && (
         <div
-          className="fixed inset-0 z-[500] lg:hidden"
+          className="fixed inset-0 lg:hidden"
+          style={{ zIndex: Z_INDEX.modalOverlay }}
           role="dialog"
           aria-modal="true"
           aria-labelledby="mobile-drawer-title"
         >
-          {/* Backdrop with blur effect */}
+          {/* Backdrop with blur effect - pointer-events-none on blur layer */}
           <m.div
             variants={backdropVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm pointer-events-auto"
             onClick={onClose}
             aria-hidden="true"
           />
@@ -217,9 +219,11 @@ const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
               'bg-background',
               'shadow-2xl',
               'flex flex-col',
+              'pointer-events-auto',
               // Safe area support for notched devices
               'pb-safe pl-safe'
             )}
+            style={{ zIndex: Z_INDEX.modal }}
           >
             {/* Header with logo and close button */}
             <div className="flex items-center justify-between flex-shrink-0 px-4 py-4 border-b border-border">
@@ -232,9 +236,11 @@ const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
                   fancai
                 </span>
               </div>
-              <button
+              <m.button
                 ref={closeButtonRef}
                 onClick={onClose}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 className={cn(
                   'p-2 rounded-lg',
                   'text-muted-foreground',
@@ -245,7 +251,7 @@ const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
                 aria-label={t('common.close')}
               >
                 <X className="w-5 h-5" />
-              </button>
+              </m.button>
             </div>
 
             {/* Navigation links */}
