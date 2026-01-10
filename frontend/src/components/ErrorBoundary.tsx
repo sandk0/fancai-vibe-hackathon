@@ -66,12 +66,32 @@ class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     const { level = 'app', onError } = this.props;
 
-    // Логируем с информацией об уровне границы
-    console.error(`[ErrorBoundary:${level}] Caught error:`, {
+    const errorDetails = {
       error: error.toString(),
-      componentStack: errorInfo.componentStack,
+      message: error.message,
+      name: error.name,
+      stack: error.stack?.substring(0, 2000), // Truncate stack to avoid localStorage overflow
+      componentStack: errorInfo.componentStack?.substring(0, 2000),
       timestamp: new Date().toISOString(),
-    });
+      level,
+      url: window.location.href,
+      userAgent: navigator.userAgent,
+    };
+
+    // Логируем с информацией об уровне границы
+    console.error(`[ErrorBoundary:${level}] Caught error:`, errorDetails);
+
+    // Сохраняем ошибку в localStorage для PWA отладки
+    // Это позволяет получить детали ошибки даже после перезагрузки
+    try {
+      const errorHistory = JSON.parse(localStorage.getItem('error_boundary_history') || '[]');
+      errorHistory.unshift(errorDetails);
+      // Храним только последние 5 ошибок
+      localStorage.setItem('error_boundary_history', JSON.stringify(errorHistory.slice(0, 5)));
+      localStorage.setItem('last_error_boundary_error', JSON.stringify(errorDetails));
+    } catch {
+      // Ignore localStorage errors
+    }
 
     this.setState({
       error,
@@ -161,11 +181,11 @@ class ErrorBoundary extends Component<Props, State> {
               {!isAppLevel && !isPageLevel && 'An error occurred while rendering this component.'}
             </p>
 
-            {/* Error Details (только в dev mode) */}
-            {import.meta.env.DEV && error && (
+            {/* Error Details - показываем всегда для PWA отладки */}
+            {error && (
               <details className="mb-8 text-left bg-card border border-border rounded-lg p-4 overflow-auto">
                 <summary className="cursor-pointer font-semibold mb-2 text-destructive">
-                  Error details (dev mode)
+                  Error details
                 </summary>
 
                 <div className="mt-4">
@@ -175,6 +195,17 @@ class ErrorBoundary extends Component<Props, State> {
                   <pre className="bg-background p-3 rounded text-xs overflow-auto border border-border mb-4">
                     {error.toString()}
                   </pre>
+
+                  {error.message && error.message !== error.toString() && (
+                    <>
+                      <p className="font-semibold mb-2 text-sm">
+                        Message:
+                      </p>
+                      <pre className="bg-background p-3 rounded text-xs overflow-auto border border-border mb-4">
+                        {error.message}
+                      </pre>
+                    </>
+                  )}
 
                   {errorInfo?.componentStack && (
                     <>
@@ -186,6 +217,24 @@ class ErrorBoundary extends Component<Props, State> {
                       </pre>
                     </>
                   )}
+
+                  <button
+                    onClick={() => {
+                      const errorData = {
+                        error: error.toString(),
+                        message: error.message,
+                        stack: error.stack,
+                        componentStack: errorInfo?.componentStack,
+                        timestamp: new Date().toISOString(),
+                        url: window.location.href,
+                      };
+                      navigator.clipboard.writeText(JSON.stringify(errorData, null, 2));
+                      alert('Error details copied to clipboard');
+                    }}
+                    className="mt-4 px-4 py-2 bg-secondary text-foreground rounded text-sm hover:bg-muted transition-colors"
+                  >
+                    Copy error details
+                  </button>
                 </div>
               </details>
             )}
