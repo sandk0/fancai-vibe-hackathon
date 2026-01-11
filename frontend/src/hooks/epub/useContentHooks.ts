@@ -131,6 +131,15 @@ export const useContentHooks = (
           cursor: pointer;
         }
 
+        /* iOS Safari Fix (January 2026): Force single-column layout */
+        /* Prevents double-page turn bug caused by CSS column miscalculation */
+        html, body {
+          column-count: 1 !important;
+          -webkit-column-count: 1 !important;
+          column-width: auto !important;
+          -webkit-column-width: auto !important;
+        }
+
         /* Disable text selection on touch devices (mobile) */
         /* Prevents accidental text selection when tapping to navigate */
         @media (pointer: coarse), (hover: none) {

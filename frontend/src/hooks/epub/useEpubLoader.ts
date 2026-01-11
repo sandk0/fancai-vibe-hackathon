@@ -141,10 +141,18 @@ export const useEpubLoader = ({
         // Create rendition using renderTo (this is the epubjs API method)
         // Note: We use capture phase handlers in useTouchNavigation to intercept
         // touch/click events before epub.js processes them
+        //
+        // iOS Safari Fix (January 2026):
+        // - minSpreadWidth: 99999 forces single-column layout on all screen sizes
+        // - This prevents iOS Safari from miscalculating CSS column widths
+        // - Without this, iOS can render 2 columns when only 1 should be shown,
+        //   causing "double page turn" visual bug
         const newRendition = epubBook.renderTo(viewerRef.current, {
           width: '100%',
           height: '100%',
           spread: 'none',
+          minSpreadWidth: 99999, // Force single-column on iOS
+          flow: 'paginated', // Ensure paginated mode
         });
 
         // Apply initial theme immediately BEFORE rendering content
