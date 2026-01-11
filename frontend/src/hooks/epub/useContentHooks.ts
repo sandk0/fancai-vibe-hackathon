@@ -208,10 +208,10 @@ export const useContentHooks = (
 
       if (isIOSDevice) {
         /**
-         * Listen for tap coordinates from parent window
-         * Parent sends: { type: 'TAP_COORDINATES', x: number, y: number }
-         * We respond with: { type: 'DESCRIPTION_CLICK', descriptionId: string }
+         * BroadcastChannel name must match parent (IOSTapZones.tsx)
          */
+        const TAP_CHANNEL_NAME = 'ios-tap-coordinates';
+
         /**
          * Send debug message to parent for visual feedback
          */
@@ -224,14 +224,11 @@ export const useContentHooks = (
           }
         };
 
-        const handleParentMessage = (event: MessageEvent) => {
-          // Verify message type
-          if (event.data?.type !== 'TAP_COORDINATES') return;
-
-          const { x, y } = event.data;
-          if (typeof x !== 'number' || typeof y !== 'number') return;
-
-          sendDebug(`GOT:${Math.round(x)},${Math.round(y)}`);
+        /**
+         * Process tap coordinates and find description
+         */
+        const processTapCoordinates = (x: number, y: number, source: string) => {
+          sendDebug(`${source}:${Math.round(x)},${Math.round(y)}`);
 
           // Use elementFromPoint INSIDE the iframe (this works!)
           const elementAtPoint = doc.elementFromPoint(x, y);
@@ -279,11 +276,45 @@ export const useContentHooks = (
           }
         };
 
+        /**
+         * Method 1: BroadcastChannel listener (most reliable for iOS PWA)
+         * BroadcastChannel works with blob: iframes on same origin
+         */
+        let tapChannel: BroadcastChannel | null = null;
+        try {
+          tapChannel = new BroadcastChannel(TAP_CHANNEL_NAME);
+          tapChannel.onmessage = (event) => {
+            if (event.data?.type !== 'TAP_COORDINATES') return;
+            const { x, y } = event.data;
+            if (typeof x !== 'number' || typeof y !== 'number') return;
+            processTapCoordinates(x, y, 'BC');
+          };
+          if (import.meta.env.DEV) {
+            console.log('[useContentHooks] iOS PWA: BroadcastChannel listener registered');
+          }
+        } catch (_e) {
+          // BroadcastChannel not supported
+          if (import.meta.env.DEV) {
+            console.log('[useContentHooks] iOS PWA: BroadcastChannel not supported');
+          }
+        }
+
+        /**
+         * Method 2: postMessage listener (backup)
+         * Listen for tap coordinates from parent window
+         */
+        const handleParentMessage = (event: MessageEvent) => {
+          if (event.data?.type !== 'TAP_COORDINATES') return;
+          const { x, y } = event.data;
+          if (typeof x !== 'number' || typeof y !== 'number') return;
+          processTapCoordinates(x, y, 'PM');
+        };
+
         // Listen for messages from parent
         window.addEventListener('message', handleParentMessage);
 
         if (import.meta.env.DEV) {
-          console.log('[useContentHooks] iOS PWA: Added postMessage listener for tap coordinates');
+          console.log('[useContentHooks] iOS PWA: postMessage listener registered');
         }
 
         // Also keep touch handlers as fallback (in case touch events do work)

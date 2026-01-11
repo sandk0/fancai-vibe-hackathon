@@ -22,7 +22,14 @@
 import { useCallback, useRef, memo, useState, useEffect } from 'react';
 
 const TAP_MAX_DURATION = 350; // ms
+
+// BroadcastChannel for cross-iframe communication (works with blob: URLs)
+const TAP_CHANNEL_NAME = 'ios-tap-coordinates';
 const TAP_MAX_MOVEMENT = 20; // px
+
+// Debounce time for navigation (increased for real iOS devices)
+// Real devices can generate both touch and click events from single tap
+const NAV_DEBOUNCE_MS = 500;
 
 // Navigation zone width - VERY narrow to maximize description clickability
 // 8% = roughly 30px on iPhone, enough for a finger tap on the edge
@@ -154,10 +161,11 @@ export const IOSTapZones = memo(function IOSTapZones({
     }
 
     // Debounce navigation to prevent double triggers
+    // Use longer debounce for real iOS devices
     const now = Date.now();
-    if (now - lastNavTimeRef.current < 300) {
+    if (now - lastNavTimeRef.current < NAV_DEBOUNCE_MS) {
       if (import.meta.env.DEV) {
-        console.log('[IOSTapZones] Debounced - ignoring');
+        console.log('[IOSTapZones] Debounced - ignoring', { elapsed: now - lastNavTimeRef.current });
       }
       return;
     }
@@ -167,15 +175,20 @@ export const IOSTapZones = memo(function IOSTapZones({
       console.log('[IOSTapZones] TAP detected -', action);
     }
 
-    if (action === 'prev') {
-      onPrevPage();
-    } else {
-      onNextPage();
-    }
+    // Use requestAnimationFrame to avoid blocking touch event
+    requestAnimationFrame(() => {
+      if (action === 'prev') {
+        onPrevPage();
+      } else {
+        onNextPage();
+      }
+    });
   }, [enabled, onPrevPage, onNextPage]);
 
   /**
    * Handle click - fallback for devices where touch events don't work
+   * NOTE: On real iOS devices, a tap may generate BOTH touchend AND click events
+   * The shared lastNavTimeRef debounce prevents double navigation
    */
   const handleClick = useCallback((
     _e: React.MouseEvent,
@@ -183,9 +196,12 @@ export const IOSTapZones = memo(function IOSTapZones({
   ) => {
     if (!enabled) return;
 
-    // Debounce
+    // Debounce - shared with touch handler to prevent double triggers
     const now = Date.now();
-    if (now - lastNavTimeRef.current < 300) {
+    if (now - lastNavTimeRef.current < NAV_DEBOUNCE_MS) {
+      if (import.meta.env.DEV) {
+        console.log('[IOSTapZones] Click debounced - ignoring', { elapsed: now - lastNavTimeRef.current });
+      }
       return;
     }
     lastNavTimeRef.current = now;
@@ -194,11 +210,14 @@ export const IOSTapZones = memo(function IOSTapZones({
       console.log('[IOSTapZones] CLICK detected -', action);
     }
 
-    if (action === 'prev') {
-      onPrevPage();
-    } else {
-      onNextPage();
-    }
+    // Use requestAnimationFrame to avoid blocking
+    requestAnimationFrame(() => {
+      if (action === 'prev') {
+        onPrevPage();
+      } else {
+        onNextPage();
+      }
+    });
   }, [enabled, onPrevPage, onNextPage]);
 
   /**
@@ -291,43 +310,53 @@ export const IOSTapZones = memo(function IOSTapZones({
     const viewportX = touch.clientX - viewerRect.left;
     const viewportY = touch.clientY - viewerRect.top;
 
-    // Try multiple methods to send postMessage to iframe
-    let sent = false;
+    // Try multiple methods to send coordinates to iframe
+    const coordinateData = {
+      type: 'TAP_COORDINATES',
+      x: viewportX,
+      y: viewportY,
+      timestamp: Date.now(), // For debugging
+    };
 
-    // Method 1: iframe.contentWindow
+    let methodUsed = '';
+
+    // Method 1: BroadcastChannel (works with blob: iframes on same origin)
+    // This is the most reliable method for iOS PWA
+    try {
+      const channel = new BroadcastChannel(TAP_CHANNEL_NAME);
+      channel.postMessage(coordinateData);
+      channel.close();
+      methodUsed = 'BC';
+    } catch (_e) {
+      // BroadcastChannel not supported
+    }
+
+    // Method 2: iframe.contentWindow.postMessage (backup)
     try {
       if (iframe.contentWindow) {
-        iframe.contentWindow.postMessage({
-          type: 'TAP_COORDINATES',
-          x: viewportX,
-          y: viewportY,
-        }, '*');
-        sent = true;
-        setDebugTapInfo(`M1:${Math.round(viewportX)},${Math.round(viewportY)}`);
+        iframe.contentWindow.postMessage(coordinateData, '*');
+        if (!methodUsed) methodUsed = 'M1';
+        else methodUsed += '+M1';
       }
     } catch (_e) {
-      // Method 1 failed
+      // Method 2 failed
     }
 
-    // Method 2: Get iframe window via frames collection
-    if (!sent) {
-      try {
-        const frames = window.frames;
-        if (frames.length > 0) {
-          frames[0].postMessage({
-            type: 'TAP_COORDINATES',
-            x: viewportX,
-            y: viewportY,
-          }, '*');
-          sent = true;
-          setDebugTapInfo(`M2:${Math.round(viewportX)},${Math.round(viewportY)}`);
-        }
-      } catch (_e) {
-        // Method 2 failed
+    // Method 3: window.frames collection (backup)
+    try {
+      const frames = window.frames;
+      if (frames.length > 0) {
+        frames[0].postMessage(coordinateData, '*');
+        if (!methodUsed) methodUsed = 'M2';
+        else methodUsed += '+M2';
       }
+    } catch (_e) {
+      // Method 3 failed
     }
 
-    if (!sent) {
+    if (methodUsed) {
+      setDebugTapInfo(`${methodUsed}:${Math.round(viewportX)},${Math.round(viewportY)}`);
+    } else {
       setDebugTapInfo('FAIL: No method worked');
     }
 
