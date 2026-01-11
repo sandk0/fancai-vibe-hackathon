@@ -162,7 +162,13 @@ export const useTouchNavigation = ({
         body.style.cursor = 'pointer';
       }
 
-      const iframeOffset = getIframeOffset(contents);
+      /**
+       * Get current iframe offset - computed dynamically at event time
+       * IMPORTANT: Must be computed fresh each time, not cached in closure
+       */
+      const getCurrentIframeOffset = (): number => {
+        return getIframeOffset(contents);
+      };
 
       /**
        * Handle touch start - record position and time
@@ -173,7 +179,8 @@ export const useTouchNavigation = ({
         const touch = e.touches[0];
         if (!touch) return;
 
-        // Convert iframe coords to screen coords
+        // Convert iframe coords to screen coords - compute offset fresh
+        const iframeOffset = getCurrentIframeOffset();
         const screenX = touch.clientX + iframeOffset;
         const y = touch.clientY;
 
@@ -203,6 +210,8 @@ export const useTouchNavigation = ({
           return;
         }
 
+        // Compute offset fresh for end event
+        const iframeOffset = getCurrentIframeOffset();
         const endScreenX = touch.clientX + iframeOffset;
         const endY = touch.clientY;
         const endTime = Date.now();
@@ -265,7 +274,8 @@ export const useTouchNavigation = ({
           return;
         }
 
-        // Convert iframe coords to screen coords
+        // Convert iframe coords to screen coords - compute offset fresh
+        const iframeOffset = getCurrentIframeOffset();
         const screenX = e.clientX + iframeOffset;
         log('Click (direct):', { clientX: e.clientX, iframeOffset, screenX, target: (e.target as HTMLElement)?.tagName });
 
@@ -308,7 +318,7 @@ export const useTouchNavigation = ({
       };
     };
 
-    // Register the content hook
+    // Register the content hook (iOS fix - direct iframe binding)
     rendition.hooks.content.register(contentHook);
     log('Content hook registered');
 
@@ -323,14 +333,165 @@ export const useTouchNavigation = ({
       log('Error setting up existing contents:', e);
     }
 
+    // =========================================================================
+    // FALLBACK: Also use rendition.on() for Android and other platforms
+    // epub.js passEvents() works on Android but not iOS Safari
+    // This provides redundancy - whichever works will handle navigation
+    // =========================================================================
+
+    /**
+     * Get screen X from event, accounting for iframe position
+     */
+    const getScreenXFromRendition = (clientX: number): number => {
+      try {
+        const contents = rendition.getContents();
+        if (contents && contents.length > 0) {
+          const iframe = contents[0];
+          const iframeWindow = iframe.window;
+          if (iframeWindow && iframeWindow.frameElement) {
+            const rect = (iframeWindow.frameElement as HTMLElement).getBoundingClientRect();
+            return clientX + rect.left;
+          }
+        }
+      } catch (e) {
+        log('Error getting iframe position (rendition):', e);
+      }
+      return clientX;
+    };
+
+    /**
+     * Fallback touch start handler via rendition.on()
+     */
+    const handleTouchStartFallback = (e: TouchEvent) => {
+      if (!enabledRef.current) return;
+
+      const touch = e.touches[0];
+      if (!touch) return;
+
+      const screenX = getScreenXFromRendition(touch.clientX);
+      log('TouchStart (fallback):', { clientX: touch.clientX, screenX });
+
+      // Only set if not already set by direct handler
+      if (!touchStartRef.current) {
+        touchStartRef.current = {
+          x: screenX,
+          y: touch.clientY,
+          time: Date.now(),
+        };
+      }
+    };
+
+    /**
+     * Fallback touch end handler via rendition.on()
+     */
+    const handleTouchEndFallback = (e: TouchEvent) => {
+      if (!enabledRef.current) return;
+
+      if (!touchStartRef.current) {
+        log('TouchEnd (fallback): No touchStart recorded');
+        return;
+      }
+
+      const touch = e.changedTouches[0];
+      if (!touch) {
+        touchStartRef.current = null;
+        return;
+      }
+
+      const endScreenX = getScreenXFromRendition(touch.clientX);
+      const endTime = Date.now();
+
+      const startX = touchStartRef.current.x;
+      const startY = touchStartRef.current.y;
+      const startTime = touchStartRef.current.time;
+
+      touchStartRef.current = null;
+
+      const deltaX = Math.abs(endScreenX - startX);
+      const deltaY = Math.abs(touch.clientY - startY);
+      const duration = endTime - startTime;
+
+      const isTap = duration < TAP_MAX_DURATION && deltaX < TAP_MAX_MOVEMENT && deltaY < TAP_MAX_MOVEMENT;
+
+      log('TouchEnd (fallback):', { startX, endScreenX, deltaX, deltaY, duration, isTap });
+
+      if (!isTap) return;
+
+      if (isInteractiveElement(e.target)) {
+        log('Tap on interactive element (fallback) - allowing through');
+        return;
+      }
+
+      const action = getNavigationAction(startX);
+      log('Touch navigation action (fallback):', action);
+
+      if (action === 'prev') {
+        log('LEFT ZONE TAP (fallback) - calling prevPage()');
+        lastTouchNavTimeRef.current = Date.now();
+        prevPageRef.current();
+      } else if (action === 'next') {
+        log('RIGHT ZONE TAP (fallback) - calling nextPage()');
+        lastTouchNavTimeRef.current = Date.now();
+        nextPageRef.current();
+      }
+    };
+
+    /**
+     * Fallback click handler via rendition.on()
+     */
+    const handleClickFallback = (e: MouseEvent) => {
+      if (!enabledRef.current) return;
+
+      const timeSinceTouch = Date.now() - lastTouchNavTimeRef.current;
+      if (timeSinceTouch < TOUCH_CLICK_DEBOUNCE) {
+        log('Click ignored (fallback) - too soon after touch:', timeSinceTouch, 'ms');
+        return;
+      }
+
+      const screenX = getScreenXFromRendition(e.clientX);
+      log('Click (fallback):', { clientX: e.clientX, screenX });
+
+      if (isInteractiveElement(e.target)) {
+        log('Click on interactive element (fallback) - allowing through');
+        return;
+      }
+
+      const action = getNavigationAction(screenX);
+      log('Click action (fallback):', action);
+
+      if (action === 'prev') {
+        log('LEFT ZONE CLICK (fallback) - calling prevPage()');
+        prevPageRef.current();
+      } else if (action === 'next') {
+        log('RIGHT ZONE CLICK (fallback) - calling nextPage()');
+        nextPageRef.current();
+      }
+    };
+
+    // Register fallback handlers on rendition (works on Android)
+    rendition.on('touchstart', handleTouchStartFallback as unknown as (...args: unknown[]) => void);
+    rendition.on('touchend', handleTouchEndFallback as unknown as (...args: unknown[]) => void);
+    rendition.on('click', handleClickFallback as unknown as (...args: unknown[]) => void);
+    log('Fallback handlers registered on rendition.on()');
+
     // Cleanup
     return () => {
       log('Cleaning up touch navigation');
 
+      // Cleanup content hook
       try {
         rendition.hooks.content.deregister(contentHook);
       } catch (e) {
         log('Error deregistering content hook:', e);
+      }
+
+      // Cleanup fallback handlers
+      try {
+        rendition.off('touchstart', handleTouchStartFallback as unknown as (...args: unknown[]) => void);
+        rendition.off('touchend', handleTouchEndFallback as unknown as (...args: unknown[]) => void);
+        rendition.off('click', handleClickFallback as unknown as (...args: unknown[]) => void);
+      } catch (e) {
+        log('Error removing fallback handlers:', e);
       }
 
       // Clean up any existing document listeners
