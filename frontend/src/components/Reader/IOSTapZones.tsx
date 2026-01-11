@@ -19,7 +19,7 @@
  * - WebKit Bug 128924: Shifted document touch handling in iframes on iOS
  */
 
-import { useCallback, useRef, memo } from 'react';
+import { useCallback, useRef, memo, useState } from 'react';
 
 const TAP_MAX_DURATION = 350; // ms
 const TAP_MAX_MOVEMENT = 20; // px
@@ -79,6 +79,9 @@ export const IOSTapZones = memo(function IOSTapZones({
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const lastNavTimeRef = useRef<number>(0);
   const lastDescClickTimeRef = useRef<number>(0);
+
+  // Debug: visual tap indicator state
+  const [debugTapInfo, setDebugTapInfo] = useState<string | null>(null);
 
   // Debug log for iOS detection (only once on mount)
   if (import.meta.env.DEV) {
@@ -275,19 +278,33 @@ export const IOSTapZones = memo(function IOSTapZones({
       console.log('[IOSTapZones] Center: Sending tap coordinates to iframe', { relativeX, relativeY });
     }
 
+    // Show debug info (always, for troubleshooting)
+    setDebugTapInfo(`TAP: ${Math.round(relativeX)},${Math.round(relativeY)}`);
+    setTimeout(() => setDebugTapInfo(null), 1500);
+
     // Send coordinates to iframe via postMessage
     // The script inside iframe (useContentHooks) will do elementFromPoint
     // and send descriptionId back via postMessage
     try {
-      iframe.contentWindow?.postMessage({
+      const contentWindow = iframe.contentWindow;
+      if (!contentWindow) {
+        setDebugTapInfo('ERROR: contentWindow null');
+        setTimeout(() => setDebugTapInfo(null), 2000);
+        return;
+      }
+
+      contentWindow.postMessage({
         type: 'TAP_COORDINATES',
         x: relativeX,
         y: relativeY,
       }, '*');
+
+      // Update debug info
+      setDebugTapInfo(`SENT: ${Math.round(relativeX)},${Math.round(relativeY)}`);
+      setTimeout(() => setDebugTapInfo(null), 1500);
     } catch (err) {
-      if (import.meta.env.DEV) {
-        console.log('[IOSTapZones] Center: Failed to send postMessage to iframe', err);
-      }
+      setDebugTapInfo(`ERROR: ${err}`);
+      setTimeout(() => setDebugTapInfo(null), 2000);
     }
   }, [enabled]);
 
@@ -354,26 +371,46 @@ export const IOSTapZones = memo(function IOSTapZones({
         tabIndex={-1}
       />
 
-      {/* Debug indicator - only in dev mode */}
-      {import.meta.env.DEV && (
+      {/* Debug tap indicator - ALWAYS shown for troubleshooting */}
+      {debugTapInfo && (
         <div
           style={{
             position: 'fixed',
-            bottom: 80,
+            top: '50%',
             left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: 'rgba(0, 128, 0, 0.7)',
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: debugTapInfo.startsWith('ERROR') ? 'rgba(255, 0, 0, 0.9)' : 'rgba(0, 128, 0, 0.9)',
             color: 'white',
-            padding: '4px 8px',
-            borderRadius: 4,
-            fontSize: 10,
-            zIndex: 9999,
+            padding: '12px 20px',
+            borderRadius: 8,
+            fontSize: 16,
+            fontWeight: 'bold',
+            zIndex: 99999,
             pointerEvents: 'none',
           }}
         >
-          iOS Zones {ZONE_WIDTH_PERCENT}% + Center (postMessage) {isStandalone() ? '[PWA]' : '[Safari]'}
+          {debugTapInfo}
         </div>
       )}
+
+      {/* Debug indicator - always shown on iOS for now */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 80,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: 'rgba(0, 128, 0, 0.8)',
+          color: 'white',
+          padding: '6px 12px',
+          borderRadius: 4,
+          fontSize: 11,
+          zIndex: 9999,
+          pointerEvents: 'none',
+        }}
+      >
+        iOS {ZONE_WIDTH_PERCENT}%+Center {isStandalone() ? '[PWA]' : '[Safari]'}
+      </div>
     </>
   );
 });
