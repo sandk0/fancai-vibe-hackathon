@@ -703,8 +703,9 @@ export const useDescriptionHighlighting = ({
               span.addEventListener('click', handleClick);
 
               // Touch handler for mobile - ensures tap on description works
+              // iOS PWA FIX: Use both touchend AND postMessage for reliability
               const handleTouchEnd = (event: TouchEvent) => {
-                // Prevent navigation from useTouchNavigation
+                // Prevent navigation from useTouchNavigation/IOSTapZones
                 event.preventDefault();
                 event.stopPropagation();
 
@@ -713,6 +714,20 @@ export const useDescriptionHighlighting = ({
                   if (import.meta.env.DEV) {
                     console.log('[useDescriptionHighlighting] Description touched:', descId);
                   }
+
+                  // iOS PWA FIX: Also send postMessage to parent for reliability
+                  // In iOS PWA standalone mode, regular event handlers may not work
+                  try {
+                    if (window.parent && window.parent !== window) {
+                      window.parent.postMessage({
+                        type: 'DESCRIPTION_CLICK',
+                        descriptionId: descId,
+                      }, '*');
+                    }
+                  } catch (_e) {
+                    // Ignore cross-origin errors
+                  }
+
                   const desc = safeDescriptions.find(d => d.id === descId);
                   if (desc) {
                     const image = imagesByDescId.get(descId);
@@ -723,12 +738,21 @@ export const useDescriptionHighlighting = ({
 
               span.addEventListener('touchend', handleTouchEnd, { passive: false });
 
+              // iOS PWA FIX: Add touchstart to ensure touch is registered
+              const handleTouchStart = (event: TouchEvent) => {
+                // Mark that this touch started on a description
+                // This helps with touch event handling on iOS
+                (event.target as HTMLElement).setAttribute('data-touch-started', 'true');
+              };
+              span.addEventListener('touchstart', handleTouchStart, { passive: true });
+
               // Store cleanup function for this span (prevents memory leaks)
               cleanupFunctionsRef.current.push(() => {
                 span.removeEventListener('mouseenter', handleMouseEnter);
                 span.removeEventListener('mouseleave', handleMouseLeave);
                 span.removeEventListener('click', handleClick);
                 span.removeEventListener('touchend', handleTouchEnd);
+                span.removeEventListener('touchstart', handleTouchStart);
               });
 
               // Replace text with highlighted span
@@ -784,6 +808,28 @@ export const useDescriptionHighlighting = ({
     };
 
     /**
+     * iOS PWA FIX: Listen for postMessage from iframe
+     * This handles description clicks when regular event handlers don't work
+     * in iOS PWA standalone mode
+     */
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'DESCRIPTION_CLICK' && event.data?.descriptionId) {
+        const descId = event.data.descriptionId;
+        if (import.meta.env.DEV) {
+          console.log('[useDescriptionHighlighting] Description clicked via postMessage:', descId);
+        }
+
+        const desc = safeDescriptions.find(d => d.id === descId);
+        if (desc) {
+          const image = imagesByDescId.get(descId);
+          onDescriptionClick(desc, image);
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+
+    /**
      * Handle clicks inside epub.js iframe via rendition.on('click')
      * This is necessary because direct event listeners on spans don't work
      * due to epub.js intercepting all click events inside the iframe
@@ -822,6 +868,7 @@ export const useDescriptionHighlighting = ({
     return () => {
       rendition.off('rendered', handleRendered);
       rendition.off('click', handleClick as (...args: unknown[]) => void);
+      window.removeEventListener('message', handleMessage);
       // Clear debounce timer on cleanup
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
