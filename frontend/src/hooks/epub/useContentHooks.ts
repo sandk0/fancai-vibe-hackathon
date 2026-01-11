@@ -212,6 +212,18 @@ export const useContentHooks = (
          * Parent sends: { type: 'TAP_COORDINATES', x: number, y: number }
          * We respond with: { type: 'DESCRIPTION_CLICK', descriptionId: string }
          */
+        /**
+         * Send debug message to parent for visual feedback
+         */
+        const sendDebug = (message: string) => {
+          try {
+            const targetWindow = window.top || window.parent;
+            targetWindow.postMessage({ type: 'IFRAME_DEBUG', message }, '*');
+          } catch (_e) {
+            // Ignore
+          }
+        };
+
         const handleParentMessage = (event: MessageEvent) => {
           // Verify message type
           if (event.data?.type !== 'TAP_COORDINATES') return;
@@ -219,17 +231,13 @@ export const useContentHooks = (
           const { x, y } = event.data;
           if (typeof x !== 'number' || typeof y !== 'number') return;
 
-          if (import.meta.env.DEV) {
-            console.log('[useContentHooks] iOS: Received tap coordinates from parent:', { x, y });
-          }
+          sendDebug(`GOT:${Math.round(x)},${Math.round(y)}`);
 
           // Use elementFromPoint INSIDE the iframe (this works!)
           const elementAtPoint = doc.elementFromPoint(x, y);
 
           if (!elementAtPoint) {
-            if (import.meta.env.DEV) {
-              console.log('[useContentHooks] iOS: No element at coordinates');
-            }
+            sendDebug('NO_EL');
             return;
           }
 
@@ -246,20 +254,16 @@ export const useContentHooks = (
           }
 
           if (descriptionId) {
-            if (import.meta.env.DEV) {
-              console.log('[useContentHooks] iOS: Found description at coordinates:', descriptionId);
-            }
+            sendDebug(`FOUND:${descriptionId.slice(0, 8)}`);
 
             // Send description ID back to parent
             try {
-              // Use window.top for iOS compatibility (window.parent may not work)
               const targetWindow = window.top || window.parent;
               targetWindow.postMessage({
                 type: 'DESCRIPTION_CLICK',
                 descriptionId: descriptionId,
               }, '*');
             } catch (_err) {
-              // Fallback to window.parent
               try {
                 window.parent.postMessage({
                   type: 'DESCRIPTION_CLICK',
@@ -270,10 +274,8 @@ export const useContentHooks = (
               }
             }
           } else {
-            if (import.meta.env.DEV) {
-              console.log('[useContentHooks] iOS: No description at coordinates, element:',
-                elementAtPoint.tagName, elementAtPoint.className);
-            }
+            // Show what element we found instead
+            sendDebug(`EL:${elementAtPoint.tagName}.${(elementAtPoint.className || '').toString().slice(0, 10)}`);
           }
         };
 

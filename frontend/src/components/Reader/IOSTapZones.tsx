@@ -19,7 +19,7 @@
  * - WebKit Bug 128924: Shifted document touch handling in iframes on iOS
  */
 
-import { useCallback, useRef, memo, useState } from 'react';
+import { useCallback, useRef, memo, useState, useEffect } from 'react';
 
 const TAP_MAX_DURATION = 350; // ms
 const TAP_MAX_MOVEMENT = 20; // px
@@ -82,6 +82,19 @@ export const IOSTapZones = memo(function IOSTapZones({
 
   // Debug: visual tap indicator state
   const [debugTapInfo, setDebugTapInfo] = useState<string | null>(null);
+
+  // Listen for response from iframe
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'IFRAME_DEBUG') {
+        // Show debug message from iframe
+        setDebugTapInfo(`IF: ${event.data.message}`);
+        setTimeout(() => setDebugTapInfo(null), 3000);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   // Debug log for iOS detection (only once on mount)
   if (import.meta.env.DEV) {
