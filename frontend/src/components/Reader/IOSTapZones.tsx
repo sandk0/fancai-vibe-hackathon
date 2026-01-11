@@ -291,30 +291,47 @@ export const IOSTapZones = memo(function IOSTapZones({
     const viewportX = touch.clientX - viewerRect.left;
     const viewportY = touch.clientY - viewerRect.top;
 
-    // DEBUG: Show coordinates
-    setDebugTapInfo(`VP:${Math.round(viewportX)},${Math.round(viewportY)}`);
-    setTimeout(() => setDebugTapInfo(null), 2000);
+    // Try multiple methods to send postMessage to iframe
+    let sent = false;
 
-    // Send coordinates to iframe via postMessage
-    // The script inside iframe (useContentHooks) will do elementFromPoint
-    // and send descriptionId back via postMessage
+    // Method 1: iframe.contentWindow
     try {
-      const contentWindow = iframe.contentWindow;
-      if (!contentWindow) {
-        setDebugTapInfo('ERROR: contentWindow null');
-        setTimeout(() => setDebugTapInfo(null), 2000);
-        return;
+      if (iframe.contentWindow) {
+        iframe.contentWindow.postMessage({
+          type: 'TAP_COORDINATES',
+          x: viewportX,
+          y: viewportY,
+        }, '*');
+        sent = true;
+        setDebugTapInfo(`M1:${Math.round(viewportX)},${Math.round(viewportY)}`);
       }
-
-      contentWindow.postMessage({
-        type: 'TAP_COORDINATES',
-        x: viewportX,
-        y: viewportY,
-      }, '*');
-    } catch (err) {
-      setDebugTapInfo(`ERROR: ${err}`);
-      setTimeout(() => setDebugTapInfo(null), 2000);
+    } catch (_e) {
+      // Method 1 failed
     }
+
+    // Method 2: Get iframe window via frames collection
+    if (!sent) {
+      try {
+        const frames = window.frames;
+        if (frames.length > 0) {
+          frames[0].postMessage({
+            type: 'TAP_COORDINATES',
+            x: viewportX,
+            y: viewportY,
+          }, '*');
+          sent = true;
+          setDebugTapInfo(`M2:${Math.round(viewportX)},${Math.round(viewportY)}`);
+        }
+      } catch (_e) {
+        // Method 2 failed
+      }
+    }
+
+    if (!sent) {
+      setDebugTapInfo('FAIL: No method worked');
+    }
+
+    setTimeout(() => setDebugTapInfo(null), 2000);
   }, [enabled]);
 
   // Common styles for tap zones
