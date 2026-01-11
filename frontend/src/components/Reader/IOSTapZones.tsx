@@ -263,24 +263,23 @@ export const IOSTapZones = memo(function IOSTapZones({
     // Find the iframe
     const iframe = document.querySelector('#epub-viewer iframe') as HTMLIFrameElement | null;
     if (!iframe) {
-      if (import.meta.env.DEV) {
-        console.log('[IOSTapZones] Center: No iframe found');
-      }
+      setDebugTapInfo('ERROR: No iframe');
+      setTimeout(() => setDebugTapInfo(null), 2000);
       return;
     }
 
     // Get iframe bounding rect to calculate relative position
     const iframeRect = iframe.getBoundingClientRect();
-    const relativeX = touch.clientX - iframeRect.left;
-    const relativeY = touch.clientY - iframeRect.top;
 
-    if (import.meta.env.DEV) {
-      console.log('[IOSTapZones] Center: Sending tap coordinates to iframe', { relativeX, relativeY });
-    }
+    // Calculate coordinates relative to iframe's VISIBLE viewport
+    const viewportX = touch.clientX - iframeRect.left;
+    const viewportY = touch.clientY - iframeRect.top;
 
-    // Show debug info (always, for troubleshooting)
-    setDebugTapInfo(`TAP: ${Math.round(relativeX)},${Math.round(relativeY)}`);
-    setTimeout(() => setDebugTapInfo(null), 1500);
+    // DEBUG: Show detailed info to understand coordinate issue
+    // Expected: viewportX should be 0-400ish on iPhone
+    const debugMsg = `T:${Math.round(touch.clientX)},${Math.round(touch.clientY)} R:${Math.round(iframeRect.left)},${Math.round(iframeRect.top)} V:${Math.round(viewportX)},${Math.round(viewportY)}`;
+    setDebugTapInfo(debugMsg);
+    setTimeout(() => setDebugTapInfo(null), 3000);
 
     // Send coordinates to iframe via postMessage
     // The script inside iframe (useContentHooks) will do elementFromPoint
@@ -295,13 +294,9 @@ export const IOSTapZones = memo(function IOSTapZones({
 
       contentWindow.postMessage({
         type: 'TAP_COORDINATES',
-        x: relativeX,
-        y: relativeY,
+        x: viewportX,
+        y: viewportY,
       }, '*');
-
-      // Update debug info
-      setDebugTapInfo(`SENT: ${Math.round(relativeX)},${Math.round(relativeY)}`);
-      setTimeout(() => setDebugTapInfo(null), 1500);
     } catch (err) {
       setDebugTapInfo(`ERROR: ${err}`);
       setTimeout(() => setDebugTapInfo(null), 2000);
