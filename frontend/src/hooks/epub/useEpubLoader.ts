@@ -147,9 +147,43 @@ export const useEpubLoader = ({
         // - This prevents iOS Safari from miscalculating CSS column widths
         // - Without this, iOS can render 2 columns when only 1 should be shown,
         //   causing "double page turn" visual bug
+        //
+        // iOS CRITICAL FIX (from epub.js GitHub Issue #204):
+        // - iOS needs EXPLICIT PIXEL VALUES, not percentages
+        // - Width must be EVEN number to prevent pixel shifting on page turns
+        // - Without this, iOS miscalculates column-width and navigates multiple pages
+        const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        // Get container dimensions for iOS
+        let renditionWidth: string | number = '100%';
+        let renditionHeight: string | number = '100%';
+
+        if (isIOSDevice && viewerRef.current) {
+          const containerRect = viewerRef.current.getBoundingClientRect();
+          let width = Math.floor(containerRect.width);
+          const height = Math.floor(containerRect.height);
+
+          // Ensure width is EVEN (fixes pixel shifting on iOS)
+          if (width % 2 !== 0) {
+            width = width - 1;
+          }
+
+          renditionWidth = width;
+          renditionHeight = height;
+
+          if (DEBUG) {
+            console.log('[useEpubLoader] iOS: Using explicit pixel dimensions:', {
+              width: renditionWidth,
+              height: renditionHeight,
+              originalWidth: containerRect.width,
+            });
+          }
+        }
+
         const newRendition = epubBook.renderTo(viewerRef.current, {
-          width: '100%',
-          height: '100%',
+          width: renditionWidth,
+          height: renditionHeight,
           spread: 'none',
           minSpreadWidth: 99999, // Force single-column on iOS
           flow: 'paginated', // Ensure paginated mode
@@ -173,9 +207,6 @@ export const useEpubLoader = ({
         // iOS-ONLY FIX: Force single-page spread AFTER book metadata is loaded
         // Book metadata can override our initial spread:'none' setting
         // This explicit call ensures our setting takes precedence on iOS
-        const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
         if (isIOSDevice) {
           newRendition.spread('none', 99999);
 
