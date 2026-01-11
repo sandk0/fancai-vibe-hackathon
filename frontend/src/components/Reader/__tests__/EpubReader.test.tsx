@@ -666,7 +666,7 @@ describe('EpubReader Component', () => {
         nextPage: mockNextPage,
         prevPage: vi.fn(),
         canGoNext: true,
-        canGoPrev: true,
+        canGoPrev: true, debugInfo: null,
       });
 
       renderEpubReader();
@@ -684,7 +684,7 @@ describe('EpubReader Component', () => {
         nextPage: vi.fn(),
         prevPage: mockPrevPage,
         canGoNext: true,
-        canGoPrev: true,
+        canGoPrev: true, debugInfo: null,
       });
 
       renderEpubReader();
@@ -956,7 +956,7 @@ describe('EpubReader Component', () => {
         nextPage: mockNextPage,
         prevPage: vi.fn(),
         canGoNext: true,
-        canGoPrev: true,
+        canGoPrev: true, debugInfo: null,
       });
 
       renderEpubReader();
@@ -995,7 +995,7 @@ describe('EpubReader Component', () => {
         nextPage: vi.fn(),
         prevPage: mockPrevPage,
         canGoNext: true,
-        canGoPrev: true,
+        canGoPrev: true, debugInfo: null,
       });
 
       renderEpubReader();

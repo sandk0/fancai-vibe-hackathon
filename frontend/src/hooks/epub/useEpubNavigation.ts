@@ -10,43 +10,102 @@
  * const { nextPage, prevPage, canGoNext, canGoPrev } = useEpubNavigation(rendition);
  */
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { Rendition } from '@/types/epub';
+
+// Detect iOS device
+const isIOS = (): boolean => {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return false;
+  }
+  const ua = navigator.userAgent;
+  const isIOSDevice = /iPad|iPhone|iPod/.test(ua);
+  const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+  return isIOSDevice || isIPadOS;
+};
 
 interface UseEpubNavigationReturn {
   nextPage: () => Promise<void>;
   prevPage: () => Promise<void>;
   canGoNext: boolean;
   canGoPrev: boolean;
+  debugInfo: string | null;
 }
 
 export const useEpubNavigation = (
   rendition: Rendition | null
 ): UseEpubNavigationReturn => {
+  const debugInfoRef = useRef<string | null>(null);
+
+  /**
+   * iOS FIX: Force correct delta before navigation
+   * epub.js may calculate wrong delta based on incorrect column width
+   */
+  const fixIOSLayoutBeforeNav = useCallback(() => {
+    if (!rendition || !isIOS()) return;
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const manager = (rendition as any).manager;
+      if (!manager?.layout) return;
+
+      const layout = manager.layout;
+      const container = manager.container;
+
+      if (!container) return;
+
+      // Get actual viewport width
+      const viewportWidth = container.clientWidth;
+
+      // Force divisor to 1
+      if (layout.divisor !== 1) {
+        layout.divisor = 1;
+      }
+
+      // Force delta to be exactly viewport width
+      // delta is the scroll amount per navigation
+      const correctDelta = viewportWidth;
+      if (layout.delta !== correctDelta) {
+        const oldDelta = layout.delta;
+        layout.delta = correctDelta;
+        debugInfoRef.current = `D:${oldDelta}→${correctDelta} W:${viewportWidth}`;
+      } else {
+        debugInfoRef.current = `D:${layout.delta} W:${viewportWidth} div:${layout.divisor}`;
+      }
+    } catch (err) {
+      console.warn('[useEpubNavigation] Error fixing iOS layout:', err);
+    }
+  }, [rendition]);
 
   const nextPage = useCallback(async () => {
     if (!rendition) return;
+
+    // Fix layout before navigation on iOS
+    fixIOSLayoutBeforeNav();
+
     try {
       await rendition.next();
     } catch (err) {
-      // Silent fail is OK - usually means end of book
       if (import.meta.env.DEV) {
         console.warn('[useEpubNavigation] Could not go to next page:', err);
       }
     }
-  }, [rendition]);
+  }, [rendition, fixIOSLayoutBeforeNav]);
 
   const prevPage = useCallback(async () => {
     if (!rendition) return;
+
+    // Fix layout before navigation on iOS
+    fixIOSLayoutBeforeNav();
+
     try {
       await rendition.prev();
     } catch (err) {
-      // Silent fail is OK - usually means beginning of book
       if (import.meta.env.DEV) {
         console.warn('[useEpubNavigation] Could not go to prev page:', err);
       }
     }
-  }, [rendition]);
+  }, [rendition, fixIOSLayoutBeforeNav]);
 
   // Note: epub.js doesn't provide easy way to check if we can go next/prev
   // We return true for now, and let epub.js handle boundaries
@@ -58,6 +117,7 @@ export const useEpubNavigation = (
     prevPage,
     canGoNext,
     canGoPrev,
+    debugInfo: debugInfoRef.current,
   };
 };
 
