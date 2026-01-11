@@ -210,7 +210,7 @@ const Toast: React.FC<ToastProps> = ({
         'relative overflow-hidden',
         'p-4 rounded-lg border shadow-lg',
         'backdrop-blur-sm',
-        'min-w-[280px] max-w-[400px]',
+        'min-w-0 max-w-[calc(100vw-2rem)] sm:min-w-[280px] sm:max-w-[400px]',
         'transition-shadow duration-200',
         'hover:shadow-xl',
         config.containerClasses
@@ -281,7 +281,7 @@ const NotificationContainer: React.FC = () => {
       {/* Desktop container - top-right */}
       <div
         className={cn(
-          'fixed z-[9999]',
+          'fixed z-[800]', // Z_INDEX.toast from lib/zIndex.ts
           // Desktop positioning
           'hidden md:flex',
           'top-4 right-4',
@@ -307,10 +307,10 @@ const NotificationContainer: React.FC = () => {
       {/* Mobile container - top-center */}
       <div
         className={cn(
-          'fixed z-[9999]',
+          'fixed z-[800]', // Z_INDEX.toast from lib/zIndex.ts
           // Mobile positioning
           'flex md:hidden',
-          'top-4 left-4 right-4',
+          'top-[calc(env(safe-area-inset-top)+1rem)] left-4 right-4',
           'flex-col items-center gap-3',
           'pointer-events-none'
         )}

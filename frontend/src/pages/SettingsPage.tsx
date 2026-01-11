@@ -3,7 +3,6 @@
  *
  * Features:
  * - Tab-based navigation with icons
- * - Reader settings (theme, font, size)
  * - Account settings
  * - Notification preferences
  * - Privacy & security
@@ -11,11 +10,12 @@
  * - PWA settings (installation, storage, notifications)
  * - Fully theme-aware (Light/Dark/Sepia)
  * - Responsive sidebar
+ *
+ * Note: Reader settings (theme, font, size) are available in the reader controls
  */
 
 import React, { useState } from 'react';
 import {
-  Book,
   User,
   Bell,
   Shield,
@@ -28,8 +28,8 @@ import {
   CheckCircle,
   XCircle,
   BellRing,
+  Book,
 } from 'lucide-react';
-import ReaderSettings from '@/components/Settings/ReaderSettings';
 import { StorageQuotaInfo } from '@/components/Settings/StorageQuotaInfo';
 import { useAuthStore } from '@/stores/auth';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -46,7 +46,7 @@ import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { useOfflineBooks } from '@/hooks/useOfflineBook';
 
-type SettingsTab = 'reader' | 'account' | 'notifications' | 'privacy' | 'pwa' | 'about';
+type SettingsTab = 'account' | 'notifications' | 'privacy' | 'pwa' | 'about';
 
 interface ToggleSwitchProps {
   checked: boolean;
@@ -103,7 +103,7 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ checked, onChange, label, d
 };
 
 const SettingsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('reader');
+  const [activeTab, setActiveTab] = useState<SettingsTab>('account');
   const { user } = useAuthStore();
   const { t } = useTranslation();
 
@@ -155,12 +155,6 @@ const SettingsPage: React.FC = () => {
 
   const tabs = [
     {
-      id: 'reader' as SettingsTab,
-      label: t('settings.reading'),
-      icon: Book,
-      description: 'Шрифт, тема и настройки чтения'
-    },
-    {
       id: 'account' as SettingsTab,
       label: 'Аккаунт',
       icon: User,
@@ -194,9 +188,6 @@ const SettingsPage: React.FC = () => {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'reader':
-        return <ReaderSettings />;
-
       case 'account':
         return (
           <div className="space-y-6">
@@ -649,13 +640,6 @@ const SettingsPage: React.FC = () => {
   // Mobile accordion items - built from tabs
   const accordionItems: AccordionItem[] = [
     {
-      id: 'reader',
-      title: t('settings.reading'),
-      description: 'Шрифт, тема и настройки чтения',
-      icon: Book,
-      content: <ReaderSettings />,
-    },
-    {
       id: 'account',
       title: 'Аккаунт',
       description: 'Профиль и настройки подписки',
@@ -1027,7 +1011,7 @@ const SettingsPage: React.FC = () => {
       <div className="lg:hidden">
         <Accordion
           items={accordionItems}
-          defaultOpen="reader"
+          defaultOpen="account"
         />
       </div>
 

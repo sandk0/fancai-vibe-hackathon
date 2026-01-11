@@ -371,11 +371,16 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Prevent horizontal scroll without breaking fixed positioning */
+/* Root container - no overflow-x: hidden to preserve position:fixed on iOS Safari */
 #root {
-  overflow-x: hidden;
   width: 100%;
   min-height: 100vh;
+  /* overflow-x: hidden removed - creates new stacking context and breaks position:fixed on iOS */
+}
+
+/* Use overflow-x: clip where needed - modern alternative that doesn't create stacking context */
+.overflow-x-clip {
+  overflow-x: clip;
 }
 
 /* Reader text styles (used by EPUB renderer) */
@@ -646,6 +651,13 @@ body {
 
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* PWA Standalone mode - extra padding for iOS Dynamic Island/notch */
+@media all and (display-mode: standalone) {
+  .standalone\:pt-safe-extra {
+    padding-top: calc(env(safe-area-inset-top) + 0.5rem);
+  }
 }
 
 /* Better touch targets */

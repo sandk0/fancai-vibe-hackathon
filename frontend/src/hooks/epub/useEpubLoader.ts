@@ -2,7 +2,8 @@
  * useEpubLoader - Custom hook for loading and initializing EPUB books
  *
  * Handles the complete lifecycle of loading an EPUB file:
- * - Downloads the book file with authorization
+ * - Checks IndexedDB cache for offline EPUB data first
+ * - Downloads the book file with authorization if not cached
  * - Initializes epub.js Book and Rendition instances
  * - Applies theme styles
  * - Cleanup on unmount to prevent memory leaks
@@ -10,24 +11,37 @@
  * @param bookUrl - URL to the EPUB file
  * @param viewerRef - React ref to the container element for rendering
  * @param authToken - Authentication token for authorized downloads
+ * @param bookId - Book ID for cache lookup (optional)
+ * @param userId - User ID for cache lookup (optional)
  * @returns Book and Rendition instances, loading state, and error state
  *
  * @example
- * const { book, rendition, isLoading, error } = useEpubLoader(
- *   booksAPI.getBookFileUrl(bookId),
+ * const { book, rendition, isLoading, error } = useEpubLoader({
+ *   bookUrl: booksAPI.getBookFileUrl(bookId),
  *   viewerRef,
- *   localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)
- * );
+ *   authToken: localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN),
+ *   bookId,
+ *   userId: user?.id,
+ * });
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import ePub from 'epubjs';
 import type { Book, Rendition } from '@/types/epub';
+import { epubCache } from '@/services/epubCache';
+import { isOnline } from '@/hooks/useOnlineStatus';
+
+/** Enable debug logging only in development */
+const DEBUG = import.meta.env.DEV;
 
 interface UseEpubLoaderOptions {
   bookUrl: string;
   viewerRef: React.RefObject<HTMLDivElement | null>;
   authToken: string | null;
+  /** Book ID for cache lookup */
+  bookId?: string;
+  /** User ID for cache lookup */
+  userId?: string;
   onReady?: () => void;
 }
 
@@ -43,6 +57,8 @@ export const useEpubLoader = ({
   bookUrl,
   viewerRef,
   authToken,
+  bookId,
+  userId,
   onReady,
 }: UseEpubLoaderOptions): UseEpubLoaderReturn => {
   const [book, setBook] = useState<Book | null>(null);
@@ -74,19 +90,41 @@ export const useEpubLoader = ({
         setIsLoading(true);
         setError('');
 
-        // Download EPUB file with authorization and abort signal
-        const response = await fetch(bookUrl, {
-          headers: authToken ? {
-            'Authorization': `Bearer ${authToken}`,
-          } : {},
-          signal: abortController.signal,
-        });
+        let arrayBuffer: ArrayBuffer | null = null;
 
-        if (!response.ok) {
-          throw new Error(`Failed to download EPUB: ${response.statusText}`);
+        // 1. Try to load from IndexedDB cache first
+        if (bookId && userId) {
+          if (DEBUG) console.log('[useEpubLoader] Checking cache for book:', bookId);
+          arrayBuffer = await epubCache.get(userId, bookId);
+
+          if (arrayBuffer) {
+            if (DEBUG) console.log('[useEpubLoader] Using cached EPUB for:', bookId);
+          }
         }
 
-        const arrayBuffer = await response.arrayBuffer();
+        // 2. If not cached, try to fetch from network
+        if (!arrayBuffer) {
+          // Check if we're offline
+          if (!isOnline()) {
+            throw new Error('Книга недоступна офлайн. Скачайте её для офлайн-чтения.');
+          }
+
+          if (DEBUG) console.log('[useEpubLoader] Fetching EPUB from network:', bookUrl);
+
+          // Download EPUB file with authorization and abort signal
+          const response = await fetch(bookUrl, {
+            headers: authToken ? {
+              'Authorization': `Bearer ${authToken}`,
+            } : {},
+            signal: abortController.signal,
+          });
+
+          if (!response.ok) {
+            throw new Error(`Failed to download EPUB: ${response.statusText}`);
+          }
+
+          arrayBuffer = await response.arrayBuffer();
+        }
 
         if (!isMounted) return;
 
@@ -210,7 +248,7 @@ export const useEpubLoader = ({
       setBook(null);
       setRendition(null);
     };
-  }, [bookUrl, authToken, reloadKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [bookUrl, authToken, bookId, userId, reloadKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     book,

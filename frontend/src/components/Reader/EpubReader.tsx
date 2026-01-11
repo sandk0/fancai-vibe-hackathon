@@ -157,14 +157,18 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   });
   const { request: requestWakeLock, release: releaseWakeLock, isActive: isWakeLockActive, isSupported: isWakeLockSupported } = useWakeLock();
 
-  // Get auth token
+  // Get auth token and user ID
   const authToken = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+  const userId = getCurrentUserId();
 
   // Hook 1: Load EPUB file and create rendition
+  // Checks IndexedDB cache first for offline reading support
   const { book: epubBook, rendition, isLoading, error, reload } = useEpubLoader({
     bookUrl: booksAPI.getBookFileUrl(book.id),
     viewerRef,
     authToken,
+    bookId: book.id,
+    userId: userId || undefined,
     onReady: () => {
       // Use requestAnimationFrame for immediate but safe state update
       requestAnimationFrame(() => {

@@ -9,6 +9,7 @@
  * - Empty state with illustration
  * - Floating action button for upload (mobile)
  * - CSS variables from design system
+ * - Pull-to-refresh for mobile devices
  *
  * Uses TanStack Query for data fetching with:
  * - Auto-invalidation on book upload
@@ -16,7 +17,7 @@
  * - Optimistic updates
  */
 
-import React, { useState, useMemo, useCallback, useDeferredValue } from 'react';
+import React, { useState, useMemo, useCallback, useDeferredValue, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { m, AnimatePresence } from 'framer-motion';
@@ -32,6 +33,7 @@ import {
   Clock,
   CheckCircle,
   Loader2,
+  RefreshCw,
 } from 'lucide-react';
 import { useBooks, useDeleteBook } from '@/hooks/api/useBooks';
 import { bookKeys, getCurrentUserId } from '@/hooks/api/queryKeys';
@@ -75,9 +77,22 @@ const PROGRESS_OPTIONS = [
   { value: 'completed', label: 'Завершены', icon: CheckCircle },
 ];
 
+const SCROLL_KEY = 'library-scroll';
+
 const LibraryPage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  // Scroll restoration
+  useEffect(() => {
+    const savedScroll = sessionStorage.getItem(SCROLL_KEY);
+    if (savedScroll) {
+      window.scrollTo(0, parseInt(savedScroll, 10));
+    }
+    return () => {
+      sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
+    };
+  }, []);
 
   // Local state
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -94,11 +109,19 @@ const LibraryPage: React.FC = () => {
   // This allows the input to remain responsive while deferring the expensive filtering operation
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
+  // Pull-to-refresh state
+  const [isPulling, setIsPulling] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const startY = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const PULL_THRESHOLD = 80;
+
   // Calculate skip for pagination
   const skip = (currentPage - 1) * BOOKS_PER_PAGE;
 
   // Fetch books using TanStack Query
-  const { data, isLoading, error } = useBooks(
+  const { data, isLoading, error, refetch } = useBooks(
     { skip, limit: BOOKS_PER_PAGE, sort_by: sortBy },
     {
       refetchOnMount: 'always',
@@ -178,7 +201,10 @@ const LibraryPage: React.FC = () => {
 
   // Handlers
   const handleUploadClick = () => setShowUploadModal(true);
-  const handleBookClick = (bookId: string) => navigate(`/book/${bookId}`);
+  const handleBookClick = (bookId: string) => {
+    sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
+    navigate(`/book/${bookId}`);
+  };
   const handleClearSearch = () => setSearchQuery('');
 
   const handleParsingComplete = () => {
@@ -226,11 +252,89 @@ const LibraryPage: React.FC = () => {
     setSelectedBookForDelete(null);
   }, []);
 
+  // Pull-to-refresh handlers
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // Only enable pull-to-refresh when scrolled to top
+    if (window.scrollY === 0 && !isRefreshing) {
+      startY.current = e.touches[0].clientY;
+    }
+  }, [isRefreshing]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    // Only process if we started tracking and are at the top of the page
+    if (window.scrollY === 0 && startY.current > 0 && !isRefreshing) {
+      const currentY = e.touches[0].clientY;
+      const diff = currentY - startY.current;
+      if (diff > 0) {
+        // Apply resistance to the pull (multiply by 0.5 for natural feel)
+        setPullDistance(Math.min(diff * 0.5, PULL_THRESHOLD * 1.5));
+        setIsPulling(true);
+        // Prevent default scroll behavior while pulling
+        if (diff > 10) {
+          e.preventDefault();
+        }
+      }
+    }
+  }, [isRefreshing, PULL_THRESHOLD]);
+
+  const handleTouchEnd = useCallback(async () => {
+    if (pullDistance >= PULL_THRESHOLD && !isRefreshing) {
+      // Trigger refetch
+      setIsRefreshing(true);
+      try {
+        await refetch();
+        notify.success('Обновлено', 'Библиотека обновлена');
+      } catch {
+        notify.error('Ошибка', 'Не удалось обновить библиотеку');
+      } finally {
+        setIsRefreshing(false);
+      }
+    }
+    // Reset pull state
+    setPullDistance(0);
+    setIsPulling(false);
+    startY.current = 0;
+  }, [pullDistance, isRefreshing, refetch, PULL_THRESHOLD]);
+
   // Get current sort option
   const currentSortOption = SORT_OPTIONS.find((opt) => opt.value === sortBy);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div
+      ref={containerRef}
+      className="min-h-screen bg-background"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Pull-to-refresh indicator */}
+      <AnimatePresence>
+        {(isPulling || isRefreshing) && (
+          <m.div
+            className="fixed top-0 left-0 right-0 flex justify-center items-center z-50 pt-safe pointer-events-none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ transform: `translateY(${isRefreshing ? 40 : pullDistance - 40}px)` }}
+          >
+            <div
+              className={cn(
+                'w-10 h-10 rounded-full border-2 border-primary flex items-center justify-center bg-background shadow-lg transition-all',
+                (pullDistance >= PULL_THRESHOLD || isRefreshing) && 'bg-primary/10'
+              )}
+            >
+              <RefreshCw
+                className={cn(
+                  'w-5 h-5 text-primary transition-transform',
+                  isRefreshing && 'animate-spin',
+                  !isRefreshing && pullDistance >= PULL_THRESHOLD && 'rotate-180'
+                )}
+              />
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
+
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-2 sm:py-4 lg:py-6 pb-24 md:pb-8">
         {/* Header */}
@@ -319,7 +423,7 @@ const LibraryPage: React.FC = () => {
                     onClick={() => setShowSortDropdown(false)}
                   />
                   <m.div
-                    className="absolute top-full right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-xl overflow-hidden z-[100]"
+                    className="absolute top-full mt-2 w-48 right-0 max-w-[calc(100vw-2rem)] bg-card border border-border rounded-xl shadow-xl overflow-hidden z-[100]"
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
@@ -382,6 +486,10 @@ const LibraryPage: React.FC = () => {
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.2 }}
             >
+              <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Filter className="w-4 h-4" />
+                Фильтры
+              </h3>
               <div className="flex flex-col sm:flex-row gap-6">
                 {/* Genre Filter */}
                 <div className="flex-1">
@@ -406,14 +514,14 @@ const LibraryPage: React.FC = () => {
                   <label className="block text-sm font-medium text-foreground mb-2">
                     Прогресс чтения
                   </label>
-                  <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by reading progress">
+                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1" role="group" aria-label="Filter by reading progress">
                     {PROGRESS_OPTIONS.map((option) => (
                       <button
                         key={option.value}
                         onClick={() => setProgressFilter(option.value)}
                         aria-pressed={progressFilter === option.value}
                         className={cn(
-                          'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors min-h-[44px]',
+                          'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors min-h-[44px] whitespace-nowrap',
                           'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                           progressFilter === option.value
                             ? 'bg-primary text-primary-foreground'

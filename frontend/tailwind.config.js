@@ -143,6 +143,8 @@ export default {
   plugins: [
     plugin(function({ addVariant }) {
       addVariant('sepia-theme', '.sepia &');
+      // PWA standalone mode variant for iOS safe-area handling
+      addVariant('standalone', '@media all and (display-mode: standalone)');
     }),
     plugin(function({ addUtilities }) {
       addUtilities({

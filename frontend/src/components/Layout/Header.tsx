@@ -2,7 +2,6 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   BookOpen,
-  Menu,
   User,
   Settings,
   LogOut,
@@ -18,13 +17,9 @@ import { ThemeSwitcher } from '@/components/UI/ThemeSwitcher';
 import { isActiveRoute } from '@/utils/navigation';
 import { cn } from '@/utils/cn';
 
-interface HeaderProps {
-  onMenuClick?: () => void;
-}
-
-const Header: React.FC<HeaderProps> = ({ onMenuClick: _onMenuClick }) => {
+const Header: React.FC = () => {
   const { user, logout } = useAuthStore();
-  const { setShowUploadModal, setSidebarOpen, sidebarOpen } = useUIStore();
+  const { setShowUploadModal } = useUIStore();
   const { t } = useTranslation();
   const location = useLocation();
   const [showUserMenu, setShowUserMenu] = React.useState(false);
@@ -75,31 +70,19 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick: _onMenuClick }) => {
   ];
 
   return (
-    <header className="sticky top-0 left-0 right-0 z-[200] pt-safe border-b border-border bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 left-0 right-0 z-[200] pt-safe standalone:pt-[calc(env(safe-area-inset-top)+0.5rem)] border-b border-border bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 md:h-16">
-          {/* Left side - Logo and Mobile Menu */}
+          {/* Left side - Logo */}
           <div className="flex items-center gap-3">
-            {/* Mobile menu button */}
-            <button
-              type="button"
-              className="md:hidden flex items-center justify-center w-11 h-11 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors touch-target"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              aria-label={t('nav.openMenu')}
-              aria-expanded={sidebarOpen}
-              aria-controls="mobile-sidebar"
-            >
-              <Menu className="w-6 h-6" aria-hidden="true" />
-            </button>
-
             {/* Logo */}
             <Link
               to="/"
               className="flex items-center gap-2 min-h-[44px] min-w-[44px] justify-center transition-opacity hover:opacity-80 touch-target"
               aria-label="fancai - На главную"
             >
-              <div className="flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-lg bg-primary">
-                <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-primary-foreground" />
+              <div className="flex items-center justify-center w-11 h-11 rounded-lg bg-primary">
+                <BookOpen className="w-6 h-6 text-primary-foreground" />
               </div>
               <span className="text-lg font-semibold text-foreground hidden sm:block">
                 fancai
@@ -121,7 +104,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick: _onMenuClick }) => {
                     to={link.to}
                     aria-current={isActive ? 'page' : undefined}
                     className={`
-                      flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                      flex items-center gap-2 px-3 min-h-[44px] rounded-lg text-sm font-medium transition-colors
                       focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
                       ${isActive
                         ? 'bg-primary/10 text-primary'
@@ -143,7 +126,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick: _onMenuClick }) => {
             <button
               type="button"
               onClick={() => setShowUploadModal(true)}
-              className="inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium rounded-lg text-primary-foreground bg-primary hover:bg-primary/90 transition-all hover:scale-[1.02] active:scale-[0.98] touch-target"
+              className="inline-flex items-center justify-center gap-2 px-3 sm:px-4 min-h-[44px] min-w-[44px] text-sm font-medium rounded-lg text-primary-foreground bg-primary hover:bg-primary/90 transition-all hover:scale-[1.02] active:scale-[0.98] touch-target"
               aria-label={t('nav.uploadBook')}
             >
               <Upload className="w-4 h-4" />
@@ -163,7 +146,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick: _onMenuClick }) => {
                 aria-haspopup="true"
               >
                 <span className="sr-only">{t('nav.openUserMenu')}</span>
-                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center bg-primary text-primary-foreground">
+                <div className="w-11 h-11 rounded-full flex items-center justify-center bg-primary text-primary-foreground">
                   <span className="text-sm font-medium">
                     {user?.full_name
                       ? user.full_name.charAt(0).toUpperCase()

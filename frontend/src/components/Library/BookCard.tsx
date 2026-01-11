@@ -3,12 +3,14 @@
  *
  * Features:
  * - Aspect ratio 2:3 for cover
+ * - Skeleton loading animation for cover images with fade-in transition
  * - Progress bar overlay at bottom of cover
  * - Hover overlay with Read/Delete actions (desktop)
  * - Always visible MoreVertical menu (mobile)
  * - Title and author with line-clamp
  * - Framer-motion animations
  * - Touch-friendly tap areas (min 44px)
+ * - Offline download indicator and controls
  *
  * @param book - Book data
  * @param onClick - Callback when clicking to read
@@ -16,7 +18,7 @@
  * @param onDelete - Callback for delete action
  */
 
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
 import {
   Book,
@@ -25,11 +27,17 @@ import {
   MoreVertical,
   AlertCircle,
   X,
+  Download,
+  CheckCircle2,
+  Loader2,
+  CloudOff,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ParsingOverlay } from '@/components/UI/ParsingOverlay';
 import { AuthenticatedImage } from '@/components/UI/AuthenticatedImage';
 import type { Book as BookType } from '@/types/api';
+import { useEpubOffline } from '@/hooks/useEpubOffline';
+import { useHaptics } from '@/hooks/useHaptics';
 
 interface BookCardProps {
   book: BookType;
@@ -49,6 +57,19 @@ export const BookCard = memo(function BookCard({
 }: BookCardProps) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  // Haptic feedback for mobile interactions
+  const haptics = useHaptics();
+
+  // Offline book management
+  const {
+    isAvailableOffline,
+    isDownloading,
+    downloadProgress,
+    downloadEpub,
+    removeEpub,
+  } = useEpubOffline(book.id);
 
   // Memoize coverUrl
   const coverUrl = useMemo(() => {
@@ -57,15 +78,21 @@ export const BookCard = memo(function BookCard({
       : null;
   }, [book.has_cover, book.id]);
 
+  // Reset imageLoaded when cover URL changes (component reuse)
+  useEffect(() => {
+    setImageLoaded(false);
+  }, [coverUrl]);
+
   const isClickable = book.is_parsed && !book.is_processing;
   const progressPercent = book.reading_progress_percent ?? 0;
 
   // Memoize click handler
   const handleClick = useCallback(() => {
     if (isClickable) {
+      haptics.tap();
       onClick();
     }
-  }, [isClickable, onClick]);
+  }, [isClickable, onClick, haptics]);
 
   // Handle read button click
   const handleReadClick = useCallback(
@@ -88,10 +115,30 @@ export const BookCard = memo(function BookCard({
     [book.id, onDelete]
   );
 
+  // Handle offline download/remove
+  const handleOfflineClick = useCallback(
+    async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setShowMobileMenu(false);
+      if (isAvailableOffline) {
+        await removeEpub();
+      } else if (!isDownloading) {
+        await downloadEpub();
+      }
+    },
+    [isAvailableOffline, isDownloading, downloadEpub, removeEpub]
+  );
+
   // Handle mobile menu toggle
   const handleMobileMenuToggle = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
+    haptics.select();
     setShowMobileMenu((prev) => !prev);
+  }, [haptics]);
+
+  // Handle image load complete
+  const handleImageLoad = useCallback(() => {
+    setImageLoaded(true);
   }, []);
 
   // Close mobile menu
@@ -122,11 +169,20 @@ export const BookCard = memo(function BookCard({
       >
         {/* Book Cover Container - 2:3 aspect ratio */}
         <div className="relative aspect-[2/3] rounded-xl overflow-hidden shadow-lg bg-muted">
+          {/* Skeleton Loading Placeholder */}
+          {!imageLoaded && coverUrl && (
+            <div className="absolute inset-0 bg-muted animate-pulse" />
+          )}
+
           {/* Cover Image */}
           <AuthenticatedImage
             src={coverUrl}
             alt={`${book.title} cover`}
-            className="w-full h-full object-cover"
+            className={cn(
+              "w-full h-full object-cover transition-opacity duration-300",
+              imageLoaded ? "opacity-100" : "opacity-0"
+            )}
+            onLoad={handleImageLoad}
             fallback={
               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
                 <Book className="w-12 h-12 text-muted-foreground/50" />
@@ -170,11 +226,30 @@ export const BookCard = memo(function BookCard({
             </div>
           )}
 
+          {/* Offline Status Badge - top left corner */}
+          {isClickable && !book.is_processing && (
+            <div className="absolute top-2 left-2 pointer-events-none">
+              {isDownloading ? (
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-primary/90 text-primary-foreground text-xs font-medium backdrop-blur-sm shadow-sm">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>{downloadProgress}%</span>
+                </div>
+              ) : isAvailableOffline ? (
+                <div
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg bg-green-500/90 text-white text-xs font-medium backdrop-blur-sm shadow-sm"
+                  title="Доступна офлайн"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                </div>
+              ) : null}
+            </div>
+          )}
+
           {/* Hover Overlay with Actions - Desktop only */}
           <AnimatePresence>
             {isHovered && isClickable && !book.is_processing && (
               <m.div
-                className="absolute inset-0 bg-black/60 hidden md:flex flex-col items-center justify-center gap-3 p-4"
+                className="absolute inset-0 bg-black/60 hidden md:flex flex-col items-center justify-center gap-2 p-4"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -189,6 +264,37 @@ export const BookCard = memo(function BookCard({
                 >
                   <BookOpen className="w-5 h-5" />
                   <span>Читать</span>
+                </m.button>
+
+                {/* Offline Download/Remove Button */}
+                <m.button
+                  className={cn(
+                    'flex items-center gap-2 px-4 py-2 rounded-xl font-medium shadow-lg min-h-[44px] min-w-[120px] justify-center',
+                    isAvailableOffline
+                      ? 'bg-green-600/90 text-white'
+                      : 'bg-white/20 text-white hover:bg-white/30'
+                  )}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleOfflineClick}
+                  disabled={isDownloading}
+                >
+                  {isDownloading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>{downloadProgress}%</span>
+                    </>
+                  ) : isAvailableOffline ? (
+                    <>
+                      <CloudOff className="w-4 h-4" />
+                      <span>Удалить</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      <span>Офлайн</span>
+                    </>
+                  )}
                 </m.button>
 
                 {/* Delete Button */}
@@ -243,6 +349,36 @@ export const BookCard = memo(function BookCard({
                     >
                       <BookOpen className="w-5 h-5 text-primary" />
                       <span className="font-medium">Читать</span>
+                    </button>
+                  )}
+                  {/* Offline Download/Remove - Mobile */}
+                  {isClickable && (
+                    <button
+                      className={cn(
+                        'w-full flex items-center gap-3 px-4 py-3 transition-colors min-h-[44px]',
+                        isAvailableOffline
+                          ? 'text-green-600 hover:bg-green-500/10'
+                          : 'text-foreground hover:bg-muted'
+                      )}
+                      onClick={handleOfflineClick}
+                      disabled={isDownloading}
+                    >
+                      {isDownloading ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span className="font-medium">Загрузка {downloadProgress}%</span>
+                        </>
+                      ) : isAvailableOffline ? (
+                        <>
+                          <CheckCircle2 className="w-5 h-5" />
+                          <span className="font-medium">Удалить офлайн</span>
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-5 h-5" />
+                          <span className="font-medium">Скачать офлайн</span>
+                        </>
+                      )}
                     </button>
                   )}
                   {onDelete && (

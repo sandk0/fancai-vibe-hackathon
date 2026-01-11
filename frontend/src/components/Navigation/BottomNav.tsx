@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Home, Library, Image, Settings, User } from 'lucide-react';
 import { isActiveRoute } from '@/utils/navigation';
 import { Z_INDEX } from '@/lib/zIndex';
+import { useHaptics } from '@/hooks/useHaptics';
 
 interface NavItem {
   path: string;
@@ -22,6 +23,7 @@ interface NavItem {
  */
 export function BottomNav() {
   const location = useLocation();
+  const haptics = useHaptics();
 
   const navItems: NavItem[] = [
     { path: '/', label: 'Главная', icon: Home },
@@ -60,6 +62,7 @@ export function BottomNav() {
             <li key={path} className="flex-1">
               <Link
                 to={path}
+                onClick={() => haptics.tap()}
                 className={`
                   flex flex-col items-center justify-center
                   min-h-[56px] py-2 px-1

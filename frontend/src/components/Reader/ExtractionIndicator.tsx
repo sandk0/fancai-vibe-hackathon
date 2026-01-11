@@ -31,9 +31,9 @@ export const ExtractionIndicator: React.FC<ExtractionIndicatorProps> = ({
       aria-live="polite"
       aria-atomic="true"
       className={cn(
-        'fixed left-1/2 -translate-x-1/2 z-[800]',
+        'fixed inset-x-4 z-[800]',
         'top-20 mt-safe',
-        'max-w-[calc(100vw-32px)]',
+        'w-[calc(100%-2rem)]',
         'px-5 py-4 rounded-xl shadow-xl backdrop-blur-md',
         'flex items-center gap-4',
         'border border-border',

@@ -126,7 +126,7 @@ export function PWAUpdatePrompt({
     <AnimatePresence>
       {needRefresh && (
         <m.div
-          className="fixed bottom-4 left-4 right-4 z-50 sm:left-auto sm:right-4 sm:max-w-sm"
+          className="fixed left-4 right-4 z-[600] bottom-[calc(72px+env(safe-area-inset-bottom)+1rem)] md:bottom-4 md:left-auto md:right-4 md:max-w-sm"
           variants={variants}
           initial="hidden"
           animate="visible"

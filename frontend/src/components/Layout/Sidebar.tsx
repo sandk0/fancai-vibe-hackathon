@@ -6,14 +6,12 @@ import {
   Image,
   Settings,
   BarChart3,
-  BookOpen,
   Sparkles,
   Shield,
   User,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
-import { useUIStore } from '@/stores/ui';
 import { useAuthStore } from '@/stores/auth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/utils/cn';
@@ -24,7 +22,6 @@ const SIDEBAR_COLLAPSED_KEY = 'fancai-sidebar-collapsed';
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
-  const { sidebarOpen, setSidebarOpen } = useUIStore();
   const { user } = useAuthStore();
   const { t } = useTranslation();
 
@@ -81,13 +78,6 @@ const Sidebar: React.FC = () => {
       icon: Shield,
     }] : []),
   ];
-
-  const handleLinkClick = () => {
-    // Close sidebar on mobile when link is clicked
-    if (window.innerWidth < 1024) {
-      setSidebarOpen(false);
-    }
-  };
 
   return (
     <>
@@ -246,102 +236,6 @@ const Sidebar: React.FC = () => {
           width: isCollapsed ? '64px' : '240px',
         }}
       />
-
-      {/* Mobile Sidebar */}
-      <div
-        id="mobile-sidebar"
-        className={cn(
-          'fixed inset-y-0 left-0 w-64 md:hidden',
-          'transition-transform duration-300 ease-in-out',
-          'bg-[var(--color-bg-base)] border-r border-[var(--color-border-default)]',
-          'pt-safe pb-safe',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        )}
-        style={{ zIndex: Z_INDEX.modal }}
-      >
-        <div className="flex flex-col h-full overflow-y-auto">
-          {/* Logo */}
-          <div className="flex items-center flex-shrink-0 h-16 px-4 border-b border-[var(--color-border-default)]">
-            <BookOpen className="w-8 h-8 text-[var(--color-accent-500)]" />
-            <span className="ml-2 text-xl font-bold text-[var(--color-text-default)]">
-              fancai
-            </span>
-          </div>
-
-          {/* Navigation */}
-          <nav
-            role="navigation"
-            aria-label="Мобильное меню"
-            className="flex-1 py-4"
-          >
-            <ul className="space-y-1 px-2">
-              {navigation.map((item) => {
-                const isActive = isActiveRoute(location.pathname, item.href);
-                const Icon = item.icon;
-
-                return (
-                  <li key={item.name}>
-                    <Link
-                      to={item.href}
-                      onClick={handleLinkClick}
-                      className={cn(
-                        'group flex items-center px-3 py-3 rounded-lg min-h-[44px]',
-                        'transition-all duration-200',
-                        isActive
-                          ? 'bg-[var(--color-accent-500)]/15 text-[var(--color-accent-600)]'
-                          : 'text-[var(--color-text-muted)] hover:bg-[var(--color-bg-emphasis)] hover:text-[var(--color-text-default)]'
-                      )}
-                    >
-                      <Icon
-                        className={cn(
-                          'flex-shrink-0 h-5 w-5',
-                          'transition-colors duration-200',
-                          isActive
-                            ? 'text-[var(--color-accent-600)]'
-                            : 'text-[var(--color-text-subtle)] group-hover:text-[var(--color-text-muted)]'
-                        )}
-                      />
-                      <span className="ml-3 text-sm font-medium">
-                        {item.name}
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-
-          {/* User Info */}
-          <div className="flex-shrink-0 px-4 py-4 border-t border-[var(--color-border-default)]">
-            <div className="flex items-center">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-[var(--color-accent-500)] text-primary-foreground">
-                <span className="text-sm font-medium">
-                  {user?.full_name ? user.full_name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || 'U'}
-                </span>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-[var(--color-text-default)]">
-                  {user?.full_name || t('nav.user')}
-                </p>
-                <p className="text-xs flex items-center text-[var(--color-text-subtle)]">
-                  <Sparkles className="w-3 h-3 mr-1 text-[var(--color-accent-500)]" />
-                  {t('nav.freePlan')}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile backdrop */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 md:hidden pointer-events-auto"
-          style={{ zIndex: Z_INDEX.modalOverlay }}
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
     </>
   );
 };

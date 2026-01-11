@@ -12,20 +12,10 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { sidebarOpen, mobileMenuOpen, showUploadModal, setSidebarOpen, setMobileMenuOpen, setShowUploadModal } = useUIStore();
+  const { showUploadModal, setShowUploadModal } = useUIStore();
 
   // Auto-connect WebSocket for real-time updates
   useAutoWebSocket();
-
-  // Close mobile menu when clicking outside
-  const handleBackdropClick = () => {
-    if (mobileMenuOpen) {
-      setMobileMenuOpen(false);
-    }
-    if (sidebarOpen) {
-      setSidebarOpen(false);
-    }
-  };
 
   return (
     <div className="min-h-screen transition-colors bg-background text-foreground overflow-x-clip">
@@ -44,14 +34,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <div className="flex">
         {/* Sidebar */}
         <Sidebar />
-
-        {/* Mobile overlay */}
-        {(sidebarOpen || mobileMenuOpen) && (
-          <div
-            className="fixed inset-0 z-[400] bg-black bg-opacity-50 lg:hidden"
-            onClick={handleBackdropClick}
-          />
-        )}
 
         {/* Main Content */}
         {/* Mobile: pb-20 for bottom nav + pb-safe for home indicator */}

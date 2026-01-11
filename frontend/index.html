@@ -13,9 +13,10 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json">
 
-    <!-- Theme color (must match manifest.json theme_color) -->
-    <meta name="theme-color" content="#0ea5e9" />
-    <meta name="msapplication-TileColor" content="#0ea5e9" />
+    <!-- Theme color for PWA (light/dark mode support) -->
+    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
+    <meta name="msapplication-TileColor" content="#F59E0B" />
 
     <!-- Apple PWA Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">

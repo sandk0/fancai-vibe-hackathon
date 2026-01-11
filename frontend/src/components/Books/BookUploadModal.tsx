@@ -99,6 +99,9 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
     onSuccess: async (data, file) => {
       console.log('✅ [MUTATION] onSuccess called with data:', data);
       notify.success(t('upload.uploadComplete'), t('upload.uploadSuccess').replace('{title}', data.book.title));
+      setTimeout(() => {
+        onClose();
+      }, 1500);
       setUploadProgress(prev => {
         const newProgress = { ...prev };
         delete newProgress[file.name];
@@ -286,7 +289,7 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="relative bg-card rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden pointer-events-auto"
+          className="relative bg-card rounded-xl shadow-2xl max-w-lg sm:max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden pointer-events-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -315,7 +318,7 @@ export const BookUploadModal: React.FC<BookUploadModalProps> = ({
             {/* Drag and Drop Area */}
             {files.length === 0 && (
               <div
-                className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
+                className={`border-2 border-dashed rounded-lg p-6 sm:p-12 text-center transition-colors ${
                   dragActive
                     ? 'border-primary bg-primary/10'
                     : 'border-border hover:border-primary/60'
