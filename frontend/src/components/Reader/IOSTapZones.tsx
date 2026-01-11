@@ -260,26 +260,27 @@ export const IOSTapZones = memo(function IOSTapZones({
     }
     lastDescClickTimeRef.current = now;
 
-    // Find the iframe
+    // Find the epub-viewer container (not iframe - iframe has scroll offset)
+    const viewer = document.querySelector('#epub-viewer') as HTMLElement | null;
     const iframe = document.querySelector('#epub-viewer iframe') as HTMLIFrameElement | null;
-    if (!iframe) {
-      setDebugTapInfo('ERROR: No iframe');
+
+    if (!viewer || !iframe) {
+      setDebugTapInfo('ERROR: No viewer/iframe');
       setTimeout(() => setDebugTapInfo(null), 2000);
       return;
     }
 
-    // Get iframe bounding rect to calculate relative position
-    const iframeRect = iframe.getBoundingClientRect();
+    // Use viewer container rect (stable position, not affected by epub.js pagination)
+    const viewerRect = viewer.getBoundingClientRect();
 
-    // Calculate coordinates relative to iframe's VISIBLE viewport
-    const viewportX = touch.clientX - iframeRect.left;
-    const viewportY = touch.clientY - iframeRect.top;
+    // Calculate coordinates relative to viewer's visible area
+    // These are the coordinates we need for elementFromPoint inside iframe
+    const viewportX = touch.clientX - viewerRect.left;
+    const viewportY = touch.clientY - viewerRect.top;
 
-    // DEBUG: Show detailed info to understand coordinate issue
-    // Expected: viewportX should be 0-400ish on iPhone
-    const debugMsg = `T:${Math.round(touch.clientX)},${Math.round(touch.clientY)} R:${Math.round(iframeRect.left)},${Math.round(iframeRect.top)} V:${Math.round(viewportX)},${Math.round(viewportY)}`;
-    setDebugTapInfo(debugMsg);
-    setTimeout(() => setDebugTapInfo(null), 3000);
+    // DEBUG: Show coordinates
+    setDebugTapInfo(`VP:${Math.round(viewportX)},${Math.round(viewportY)}`);
+    setTimeout(() => setDebugTapInfo(null), 2000);
 
     // Send coordinates to iframe via postMessage
     // The script inside iframe (useContentHooks) will do elementFromPoint
