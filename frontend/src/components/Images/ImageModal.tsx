@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, Download, Share2, ZoomIn, ZoomOut, RefreshCw, Wand2 } from 'lucide-react';
 import { m } from 'framer-motion';
 import { imagesAPI } from '@/api/images';
@@ -9,6 +9,36 @@ import { STORAGE_KEYS } from '@/types/state';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { Z_INDEX } from '@/lib/zIndex';
 import type { Description } from '@/types/api';
+
+/**
+ * Fetch image with Authorization header and return blob URL
+ * This is needed because img tags don't send auth headers,
+ * but our API requires authentication for image access.
+ */
+const fetchImageAsBlob = async (url: string): Promise<string | null> => {
+  try {
+    // Skip if already a blob URL or data URL
+    if (url.startsWith('blob:') || url.startsWith('data:')) {
+      return url;
+    }
+
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+    const response = await fetch(url, {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+    });
+
+    if (!response.ok) {
+      console.warn('[ImageModal] Failed to fetch image:', response.status);
+      return null;
+    }
+
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+  } catch (err) {
+    console.warn('[ImageModal] Error fetching image:', err);
+    return null;
+  }
+};
 
 interface ImageModalProps {
   imageUrl: string;
@@ -35,12 +65,68 @@ export const ImageModal: React.FC<ImageModalProps> = ({
   const [showRegenerateOptions, setShowRegenerateOptions] = useState(false);
   const [customPrompt, setCustomPrompt] = useState('');
   const [currentImageUrl, setCurrentImageUrl] = useState(imageUrl);
+  const [isLoadingImage, setIsLoadingImage] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
+  const blobUrlRef = useRef<string | null>(null);
   const { notify } = useUIStore();
   const { t } = useTranslation();
 
   // Focus trap for accessibility
   useFocusTrap(isOpen, modalRef);
+
+  /**
+   * Fetch image with auth headers when URL changes
+   * This ensures images that require authentication can be displayed
+   */
+  useEffect(() => {
+    if (!imageUrl || !isOpen) return;
+
+    // If URL is already a blob or data URL, use directly
+    if (imageUrl.startsWith('blob:') || imageUrl.startsWith('data:')) {
+      setCurrentImageUrl(imageUrl);
+      return;
+    }
+
+    // Fetch image with auth headers
+    setIsLoadingImage(true);
+    let cancelled = false;
+
+    fetchImageAsBlob(imageUrl).then((blobUrl) => {
+      if (cancelled) {
+        // Cleanup blob URL if we were cancelled
+        if (blobUrl && blobUrl !== imageUrl) {
+          URL.revokeObjectURL(blobUrl);
+        }
+        return;
+      }
+
+      if (blobUrl) {
+        // Revoke previous blob URL
+        if (blobUrlRef.current && blobUrlRef.current !== imageUrl) {
+          URL.revokeObjectURL(blobUrlRef.current);
+        }
+        blobUrlRef.current = blobUrl;
+        setCurrentImageUrl(blobUrl);
+      } else {
+        // Fallback to original URL (might fail due to CORS/auth)
+        setCurrentImageUrl(imageUrl);
+      }
+      setIsLoadingImage(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [imageUrl, isOpen]);
+
+  // Cleanup blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (blobUrlRef.current && !blobUrlRef.current.startsWith('data:')) {
+        URL.revokeObjectURL(blobUrlRef.current);
+      }
+    };
+  }, []);
 
   const handleDownload = async () => {
     try {
@@ -305,34 +391,42 @@ export const ImageModal: React.FC<ImageModalProps> = ({
         )}
 
         {/* Image */}
-        <div className="relative overflow-hidden rounded-lg bg-black">
-          {isRegenerating && (
+        <div className="relative overflow-hidden rounded-lg bg-black min-h-[200px]">
+          {/* Loading overlay while fetching image */}
+          {(isRegenerating || isLoadingImage) && (
             <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-10">
               <div className="text-center text-white">
                 <LoadingSpinner size="lg" />
-                <p className="mt-2">{t('images.regenerating')}</p>
-                <p className="text-sm text-white/70 mt-1">{t('images.regeneratingTime')}</p>
+                <p className="mt-2">
+                  {isRegenerating ? t('images.regenerating') : t('images.loadingImage')}
+                </p>
+                {isRegenerating && (
+                  <p className="text-sm text-white/70 mt-1">{t('images.regeneratingTime')}</p>
+                )}
               </div>
             </div>
           )}
 
-          <img
-            src={currentImageUrl}
-            alt={title || t('images.generatedImageAlt')}
-            className={`max-w-full max-h-[90vh] object-contain transition-transform duration-300 touch-manipulation ${
-              isZoomed ? 'scale-150 cursor-zoom-out' : 'cursor-zoom-in'
-            } ${isRegenerating ? 'opacity-50' : ''}`}
-            onClick={() => !isRegenerating && setIsZoomed(!isZoomed)}
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              // Use a gray placeholder SVG as fallback
-              target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"%3E%3Crect fill="%23374151" width="400" height="300"/%3E%3Ctext fill="%239CA3AF" font-family="system-ui" font-size="16" text-anchor="middle" x="200" y="150"%3EImage not available%3C/text%3E%3C/svg%3E';
-            }}
-          />
+          {/* Only show img when we have a URL and not loading */}
+          {currentImageUrl && !isLoadingImage && (
+            <img
+              src={currentImageUrl}
+              alt={title || t('images.generatedImageAlt')}
+              className={`max-w-full max-h-[90vh] object-contain transition-transform duration-300 touch-manipulation ${
+                isZoomed ? 'scale-150 cursor-zoom-out' : 'cursor-zoom-in'
+              } ${isRegenerating ? 'opacity-50' : ''}`}
+              onClick={() => !isRegenerating && setIsZoomed(!isZoomed)}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                // Use a gray placeholder SVG as fallback
+                target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"%3E%3Crect fill="%23374151" width="400" height="300"/%3E%3Ctext fill="%239CA3AF" font-family="system-ui" font-size="16" text-anchor="middle" x="200" y="150"%3EImage not available%3C/text%3E%3C/svg%3E';
+              }}
+            />
+          )}
         </div>
 
-        {/* Loading state */}
-        {!currentImageUrl && !isRegenerating && (
+        {/* Loading state (initial, no URL yet) */}
+        {!currentImageUrl && !isRegenerating && !isLoadingImage && (
           <div className="absolute inset-0 flex items-center justify-center bg-black">
             <div className="flex flex-col items-center space-y-4">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
