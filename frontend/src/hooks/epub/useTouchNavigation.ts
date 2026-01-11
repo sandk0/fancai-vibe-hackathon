@@ -41,6 +41,20 @@ const log = (...args: unknown[]) => {
   if (DEBUG) console.log('[TouchNav]', ...args);
 };
 
+/**
+ * Detect iOS device - used to skip this hook on iOS
+ * iOS uses IOSTapZones overlay instead
+ */
+const isIOS = (): boolean => {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return false;
+  }
+  const ua = navigator.userAgent;
+  const isIOSDevice = /iPad|iPhone|iPod/.test(ua);
+  const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+  return isIOSDevice || isIPadOS;
+};
+
 interface UseTouchNavigationOptions {
   rendition: Rendition | null;
   viewerRef: React.RefObject<HTMLDivElement | null>;
@@ -132,15 +146,23 @@ export const useTouchNavigation = ({
 
   /**
    * Main effect - setup event listeners via hooks.content.register()
-   * This is the iOS Safari fix - events are bound directly to iframe document
+   *
+   * NOTE: On iOS, this hook is DISABLED. iOS uses IOSTapZones overlay instead
+   * because iOS PWA does not reliably forward touch events from iframes.
    */
   useEffect(() => {
+    // Skip on iOS - IOSTapZones handles navigation there
+    if (isIOS()) {
+      log('iOS detected - skipping useTouchNavigation (using IOSTapZones instead)');
+      return;
+    }
+
     if (!rendition) {
       log('No rendition, skipping setup');
       return;
     }
 
-    log('Setting up touch navigation via hooks.content.register() (iOS fix)');
+    log('Setting up touch navigation (non-iOS)');
 
     /**
      * Content hook - called when each page is rendered

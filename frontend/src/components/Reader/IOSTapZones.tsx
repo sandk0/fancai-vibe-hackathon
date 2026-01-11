@@ -11,6 +11,9 @@
  * This component ONLY renders on iOS devices (detected via user agent).
  * Android and other platforms use the standard rendition.on() approach.
  *
+ * IMPORTANT: Zones are intentionally narrow (15%) to leave space for
+ * description highlights and other interactive content in the center.
+ *
  * References:
  * - https://github.com/gseguin/ios-iframe-touchevents-fix
  * - https://gist.github.com/datchley/6793842
@@ -21,6 +24,9 @@ import { useCallback, useRef, memo } from 'react';
 
 const TAP_MAX_DURATION = 350; // ms
 const TAP_MAX_MOVEMENT = 20; // px
+
+// Navigation zone width - narrow to allow content interaction in center
+const ZONE_WIDTH_PERCENT = 15;
 
 // Detect iOS device (iPhone, iPad, iPod)
 const isIOS = (): boolean => {
@@ -211,13 +217,13 @@ export const IOSTapZones = memo(function IOSTapZones({
 
   return (
     <>
-      {/* Left tap zone - 25% width */}
+      {/* Left tap zone - narrow edge zone */}
       <div
         data-testid="ios-tap-zone-left"
         style={{
           ...baseStyle,
           left: 'env(safe-area-inset-left)',
-          width: '25%',
+          width: `${ZONE_WIDTH_PERCENT}%`,
         }}
         onTouchStart={handleTouchStart}
         onTouchEnd={(e) => handleTouchEnd(e, 'prev')}
@@ -227,13 +233,13 @@ export const IOSTapZones = memo(function IOSTapZones({
         tabIndex={-1}
       />
 
-      {/* Right tap zone - 25% width */}
+      {/* Right tap zone - narrow edge zone */}
       <div
         data-testid="ios-tap-zone-right"
         style={{
           ...baseStyle,
           right: 'env(safe-area-inset-right)',
-          width: '25%',
+          width: `${ZONE_WIDTH_PERCENT}%`,
         }}
         onTouchStart={handleTouchStart}
         onTouchEnd={(e) => handleTouchEnd(e, 'next')}
@@ -260,7 +266,7 @@ export const IOSTapZones = memo(function IOSTapZones({
             pointerEvents: 'none',
           }}
         >
-          iOS Tap Zones Active {isStandalone() ? '(PWA)' : '(Safari)'}
+          iOS Tap Zones {ZONE_WIDTH_PERCENT}% {isStandalone() ? '(PWA)' : '(Safari)'}
         </div>
       )}
     </>
