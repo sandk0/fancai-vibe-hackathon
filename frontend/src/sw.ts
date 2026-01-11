@@ -401,6 +401,61 @@ async function handleOfflineQueueSync(): Promise<void> {
 }
 
 // =============================================================================
+// PERIODIC BACKGROUND SYNC (Android PWA only)
+// =============================================================================
+
+/**
+ * Periodic Background Sync event handler
+ *
+ * This API allows the PWA to periodically sync data in the background,
+ * even when the app is closed. Only supported on Android Chrome (80+)
+ * when the PWA is installed.
+ *
+ * Minimum interval is determined by the browser based on site engagement.
+ * Typical minimum: 12 hours.
+ *
+ * Note: iOS Safari does NOT support this API.
+ */
+interface PeriodicSyncEvent extends ExtendableEvent {
+  tag: string
+}
+
+sw.addEventListener('periodicsync', ((event: PeriodicSyncEvent) => {
+  console.log('[SW] Periodic background sync triggered:', event.tag)
+
+  if (event.tag === 'sync-reading-progress') {
+    event.waitUntil(handlePeriodicReadingProgressSync())
+  }
+}) as EventListener)
+
+/**
+ * Handle periodic reading progress sync
+ *
+ * Notifies clients to sync their reading progress.
+ * If no clients are open, the sync will be handled next time the app opens.
+ */
+async function handlePeriodicReadingProgressSync(): Promise<void> {
+  console.log('[SW] Periodic reading progress sync')
+
+  const clients = await sw.clients.matchAll({ type: 'window', includeUncontrolled: true })
+
+  if (clients.length > 0) {
+    // If app is open, notify clients to sync
+    clients.forEach((client) => {
+      client.postMessage({
+        type: 'PERIODIC_SYNC_TRIGGERED',
+        tag: 'sync-reading-progress',
+        timestamp: Date.now(),
+      })
+    })
+  } else {
+    // App is closed - we could store a flag to sync next time app opens
+    // For now, just log - the regular sync will handle it when app opens
+    console.log('[SW] No active clients, periodic sync deferred')
+  }
+}
+
+// =============================================================================
 // PUSH NOTIFICATIONS
 // =============================================================================
 

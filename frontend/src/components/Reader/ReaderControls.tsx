@@ -4,6 +4,7 @@
  * Features:
  * - Theme switcher (Light/Dark/Sepia)
  * - Font size controls (A-/A+)
+ * - Wake Lock toggle (keeps screen on while reading)
  * - Uses semantic Tailwind classes for consistent theming
  *
  * @component
@@ -16,12 +17,14 @@ import {
   FileText,
   Minus,
   Plus,
+  Smartphone,
 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/UI/dropdown-menu';
+import { Switch } from '@/components/UI/Switch';
 import { cn } from '@/lib/utils';
 import type { ThemeName } from '@/hooks/epub/useEpubThemes';
 
@@ -34,6 +37,14 @@ interface ReaderControlsProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   className?: string;
+  /** Whether wake lock setting is enabled */
+  wakeLockEnabled?: boolean;
+  /** Whether wake lock API is supported by browser */
+  wakeLockSupported?: boolean;
+  /** Whether wake lock is currently active */
+  wakeLockActive?: boolean;
+  /** Callback when wake lock setting is toggled */
+  onWakeLockChange?: (enabled: boolean) => void;
 }
 
 export const ReaderControls: React.FC<ReaderControlsProps> = ({
@@ -45,6 +56,10 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
   isOpen,
   onOpenChange,
   className,
+  wakeLockEnabled,
+  wakeLockSupported,
+  wakeLockActive,
+  onWakeLockChange,
 }) => {
   return (
     <div className={className}>
@@ -142,6 +157,37 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
               </button>
             </div>
           </div>
+
+          {/* Wake Lock Toggle - only shown if browser supports it */}
+          {wakeLockSupported && onWakeLockChange && (
+            <>
+              <div className="border-t border-border" />
+
+              <div className="px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <div className="text-sm font-medium text-popover-foreground">
+                        Не выключать экран
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {wakeLockActive
+                          ? 'Экран не будет гаснуть'
+                          : wakeLockEnabled
+                            ? 'Активируется при чтении'
+                            : 'Экран будет гаснуть'}
+                      </div>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={wakeLockEnabled}
+                    onChange={onWakeLockChange}
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
         </DropdownMenuContent>
       </DropdownMenu>

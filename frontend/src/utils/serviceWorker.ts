@@ -181,6 +181,135 @@ export function requestBackgroundSync(tag: string): void {
   }
 }
 
+// =============================================================================
+// PERIODIC BACKGROUND SYNC (Android PWA only)
+// =============================================================================
+
+/**
+ * Register for Periodic Background Sync (Android Chrome 80+ only)
+ *
+ * This allows the PWA to periodically sync data even when closed.
+ * Only works when:
+ * - PWA is installed on home screen
+ * - Browser is Chrome 80+ on Android
+ * - User has sufficient engagement with the site
+ *
+ * Note: iOS Safari does NOT support this API.
+ *
+ * @param tag - Unique identifier for the sync registration
+ * @param minInterval - Minimum interval in milliseconds (browser may increase this)
+ * @returns Promise<boolean> - Whether registration was successful
+ */
+export async function registerPeriodicSync(
+  tag: string = 'sync-reading-progress',
+  minInterval: number = 24 * 60 * 60 * 1000 // 24 hours default
+): Promise<boolean> {
+  if (!('serviceWorker' in navigator)) {
+    console.log('[PeriodicSync] Service Worker not supported');
+    return false;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+
+    // Check if Periodic Background Sync is supported
+    if (!('periodicSync' in registration)) {
+      console.log('[PeriodicSync] Periodic Background Sync not supported (iOS/Firefox)');
+      return false;
+    }
+
+    // Check permission status
+    const status = await navigator.permissions.query({
+      name: 'periodic-background-sync' as PermissionName,
+    });
+
+    if (status.state !== 'granted') {
+      console.log('[PeriodicSync] Permission not granted:', status.state);
+      return false;
+    }
+
+    // Register for periodic sync
+    await (registration as any).periodicSync.register(tag, {
+      minInterval,
+    });
+
+    console.log(`[PeriodicSync] Registered "${tag}" with minInterval ${minInterval}ms`);
+    return true;
+  } catch (error) {
+    console.log('[PeriodicSync] Registration failed:', error);
+    return false;
+  }
+}
+
+/**
+ * Unregister from Periodic Background Sync
+ *
+ * @param tag - Tag to unregister
+ * @returns Promise<boolean> - Whether unregistration was successful
+ */
+export async function unregisterPeriodicSync(tag: string = 'sync-reading-progress'): Promise<boolean> {
+  if (!('serviceWorker' in navigator)) {
+    return false;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+
+    if (!('periodicSync' in registration)) {
+      return false;
+    }
+
+    await (registration as any).periodicSync.unregister(tag);
+    console.log(`[PeriodicSync] Unregistered "${tag}"`);
+    return true;
+  } catch (error) {
+    console.log('[PeriodicSync] Unregistration failed:', error);
+    return false;
+  }
+}
+
+/**
+ * Check if Periodic Background Sync is supported and available
+ *
+ * @returns Promise<boolean>
+ */
+export async function isPeriodicSyncSupported(): Promise<boolean> {
+  if (!('serviceWorker' in navigator)) {
+    return false;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    return 'periodicSync' in registration;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get list of registered periodic sync tags
+ *
+ * @returns Promise<string[]> - Array of registered tags
+ */
+export async function getPeriodicSyncTags(): Promise<string[]> {
+  if (!('serviceWorker' in navigator)) {
+    return [];
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+
+    if (!('periodicSync' in registration)) {
+      return [];
+    }
+
+    const tags = await (registration as any).periodicSync.getTags();
+    return tags;
+  } catch {
+    return [];
+  }
+}
+
 // Push notification subscription
 export async function subscribeToPushNotifications(): Promise<PushSubscription | null> {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {

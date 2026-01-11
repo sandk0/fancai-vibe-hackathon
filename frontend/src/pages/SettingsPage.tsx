@@ -25,12 +25,12 @@ import {
   HardDrive,
   Download,
   Trash2,
-  AlertTriangle,
   CheckCircle,
   XCircle,
   BellRing,
 } from 'lucide-react';
 import ReaderSettings from '@/components/Settings/ReaderSettings';
+import { StorageQuotaInfo } from '@/components/Settings/StorageQuotaInfo';
 import { useAuthStore } from '@/stores/auth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
@@ -38,7 +38,7 @@ import { Accordion, type AccordionItem } from '@/components/UI/Accordion';
 import { Button } from '@/components/UI/button';
 import { Progress } from '@/components/UI/progress';
 import { ConfirmDialog } from '@/components/UI/Dialog';
-import { IOSInstallInstructions } from '@/components/UI/IOSInstallInstructions';
+import { IOSInstallInstructions, IOSPushGuidance, useIOSPushReadiness } from '@/components/UI/IOSInstallInstructions';
 
 // PWA Hooks
 import { useStorageInfo, useRequestPersistence, useClearOfflineData, formatBytes } from '@/hooks/useStorageInfo';
@@ -116,7 +116,7 @@ const SettingsPage: React.FC = () => {
   const [showClearDataDialog, setShowClearDataDialog] = useState(false);
 
   // PWA Hooks
-  const { data: storageInfo, isLoading: isStorageLoading } = useStorageInfo();
+  const { data: storageInfo } = useStorageInfo();
   const { mutate: requestPersistence, isPending: isRequestingPersistence } = useRequestPersistence();
   const { mutate: clearOfflineData, isPending: isClearingData } = useClearOfflineData();
   const { offlineBooks } = useOfflineBooks();
@@ -140,6 +140,9 @@ const SettingsPage: React.FC = () => {
     isIOSDevice,
     install,
   } = usePWAInstall();
+
+  // iOS Push readiness state
+  const { needsGuidance: needsIOSPushGuidance } = useIOSPushReadiness();
 
   // Handle clear offline data
   const handleClearOfflineData = () => {
@@ -237,6 +240,11 @@ const SettingsPage: React.FC = () => {
       case 'notifications':
         return (
           <div className="space-y-6">
+            {/* iOS Push Guidance - shows only for iOS Safari users not in PWA mode */}
+            {needsIOSPushGuidance && (
+              <IOSPushGuidance expanded className="mb-2" />
+            )}
+
             <div>
               <h3 className="text-xl font-bold mb-6 text-foreground">
                 Настройки уведомлений
@@ -389,54 +397,8 @@ const SettingsPage: React.FC = () => {
                 Офлайн-хранилище
               </h3>
               <div className="space-y-4">
-                {/* Storage Usage */}
-                <div className="p-4 sm:p-6 rounded-xl border-2 bg-muted border-border">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <HardDrive className="w-5 h-5 text-muted-foreground" />
-                        <span className="font-medium text-foreground">Использование хранилища</span>
-                      </div>
-                      {isStorageLoading ? (
-                        <span className="text-sm text-muted-foreground">Загрузка...</span>
-                      ) : storageInfo ? (
-                        <span className="text-sm text-muted-foreground">
-                          {formatBytes(storageInfo.used)} из {formatBytes(storageInfo.quota)}
-                        </span>
-                      ) : null}
-                    </div>
-
-                    {/* Progress Bar */}
-                    {storageInfo && (
-                      <Progress
-                        value={storageInfo.percentUsed}
-                        className={cn(
-                          'h-3',
-                          storageInfo.isCritical && '[&>div]:bg-red-500',
-                          storageInfo.isWarning && !storageInfo.isCritical && '[&>div]:bg-yellow-500'
-                        )}
-                      />
-                    )}
-
-                    {/* Warning Messages */}
-                    {storageInfo?.isCritical && (
-                      <div className="flex items-center gap-2 p-3 rounded-lg bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300">
-                        <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-                        <span className="text-sm">
-                          Критически мало места! Удалите неиспользуемые книги для освобождения пространства.
-                        </span>
-                      </div>
-                    )}
-                    {storageInfo?.isWarning && !storageInfo.isCritical && (
-                      <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-100 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-300">
-                        <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-                        <span className="text-sm">
-                          Заканчивается место. Рекомендуется очистить неиспользуемые данные.
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                {/* Storage Usage - Using StorageQuotaInfo component */}
+                <StorageQuotaInfo showBreakdown />
 
                 {/* Persistent Storage */}
                 <div className="p-4 sm:p-6 rounded-xl border-2 bg-muted border-border">
@@ -470,29 +432,6 @@ const SettingsPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Offline Books Count */}
-                <div className="p-4 sm:p-6 rounded-xl border-2 bg-muted border-border">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Book className="w-5 h-5 text-muted-foreground" />
-                      <span className="font-medium text-foreground">Скачанные книги</span>
-                    </div>
-                    <span className="text-lg font-semibold text-foreground">
-                      {offlineBooks.length}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Clear Data Button */}
-                <Button
-                  variant="destructive"
-                  className="w-full sm:w-auto"
-                  onClick={() => setShowClearDataDialog(true)}
-                  disabled={isClearingData}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Очистить офлайн-данные
-                </Button>
               </div>
             </div>
 
@@ -764,27 +703,34 @@ const SettingsPage: React.FC = () => {
       description: 'Настройки уведомлений',
       icon: Bell,
       content: (
-        <div className="space-y-2">
-          <ToggleSwitch
-            checked={bookProcessing}
-            onChange={setBookProcessing}
-            label="Обработка книги"
-            description="Уведомление о завершении обработки"
-          />
-          <div className="h-px bg-border" />
-          <ToggleSwitch
-            checked={imageGeneration}
-            onChange={setImageGeneration}
-            label="Генерация изображений"
-            description="Уведомление о новых изображениях"
-          />
-          <div className="h-px bg-border" />
-          <ToggleSwitch
-            checked={readingReminders}
-            onChange={setReadingReminders}
-            label="Напоминания о чтении"
-            description="Напоминания продолжить чтение"
-          />
+        <div className="space-y-4">
+          {/* iOS Push Guidance - compact version for mobile */}
+          {needsIOSPushGuidance && (
+            <IOSPushGuidance className="mb-2" />
+          )}
+
+          <div className="space-y-2">
+            <ToggleSwitch
+              checked={bookProcessing}
+              onChange={setBookProcessing}
+              label="Обработка книги"
+              description="Уведомление о завершении обработки"
+            />
+            <div className="h-px bg-border" />
+            <ToggleSwitch
+              checked={imageGeneration}
+              onChange={setImageGeneration}
+              label="Генерация изображений"
+              description="Уведомление о новых изображениях"
+            />
+            <div className="h-px bg-border" />
+            <ToggleSwitch
+              checked={readingReminders}
+              onChange={setReadingReminders}
+              label="Напоминания о чтении"
+              description="Напоминания продолжить чтение"
+            />
+          </div>
         </div>
       ),
     },

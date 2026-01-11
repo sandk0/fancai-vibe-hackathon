@@ -14,10 +14,11 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { m, AnimatePresence, PanInfo, useDragControls } from 'framer-motion';
-import { X, Type, Sun, Moon, Maximize2, RotateCcw, Minus, Plus, GripHorizontal } from 'lucide-react';
+import { X, Type, Sun, Moon, Maximize2, RotateCcw, Minus, Plus, GripHorizontal, Smartphone } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Z_INDEX } from '@/lib/zIndex';
 import type { ReaderTheme } from '@/stores/reader';
+import { Switch } from '@/components/UI/Switch';
 
 interface ReaderSettingsPanelProps {
   isOpen: boolean;
@@ -35,6 +36,14 @@ interface ReaderSettingsPanelProps {
   onMaxWidthChange: (width: number) => void;
   onMarginChange: (margin: number) => void;
   onReset?: () => void;
+  /** Whether wake lock setting is enabled */
+  wakeLockEnabled?: boolean;
+  /** Whether wake lock API is supported by browser */
+  wakeLockSupported?: boolean;
+  /** Whether wake lock is currently active */
+  wakeLockActive?: boolean;
+  /** Callback when wake lock setting is toggled */
+  onWakeLockChange?: (enabled: boolean) => void;
 }
 
 // Theme configurations with visual preview
@@ -320,6 +329,10 @@ export const ReaderSettingsPanel: React.FC<ReaderSettingsPanelProps> = React.mem
   onMaxWidthChange,
   onMarginChange,
   onReset,
+  wakeLockEnabled,
+  wakeLockSupported,
+  wakeLockActive,
+  onWakeLockChange,
 }) => {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -474,6 +487,33 @@ export const ReaderSettingsPanel: React.FC<ReaderSettingsPanelProps> = React.mem
             />
           </div>
         </section>
+
+        {/* Wake Lock Section - only shown if browser supports it */}
+        {wakeLockSupported && onWakeLockChange && (
+          <section>
+            <SectionHeader icon={<Smartphone className="w-5 h-5" />} title={t('readerSettings.display') || 'Display'} />
+            <div className="bg-card rounded-xl border border-border p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-foreground">
+                    {t('readerSettings.keepScreenOn') || 'Не выключать экран'}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {wakeLockActive
+                      ? (t('readerSettings.screenWillStayOn') || 'Экран не будет гаснуть')
+                      : wakeLockEnabled
+                        ? (t('readerSettings.activatesWhileReading') || 'Активируется при чтении')
+                        : (t('readerSettings.screenWillTurnOff') || 'Экран будет гаснуть')}
+                  </div>
+                </div>
+                <Switch
+                  checked={wakeLockEnabled}
+                  onChange={onWakeLockChange}
+                />
+              </div>
+            </div>
+          </section>
+        )}
       </div>
 
       {/* Footer with reset button */}

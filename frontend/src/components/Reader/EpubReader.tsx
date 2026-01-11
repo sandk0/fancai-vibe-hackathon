@@ -71,6 +71,9 @@ import { ExtractionIndicator } from './ExtractionIndicator';
 import { ProgressSaveIndicator } from './ProgressSaveIndicator';
 import { PositionConflictDialog } from './PositionConflictDialog';
 import { notify } from '@/stores/ui';
+
+// Wake Lock hook
+import { useWakeLock } from '@/hooks/useWakeLock';
 import { useNavigate } from 'react-router-dom';
 import { chapterCache } from '@/services/chapterCache';
 import { imageCache } from '@/services/imageCache';
@@ -89,6 +92,9 @@ interface PositionConflict {
     savedAt: Date;
   };
 }
+
+// Wake Lock storage key - outside component to avoid recreation
+const WAKE_LOCK_STORAGE_KEY = `${STORAGE_KEYS.READER_SETTINGS}_wake_lock`;
 
 interface EpubReaderProps {
   book: BookDetail;
@@ -141,6 +147,15 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
 
   // State for position conflict dialog (sync between devices)
   const [positionConflict, setPositionConflict] = useState<PositionConflict | null>(null);
+
+  // Wake Lock - prevents screen from turning off while reading
+  // Stored in localStorage, enabled by default
+  const [wakeLockEnabled, setWakeLockEnabled] = useState(() => {
+    const saved = localStorage.getItem(WAKE_LOCK_STORAGE_KEY);
+    // Default to true (enabled) if no saved preference
+    return saved !== null ? saved === 'true' : true;
+  });
+  const { request: requestWakeLock, release: releaseWakeLock, isActive: isWakeLockActive, isSupported: isWakeLockSupported } = useWakeLock();
 
   // Get auth token
   const authToken = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
@@ -351,6 +366,30 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEYS.READER_SETTINGS}_toc_open`, String(isTocOpen));
   }, [isTocOpen]);
+
+  // Wake Lock management - request/release based on setting and rendition state
+  useEffect(() => {
+    if (!isWakeLockSupported) return;
+
+    if (wakeLockEnabled && renditionReady && !isRestoringPosition) {
+      // Request wake lock when reader is ready and setting is enabled
+      requestWakeLock();
+    } else {
+      // Release wake lock when disabled or reader not ready
+      releaseWakeLock();
+    }
+
+    // Cleanup: release wake lock on unmount
+    return () => {
+      releaseWakeLock();
+    };
+  }, [wakeLockEnabled, renditionReady, isRestoringPosition, isWakeLockSupported, requestWakeLock, releaseWakeLock]);
+
+  // Save wake lock preference to localStorage
+  const handleWakeLockToggle = useCallback((enabled: boolean) => {
+    setWakeLockEnabled(enabled);
+    localStorage.setItem(WAKE_LOCK_STORAGE_KEY, String(enabled));
+  }, []);
 
   // Clear selection menu when page changes
   useEffect(() => {
@@ -852,6 +891,10 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
             onFontSizeDecrease={decreaseFontSize}
             isOpen={isSettingsOpen}
             onOpenChange={setIsSettingsOpen}
+            wakeLockEnabled={wakeLockEnabled}
+            wakeLockSupported={isWakeLockSupported}
+            wakeLockActive={isWakeLockActive}
+            onWakeLockChange={handleWakeLockToggle}
           />
         </div>
       )}

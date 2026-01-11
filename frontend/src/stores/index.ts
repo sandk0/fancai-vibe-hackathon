@@ -1,6 +1,7 @@
 // Store imports for initialization
 import { useAuthStore as _useAuthStore } from './auth';
 import { initializeStorageManagement } from '@/services/storageManager';
+import { registerPeriodicSync } from '@/utils/serviceWorker';
 
 const DEBUG = import.meta.env.DEV;
 
@@ -37,4 +38,20 @@ export const initializeStores = () => {
   setTimeout(() => {
     initializeStorageManagement();
   }, 1000);
+
+  // Register for Periodic Background Sync (Android Chrome 80+ only)
+  // This allows background sync of reading progress when app is closed
+  // Note: iOS Safari does not support this API
+  setTimeout(async () => {
+    try {
+      const registered = await registerPeriodicSync('sync-reading-progress', 12 * 60 * 60 * 1000); // 12 hours
+      if (registered) {
+        if (DEBUG) console.log('[Stores] Periodic Background Sync registered');
+      } else {
+        if (DEBUG) console.log('[Stores] Periodic Background Sync not available (iOS/Firefox or not installed as PWA)');
+      }
+    } catch (error) {
+      if (DEBUG) console.log('[Stores] Periodic Sync registration failed:', error);
+    }
+  }, 2000);
 };
