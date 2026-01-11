@@ -159,7 +159,7 @@ export const IOSTapZones = memo(function IOSTapZones({
    * Handle click - fallback for devices where touch events don't work
    */
   const handleClick = useCallback((
-    e: React.MouseEvent,
+    _e: React.MouseEvent,
     action: 'prev' | 'next'
   ) => {
     if (!enabled) return;

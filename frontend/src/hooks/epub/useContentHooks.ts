@@ -187,6 +187,93 @@ export const useContentHooks = (
           img.style.display = 'none';
         });
       });
+
+      /**
+       * iOS PWA FIX (January 2026): Document-level touch handler for description clicks
+       *
+       * Problem: On iOS PWA standalone mode, touch events on elements inside iframes
+       * don't propagate properly to parent document handlers (WebKit Bug 128924).
+       *
+       * Solution: Add a touch handler directly inside the iframe document that:
+       * 1. Captures all touchend events at document level (event delegation)
+       * 2. Checks if the touch target is a description highlight
+       * 3. Sends postMessage to parent window with description ID
+       *
+       * This bypasses the iframe boundary issue entirely.
+       */
+      const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+      if (isIOSDevice) {
+        // Track touch start position for tap detection
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartTime = 0;
+
+        const handleTouchStart = (e: TouchEvent) => {
+          const touch = e.touches[0];
+          if (touch) {
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            touchStartTime = Date.now();
+          }
+        };
+
+        const handleTouchEnd = (e: TouchEvent) => {
+          const touch = e.changedTouches[0];
+          if (!touch) return;
+
+          // Check if this was a tap (not swipe or long press)
+          const deltaX = Math.abs(touch.clientX - touchStartX);
+          const deltaY = Math.abs(touch.clientY - touchStartY);
+          const duration = Date.now() - touchStartTime;
+
+          const isTap = deltaX < 20 && deltaY < 20 && duration < 350;
+          if (!isTap) return;
+
+          // Find if we tapped on a description highlight
+          let target = e.target as HTMLElement | null;
+          let descriptionId: string | null = null;
+
+          // Walk up the DOM tree to find description-highlight
+          while (target && target !== doc.body) {
+            if (target.classList?.contains('description-highlight')) {
+              descriptionId = target.getAttribute('data-description-id');
+              break;
+            }
+            target = target.parentElement;
+          }
+
+          if (descriptionId) {
+            // Prevent default to stop navigation
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Send message to parent window
+            try {
+              window.parent.postMessage({
+                type: 'DESCRIPTION_CLICK',
+                descriptionId: descriptionId,
+              }, '*');
+
+              // Debug log
+              if (import.meta.env.DEV) {
+                console.log('[useContentHooks] iOS: Description tap detected, sent postMessage:', descriptionId);
+              }
+            } catch (_err) {
+              // Ignore cross-origin errors
+            }
+          }
+        };
+
+        // Add listeners to document body
+        doc.body.addEventListener('touchstart', handleTouchStart, { passive: true });
+        doc.body.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+        if (import.meta.env.DEV) {
+          console.log('[useContentHooks] iOS PWA: Added document-level touch handlers for descriptions');
+        }
+      }
     };
 
     // Register the hook

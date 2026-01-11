@@ -88,6 +88,7 @@ const mockRendition: Rendition = {
   currentLocation: vi.fn(() => null),
   getRange: vi.fn(() => null),
   getContents: vi.fn(() => []),
+  spread: vi.fn(),
 };
 
 const mockLocations: EpubLocations = {
