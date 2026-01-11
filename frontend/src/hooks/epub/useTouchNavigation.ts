@@ -1,8 +1,12 @@
 /**
  * useTouchNavigation - Touch/tap navigation for EPUB reader
  *
- * Uses epub.js built-in event passing - epub.js already proxies DOM events
- * (click, touchstart, touchend) from the iframe to the rendition.
+ * iOS SAFARI FIX (January 2026):
+ * epub.js passEvents() does not reliably forward touch/click events on iOS Safari.
+ * This is a known issue: https://github.com/futurepress/epub.js/issues/925
+ *
+ * Solution: Bind events directly to iframe document via rendition.hooks.content.register()
+ * instead of relying on rendition.on('click/touchstart/touchend').
  *
  * Tap zones:
  * - Left 25% = previous page
@@ -10,17 +14,18 @@
  * - Center 50% = allow text selection and description clicks
  *
  * ARCHITECTURE:
- * epub.js passEvents() in rendition.js automatically forwards DOM events
- * from the iframe content to the rendition. We just need to listen on
- * the rendition using rendition.on('click', ...), rendition.on('touchstart', ...), etc.
+ * 1. Use hooks.content.register() to attach event listeners directly to iframe document
+ * 2. Each page load triggers the hook, ensuring events are always bound
+ * 3. Fallback to rendition.on() for compatibility with older epub.js versions
  *
  * FIXES:
- * 1. Prevent double navigation by ignoring click after touch
- * 2. Use window.innerWidth for zone calculation (iframe coords are relative)
+ * 1. iOS Safari tap navigation not working (primary fix)
+ * 2. Prevent double navigation by ignoring click after touch
+ * 3. Add cursor:pointer to body for iOS click event delegation
  */
 
-import { useEffect, useRef } from 'react';
-import type { Rendition } from '@/types/epub';
+import { useEffect, useRef, useCallback } from 'react';
+import type { Rendition, Contents } from '@/types/epub';
 
 const TAP_MAX_DURATION = 350; // ms - max duration to be considered a tap
 const TAP_MAX_MOVEMENT = 20; // px - increased for mobile tolerance
@@ -30,8 +35,11 @@ const RIGHT_ZONE_START = 0.75;
 // Debounce time to prevent click after touch
 const TOUCH_CLICK_DEBOUNCE = 500; // ms
 
-// Debug logging - enabled to diagnose issues
-const log = (...args: unknown[]) => console.log('[TouchNav]', ...args);
+// Debug logging - enabled to diagnose iOS issues
+const DEBUG = true;
+const log = (...args: unknown[]) => {
+  if (DEBUG) console.log('[TouchNav]', ...args);
+};
 
 interface UseTouchNavigationOptions {
   rendition: Rendition | null;
@@ -43,7 +51,7 @@ interface UseTouchNavigationOptions {
 
 export const useTouchNavigation = ({
   rendition,
-  viewerRef: _viewerRef, // Not used in this approach
+  viewerRef: _viewerRef, // Not used - we bind directly to iframe
   nextPage,
   prevPage,
   enabled = true,
@@ -67,8 +75,64 @@ export const useTouchNavigation = ({
   }, [nextPage, prevPage, enabled]);
 
   /**
-   * Main effect - setup event listeners on rendition
-   * epub.js passEvents() already forwards DOM events from iframe to rendition
+   * Get iframe position to convert iframe-relative coords to screen coords
+   */
+  const getIframeOffset = useCallback((contents: Contents): number => {
+    try {
+      const iframeWindow = contents.window;
+      if (iframeWindow && iframeWindow.frameElement) {
+        const rect = (iframeWindow.frameElement as HTMLElement).getBoundingClientRect();
+        return rect.left;
+      }
+    } catch (e) {
+      log('Error getting iframe position:', e);
+    }
+    return 0;
+  }, []);
+
+  /**
+   * Determine navigation action based on X coordinate relative to window width
+   */
+  const getNavigationAction = useCallback((screenX: number): 'prev' | 'next' | 'none' => {
+    const screenWidth = window.innerWidth;
+    const leftThreshold = screenWidth * LEFT_ZONE_END;
+    const rightThreshold = screenWidth * RIGHT_ZONE_START;
+
+    log('Zone check:', { screenX, screenWidth, leftThreshold, rightThreshold });
+
+    if (screenX < leftThreshold) return 'prev';
+    if (screenX > rightThreshold) return 'next';
+    return 'none';
+  }, []);
+
+  /**
+   * Check if target is a description highlight or interactive element
+   */
+  const isInteractiveElement = useCallback((target: EventTarget | null): boolean => {
+    if (!target || !(target instanceof HTMLElement)) return false;
+
+    // Description highlights
+    if (target.classList?.contains('description-highlight') ||
+        target.closest?.('.description-highlight')) {
+      return true;
+    }
+
+    // Links
+    if (target.tagName === 'A' || target.closest?.('a')) {
+      return true;
+    }
+
+    // Buttons
+    if (target.tagName === 'BUTTON' || target.closest?.('button')) {
+      return true;
+    }
+
+    return false;
+  }, []);
+
+  /**
+   * Main effect - setup event listeners via hooks.content.register()
+   * This is the iOS Safari fix - events are bound directly to iframe document
    */
   useEffect(() => {
     if (!rendition) {
@@ -76,202 +140,214 @@ export const useTouchNavigation = ({
       return;
     }
 
-    log('Setting up touch navigation via rendition events');
+    log('Setting up touch navigation via hooks.content.register() (iOS fix)');
 
     /**
-     * Get the actual screen X coordinate
-     * epub.js events come from iframe, so we need to account for iframe position
+     * Content hook - called when each page is rendered
+     * Binds events directly to iframe document (works on iOS Safari)
      */
-    const getScreenX = (clientX: number): number => {
-      // The iframe is typically full-width, but let's get the actual position
-      // For safety, we'll use the clientX directly since epub.js iframe is usually full-width
-      // But we need to get the iframe's position to adjust
-      try {
-        const contents = rendition.getContents();
-        if (contents && contents.length > 0) {
-          const iframe = contents[0];
-          // Get iframe's bounding rect via the window
-          const iframeWindow = iframe.window;
-          if (iframeWindow && iframeWindow.frameElement) {
-            const rect = (iframeWindow.frameElement as HTMLElement).getBoundingClientRect();
-            // Add iframe's left offset to get screen X
-            return clientX + rect.left;
-          }
-        }
-      } catch (e) {
-        log('Error getting iframe position:', e);
+    const contentHook = (contents: Contents) => {
+      const doc = contents.document;
+      if (!doc) {
+        log('No document in contents, skipping');
+        return;
       }
-      // Fallback - assume iframe starts at x=0
-      return clientX;
-    };
 
-    /**
-     * Determine navigation action based on X coordinate relative to window width
-     */
-    const getNavigationAction = (screenX: number): 'prev' | 'next' | 'none' => {
-      const screenWidth = window.innerWidth;
-      const leftThreshold = screenWidth * LEFT_ZONE_END;
-      const rightThreshold = screenWidth * RIGHT_ZONE_START;
+      log('Content hook triggered - binding events to iframe document');
 
-      log('Zone check:', { screenX, screenWidth, leftThreshold, rightThreshold });
+      // iOS Safari fix: Add cursor:pointer to body for click event delegation
+      // https://www.quirksmode.org/blog/archives/2010/09/click_event_del.html
+      const body = doc.body;
+      if (body) {
+        body.style.cursor = 'pointer';
+      }
 
-      if (screenX < leftThreshold) return 'prev';
-      if (screenX > rightThreshold) return 'next';
-      return 'none';
-    };
+      const iframeOffset = getIframeOffset(contents);
 
-    /**
-     * Check if target is a description highlight
-     */
-    const isDescriptionHighlight = (target: EventTarget | null): boolean => {
-      if (!target || !(target instanceof HTMLElement)) return false;
-      return target.classList?.contains('description-highlight') ||
-             !!target.closest?.('.description-highlight');
-    };
+      /**
+       * Handle touch start - record position and time
+       */
+      const handleTouchStart = (e: TouchEvent) => {
+        if (!enabledRef.current) return;
 
-    /**
-     * Handle touch start - record position and time
-     */
-    const handleTouchStart = (e: TouchEvent) => {
-      if (!enabledRef.current) return;
+        const touch = e.touches[0];
+        if (!touch) return;
 
-      const touch = e.touches[0];
-      if (!touch) return;
+        // Convert iframe coords to screen coords
+        const screenX = touch.clientX + iframeOffset;
+        const y = touch.clientY;
 
-      // Get screen X coordinate (accounting for iframe position)
-      const screenX = getScreenX(touch.clientX);
-      const y = touch.clientY;
+        log('TouchStart (direct):', { clientX: touch.clientX, iframeOffset, screenX, y });
 
-      log('TouchStart:', { clientX: touch.clientX, screenX, y });
+        touchStartRef.current = {
+          x: screenX,
+          y,
+          time: Date.now(),
+        };
+      };
 
-      touchStartRef.current = {
-        x: screenX,
-        y,
-        time: Date.now(),
+      /**
+       * Handle touch end - determine if it was a tap and navigate
+       */
+      const handleTouchEnd = (e: TouchEvent) => {
+        if (!enabledRef.current) return;
+
+        if (!touchStartRef.current) {
+          log('TouchEnd: No touchStart recorded');
+          return;
+        }
+
+        const touch = e.changedTouches[0];
+        if (!touch) {
+          touchStartRef.current = null;
+          return;
+        }
+
+        const endScreenX = touch.clientX + iframeOffset;
+        const endY = touch.clientY;
+        const endTime = Date.now();
+
+        const startX = touchStartRef.current.x;
+        const startY = touchStartRef.current.y;
+        const startTime = touchStartRef.current.time;
+
+        // Reset
+        touchStartRef.current = null;
+
+        // Calculate movement and duration
+        const deltaX = Math.abs(endScreenX - startX);
+        const deltaY = Math.abs(endY - startY);
+        const duration = endTime - startTime;
+
+        const isTap = duration < TAP_MAX_DURATION && deltaX < TAP_MAX_MOVEMENT && deltaY < TAP_MAX_MOVEMENT;
+
+        log('TouchEnd (direct):', { startX, endScreenX, deltaX, deltaY, duration, isTap });
+
+        if (!isTap) {
+          log('Not a tap - ignoring (swipe or long press)');
+          return;
+        }
+
+        // Check if tap is on interactive element - allow through
+        if (isInteractiveElement(e.target)) {
+          log('Tap on interactive element - allowing through');
+          return;
+        }
+
+        // Handle navigation based on zone (use start position for tap)
+        const action = getNavigationAction(startX);
+        log('Touch navigation action (direct):', action);
+
+        if (action === 'prev') {
+          log('LEFT ZONE TAP - calling prevPage()');
+          lastTouchNavTimeRef.current = Date.now();
+          prevPageRef.current();
+        } else if (action === 'next') {
+          log('RIGHT ZONE TAP - calling nextPage()');
+          lastTouchNavTimeRef.current = Date.now();
+          nextPageRef.current();
+        } else {
+          log('CENTER ZONE TAP - no navigation');
+        }
+      };
+
+      /**
+       * Handle click - for desktop and as fallback for iOS
+       */
+      const handleClick = (e: MouseEvent) => {
+        if (!enabledRef.current) return;
+
+        // CRITICAL: Ignore click if it came shortly after a touch navigation
+        // This prevents double page turns on mobile
+        const timeSinceTouch = Date.now() - lastTouchNavTimeRef.current;
+        if (timeSinceTouch < TOUCH_CLICK_DEBOUNCE) {
+          log('Click ignored - too soon after touch navigation:', timeSinceTouch, 'ms');
+          return;
+        }
+
+        // Convert iframe coords to screen coords
+        const screenX = e.clientX + iframeOffset;
+        log('Click (direct):', { clientX: e.clientX, iframeOffset, screenX, target: (e.target as HTMLElement)?.tagName });
+
+        // Check if click is on interactive element - allow through
+        if (isInteractiveElement(e.target)) {
+          log('Click on interactive element - allowing through');
+          return;
+        }
+
+        // Handle navigation based on zone
+        const action = getNavigationAction(screenX);
+        log('Click action (direct):', action);
+
+        if (action === 'prev') {
+          log('LEFT ZONE CLICK - calling prevPage()');
+          prevPageRef.current();
+        } else if (action === 'next') {
+          log('RIGHT ZONE CLICK - calling nextPage()');
+          nextPageRef.current();
+        } else {
+          log('CENTER ZONE CLICK - no navigation');
+        }
+      };
+
+      // Bind events directly to iframe document
+      // Use capture phase (true) for better iOS compatibility
+      doc.addEventListener('touchstart', handleTouchStart, { passive: true, capture: false });
+      doc.addEventListener('touchend', handleTouchEnd, { passive: true, capture: false });
+      doc.addEventListener('click', handleClick, { capture: false });
+
+      log('Events bound directly to iframe document (iOS fix active)');
+
+      // Store cleanup function on the document for later removal
+      // @ts-expect-error - custom property for cleanup
+      doc.__touchNavCleanup = () => {
+        doc.removeEventListener('touchstart', handleTouchStart);
+        doc.removeEventListener('touchend', handleTouchEnd);
+        doc.removeEventListener('click', handleClick);
+        log('Cleaned up direct iframe event listeners');
       };
     };
 
-    /**
-     * Handle touch end - determine if it was a tap and navigate
-     */
-    const handleTouchEnd = (e: TouchEvent) => {
-      if (!enabledRef.current) return;
+    // Register the content hook
+    rendition.hooks.content.register(contentHook);
+    log('Content hook registered');
 
-      if (!touchStartRef.current) {
-        log('TouchEnd: No touchStart recorded');
-        return;
+    // Also set up existing contents (for pages already rendered)
+    try {
+      const existingContents = rendition.getContents();
+      if (existingContents && existingContents.length > 0) {
+        log('Setting up events for existing contents:', existingContents.length);
+        existingContents.forEach(contentHook);
       }
-
-      const touch = e.changedTouches[0];
-      if (!touch) {
-        touchStartRef.current = null;
-        return;
-      }
-
-      const endScreenX = getScreenX(touch.clientX);
-      const endY = touch.clientY;
-      const endTime = Date.now();
-
-      const startX = touchStartRef.current.x;
-      const startY = touchStartRef.current.y;
-      const startTime = touchStartRef.current.time;
-
-      // Reset
-      touchStartRef.current = null;
-
-      // Calculate movement and duration
-      const deltaX = Math.abs(endScreenX - startX);
-      const deltaY = Math.abs(endY - startY);
-      const duration = endTime - startTime;
-
-      const isTap = duration < TAP_MAX_DURATION && deltaX < TAP_MAX_MOVEMENT && deltaY < TAP_MAX_MOVEMENT;
-
-      log('TouchEnd:', { startX, endScreenX, deltaX, deltaY, duration, isTap });
-
-      if (!isTap) {
-        log('Not a tap - ignoring (swipe or long press)');
-        return;
-      }
-
-      // Check if tap is on description highlight - allow through
-      if (isDescriptionHighlight(e.target)) {
-        log('Tap on description highlight - allowing through');
-        return;
-      }
-
-      // Handle navigation based on zone (use start position for tap)
-      const action = getNavigationAction(startX);
-      log('Touch navigation action:', action);
-
-      if (action === 'prev') {
-        log('LEFT ZONE TAP - calling prevPage()');
-        lastTouchNavTimeRef.current = Date.now();
-        prevPageRef.current();
-      } else if (action === 'next') {
-        log('RIGHT ZONE TAP - calling nextPage()');
-        lastTouchNavTimeRef.current = Date.now();
-        nextPageRef.current();
-      } else {
-        log('CENTER ZONE TAP - no navigation');
-      }
-    };
-
-    /**
-     * Handle click - for desktop navigation
-     * On mobile, click fires AFTER touchend - we need to ignore it
-     */
-    const handleClick = (e: MouseEvent) => {
-      if (!enabledRef.current) return;
-
-      // CRITICAL: Ignore click if it came shortly after a touch navigation
-      // This prevents double page turns on mobile
-      const timeSinceTouch = Date.now() - lastTouchNavTimeRef.current;
-      if (timeSinceTouch < TOUCH_CLICK_DEBOUNCE) {
-        log('Click ignored - too soon after touch navigation:', timeSinceTouch, 'ms');
-        return;
-      }
-
-      // Get screen X coordinate
-      const screenX = getScreenX(e.clientX);
-      log('Click:', { clientX: e.clientX, screenX, target: (e.target as HTMLElement)?.tagName });
-
-      // Check if click is on description highlight - allow through
-      if (isDescriptionHighlight(e.target)) {
-        log('Click on description highlight - allowing through');
-        return;
-      }
-
-      // Handle navigation based on zone
-      const action = getNavigationAction(screenX);
-      log('Click action:', action);
-
-      if (action === 'prev') {
-        log('LEFT ZONE CLICK - calling prevPage()');
-        prevPageRef.current();
-      } else if (action === 'next') {
-        log('RIGHT ZONE CLICK - calling nextPage()');
-        nextPageRef.current();
-      } else {
-        log('CENTER ZONE CLICK - no navigation');
-      }
-    };
-
-    // Register event handlers on rendition
-    // epub.js passEvents() forwards these from the iframe content
-    log('Registering event handlers on rendition');
-
-    rendition.on('touchstart', handleTouchStart as unknown as (...args: unknown[]) => void);
-    rendition.on('touchend', handleTouchEnd as unknown as (...args: unknown[]) => void);
-    rendition.on('click', handleClick as unknown as (...args: unknown[]) => void);
-
-    log('Event handlers registered');
+    } catch (e) {
+      log('Error setting up existing contents:', e);
+    }
 
     // Cleanup
     return () => {
       log('Cleaning up touch navigation');
-      rendition.off('touchstart', handleTouchStart as unknown as (...args: unknown[]) => void);
-      rendition.off('touchend', handleTouchEnd as unknown as (...args: unknown[]) => void);
-      rendition.off('click', handleClick as unknown as (...args: unknown[]) => void);
+
+      try {
+        rendition.hooks.content.deregister(contentHook);
+      } catch (e) {
+        log('Error deregistering content hook:', e);
+      }
+
+      // Clean up any existing document listeners
+      try {
+        const contents = rendition.getContents();
+        if (contents) {
+          contents.forEach((c) => {
+            // @ts-expect-error - custom property for cleanup
+            if (c.document && c.document.__touchNavCleanup) {
+              // @ts-expect-error - custom property for cleanup
+              c.document.__touchNavCleanup();
+            }
+          });
+        }
+      } catch (e) {
+        log('Error cleaning up document listeners:', e);
+      }
     };
-  }, [rendition]);
+  }, [rendition, getIframeOffset, getNavigationAction, isInteractiveElement]);
 };

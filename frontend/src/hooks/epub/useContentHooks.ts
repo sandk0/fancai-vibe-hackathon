@@ -120,12 +120,15 @@ export const useContentHooks = (
 
         /* Minimal padding on body for compact layout */
         /* Mobile touch optimizations */
+        /* iOS Safari fix: cursor:pointer enables click event delegation */
+        /* https://www.quirksmode.org/blog/archives/2010/09/click_event_del.html */
         body {
           margin: 0 !important;
           padding: 0.75em !important;
           -webkit-overflow-scrolling: touch;
           touch-action: manipulation;
           overscroll-behavior: contain;
+          cursor: pointer;
         }
 
         /* Disable text selection on touch devices (mobile) */
