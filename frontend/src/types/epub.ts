@@ -95,6 +95,27 @@ export interface Rendition {
   };
   getRange(cfi: string): Range | null;
   getContents(): Contents[];
+  /** Set spread mode and minimum spread width */
+  spread(spread: 'none' | 'always' | 'auto', min?: number): void;
+  /** Internal settings object */
+  settings?: {
+    spread?: string;
+    minSpreadWidth?: number;
+    flow?: string;
+    width?: string | number;
+    height?: string | number;
+  };
+  /** Internal manager for layout */
+  manager?: {
+    layout?: {
+      divisor?: number;
+      columnWidth?: number;
+      spreadWidth?: number;
+      pageWidth?: number;
+      _spread?: boolean;
+      _minSpreadWidth?: number;
+    };
+  };
 }
 
 export interface Contents {
