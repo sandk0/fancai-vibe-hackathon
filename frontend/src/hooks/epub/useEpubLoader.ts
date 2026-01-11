@@ -178,8 +178,20 @@ export const useEpubLoader = ({
 
         if (isIOSDevice) {
           newRendition.spread('none', 99999);
+
+          // iOS FIX: Listen for layout event and force single-column BEFORE rendering
+          // This ensures epub.js calculates navigation based on single column
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          newRendition.on('layout', (layout: any) => {
+            if (layout && layout.divisor !== 1) {
+              console.warn('[useEpubLoader] iOS layout event: Fixing divisor from', layout.divisor, 'to 1');
+              layout.divisor = 1;
+              layout._spread = 'none';
+            }
+          });
+
           if (DEBUG) {
-            console.log('[useEpubLoader] iOS: Applied spread("none", 99999)');
+            console.log('[useEpubLoader] iOS: Applied spread("none", 99999) and layout fix');
           }
         }
 
@@ -202,6 +214,18 @@ export const useEpubLoader = ({
             // Enable text selection
             iframe.contentDocument.body.style.userSelect = 'text';
             iframe.contentDocument.body.style.webkitUserSelect = 'text';
+          }
+
+          // iOS FIX: Force divisor=1 to prevent multiple page turns
+          // epub.js may calculate wrong divisor based on container width
+          if (isIOSDevice && newRendition.manager?.layout) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const layout = newRendition.manager.layout as any;
+            if (layout.divisor !== 1) {
+              console.warn('[useEpubLoader] iOS: Fixing divisor from', layout.divisor, 'to 1');
+              layout.divisor = 1;
+              layout._spread = 'none';
+            }
           }
 
           // DEBUG: Log layout after each render
