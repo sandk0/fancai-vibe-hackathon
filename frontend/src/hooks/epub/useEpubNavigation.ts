@@ -38,50 +38,65 @@ export const useEpubNavigation = (
   const debugInfoRef = useRef<string | null>(null);
 
   /**
-   * iOS FIX: Force correct delta before navigation
-   * epub.js may calculate wrong delta based on incorrect column width
+   * iOS FIX: Direct scroll navigation bypassing epub.js
+   * epub.js navigation is broken on iOS PWA - scrolls multiple pages
+   * We directly manipulate the scroll position instead
    */
-  const fixIOSLayoutBeforeNav = useCallback(() => {
-    if (!rendition || !isIOS()) return;
+  const iosDirectScroll = useCallback((direction: 'next' | 'prev'): boolean => {
+    if (!rendition) return false;
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const manager = (rendition as any).manager;
-      if (!manager?.layout) return;
+      if (!manager) return false;
 
-      const layout = manager.layout;
-      const container = manager.container;
+      // Get the stage/container element that scrolls
+      const stage = manager.stage?.container || manager.container;
+      if (!stage) return false;
 
-      if (!container) return;
+      const viewportWidth = stage.clientWidth;
+      const currentScroll = stage.scrollLeft;
+      const maxScroll = stage.scrollWidth - viewportWidth;
 
-      // Get actual viewport width
-      const viewportWidth = container.clientWidth;
-
-      // Force divisor to 1
-      if (layout.divisor !== 1) {
-        layout.divisor = 1;
-      }
-
-      // Force delta to be exactly viewport width
-      // delta is the scroll amount per navigation
-      const correctDelta = viewportWidth;
-      if (layout.delta !== correctDelta) {
-        const oldDelta = layout.delta;
-        layout.delta = correctDelta;
-        debugInfoRef.current = `D:${oldDelta}→${correctDelta} W:${viewportWidth}`;
+      let newScroll: number;
+      if (direction === 'next') {
+        newScroll = Math.min(currentScroll + viewportWidth, maxScroll);
       } else {
-        debugInfoRef.current = `D:${layout.delta} W:${viewportWidth} div:${layout.divisor}`;
+        newScroll = Math.max(currentScroll - viewportWidth, 0);
       }
+
+      // Check if we can scroll (not at boundary)
+      if (direction === 'next' && currentScroll >= maxScroll) {
+        // At end - let epub.js handle chapter change
+        debugInfoRef.current = `END S:${Math.round(currentScroll)}`;
+        return false;
+      }
+      if (direction === 'prev' && currentScroll <= 0) {
+        // At start - let epub.js handle chapter change
+        debugInfoRef.current = `START S:${Math.round(currentScroll)}`;
+        return false;
+      }
+
+      // Perform direct scroll
+      stage.scrollLeft = newScroll;
+      debugInfoRef.current = `S:${Math.round(currentScroll)}→${Math.round(newScroll)} W:${viewportWidth}`;
+
+      return true;
     } catch (err) {
-      console.warn('[useEpubNavigation] Error fixing iOS layout:', err);
+      console.warn('[useEpubNavigation] iOS direct scroll error:', err);
+      return false;
     }
   }, [rendition]);
 
   const nextPage = useCallback(async () => {
     if (!rendition) return;
 
-    // Fix layout before navigation on iOS
-    fixIOSLayoutBeforeNav();
+    // On iOS, try direct scroll first
+    if (isIOS()) {
+      const scrolled = iosDirectScroll('next');
+      if (scrolled) return; // Direct scroll worked
+      // Fall through to epub.js for chapter changes
+    }
 
     try {
       await rendition.next();
@@ -90,13 +105,17 @@ export const useEpubNavigation = (
         console.warn('[useEpubNavigation] Could not go to next page:', err);
       }
     }
-  }, [rendition, fixIOSLayoutBeforeNav]);
+  }, [rendition, iosDirectScroll]);
 
   const prevPage = useCallback(async () => {
     if (!rendition) return;
 
-    // Fix layout before navigation on iOS
-    fixIOSLayoutBeforeNav();
+    // On iOS, try direct scroll first
+    if (isIOS()) {
+      const scrolled = iosDirectScroll('prev');
+      if (scrolled) return; // Direct scroll worked
+      // Fall through to epub.js for chapter changes
+    }
 
     try {
       await rendition.prev();
@@ -105,7 +124,7 @@ export const useEpubNavigation = (
         console.warn('[useEpubNavigation] Could not go to prev page:', err);
       }
     }
-  }, [rendition, fixIOSLayoutBeforeNav]);
+  }, [rendition, iosDirectScroll]);
 
   // Note: epub.js doesn't provide easy way to check if we can go next/prev
   // We return true for now, and let epub.js handle boundaries
