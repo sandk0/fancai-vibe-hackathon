@@ -170,6 +170,28 @@ export const useEpubLoader = ({
         renditionRef.current = newRendition;
         setRendition(newRendition);
 
+        // iOS-ONLY FIX: Force single-page spread AFTER book metadata is loaded
+        // Book metadata can override our initial spread:'none' setting
+        // This explicit call ensures our setting takes precedence on iOS
+        const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        if (isIOSDevice) {
+          newRendition.spread('none', 99999);
+          if (DEBUG) {
+            console.log('[useEpubLoader] iOS: Applied spread("none", 99999)');
+          }
+        }
+
+        // Debug logging (dev only)
+        if (DEBUG) {
+          console.log('[useEpubLoader] Rendition created:', {
+            isIOS: isIOSDevice,
+            spread: newRendition.settings?.spread,
+            minSpreadWidth: newRendition.settings?.minSpreadWidth,
+          });
+        }
+
         // Disable horizontal swipe/touch navigation in iframe to prevent multiple page turns
         newRendition.on('rendered', () => {
           const iframe = viewerRef.current?.querySelector('iframe');
@@ -180,6 +202,15 @@ export const useEpubLoader = ({
             // Enable text selection
             iframe.contentDocument.body.style.userSelect = 'text';
             iframe.contentDocument.body.style.webkitUserSelect = 'text';
+          }
+
+          // DEBUG: Log layout after each render
+          if (DEBUG && newRendition.manager?.layout) {
+            console.log('[useEpubLoader] Layout after render:', {
+              divisor: newRendition.manager.layout.divisor,
+              columnWidth: newRendition.manager.layout.columnWidth,
+              _spread: newRendition.manager.layout._spread,
+            });
           }
         });
 

@@ -132,12 +132,16 @@ export const useContentHooks = (
         }
 
         /* iOS Safari Fix (January 2026): Force single-column layout */
-        /* Prevents double-page turn bug caused by CSS column miscalculation */
-        html, body {
-          column-count: 1 !important;
-          -webkit-column-count: 1 !important;
-          column-width: auto !important;
-          -webkit-column-width: auto !important;
+        /* Only applied on iOS devices via @supports with iOS-specific check */
+        /* This prevents double-page turn bug on iOS without affecting Android */
+        @supports (-webkit-touch-callout: none) {
+          /* -webkit-touch-callout is iOS-only, not supported on Android Chrome */
+          html, body {
+            column-count: 1 !important;
+            -webkit-column-count: 1 !important;
+            column-width: auto !important;
+            -webkit-column-width: auto !important;
+          }
         }
 
         /* Disable text selection on touch devices (mobile) */

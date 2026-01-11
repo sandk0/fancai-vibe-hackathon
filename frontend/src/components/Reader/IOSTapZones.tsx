@@ -1,5 +1,5 @@
 /**
- * IOSTapZones - Overlay navigation zones for iOS PWA
+ * IOSTapZones - Touch navigation overlay for iOS PWA
  *
  * iOS PWA SPECIFIC FIX (January 2026):
  * iOS Safari and iOS PWA standalone mode do not reliably forward touch events
@@ -8,15 +8,14 @@
  * Solution: Render transparent overlay divs OUTSIDE the iframe that capture
  * touch/click events directly in the parent document.
  *
- * This component ONLY renders on iOS devices (detected via user agent).
- * Android and other platforms use the standard rendition.on() approach.
- *
- * IMPORTANT: Zones are intentionally narrow (15%) to leave space for
- * description highlights and other interactive content in the center.
+ * IMPORTANT:
+ * - Zones are VERY narrow (8%) to maximize clickable area for descriptions
+ * - Descriptions near the extreme edges may not be clickable (acceptable tradeoff)
+ * - This component ONLY renders on iOS devices
+ * - Android and other platforms use the standard rendition.on() approach
  *
  * References:
  * - https://github.com/gseguin/ios-iframe-touchevents-fix
- * - https://gist.github.com/datchley/6793842
  * - WebKit Bug 128924: Shifted document touch handling in iframes on iOS
  */
 
@@ -25,8 +24,9 @@ import { useCallback, useRef, memo } from 'react';
 const TAP_MAX_DURATION = 350; // ms
 const TAP_MAX_MOVEMENT = 20; // px
 
-// Navigation zone width - narrow to allow content interaction in center
-const ZONE_WIDTH_PERCENT = 15;
+// Navigation zone width - VERY narrow to maximize description clickability
+// 8% = roughly 30px on iPhone, enough for a finger tap on the edge
+const ZONE_WIDTH_PERCENT = 8;
 
 // Detect iOS device (iPhone, iPad, iPod)
 const isIOS = (): boolean => {
@@ -35,14 +35,8 @@ const isIOS = (): boolean => {
   }
 
   const ua = navigator.userAgent;
-
-  // Check for iOS devices
   const isIOSDevice = /iPad|iPhone|iPod/.test(ua);
-
-  // Check for iPad on iOS 13+ (reports as Mac)
-  const isIPadOS =
-    navigator.platform === 'MacIntel' &&
-    navigator.maxTouchPoints > 1;
+  const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
 
   return isIOSDevice || isIPadOS;
 };
@@ -62,7 +56,7 @@ interface IOSTapZonesProps {
   onPrevPage: () => void;
   onNextPage: () => void;
   enabled?: boolean;
-  headerHeight?: number; // Height of header to offset tap zones
+  headerHeight?: number;
 }
 
 /**
@@ -81,30 +75,15 @@ export const IOSTapZones = memo(function IOSTapZones({
   }
 
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const lastNavTimeRef = useRef<number>(0);
 
-  // Debug log for iOS detection
+  // Debug log for iOS detection (only once on mount)
   if (import.meta.env.DEV) {
-    console.log('[IOSTapZones] Rendering on iOS device', {
+    console.log('[IOSTapZones] Rendering overlay zones on iOS', {
       isStandalone: isStandalone(),
-      userAgent: navigator.userAgent.substring(0, 50),
+      zoneWidth: `${ZONE_WIDTH_PERCENT}%`,
     });
   }
-
-  /**
-   * Check if target is an interactive element that should receive the tap
-   */
-  const isInteractiveElement = useCallback((target: EventTarget | null): boolean => {
-    if (!target || !(target instanceof HTMLElement)) return false;
-
-    // Don't intercept taps on buttons, links, etc.
-    const interactiveTags = ['A', 'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA'];
-    if (interactiveTags.includes(target.tagName)) return true;
-
-    // Check for interactive parent
-    if (target.closest('a, button, input, select, textarea')) return true;
-
-    return false;
-  }, []);
 
   /**
    * Handle touch start - record position
@@ -155,13 +134,15 @@ export const IOSTapZones = memo(function IOSTapZones({
       return;
     }
 
-    // Check for interactive elements
-    if (isInteractiveElement(e.target)) {
+    // Debounce navigation to prevent double triggers
+    const now = Date.now();
+    if (now - lastNavTimeRef.current < 300) {
       if (import.meta.env.DEV) {
-        console.log('[IOSTapZones] Interactive element - allowing through');
+        console.log('[IOSTapZones] Debounced - ignoring');
       }
       return;
     }
+    lastNavTimeRef.current = now;
 
     if (import.meta.env.DEV) {
       console.log('[IOSTapZones] TAP detected -', action);
@@ -172,7 +153,7 @@ export const IOSTapZones = memo(function IOSTapZones({
     } else {
       onNextPage();
     }
-  }, [enabled, isInteractiveElement, onPrevPage, onNextPage]);
+  }, [enabled, onPrevPage, onNextPage]);
 
   /**
    * Handle click - fallback for devices where touch events don't work
@@ -183,10 +164,12 @@ export const IOSTapZones = memo(function IOSTapZones({
   ) => {
     if (!enabled) return;
 
-    // Check for interactive elements
-    if (isInteractiveElement(e.target)) {
+    // Debounce
+    const now = Date.now();
+    if (now - lastNavTimeRef.current < 300) {
       return;
     }
+    lastNavTimeRef.current = now;
 
     if (import.meta.env.DEV) {
       console.log('[IOSTapZones] CLICK detected -', action);
@@ -197,7 +180,7 @@ export const IOSTapZones = memo(function IOSTapZones({
     } else {
       onNextPage();
     }
-  }, [enabled, isInteractiveElement, onPrevPage, onNextPage]);
+  }, [enabled, onPrevPage, onNextPage]);
 
   // Common styles for tap zones
   const baseStyle: React.CSSProperties = {
@@ -205,19 +188,16 @@ export const IOSTapZones = memo(function IOSTapZones({
     top: `calc(${headerHeight}px + env(safe-area-inset-top))`,
     bottom: 'env(safe-area-inset-bottom)',
     zIndex: 5, // Above iframe but below UI elements
-    // Transparent but catches events
     backgroundColor: 'transparent',
-    // Ensure touch events are captured
     touchAction: 'manipulation',
     WebkitTapHighlightColor: 'transparent',
-    // Prevent text selection on long press
     WebkitUserSelect: 'none',
     userSelect: 'none',
   };
 
   return (
     <>
-      {/* Left tap zone - narrow edge zone */}
+      {/* Left tap zone - very narrow edge */}
       <div
         data-testid="ios-tap-zone-left"
         style={{
@@ -233,7 +213,7 @@ export const IOSTapZones = memo(function IOSTapZones({
         tabIndex={-1}
       />
 
-      {/* Right tap zone - narrow edge zone */}
+      {/* Right tap zone - very narrow edge */}
       <div
         data-testid="ios-tap-zone-right"
         style={{
