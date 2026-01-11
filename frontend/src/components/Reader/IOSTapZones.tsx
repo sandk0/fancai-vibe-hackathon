@@ -67,7 +67,7 @@ interface IOSTapZonesProps {
 export const IOSTapZones = memo(function IOSTapZones({
   onPrevPage,
   onNextPage,
-  onDescriptionClick,
+  onDescriptionClick: _onDescriptionClick, // Kept for backwards compatibility, not used with postMessage approach
   enabled = true,
   headerHeight = 70,
 }: IOSTapZonesProps) {
@@ -202,13 +202,24 @@ export const IOSTapZones = memo(function IOSTapZones({
   }, [enabled]);
 
   /**
-   * Handle center zone touch end - check for description click
+   * Handle center zone touch end - send coordinates to iframe via postMessage
    *
-   * Uses elementFromPoint on the iframe's document to find what element
-   * is at the tap coordinates. If it's a description-highlight, trigger the click.
+   * iOS PWA FIX (January 2026):
+   * On iOS PWA, iframe.contentDocument is null due to security restrictions.
+   * Instead of trying to access it directly, we send tap coordinates to the iframe
+   * via postMessage. The script inside the iframe (injected by useContentHooks)
+   * will do elementFromPoint and send the descriptionId back via postMessage.
+   *
+   * Flow:
+   * 1. User taps in center zone
+   * 2. We calculate coordinates relative to iframe
+   * 3. We send postMessage to iframe with coordinates: { type: 'TAP_COORDINATES', x, y }
+   * 4. Script in iframe does elementFromPoint, finds description
+   * 5. Script sends postMessage back: { type: 'DESCRIPTION_CLICK', descriptionId }
+   * 6. useDescriptionHighlighting receives message and triggers callback
    */
   const handleCenterTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (!enabled || !onDescriptionClick) return;
+    if (!enabled) return;
 
     if (!touchStartRef.current) return;
 
@@ -244,10 +255,11 @@ export const IOSTapZones = memo(function IOSTapZones({
       }
       return;
     }
+    lastDescClickTimeRef.current = now;
 
-    // Find the iframe and check if tap hit a description
+    // Find the iframe
     const iframe = document.querySelector('#epub-viewer iframe') as HTMLIFrameElement | null;
-    if (!iframe?.contentDocument) {
+    if (!iframe) {
       if (import.meta.env.DEV) {
         console.log('[IOSTapZones] Center: No iframe found');
       }
@@ -260,45 +272,24 @@ export const IOSTapZones = memo(function IOSTapZones({
     const relativeY = touch.clientY - iframeRect.top;
 
     if (import.meta.env.DEV) {
-      console.log('[IOSTapZones] Center: Checking for description at', { relativeX, relativeY });
+      console.log('[IOSTapZones] Center: Sending tap coordinates to iframe', { relativeX, relativeY });
     }
 
-    // Find element at tap position in iframe document
-    const elementAtPoint = iframe.contentDocument.elementFromPoint(relativeX, relativeY);
-
-    if (!elementAtPoint) {
+    // Send coordinates to iframe via postMessage
+    // The script inside iframe (useContentHooks) will do elementFromPoint
+    // and send descriptionId back via postMessage
+    try {
+      iframe.contentWindow?.postMessage({
+        type: 'TAP_COORDINATES',
+        x: relativeX,
+        y: relativeY,
+      }, '*');
+    } catch (err) {
       if (import.meta.env.DEV) {
-        console.log('[IOSTapZones] Center: No element at point');
-      }
-      return;
-    }
-
-    // Walk up the DOM tree to find description-highlight
-    let target: HTMLElement | null = elementAtPoint as HTMLElement;
-    let descriptionId: string | null = null;
-
-    while (target && target !== iframe.contentDocument.body) {
-      if (target.classList?.contains('description-highlight')) {
-        descriptionId = target.getAttribute('data-description-id');
-        break;
-      }
-      target = target.parentElement;
-    }
-
-    if (descriptionId) {
-      lastDescClickTimeRef.current = now;
-
-      if (import.meta.env.DEV) {
-        console.log('[IOSTapZones] Center: DESCRIPTION TAP detected -', descriptionId);
-      }
-
-      onDescriptionClick(descriptionId);
-    } else {
-      if (import.meta.env.DEV) {
-        console.log('[IOSTapZones] Center: No description at tap location, element:', elementAtPoint.tagName, elementAtPoint.className);
+        console.log('[IOSTapZones] Center: Failed to send postMessage to iframe', err);
       }
     }
-  }, [enabled, onDescriptionClick]);
+  }, [enabled]);
 
   // Common styles for tap zones
   const baseStyle: React.CSSProperties = {
@@ -347,24 +338,21 @@ export const IOSTapZones = memo(function IOSTapZones({
         tabIndex={-1}
       />
 
-      {/* Center tap zone - for description clicks */}
-      {/* This zone captures taps in the center and checks if they hit a description */}
-      {onDescriptionClick && (
-        <div
-          data-testid="ios-tap-zone-center"
-          style={{
-            ...baseStyle,
-            left: `calc(${ZONE_WIDTH_PERCENT}% + env(safe-area-inset-left))`,
-            right: `calc(${ZONE_WIDTH_PERCENT}% + env(safe-area-inset-right))`,
-            // pointerEvents only for touch - allows scrolling to work
-          }}
-          onTouchStart={handleCenterTouchStart}
-          onTouchEnd={handleCenterTouchEnd}
-          aria-label="Content area"
-          role="region"
-          tabIndex={-1}
-        />
-      )}
+      {/* Center tap zone - for description clicks via bidirectional postMessage */}
+      {/* Always rendered - sends tap coordinates to iframe, iframe finds description */}
+      <div
+        data-testid="ios-tap-zone-center"
+        style={{
+          ...baseStyle,
+          left: `calc(${ZONE_WIDTH_PERCENT}% + env(safe-area-inset-left))`,
+          right: `calc(${ZONE_WIDTH_PERCENT}% + env(safe-area-inset-right))`,
+        }}
+        onTouchStart={handleCenterTouchStart}
+        onTouchEnd={handleCenterTouchEnd}
+        aria-label="Content area"
+        role="region"
+        tabIndex={-1}
+      />
 
       {/* Debug indicator - only in dev mode */}
       {import.meta.env.DEV && (
@@ -383,7 +371,7 @@ export const IOSTapZones = memo(function IOSTapZones({
             pointerEvents: 'none',
           }}
         >
-          iOS Tap Zones {ZONE_WIDTH_PERCENT}% {isStandalone() ? '(PWA)' : '(Safari)'}
+          iOS Zones {ZONE_WIDTH_PERCENT}% + Center (postMessage) {isStandalone() ? '[PWA]' : '[Safari]'}
         </div>
       )}
     </>

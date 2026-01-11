@@ -189,23 +189,102 @@ export const useContentHooks = (
       });
 
       /**
-       * iOS PWA FIX (January 2026): Document-level touch handler for description clicks
+       * iOS PWA FIX (January 2026): Bidirectional postMessage for description clicks
        *
-       * Problem: On iOS PWA standalone mode, touch events on elements inside iframes
-       * don't propagate properly to parent document handlers (WebKit Bug 128924).
+       * Problem: On iOS PWA standalone mode:
+       * 1. Touch events don't propagate from iframe to parent (WebKit Bug 128924)
+       * 2. Parent cannot access iframe.contentDocument (security restrictions, returns null)
+       * 3. elementFromPoint from parent doesn't work
        *
-       * Solution: Add a touch handler directly inside the iframe document that:
-       * 1. Captures all touchend events at document level (event delegation)
-       * 2. Checks if the touch target is a description highlight
-       * 3. Sends postMessage to parent window with description ID
+       * Solution: Bidirectional postMessage communication
+       * 1. Parent sends tap coordinates to iframe via postMessage
+       * 2. Iframe receives coordinates, does elementFromPoint INSIDE iframe (works!)
+       * 3. Iframe sends descriptionId back to parent via postMessage
        *
-       * This bypasses the iframe boundary issue entirely.
+       * This completely bypasses all iframe security and touch event issues.
        */
       const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
       if (isIOSDevice) {
-        // Track touch start position for tap detection
+        /**
+         * Listen for tap coordinates from parent window
+         * Parent sends: { type: 'TAP_COORDINATES', x: number, y: number }
+         * We respond with: { type: 'DESCRIPTION_CLICK', descriptionId: string }
+         */
+        const handleParentMessage = (event: MessageEvent) => {
+          // Verify message type
+          if (event.data?.type !== 'TAP_COORDINATES') return;
+
+          const { x, y } = event.data;
+          if (typeof x !== 'number' || typeof y !== 'number') return;
+
+          if (import.meta.env.DEV) {
+            console.log('[useContentHooks] iOS: Received tap coordinates from parent:', { x, y });
+          }
+
+          // Use elementFromPoint INSIDE the iframe (this works!)
+          const elementAtPoint = doc.elementFromPoint(x, y);
+
+          if (!elementAtPoint) {
+            if (import.meta.env.DEV) {
+              console.log('[useContentHooks] iOS: No element at coordinates');
+            }
+            return;
+          }
+
+          // Walk up the DOM tree to find description-highlight
+          let target: HTMLElement | null = elementAtPoint as HTMLElement;
+          let descriptionId: string | null = null;
+
+          while (target && target !== doc.body) {
+            if (target.classList?.contains('description-highlight')) {
+              descriptionId = target.getAttribute('data-description-id');
+              break;
+            }
+            target = target.parentElement;
+          }
+
+          if (descriptionId) {
+            if (import.meta.env.DEV) {
+              console.log('[useContentHooks] iOS: Found description at coordinates:', descriptionId);
+            }
+
+            // Send description ID back to parent
+            try {
+              // Use window.top for iOS compatibility (window.parent may not work)
+              const targetWindow = window.top || window.parent;
+              targetWindow.postMessage({
+                type: 'DESCRIPTION_CLICK',
+                descriptionId: descriptionId,
+              }, '*');
+            } catch (_err) {
+              // Fallback to window.parent
+              try {
+                window.parent.postMessage({
+                  type: 'DESCRIPTION_CLICK',
+                  descriptionId: descriptionId,
+                }, '*');
+              } catch (_e) {
+                // Ignore errors
+              }
+            }
+          } else {
+            if (import.meta.env.DEV) {
+              console.log('[useContentHooks] iOS: No description at coordinates, element:',
+                elementAtPoint.tagName, elementAtPoint.className);
+            }
+          }
+        };
+
+        // Listen for messages from parent
+        window.addEventListener('message', handleParentMessage);
+
+        if (import.meta.env.DEV) {
+          console.log('[useContentHooks] iOS PWA: Added postMessage listener for tap coordinates');
+        }
+
+        // Also keep touch handlers as fallback (in case touch events do work)
         let touchStartX = 0;
         let touchStartY = 0;
         let touchStartTime = 0;
@@ -223,7 +302,6 @@ export const useContentHooks = (
           const touch = e.changedTouches[0];
           if (!touch) return;
 
-          // Check if this was a tap (not swipe or long press)
           const deltaX = Math.abs(touch.clientX - touchStartX);
           const deltaY = Math.abs(touch.clientY - touchStartY);
           const duration = Date.now() - touchStartTime;
@@ -231,11 +309,9 @@ export const useContentHooks = (
           const isTap = deltaX < 20 && deltaY < 20 && duration < 350;
           if (!isTap) return;
 
-          // Find if we tapped on a description highlight
           let target = e.target as HTMLElement | null;
           let descriptionId: string | null = null;
 
-          // Walk up the DOM tree to find description-highlight
           while (target && target !== doc.body) {
             if (target.classList?.contains('description-highlight')) {
               descriptionId = target.getAttribute('data-description-id');
@@ -245,34 +321,27 @@ export const useContentHooks = (
           }
 
           if (descriptionId) {
-            // Prevent default to stop navigation
             e.preventDefault();
             e.stopPropagation();
 
-            // Send message to parent window
             try {
-              window.parent.postMessage({
+              const targetWindow = window.top || window.parent;
+              targetWindow.postMessage({
                 type: 'DESCRIPTION_CLICK',
                 descriptionId: descriptionId,
               }, '*');
 
-              // Debug log
               if (import.meta.env.DEV) {
-                console.log('[useContentHooks] iOS: Description tap detected, sent postMessage:', descriptionId);
+                console.log('[useContentHooks] iOS: Touch fallback - sent postMessage:', descriptionId);
               }
             } catch (_err) {
-              // Ignore cross-origin errors
+              // Ignore errors
             }
           }
         };
 
-        // Add listeners to document body
         doc.body.addEventListener('touchstart', handleTouchStart, { passive: true });
         doc.body.addEventListener('touchend', handleTouchEnd, { passive: false });
-
-        if (import.meta.env.DEV) {
-          console.log('[useContentHooks] iOS PWA: Added document-level touch handlers for descriptions');
-        }
       }
     };
 
