@@ -13,17 +13,6 @@
 import { useCallback, useEffect } from 'react';
 import type { Rendition } from '@/types/epub';
 
-// Detect iOS device
-const isIOS = (): boolean => {
-  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
-    return false;
-  }
-  const ua = navigator.userAgent;
-  const isIOSDevice = /iPad|iPhone|iPod/.test(ua);
-  const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
-  return isIOSDevice || isIPadOS;
-};
-
 interface UseEpubNavigationReturn {
   nextPage: () => Promise<void>;
   prevPage: () => Promise<void>;
@@ -35,86 +24,8 @@ export const useEpubNavigation = (
   rendition: Rendition | null
 ): UseEpubNavigationReturn => {
 
-  /**
-   * iOS-specific navigation using manager.scrollBy()
-   * Standard rendition.next()/prev() may use wrong delta on iOS PWA
-   * This forces navigation by exact viewport width
-   */
-  const iosNavigate = useCallback(async (direction: 'next' | 'prev') => {
-    if (!rendition) return;
-
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const manager = (rendition as any).manager;
-      if (!manager) {
-        // Fallback to standard navigation
-        if (direction === 'next') {
-          await rendition.next();
-        } else {
-          await rendition.prev();
-        }
-        return;
-      }
-
-      // Get container width (this is the actual viewport width)
-      const container = manager.container;
-      if (!container) {
-        if (direction === 'next') {
-          await rendition.next();
-        } else {
-          await rendition.prev();
-        }
-        return;
-      }
-
-      const viewportWidth = container.clientWidth;
-
-      // Use scrollBy for paginated content
-      // scrollBy moves by the specified amount in pixels
-      if (typeof manager.scrollBy === 'function') {
-        const delta = direction === 'next' ? viewportWidth : -viewportWidth;
-        manager.scrollBy(delta, 0, true); // animated = true
-      } else if (typeof manager.moveTo === 'function') {
-        // Alternative: use moveTo with offset
-        const currentOffset = manager.scrollLeft || 0;
-        const newOffset = direction === 'next'
-          ? currentOffset + viewportWidth
-          : currentOffset - viewportWidth;
-        manager.moveTo({ left: Math.max(0, newOffset) });
-      } else {
-        // Last fallback
-        if (direction === 'next') {
-          await rendition.next();
-        } else {
-          await rendition.prev();
-        }
-      }
-    } catch (err) {
-      if (import.meta.env.DEV) {
-        console.warn('[useEpubNavigation] iOS navigation error:', err);
-      }
-      // Fallback to standard
-      try {
-        if (direction === 'next') {
-          await rendition.next();
-        } else {
-          await rendition.prev();
-        }
-      } catch (_e) {
-        // Ignore
-      }
-    }
-  }, [rendition]);
-
   const nextPage = useCallback(async () => {
     if (!rendition) return;
-
-    // Use iOS-specific navigation on iOS devices
-    if (isIOS()) {
-      await iosNavigate('next');
-      return;
-    }
-
     try {
       await rendition.next();
     } catch (err) {
@@ -123,17 +34,10 @@ export const useEpubNavigation = (
         console.warn('[useEpubNavigation] Could not go to next page:', err);
       }
     }
-  }, [rendition, iosNavigate]);
+  }, [rendition]);
 
   const prevPage = useCallback(async () => {
     if (!rendition) return;
-
-    // Use iOS-specific navigation on iOS devices
-    if (isIOS()) {
-      await iosNavigate('prev');
-      return;
-    }
-
     try {
       await rendition.prev();
     } catch (err) {
@@ -142,7 +46,7 @@ export const useEpubNavigation = (
         console.warn('[useEpubNavigation] Could not go to prev page:', err);
       }
     }
-  }, [rendition, iosNavigate]);
+  }, [rendition]);
 
   // Note: epub.js doesn't provide easy way to check if we can go next/prev
   // We return true for now, and let epub.js handle boundaries
