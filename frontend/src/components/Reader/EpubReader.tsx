@@ -788,6 +788,15 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
       <IOSTapZones
         onPrevPage={prevPage}
         onNextPage={nextPage}
+        onDescriptionClick={async (descriptionId: string) => {
+          // Find description by ID
+          const desc = descriptions.find(d => d.id === descriptionId);
+          if (desc) {
+            // Find associated image
+            const img = images.find(i => i.description?.id === descriptionId);
+            await openModal(desc, img);
+          }
+        }}
         enabled={!isLoading && !isGenerating && !error}
         headerHeight={70}
       />

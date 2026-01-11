@@ -55,6 +55,7 @@ const isStandalone = (): boolean => {
 interface IOSTapZonesProps {
   onPrevPage: () => void;
   onNextPage: () => void;
+  onDescriptionClick?: (descriptionId: string) => void;
   enabled?: boolean;
   headerHeight?: number;
 }
@@ -66,6 +67,7 @@ interface IOSTapZonesProps {
 export const IOSTapZones = memo(function IOSTapZones({
   onPrevPage,
   onNextPage,
+  onDescriptionClick,
   enabled = true,
   headerHeight = 70,
 }: IOSTapZonesProps) {
@@ -76,6 +78,7 @@ export const IOSTapZones = memo(function IOSTapZones({
 
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const lastNavTimeRef = useRef<number>(0);
+  const lastDescClickTimeRef = useRef<number>(0);
 
   // Debug log for iOS detection (only once on mount)
   if (import.meta.env.DEV) {
@@ -182,6 +185,121 @@ export const IOSTapZones = memo(function IOSTapZones({
     }
   }, [enabled, onPrevPage, onNextPage]);
 
+  /**
+   * Handle center zone touch start - record position for tap detection
+   */
+  const handleCenterTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!enabled) return;
+
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      time: Date.now(),
+    };
+  }, [enabled]);
+
+  /**
+   * Handle center zone touch end - check for description click
+   *
+   * Uses elementFromPoint on the iframe's document to find what element
+   * is at the tap coordinates. If it's a description-highlight, trigger the click.
+   */
+  const handleCenterTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!enabled || !onDescriptionClick) return;
+
+    if (!touchStartRef.current) return;
+
+    const touch = e.changedTouches[0];
+    if (!touch) {
+      touchStartRef.current = null;
+      return;
+    }
+
+    const startX = touchStartRef.current.x;
+    const startY = touchStartRef.current.y;
+    const deltaX = Math.abs(touch.clientX - startX);
+    const deltaY = Math.abs(touch.clientY - startY);
+    const duration = Date.now() - touchStartRef.current.time;
+
+    touchStartRef.current = null;
+
+    // Check if it's a tap (not swipe or long press)
+    const isTap = duration < TAP_MAX_DURATION && deltaX < TAP_MAX_MOVEMENT && deltaY < TAP_MAX_MOVEMENT;
+
+    if (!isTap) {
+      if (import.meta.env.DEV) {
+        console.log('[IOSTapZones] Center: Not a tap - ignoring', { deltaX, deltaY, duration });
+      }
+      return;
+    }
+
+    // Debounce
+    const now = Date.now();
+    if (now - lastDescClickTimeRef.current < 300) {
+      if (import.meta.env.DEV) {
+        console.log('[IOSTapZones] Center: Debounced - ignoring');
+      }
+      return;
+    }
+
+    // Find the iframe and check if tap hit a description
+    const iframe = document.querySelector('#epub-viewer iframe') as HTMLIFrameElement | null;
+    if (!iframe?.contentDocument) {
+      if (import.meta.env.DEV) {
+        console.log('[IOSTapZones] Center: No iframe found');
+      }
+      return;
+    }
+
+    // Get iframe bounding rect to calculate relative position
+    const iframeRect = iframe.getBoundingClientRect();
+    const relativeX = touch.clientX - iframeRect.left;
+    const relativeY = touch.clientY - iframeRect.top;
+
+    if (import.meta.env.DEV) {
+      console.log('[IOSTapZones] Center: Checking for description at', { relativeX, relativeY });
+    }
+
+    // Find element at tap position in iframe document
+    const elementAtPoint = iframe.contentDocument.elementFromPoint(relativeX, relativeY);
+
+    if (!elementAtPoint) {
+      if (import.meta.env.DEV) {
+        console.log('[IOSTapZones] Center: No element at point');
+      }
+      return;
+    }
+
+    // Walk up the DOM tree to find description-highlight
+    let target: HTMLElement | null = elementAtPoint as HTMLElement;
+    let descriptionId: string | null = null;
+
+    while (target && target !== iframe.contentDocument.body) {
+      if (target.classList?.contains('description-highlight')) {
+        descriptionId = target.getAttribute('data-description-id');
+        break;
+      }
+      target = target.parentElement;
+    }
+
+    if (descriptionId) {
+      lastDescClickTimeRef.current = now;
+
+      if (import.meta.env.DEV) {
+        console.log('[IOSTapZones] Center: DESCRIPTION TAP detected -', descriptionId);
+      }
+
+      onDescriptionClick(descriptionId);
+    } else {
+      if (import.meta.env.DEV) {
+        console.log('[IOSTapZones] Center: No description at tap location, element:', elementAtPoint.tagName, elementAtPoint.className);
+      }
+    }
+  }, [enabled, onDescriptionClick]);
+
   // Common styles for tap zones
   const baseStyle: React.CSSProperties = {
     position: 'absolute',
@@ -228,6 +346,25 @@ export const IOSTapZones = memo(function IOSTapZones({
         role="button"
         tabIndex={-1}
       />
+
+      {/* Center tap zone - for description clicks */}
+      {/* This zone captures taps in the center and checks if they hit a description */}
+      {onDescriptionClick && (
+        <div
+          data-testid="ios-tap-zone-center"
+          style={{
+            ...baseStyle,
+            left: `calc(${ZONE_WIDTH_PERCENT}% + env(safe-area-inset-left))`,
+            right: `calc(${ZONE_WIDTH_PERCENT}% + env(safe-area-inset-right))`,
+            // pointerEvents only for touch - allows scrolling to work
+          }}
+          onTouchStart={handleCenterTouchStart}
+          onTouchEnd={handleCenterTouchEnd}
+          aria-label="Content area"
+          role="region"
+          tabIndex={-1}
+        />
+      )}
 
       {/* Debug indicator - only in dev mode */}
       {import.meta.env.DEV && (
