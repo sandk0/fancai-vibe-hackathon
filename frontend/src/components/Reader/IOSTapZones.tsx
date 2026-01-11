@@ -87,6 +87,10 @@ export const IOSTapZones = memo(function IOSTapZones({
   const lastNavTimeRef = useRef<number>(0);
   const lastDescClickTimeRef = useRef<number>(0);
 
+  // Navigation lock - prevents multiple navigations while one is in progress
+  const isNavigatingRef = useRef<boolean>(false);
+  const navCountRef = useRef<number>(0); // Debug: count navigations
+
   // Debug: visual tap indicator state
   const [debugTapInfo, setDebugTapInfo] = useState<string | null>(null);
 
@@ -134,6 +138,10 @@ export const IOSTapZones = memo(function IOSTapZones({
     e: React.TouchEvent,
     action: 'prev' | 'next'
   ) => {
+    // Prevent default to stop any native handling
+    e.preventDefault();
+    e.stopPropagation();
+
     if (!enabled) return;
 
     if (!touchStartRef.current) return;
@@ -154,69 +162,105 @@ export const IOSTapZones = memo(function IOSTapZones({
     const isTap = duration < TAP_MAX_DURATION && deltaX < TAP_MAX_MOVEMENT && deltaY < TAP_MAX_MOVEMENT;
 
     if (!isTap) {
-      if (import.meta.env.DEV) {
-        console.log('[IOSTapZones] Not a tap - ignoring', { deltaX, deltaY, duration });
-      }
+      return;
+    }
+
+    // Navigation lock - prevent multiple navigations
+    if (isNavigatingRef.current) {
+      setDebugTapInfo(`LOCKED`);
+      setTimeout(() => setDebugTapInfo(null), 1000);
       return;
     }
 
     // Debounce navigation to prevent double triggers
-    // Use longer debounce for real iOS devices
     const now = Date.now();
     if (now - lastNavTimeRef.current < NAV_DEBOUNCE_MS) {
-      if (import.meta.env.DEV) {
-        console.log('[IOSTapZones] Debounced - ignoring', { elapsed: now - lastNavTimeRef.current });
-      }
       return;
     }
     lastNavTimeRef.current = now;
 
-    if (import.meta.env.DEV) {
-      console.log('[IOSTapZones] TAP detected -', action);
-    }
+    // Set navigation lock
+    isNavigatingRef.current = true;
+    navCountRef.current += 1;
+    const navNum = navCountRef.current;
 
-    // Use requestAnimationFrame to avoid blocking touch event
-    requestAnimationFrame(() => {
-      if (action === 'prev') {
-        onPrevPage();
-      } else {
-        onNextPage();
+    // Show debug indicator
+    setDebugTapInfo(`NAV#${navNum}:${action}`);
+
+    // Navigate with lock protection
+    const doNavigate = async () => {
+      try {
+        if (action === 'prev') {
+          await onPrevPage();
+        } else {
+          await onNextPage();
+        }
+      } finally {
+        // Release lock after navigation completes or after timeout
+        setTimeout(() => {
+          isNavigatingRef.current = false;
+          setDebugTapInfo(null);
+        }, 300);
       }
+    };
+
+    // Use requestAnimationFrame then execute
+    requestAnimationFrame(() => {
+      doNavigate();
     });
   }, [enabled, onPrevPage, onNextPage]);
 
   /**
    * Handle click - fallback for devices where touch events don't work
    * NOTE: On real iOS devices, a tap may generate BOTH touchend AND click events
-   * The shared lastNavTimeRef debounce prevents double navigation
+   * The shared lastNavTimeRef and isNavigatingRef prevent double navigation
    */
   const handleClick = useCallback((
-    _e: React.MouseEvent,
+    e: React.MouseEvent,
     action: 'prev' | 'next'
   ) => {
+    // Prevent default
+    e.preventDefault();
+    e.stopPropagation();
+
     if (!enabled) return;
+
+    // Navigation lock check
+    if (isNavigatingRef.current) {
+      return;
+    }
 
     // Debounce - shared with touch handler to prevent double triggers
     const now = Date.now();
     if (now - lastNavTimeRef.current < NAV_DEBOUNCE_MS) {
-      if (import.meta.env.DEV) {
-        console.log('[IOSTapZones] Click debounced - ignoring', { elapsed: now - lastNavTimeRef.current });
-      }
       return;
     }
     lastNavTimeRef.current = now;
 
-    if (import.meta.env.DEV) {
-      console.log('[IOSTapZones] CLICK detected -', action);
-    }
+    // Set navigation lock
+    isNavigatingRef.current = true;
+    navCountRef.current += 1;
+    const navNum = navCountRef.current;
 
-    // Use requestAnimationFrame to avoid blocking
-    requestAnimationFrame(() => {
-      if (action === 'prev') {
-        onPrevPage();
-      } else {
-        onNextPage();
+    setDebugTapInfo(`CLK#${navNum}:${action}`);
+
+    const doNavigate = async () => {
+      try {
+        if (action === 'prev') {
+          await onPrevPage();
+        } else {
+          await onNextPage();
+        }
+      } finally {
+        setTimeout(() => {
+          isNavigatingRef.current = false;
+          setDebugTapInfo(null);
+        }, 300);
       }
+    };
+
+    requestAnimationFrame(() => {
+      doNavigate();
     });
   }, [enabled, onPrevPage, onNextPage]);
 
