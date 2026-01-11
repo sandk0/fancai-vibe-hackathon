@@ -70,6 +70,7 @@ import { ImageGenerationStatus } from './ImageGenerationStatus';
 import { ExtractionIndicator } from './ExtractionIndicator';
 import { ProgressSaveIndicator } from './ProgressSaveIndicator';
 import { PositionConflictDialog } from './PositionConflictDialog';
+import { IOSTapZones } from './IOSTapZones';
 import { notify } from '@/stores/ui';
 
 // Wake Lock hook
@@ -781,6 +782,14 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ book }) => {
           paddingRight: 'env(safe-area-inset-right)',
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}
+      />
+
+      {/* iOS-specific tap navigation zones (overlay solution for iOS PWA) */}
+      <IOSTapZones
+        onPrevPage={prevPage}
+        onNextPage={nextPage}
+        enabled={!isLoading && !isGenerating && !error}
+        headerHeight={70}
       />
 
       {/* Loading Overlay */}
